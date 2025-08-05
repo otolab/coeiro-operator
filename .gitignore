@@ -1,0 +1,29 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 設定ファイル
+.coeiroink/
+.env
+.env.local
+
+# 一時ファイル
+/tmp/
+*.tmp
+*.log
+
+# OS生成ファイル
+.DS_Store
+Thumbs.db
+
+# エディタ設定
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ビルド成果物
+dist/
+build/

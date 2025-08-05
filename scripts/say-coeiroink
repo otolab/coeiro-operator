@@ -1,0 +1,12 @@
+#!/bin/bash
+
+# say-coeiroink: COEIROINK音声合成システムコマンドラインツール
+# src/say/cli.jsを実行するシェルスクリプト
+
+# スクリプトの場所を取得（シンボリックリンク対応）
+SCRIPT_PATH="$(readlink -f "$0")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Node.jsでCLIを実行
+exec node "$PROJECT_ROOT/src/say/cli.js" "$@"
