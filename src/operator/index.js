@@ -2,7 +2,7 @@
 
 /**
  * src/operator/index.js: オペレータ管理システム（JavaScript実装）
- * 複数Claudeセッション間でのオペレータ重複を防ぐ
+ * キャラクター:スタイル単位での管理とMCP情報提供に対応
  */
 
 import { readFile, writeFile, access, mkdir, unlink } from 'fs/promises';
@@ -12,28 +12,34 @@ import { spawn } from 'child_process';
 
 // デフォルト設定
 const DEFAULT_OPERATOR_CONFIG = {
-    operators: {},
-    greeting_patterns: [],
-    farewell_patterns: []
+    characters: {},
+    operators: {}
 };
 
 /**
- * 設定ディレクトリを決定（作業ディレクトリベース）
+ * 設定ディレクトリを決定（ホームディレクトリベース）
  */
 async function getConfigDir() {
-    // 作業ディレクトリの .coeiroink/ を優先
-    const workDir = join(process.cwd(), '.coeiroink');
+    // ホームディレクトリの ~/.coeiro-operator/ を優先
+    const homeDir = join(process.env.HOME || process.env.USERPROFILE || '~', '.coeiro-operator');
     
     try {
-        await mkdir(workDir, { recursive: true });
-        return workDir;
+        await mkdir(homeDir, { recursive: true });
+        return homeDir;
     } catch {
-        // フォールバック: /tmp/coeiroink-mcp-shared/
-        const tmpDir = '/tmp/coeiroink-mcp-shared';
+        // フォールバック: 作業ディレクトリの .coeiroink/
+        const workDir = join(process.cwd(), '.coeiroink');
         try {
-            await mkdir(tmpDir, { recursive: true });
-        } catch {}
-        return tmpDir;
+            await mkdir(workDir, { recursive: true });
+            return workDir;
+        } catch {
+            // 最終フォールバック: /tmp/coeiroink-mcp-shared/
+            const tmpDir = '/tmp/coeiroink-mcp-shared';
+            try {
+                await mkdir(tmpDir, { recursive: true });
+            } catch {}
+            return tmpDir;
+        }
     }
 }
 
@@ -129,6 +135,62 @@ export class OperatorManager {
     }
 
     /**
+     * キャラクター情報を取得
+     */
+    async getCharacterInfo(characterId) {
+        const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
+        const character = operatorConfig.characters?.[characterId];
+        
+        if (!character) {
+            throw new Error(`キャラクター '${characterId}' が見つかりません`);
+        }
+        
+        return character;
+    }
+
+    /**
+     * スタイルを選択
+     */
+    selectStyle(character) {
+        const availableStyles = Object.entries(character.available_styles || {})
+            .filter(([_, style]) => style.enabled)
+            .map(([styleId, style]) => ({ styleId, ...style }));
+        
+        if (availableStyles.length === 0) {
+            throw new Error(`キャラクター '${character.name}' に利用可能なスタイルがありません`);
+        }
+        
+        switch (character.style_selection) {
+            case 'default':
+                // デフォルトスタイルを使用
+                const defaultStyle = availableStyles.find(s => s.styleId === character.default_style);
+                return defaultStyle || availableStyles[0];
+                
+            case 'random':
+                // ランダム選択
+                return availableStyles[Math.floor(Math.random() * availableStyles.length)];
+                
+            case 'specified':
+                // 指定されたスタイル（今回は default と同じ扱い）
+                const specifiedStyle = availableStyles.find(s => s.styleId === character.default_style);
+                return specifiedStyle || availableStyles[0];
+                
+            default:
+                return availableStyles[0];
+        }
+    }
+
+    /**
+     * 挨拶パターンを自動抽出
+     */
+    async extractGreetingPatterns() {
+        const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
+        return Object.values(operatorConfig.characters || {})
+            .map(char => char.greeting)
+            .filter(greeting => greeting && greeting.trim());
+    }
+
+    /**
      * 利用可能なオペレータを取得
      */
     async getAvailableOperators() {
@@ -137,7 +199,10 @@ export class OperatorManager {
         const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
         const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {} });
         
-        const allOperators = Object.keys(operatorConfig.operators || {});
+        const allOperators = Object.entries(operatorConfig.operators || {})
+            .filter(([_, op]) => op.enabled)
+            .map(([opId, _]) => opId);
+        
         const availableOperators = allOperators.filter(op => !activeOperators.active[op]);
         
         return availableOperators;
@@ -196,13 +261,13 @@ export class OperatorManager {
         
         // お別れの挨拶情報を取得
         const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
-        const operatorInfo = operatorConfig.operators[operatorId];
-        const operatorName = operatorInfo?.name || operatorId;
+        const operator = operatorConfig.operators[operatorId];
+        const character = operatorConfig.characters[operator?.character_id];
         
         return {
             operatorId,
-            operatorName,
-            farewell: operatorInfo?.farewell || ''
+            characterName: character?.name || operatorId,
+            farewell: character?.farewell || ''
         };
     }
 
@@ -226,7 +291,7 @@ export class OperatorManager {
     }
 
     /**
-     * ランダムオペレータ選択と挨拶
+     * ランダムオペレータ選択と詳細情報付きアサイン
      */
     async assignRandomOperator() {
         const availableOperators = await this.getAvailableOperators();
@@ -238,26 +303,11 @@ export class OperatorManager {
         // ランダム選択
         const selectedOperator = availableOperators[Math.floor(Math.random() * availableOperators.length)];
         
-        // オペレータを予約
-        await this.reserveOperator(selectedOperator);
-        
-        // 挨拶情報取得
-        const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
-        const operatorInfo = operatorConfig.operators[selectedOperator];
-        
-        // 音声設定を更新
-        await this.updateVoiceSetting(operatorInfo.voice_id);
-        
-        return {
-            operatorId: selectedOperator,
-            operatorName: operatorInfo?.name || selectedOperator,
-            greeting: operatorInfo?.greeting || '',
-            voiceId: operatorInfo?.voice_id || ''
-        };
+        return await this.assignSpecificOperator(selectedOperator);
     }
 
     /**
-     * 指定されたオペレータを割り当て
+     * 指定されたオペレータを詳細情報付きでアサイン
      */
     async assignSpecificOperator(specifiedOperator) {
         if (!specifiedOperator) {
@@ -265,11 +315,15 @@ export class OperatorManager {
         }
         
         const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
+        const operator = operatorConfig.operators?.[specifiedOperator];
         
         // オペレータが存在するかチェック
-        if (!operatorConfig.operators[specifiedOperator]) {
-            throw new Error(`オペレータ '${specifiedOperator}' は存在しません`);
+        if (!operator || !operator.enabled) {
+            throw new Error(`オペレータ '${specifiedOperator}' は存在しないか無効です`);
         }
+        
+        // キャラクター情報を取得
+        const character = await this.getCharacterInfo(operator.character_id);
         
         // 既存のオペレータがいる場合は自動的にリリース（交代処理）
         try {
@@ -279,11 +333,22 @@ export class OperatorManager {
             
             // 同じオペレータが指定された場合は何もしない
             if (currentOperator === specifiedOperator) {
-                const operatorName = operatorConfig.operators[specifiedOperator]?.name || specifiedOperator;
+                const selectedStyle = this.selectStyle(character);
+                
                 return {
                     operatorId: specifiedOperator,
-                    operatorName,
-                    message: `現在のオペレータ: ${operatorName} (${specifiedOperator})`
+                    characterName: character.name,
+                    currentStyle: {
+                        styleId: selectedStyle.styleId,
+                        styleName: selectedStyle.name,
+                        personality: selectedStyle.personality,
+                        speakingStyle: selectedStyle.speaking_style
+                    },
+                    voiceConfig: {
+                        voiceId: character.voice_id,
+                        styleId: selectedStyle.style_id
+                    },
+                    message: `現在のオペレータ: ${character.name} (${specifiedOperator})`
                 };
             }
             
@@ -307,27 +372,37 @@ export class OperatorManager {
         // オペレータを予約
         await this.reserveOperator(specifiedOperator);
         
-        // 挨拶情報取得
-        const operatorInfo = operatorConfig.operators[specifiedOperator];
+        // スタイルを選択
+        const selectedStyle = this.selectStyle(character);
         
         // 音声設定を更新
-        await this.updateVoiceSetting(operatorInfo.voice_id);
+        await this.updateVoiceSetting(character.voice_id, selectedStyle.style_id);
         
         return {
             operatorId: specifiedOperator,
-            operatorName: operatorInfo?.name || specifiedOperator,
-            greeting: operatorInfo?.greeting || '',
-            voiceId: operatorInfo?.voice_id || ''
+            characterName: character.name,
+            currentStyle: {
+                styleId: selectedStyle.styleId,
+                styleName: selectedStyle.name,
+                personality: selectedStyle.personality,
+                speakingStyle: selectedStyle.speaking_style
+            },
+            voiceConfig: {
+                voiceId: character.voice_id,
+                styleId: selectedStyle.style_id
+            },
+            greeting: character.greeting || ''
         };
     }
 
     /**
      * 音声設定を更新
      */
-    async updateVoiceSetting(voiceId) {
+    async updateVoiceSetting(voiceId, styleId = 0) {
         try {
             const config = await this.readJsonFile(this.coeiroinkConfigFile, {});
             config.voice_id = voiceId;
+            config.style_id = styleId;
             await this.writeJsonFile(this.coeiroinkConfigFile, config);
         } catch (error) {
             console.error(`音声設定更新エラー: ${error.message}`);
@@ -350,12 +425,28 @@ export class OperatorManager {
         const operatorId = sessionData.operator_id;
         
         const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
-        const operatorName = operatorConfig.operators[operatorId]?.name || operatorId;
+        const operator = operatorConfig.operators[operatorId];
+        const character = operatorConfig.characters[operator?.character_id];
+        
+        if (!character) {
+            return {
+                operatorId,
+                message: `現在のオペレータ: ${operatorId} (キャラクター情報なし)`
+            };
+        }
+        
+        const selectedStyle = this.selectStyle(character);
         
         return {
             operatorId,
-            operatorName,
-            message: `現在のオペレータ: ${operatorName} (${operatorId})`
+            characterName: character.name,
+            currentStyle: {
+                styleId: selectedStyle.styleId,
+                styleName: selectedStyle.name,
+                personality: selectedStyle.personality,
+                speakingStyle: selectedStyle.speaking_style
+            },
+            message: `現在のオペレータ: ${character.name} (${operatorId}) - ${selectedStyle.name}`
         };
     }
 }
