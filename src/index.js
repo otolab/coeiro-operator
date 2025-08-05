@@ -67,9 +67,8 @@ server.registerTool("operator_assign", {
     }
     
     // キャラクター情報を取得
-    const operatorConfig = await operatorManager.readJsonFile(operatorManager.operatorConfigFile, { characters: {}, operators: {} });
-    const operatorData = operatorConfig.operators?.[assignResult.operatorId];
-    const character = operatorConfig.characters?.[operatorData?.character_id];
+    const operatorConfig = await operatorManager.readJsonFile(operatorManager.operatorConfigFile, { characters: {} });
+    const character = operatorConfig.characters?.[assignResult.operatorId];
     
     if (!character) {
       throw new Error(`キャラクター情報が見つかりません: ${assignResult.operatorId}`);
@@ -328,10 +327,9 @@ server.registerTool("operator_styles", {
         throw new Error('現在オペレータが割り当てられていません。まず operator_assign を実行してください。');
       }
       
-      const operatorConfig = await operatorManager.readJsonFile(operatorManager.operatorConfigFile, { characters: {}, operators: {} });
-      const operatorData = operatorConfig.operators?.[currentOperator.operatorId];
-      targetCharacter = operatorConfig.characters?.[operatorData?.character_id];
-      targetCharacterId = operatorData?.character_id;
+      const operatorConfig = await operatorManager.readJsonFile(operatorManager.operatorConfigFile, { characters: {} });
+      targetCharacter = operatorConfig.characters?.[currentOperator.operatorId];
+      targetCharacterId = currentOperator.operatorId;
       
       if (!targetCharacter) {
         throw new Error(`現在のオペレータ '${currentOperator.operatorId}' のキャラクター情報が見つかりません`);

@@ -11,25 +11,50 @@ COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシ�
 
 - **音声オペレータシステム**: 9種類のキャラクターによる音声通知
 - **非同期音声合成**: 低レイテンシストリーミング対応
-- **MCPサーバー**: Claude Desktopとの統合
+- **MCPサーバー**: Claude Codeとの統合
 - **セッション管理**: 複数セッション間でのオペレータ重複防止
 - **コマンドライン互換**: macOS sayコマンド互換インターフェース
 
-## クイックスタート
+## インストール
 
-### 1. インストール
+### 事前要件
+
+- **Node.js 18以上** (推奨: LTS版)
+- **COEIROINK** - 音声合成エンジン（localhost:50032で動作）
+- **macOS** - 音声再生にafplayを使用
+
+### NPMからのインストール
 
 ```bash
 npm install -g @otolab/coeiro-operator
 ```
 
-### 2. COEIROINK起動確認
+### ソースからのインストール（開発用）
 
 ```bash
-curl -X GET "http://localhost:50032/speakers"
+git clone https://github.com/otolab/coeiro-operator.git
+cd coeiro-operator
+npm install
+npm link
 ```
 
-### 3. 動作テスト
+## MCPサーバー登録
+
+Claude Codeで以下のコマンドを実行：
+
+```bash
+claude mcp add coeiro-operator coeiro-operator
+```
+
+## クイックスタート
+
+### 1. COEIROINK起動確認
+
+```bash
+curl -X GET "http://localhost:50032/v1/speakers"
+```
+
+### 2. 動作テスト
 
 ```bash
 # 音声出力テスト
@@ -40,24 +65,7 @@ operator-manager assign
 operator-manager status
 ```
 
-### 4. Claude Desktop設定
-
-`claude_desktop_config.json`にMCPサーバーを追加：
-
-```json
-{
-  "mcpServers": {
-    "coeiro-operator": {
-      "command": "coeiro-operator",
-      "args": []
-    }
-  }
-}
-```
-
-## 使用方法
-
-### Claude Codeでの使用
+### 3. Claude Codeでの使用
 
 ```
 # 挨拶でオペレータ自動アサイン
@@ -67,7 +75,9 @@ operator-manager status
 ありがとう
 ```
 
-### コマンドライン使用
+## 基本的な使用方法
+
+### コマンドライン
 
 ```bash
 # 音声合成
@@ -80,22 +90,19 @@ operator-manager status      # 現在のステータス
 operator-manager release     # オペレータ解放
 ```
 
-## ドキュメント
+### Claude Codeでの使用
 
-- **[INSTALLATION.md](INSTALLATION.md)** - 詳細なインストールガイド
-- **[prompts/OPERATOR_SYSTEM.md](prompts/OPERATOR_SYSTEM.md)** - システム仕様書
-- **[prompts/CHARACTERS.md](prompts/CHARACTERS.md)** - オペレータキャラクター詳細
-- **[prompts/UPDATE_CHARACTER_SETTINGS.md](prompts/UPDATE_CHARACTER_SETTINGS.md)** - キャラクター設定の更新方法
+```
+# 挨拶でオペレータ自動アサイン
+こんにちは
 
-## 技術仕様
+# 作業完了での自動解放
+ありがとう
+```
 
-### 動作環境
+## MCPツール
 
-- **Node.js**: 18以上
-- **COEIROINK**: localhost:50032で動作
-- **OS**: macOS（音声再生にafplayを使用）
-
-### MCPツール
+COEIRO Operatorは以下のMCPツールを提供します：
 
 - `operator_assign` - オペレータ割り当て
 - `operator_release` - オペレータ解放  
@@ -103,18 +110,14 @@ operator-manager release     # オペレータ解放
 - `operator_available` - 利用可能一覧
 - `say` - 音声出力（非同期キュー処理）
 
-## ライセンス
+## ドキュメント
 
-ISC
+- **[INSTALLATION.md](INSTALLATION.md)** - 詳細設定・カスタマイズガイド
+- **[prompts/OPERATOR_SYSTEM.md](prompts/OPERATOR_SYSTEM.md)** - システム仕様書
+- **[prompts/CHARACTERS.md](prompts/CHARACTERS.md)** - オペレータキャラクター詳細
+- **[prompts/UPDATE_CHARACTER_SETTINGS.md](prompts/UPDATE_CHARACTER_SETTINGS.md)** - キャラクター設定の更新方法
 
-## 開発・貢献
-
-```bash
-git clone https://github.com/otolab/coeiro-operator.git
-cd coeiro-operator
-npm install
-npm link
-```
+## 開発
 
 ### ディレクトリ構造
 
@@ -131,3 +134,16 @@ coeiro-operator/
 │   └── UPDATE_CHARACTER_SETTINGS.md # 設定更新手順
 └── INSTALLATION.md       # インストールガイド
 ```
+
+### 貢献
+
+```bash
+git clone https://github.com/otolab/coeiro-operator.git
+cd coeiro-operator
+npm install
+npm link
+```
+
+## ライセンス
+
+ISC

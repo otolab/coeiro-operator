@@ -31,14 +31,26 @@ COEIRO Operatorは以下の優先順位で設定ファイルを検索します�
 
 ```json
 {
-  "operators": {
+  "characters": {
     "キャラクターID": {
       "name": "表示名",
       "voice_id": "COEIROINKの音声UUID",
+      "enabled": true,
+      "default_style": "デフォルトスタイルID",
+      "style_selection": "default|random|specified",
       "personality": "性格の説明（任意）",
       "speaking_style": "話し方の特徴（任意）", 
       "greeting": "挨拶メッセージ",
-      "farewell": "お別れメッセージ"
+      "farewell": "お別れメッセージ",
+      "available_styles": {
+        "スタイルID": {
+          "name": "スタイル名",
+          "style_id": 0,
+          "enabled": true,
+          "personality": "このスタイルの性格",
+          "speaking_style": "このスタイルの話し方"
+        }
+      }
     }
   }
 }
@@ -48,26 +60,42 @@ COEIRO Operatorは以下の優先順位で設定ファイルを検索します�
 
 | 項目 | 必須 | 型 | 説明 |
 |------|------|----|----|
-| `operators` | ✓ | Object | オペレータキャラクターの定義 |
-| `operators[id].name` | ✓ | String | ユーザに表示される名前 |
-| `operators[id].voice_id` | ✓ | String | COEIROINKの音声UUID |
-| `operators[id].personality` | - | String | 性格の説明（ドキュメント用） |
-| `operators[id].speaking_style` | - | String | 話し方の特徴（ドキュメント用） |
-| `operators[id].greeting` | ✓ | String | アサイン時の挨拶メッセージ |
-| `operators[id].farewell` | ✓ | String | 解放時のお別れメッセージ |
+| `characters` | ✓ | Object | キャラクターの定義 |
+| `characters[id].name` | ✓ | String | ユーザに表示される名前 |
+| `characters[id].voice_id` | ✓ | String | COEIROINKの音声UUID |
+| `characters[id].enabled` | ✓ | Boolean | このキャラクターが利用可能かどうか |
+| `characters[id].default_style` | ✓ | String | デフォルトスタイルID |
+| `characters[id].style_selection` | ✓ | String | スタイル選択方法 (default/random/specified) |
+| `characters[id].personality` | - | String | 性格の説明（ドキュメント用） |
+| `characters[id].speaking_style` | - | String | 話し方の特徴（ドキュメント用） |
+| `characters[id].greeting` | ✓ | String | アサイン時の挨拶メッセージ |
+| `characters[id].farewell` | ✓ | String | 解放時のお別れメッセージ |
+| `characters[id].available_styles` | ✓ | Object | 利用可能なスタイル定義 |
 
 #### 基本設定例
 
 ```json
 {
-  "operators": {
+  "characters": {
     "tsukuyomi": {
       "name": "つくよみちゃん",
       "voice_id": "3c37646f-3881-5374-2a83-149267990abc",
+      "enabled": true,
+      "default_style": "normal",
+      "style_selection": "default",
       "personality": "冷静で丁寧、報告は簡潔で正確",
       "speaking_style": "敬語、落ち着いた口調",
       "greeting": "本日も作業をサポートさせていただきます。つくよみちゃんです。",
-      "farewell": "本日の作業、お疲れさまでした。"
+      "farewell": "本日の作業、お疲れさまでした。",
+      "available_styles": {
+        "normal": {
+          "name": "れいせい",
+          "style_id": 0,
+          "enabled": true,
+          "personality": "落ち着いた知的な性格",
+          "speaking_style": "丁寧で上品な敬語"
+        }
+      }
     }
   }
 }
@@ -77,30 +105,66 @@ COEIRO Operatorは以下の優先順位で設定ファイルを検索します�
 
 ```json
 {
-  "operators": {
+  "characters": {
     "tsukuyomi": {
       "name": "つくよみちゃん",
       "voice_id": "3c37646f-3881-5374-2a83-149267990abc",
+      "enabled": true,
+      "default_style": "normal",
+      "style_selection": "default",
       "personality": "冷静で丁寧、報告は簡潔で正確",
       "speaking_style": "敬語、落ち着いた口調",
       "greeting": "本日も作業をサポートさせていただきます。つくよみちゃんです。",
-      "farewell": "本日の作業、お疲れさまでした。"
+      "farewell": "本日の作業、お疲れさまでした。",
+      "available_styles": {
+        "normal": {
+          "name": "れいせい",
+          "style_id": 0,
+          "enabled": true,
+          "personality": "落ち着いた知的な性格",
+          "speaking_style": "丁寧で上品な敬語"
+        }
+      }
     },
     "angie": {
       "name": "アンジーさん",
       "voice_id": "cc213e6d-d847-45b5-a1df-415744c890f2",
+      "enabled": true,
+      "default_style": "normal",
+      "style_selection": "default",
       "personality": "フレンドリーで親しみやすい、明るく積極的",
       "speaking_style": "カジュアル、親近感のある口調",
       "greeting": "今日もよろしくお願いします！アンジーです。",
-      "farewell": "今日もお疲れ様でした！"
+      "farewell": "今日もお疲れ様でした！",
+      "available_styles": {
+        "normal": {
+          "name": "ノーマル",
+          "style_id": 0,
+          "enabled": true,
+          "personality": "明るく親しみやすい性格",
+          "speaking_style": "カジュアルで親近感のある口調"
+        }
+      }
     },
     "kana": {
       "name": "KANA",
       "voice_id": "297a5b91-f88a-6951-5841-f1e648b2e594",
+      "enabled": true,
+      "default_style": "normal",
+      "style_selection": "default",
       "personality": "クールでスマート、論理的",
       "speaking_style": "簡潔で的確、無駄のない表現",
       "greeting": "KANA、オペレータ業務を開始します。",
-      "farewell": "業務終了。お疲れさまでした。"
+      "farewell": "業務終了。お疲れさまでした。",
+      "available_styles": {
+        "normal": {
+          "name": "ノーマル",
+          "style_id": 0,
+          "enabled": true,
+          "personality": "クールで論理的な性格",
+          "speaking_style": "簡潔で的確な表現"
+        }
+      }
     }
   }
 }
@@ -115,9 +179,7 @@ COEIRO Operatorは以下の優先順位で設定ファイルを検索します�
 ```json
 {
   "host": "localhost",
-  "port": "50032", 
-  "voice_id": "現在選択中の音声ID（自動更新）",
-  "rate": 200,
+  "port": "50032"
 }
 ```
 
@@ -127,16 +189,13 @@ COEIRO Operatorは以下の優先順位で設定ファイルを検索します�
 |------|------|----|-----------|----|
 | `host` | - | String | "localhost" | COEIROINKサーバーのホスト |
 | `port` | - | String | "50032" | COEIROINKサーバーのポート |
-| `voice_id` | - | String | null | 現在選択中の音声ID（自動更新） |
-| `rate` | - | Number | 200 | 音声合成速度（WPM） |
 
 #### デフォルト設定
 
 ```json
 {
   "host": "localhost",
-  "port": "50032",
-  "rate": 200
+  "port": "50032"
 }
 ```
 
@@ -185,8 +244,7 @@ mkdir -p ~/.coeiro-operator
 # 最小構成のoperator-config.jsonを作成（新構造）
 cat > ~/.coeiro-operator/operator-config.json << 'EOF'
 {
-  "characters": {},
-  "operators": {}
+  "characters": {}
 }
 EOF
 ```
@@ -219,11 +277,11 @@ jq --arg id "$TSUKUYOMI_ID" '
 .characters.tsukuyomi = {
   "name": "つくよみちゃん",
   "voice_id": $id,
+  "enabled": true,
   "default_style": "normal",
   "style_selection": "default",
   "personality": "冷静で丁寧、報告は簡潔で正確、知的で落ち着いた性格",
   "speaking_style": "敬語、落ち着いた口調、丁寧語を基調とした上品な話し方",
-  "background": "秘書やアシスタント的な役割、信頼性が高く効率を重視",
   "greeting": "本日も作業をサポートさせていただきます。つくよみちゃんです。",
   "farewell": "本日の作業、お疲れさまでした。",
   "available_styles": {
@@ -235,10 +293,6 @@ jq --arg id "$TSUKUYOMI_ID" '
       "speaking_style": "丁寧で上品な敬語"
     }
   }
-} | 
-.operators.tsukuyomi = {
-  "character_id": "tsukuyomi",
-  "enabled": true
 }' ~/.coeiro-operator/operator-config.json > temp.json && mv temp.json ~/.coeiro-operator/operator-config.json
 ```
 
@@ -255,8 +309,8 @@ jq '.' .coeiroink/operator-config.json
 
 ```bash
 # 特定キャラクターの挨拶メッセージ変更例
-jq '.operators.tsukuyomi.greeting = "おはようございます。つくよみちゃんです。"' \
-  .coeiroink/operator-config.json > temp.json && mv temp.json .coeiroink/operator-config.json
+jq '.characters.tsukuyomi.greeting = "おはようございます。つくよみちゃんです。"' \
+  ~/.coeiro-operator/operator-config.json > temp.json && mv temp.json ~/.coeiro-operator/operator-config.json
 ```
 
 
@@ -270,7 +324,7 @@ echo "=== 現在の設定キャラクター ==="
 jq -r '.characters | to_entries[] | "\(.key): \(.value.name) (\(.value.voice_id))"' ~/.coeiro-operator/operator-config.json
 
 echo "=== 現在の設定オペレータ ==="
-jq -r '.operators | to_entries[] | "\(.key): \(.value.character_id) (enabled: \(.value.enabled))"' ~/.coeiro-operator/operator-config.json
+jq -r '.characters | to_entries[] | select(.value.enabled) | "\(.key): \(.value.name) (enabled: \(.value.enabled))"' ~/.coeiro-operator/operator-config.json
 
 # 2. COEIROINKの実際の音声ID確認
 echo "=== COEIROINK利用可能音声 ==="
@@ -411,9 +465,9 @@ await say({
 
 **重要**: 新しいキャラクター:スタイル構造は従来の設定ファイルと互換性がありません。
 
-- 従来の `operators` 直下のキャラクター設定は動作しません
-- 新しい構造では `characters` セクションでキャラクター詳細を定義
-- `operators` セクションはキャラクターへの参照のみを保持
+- 従来の設定ファイルから移行する場合は、新しい構造に変更が必要です
+- 新しい構造では `characters` セクションでキャラクター詳細を定義し、各キャラクターに `enabled` フラグを含めます
+- `operators` セクションは廃止され、キャラクターの有効化は `enabled` フラグで管理されます
 - MCP統合では詳細なキャラクター情報が提供されます
 
 ### キャラクター選択の指針

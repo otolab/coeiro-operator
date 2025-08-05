@@ -16,7 +16,6 @@ const require = createRequire(import.meta.url);
 const DEFAULT_CONFIG = {
     host: 'localhost',
     port: '50032',
-    voice_id: '0',
     rate: 200
 };
 
@@ -177,8 +176,7 @@ export class SayCoeiroink {
                     const operatorConfigData = await readFile(operatorConfigPath, 'utf8');
                     const operatorConfig = JSON.parse(operatorConfigData);
                     
-                    const operator = operatorConfig.operators?.[operatorId];
-                    const character = operatorConfig.characters?.[operator?.character_id];
+                    const character = operatorConfig.characters?.[operatorId];
                     
                     if (character) {
                         return {
@@ -551,8 +549,8 @@ export class SayCoeiroink {
             if (operatorVoice) {
                 selectedVoice = operatorVoice;
             } else {
-                // 2. フォールバック: 設定ファイルまたはデフォルト値
-                selectedVoice = this.config.voice_id;
+                // 2. フォールバック: デフォルト値なし（エラーとして扱う）
+                throw new Error('音声が指定されておらず、オペレータも割り当てられていません');
             }
         }
 

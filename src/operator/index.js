@@ -9,12 +9,7 @@ import { readFile, writeFile, access, mkdir, unlink } from 'fs/promises';
 import { constants } from 'fs';
 import { join } from 'path';
 import { spawn } from 'child_process';
-
-// デフォルト設定
-const DEFAULT_OPERATOR_CONFIG = {
-    characters: {},
-    operators: {}
-};
+import ConfigManager from './config-manager.js';
 
 /**
  * 設定ディレクトリを決定（ホームディレクトリベース）
@@ -72,23 +67,26 @@ export class OperatorManager {
         this.sessionId = getSessionId();
         this.configDir = null;
         this.sessionDir = null;
-        this.operatorConfigFile = null;
         this.activeOperatorsFile = null;
         this.speechLockFile = null;
         this.sessionOperatorFile = null;
         this.coeiroinkConfigFile = null;
+        this.configManager = null;
     }
 
     async initialize() {
         this.configDir = await getConfigDir();
         this.sessionDir = await getSessionDir(this.sessionId);
         
-        this.operatorConfigFile = join(this.configDir, 'operator-config.json');
         this.activeOperatorsFile = join(this.configDir, 'active-operators.json');
         this.speechLockFile = join(this.configDir, 'speech-lock');
         this.sessionOperatorFile = join(this.sessionDir, `session-operator-${this.sessionId}.json`);
         this.coeiroinkConfigFile = join(this.configDir, 'coeiroink-config.json');
+        
+        // 設定管理システムを初期化
+        this.configManager = new ConfigManager(this.configDir);
     }
+
 
     /**
      * JSONファイルを安全に読み込み
@@ -138,14 +136,7 @@ export class OperatorManager {
      * キャラクター情報を取得
      */
     async getCharacterInfo(characterId) {
-        const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
-        const character = operatorConfig.characters?.[characterId];
-        
-        if (!character) {
-            throw new Error(`キャラクター '${characterId}' が見つかりません`);
-        }
-        
-        return character;
+        return await this.configManager.getCharacterConfig(characterId);
     }
 
     /**
@@ -153,7 +144,7 @@ export class OperatorManager {
      */
     selectStyle(character) {
         const availableStyles = Object.entries(character.available_styles || {})
-            .filter(([_, style]) => style.enabled)
+            .filter(([_, style]) => !style.disabled) // disabledフラグをチェック
             .map(([styleId, style]) => ({ styleId, ...style }));
         
         if (availableStyles.length === 0) {
@@ -184,10 +175,7 @@ export class OperatorManager {
      * 挨拶パターンを自動抽出
      */
     async extractGreetingPatterns() {
-        const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
-        return Object.values(operatorConfig.characters || {})
-            .map(char => char.greeting)
-            .filter(greeting => greeting && greeting.trim());
+        return await this.configManager.getGreetingPatterns();
     }
 
     /**
@@ -196,12 +184,8 @@ export class OperatorManager {
     async getAvailableOperators() {
         await this.initActiveOperators();
         
-        const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
+        const allOperators = await this.configManager.getAvailableCharacterIds();
         const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {} });
-        
-        const allOperators = Object.entries(operatorConfig.operators || {})
-            .filter(([_, op]) => op.enabled)
-            .map(([opId, _]) => opId);
         
         const availableOperators = allOperators.filter(op => !activeOperators.active[op]);
         
@@ -260,9 +244,12 @@ export class OperatorManager {
         await unlink(this.sessionOperatorFile);
         
         // お別れの挨拶情報を取得
-        const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
-        const operator = operatorConfig.operators[operatorId];
-        const character = operatorConfig.characters[operator?.character_id];
+        let character;
+        try {
+            character = await this.configManager.getCharacterConfig(operatorId);
+        } catch {
+            character = null;
+        }
         
         return {
             operatorId,
@@ -314,16 +301,13 @@ export class OperatorManager {
             throw new Error('オペレータIDを指定してください');
         }
         
-        const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
-        const operator = operatorConfig.operators?.[specifiedOperator];
-        
-        // オペレータが存在するかチェック
-        if (!operator || !operator.enabled) {
+        // キャラクター情報を取得
+        let character;
+        try {
+            character = await this.configManager.getCharacterConfig(specifiedOperator);
+        } catch (error) {
             throw new Error(`オペレータ '${specifiedOperator}' は存在しないか無効です`);
         }
-        
-        // キャラクター情報を取得
-        const character = await this.getCharacterInfo(operator.character_id);
         
         // 既存のオペレータがいる場合は自動的にリリース（交代処理）
         try {
@@ -424,11 +408,10 @@ export class OperatorManager {
         const sessionData = await this.readJsonFile(this.sessionOperatorFile);
         const operatorId = sessionData.operator_id;
         
-        const operatorConfig = await this.readJsonFile(this.operatorConfigFile, DEFAULT_OPERATOR_CONFIG);
-        const operator = operatorConfig.operators[operatorId];
-        const character = operatorConfig.characters[operator?.character_id];
-        
-        if (!character) {
+        let character;
+        try {
+            character = await this.configManager.getCharacterConfig(operatorId);
+        } catch {
             return {
                 operatorId,
                 message: `現在のオペレータ: ${operatorId} (キャラクター情報なし)`
