@@ -305,10 +305,11 @@ server.registerTool("say", {
     message: z.string().describe("発話させるメッセージ（日本語）"),
     voice: z.string().optional().describe("音声ID（省略時はオペレータ設定を使用）"),
     rate: z.number().optional().describe("話速（WPM、デフォルト200）"),
-    streamMode: z.boolean().optional().describe("ストリーミングモード強制（デフォルト自動）")
+    streamMode: z.boolean().optional().describe("ストリーミングモード強制（デフォルト自動）"),
+    style: z.string().optional().describe("スタイルID（オペレータのスタイル選択を上書き）")
   }
 }, async (args) => {
-  const { message, voice, rate, streamMode } = args;
+  const { message, voice, rate, streamMode, style } = args;
   
   try {
     if (!sayCoeiroink) {
@@ -319,7 +320,8 @@ server.registerTool("say", {
     const result = await sayCoeiroink.synthesizeText(message, {
       voice: voice || null,
       rate: rate || undefined,
-      streamMode: streamMode || false
+      streamMode: streamMode || false,
+      style: style || undefined
     });
     
     return {

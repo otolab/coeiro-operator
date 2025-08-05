@@ -31,30 +31,37 @@ const STREAM_CONFIG = {
 };
 
 /**
- * 設定ファイルのパスを取得（作業ディレクトリベース）
+ * 設定ディレクトリを決定（ホームディレクトリベース）
  */
-async function getConfigPath(filename) {
-    // 作業ディレクトリの .coeiroink/ を使用
-    const configDir = join(process.cwd(), '.coeiroink');
+async function getConfigDir() {
+    // ホームディレクトリの ~/.coeiro-operator/ を優先
+    const homeDir = join(process.env.HOME || process.env.USERPROFILE || '~', '.coeiro-operator');
     
-    // ディレクトリが存在しない場合は作成
     try {
-        await access(configDir, constants.F_OK);
+        await mkdir(homeDir, { recursive: true });
+        return homeDir;
     } catch {
+        // フォールバック: 作業ディレクトリの .coeiroink/
+        const workDir = join(process.cwd(), '.coeiroink');
         try {
-            await mkdir(configDir, { recursive: true });
-        } catch (error) {
-            // 作成に失敗した場合は /tmp にフォールバック
-            const tmpDir = join('/tmp', 'coeiroink-mcp-shared');
+            await mkdir(workDir, { recursive: true });
+            return workDir;
+        } catch {
+            // 最終フォールバック: /tmp/coeiroink-mcp-shared/
+            const tmpDir = '/tmp/coeiroink-mcp-shared';
             try {
-                await access(tmpDir, constants.F_OK);
-            } catch {
                 await mkdir(tmpDir, { recursive: true });
-            }
-            return join(tmpDir, filename);
+            } catch {}
+            return tmpDir;
         }
     }
-    
+}
+
+/**
+ * 設定ファイルのパスを取得
+ */
+async function getConfigPath(filename) {
+    const configDir = await getConfigDir();
     return join(configDir, filename);
 }
 
@@ -159,32 +166,73 @@ export class SayCoeiroink {
                 return null;
             }
 
+            // オペレータIDを抽出
             const operatorMatch = operatorStatus.match(/([a-z]+)/);
             if (operatorMatch) {
-                const operatorName = operatorMatch[1];
+                const operatorId = operatorMatch[1];
                 
-                if (this.config.voice_presets && this.config.voice_presets[operatorName]) {
-                    return this.config.voice_presets[operatorName].voice_id;
+                // operator-config.jsonから音声情報を取得
+                const operatorConfigPath = await getConfigPath('operator-config.json');
+                try {
+                    const operatorConfigData = await readFile(operatorConfigPath, 'utf8');
+                    const operatorConfig = JSON.parse(operatorConfigData);
+                    
+                    const operator = operatorConfig.operators?.[operatorId];
+                    const character = operatorConfig.characters?.[operator?.character_id];
+                    
+                    if (character) {
+                        return {
+                            voice_id: character.voice_id,
+                            character: character
+                        };
+                    }
+                } catch (configError) {
+                    console.error(`オペレータ設定読み込みエラー: ${configError.message}`);
                 }
             }
         } catch (error) {
-            // fallback
+            console.error(`オペレータ音声取得エラー: ${error.message}`);
         }
 
         return null;
     }
 
-    async synthesizeChunk(chunk, voiceId, speed) {
+    async synthesizeChunk(chunk, voiceInfo, speed) {
         const url = `http://${this.config.host}:${this.config.port}/v1/synthesis`;
         
-        let styleId = 0;
-        if (this.config.voice_presets) {
-            for (const [operatorName, preset] of Object.entries(this.config.voice_presets)) {
-                if (preset.voice_id === voiceId) {
-                    styleId = preset.style_id || 0;
-                    break;
+        // voiceInfoから音声IDとスタイルIDを取得
+        let voiceId, styleId = 0;
+        
+        if (typeof voiceInfo === 'object' && voiceInfo.voice_id) {
+            // 新しいアーキテクチャ: オペレータ情報付き
+            voiceId = voiceInfo.voice_id;
+            
+            // キャラクターのスタイル選択ロジックを適用
+            if (voiceInfo.character) {
+                const character = voiceInfo.character;
+                const availableStyles = Object.entries(character.available_styles || {})
+                    .filter(([_, style]) => style.enabled)
+                    .map(([styleId, style]) => ({ styleId, ...style }));
+                
+                if (availableStyles.length > 0) {
+                    let selectedStyle;
+                    switch (character.style_selection) {
+                        case 'default':
+                            selectedStyle = availableStyles.find(s => s.styleId === character.default_style);
+                            break;
+                        case 'random':
+                            selectedStyle = availableStyles[Math.floor(Math.random() * availableStyles.length)];
+                            break;
+                        default:
+                            selectedStyle = availableStyles[0];
+                    }
+                    
+                    styleId = selectedStyle?.style_id || 0;
                 }
             }
+        } else {
+            // 従来の形式: 音声IDのみ
+            voiceId = voiceInfo;
         }
 
         // 音切れ防止: 前後に無音パディングを追加
@@ -491,18 +539,42 @@ export class SayCoeiroink {
             voice = null,
             rate = this.config.rate,
             outputFile = null,
-            streamMode = false
+            streamMode = false,
+            style = null
         } = options;
 
         // 音声選択の優先順位処理
         let selectedVoice = voice;
         if (!selectedVoice) {
             // 1. operator-manager から現在のオペレータの音声を取得
-            selectedVoice = await this.getCurrentOperatorVoice();
-            
-            // 2. フォールバック: 設定ファイルまたはデフォルト値
-            if (!selectedVoice) {
+            const operatorVoice = await this.getCurrentOperatorVoice();
+            if (operatorVoice) {
+                selectedVoice = operatorVoice;
+            } else {
+                // 2. フォールバック: 設定ファイルまたはデフォルト値
                 selectedVoice = this.config.voice_id;
+            }
+        }
+
+        // スタイル明示的指定の処理
+        if (style && typeof selectedVoice === 'object' && selectedVoice.character) {
+            const character = selectedVoice.character;
+            const specifiedStyle = Object.entries(character.available_styles || {})
+                .find(([styleId, styleData]) => styleId === style && styleData.enabled);
+            
+            if (specifiedStyle) {
+                // 指定されたスタイルが有効な場合、一時的にキャラクターの設定を上書き
+                const modifiedCharacter = {
+                    ...character,
+                    style_selection: 'specified',
+                    default_style: style
+                };
+                selectedVoice = {
+                    ...selectedVoice,
+                    character: modifiedCharacter
+                };
+            } else {
+                console.warn(`指定されたスタイル '${style}' は利用できません。デフォルトスタイルを使用します。`);
             }
         }
 

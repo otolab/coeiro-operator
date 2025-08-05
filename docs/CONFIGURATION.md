@@ -118,13 +118,6 @@ COEIRO Operatorは以下の優先順位で設定ファイルを検索します�
   "port": "50032", 
   "voice_id": "現在選択中の音声ID（自動更新）",
   "rate": 200,
-  "voice_presets": {
-    "プリセット名": {
-      "voice_id": "音声UUID",
-      "style_id": "スタイルID",
-      "description": "説明"
-    }
-  }
 }
 ```
 
@@ -136,7 +129,6 @@ COEIRO Operatorは以下の優先順位で設定ファイルを検索します�
 | `port` | - | String | "50032" | COEIROINKサーバーのポート |
 | `voice_id` | - | String | null | 現在選択中の音声ID（自動更新） |
 | `rate` | - | Number | 200 | 音声合成速度（WPM） |
-| `voice_presets` | - | Object | {} | 音声プリセット定義 |
 
 #### デフォルト設定
 
@@ -386,6 +378,23 @@ rm available-voices.json
   }
 }
 ```
+
+### スタイル明示的切り替えAPI
+
+MCPサーバーの`say`ツールで、オペレータのデフォルトスタイル選択を一時的に上書きできます：
+
+```javascript
+// Claude Codeでの使用例
+await say({
+  message: "こんにちは",
+  style: "sleepy"  // 指定したスタイルで発話
+});
+```
+
+この機能により：
+- キャラクターのデフォルト設定を変更せずに一時的なスタイル変更が可能
+- 利用可能で有効化されたスタイルのみ指定可能
+- 無効なスタイルが指定された場合はデフォルトスタイルにフォールバック
 
 ## 注意事項
 

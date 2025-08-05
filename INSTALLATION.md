@@ -41,15 +41,8 @@ npm link
 {
   "host": "localhost",
   "port": "50032",
-  "voice_id": "3c37646f-3881-5374-2a83-149267990abc",
   "rate": 200,
-  "voice_presets": {
-    "tsukuyomi": {
-      "voice_id": "3c37646f-3881-5374-2a83-149267990abc",
-      "style_id": 0,
-      "description": "つくよみちゃん"
-    }
-  }
+  "voice_id": "3c37646f-3881-5374-2a83-149267990abc"
 }
 ```
 
