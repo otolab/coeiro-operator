@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { spawn } from "child_process";
 import { z } from "zod";
 import { SayCoeiroink } from "./say/index.js";
+import { OperatorManager } from "./operator/index.js";
 
 const server = new McpServer({
   name: "coeiro-operator",
@@ -17,12 +18,16 @@ const server = new McpServer({
 import { loadConfig } from "./say/index.js";
 
 let sayCoeiroink = null;
+let operatorManager = null;
 
 // 初期化を非同期で実行
 (async () => {
   try {
     const config = await loadConfig();
     sayCoeiroink = new SayCoeiroink(config);
+    
+    operatorManager = new OperatorManager();
+    await operatorManager.initialize();
     console.error("SayCoeiroink initialized with config");
   } catch (error) {
     console.error("Failed to initialize SayCoeiroink:", error.message);
@@ -32,135 +37,100 @@ let sayCoeiroink = null;
 
 // operator-manager操作ツール
 server.registerTool("operator_assign", {
-  description: "オペレータをランダム選択して割り当てます（冪等性があるため事前の状況確認は不要）",
+  description: "オペレータをランダム選択して割り当てます（詳細なスタイル情報付き）",
   inputSchema: {
-    operator: z.string().optional().describe("指定するオペレータ名（英語表記、例: 'Alice', 'Bob'など。省略時または空文字列時はランダム選択。日本語表記は無効）")
+    operator: z.string().optional().describe("指定するオペレータ名（英語表記、例: 'tsukuyomi', 'alma'など。省略時または空文字列時はランダム選択。日本語表記は無効）")
   }
 }, async (args) => {
   const { operator } = args || {};
-  
   
   // 引数バリデーション（空文字列はランダム選択として扱う）
   if (operator !== undefined && operator !== '' && operator !== null) {
     // 日本語文字（ひらがな、カタカナ、漢字）の検出
     if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(operator)) {
-      throw new Error('オペレータ名は英語表記で指定してください（例: Alice, Bob）。日本語は使用できません。');
+      throw new Error('オペレータ名は英語表記で指定してください（例: tsukuyomi, alma）。日本語は使用できません。');
     }
   }
   
   try {
-    // まず現在の状態をチェック
-    const statusResult = await new Promise((resolve, reject) => {
-      const statusChild = spawn("operator-manager", ["status"], {
-        stdio: ["pipe", "pipe", "pipe"],
-        env: process.env
-      });
-      
-      let stdout = "";
-      let stderr = "";
-      
-      statusChild.stdout.on("data", (data) => {
-        stdout += data.toString();
-      });
-      
-      statusChild.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
-      
-      statusChild.on("close", (code) => {
-        if (code === 0) {
-          resolve(stdout.trim());
-        } else {
-          reject(new Error(`status check failed: ${stderr}`));
-        }
-      });
-      
-      statusChild.on("error", (err) => {
-        reject(new Error(`Failed to check status: ${err.message}`));
-      });
-    });
-    
-    // 既存のオペレータがある場合の処理
-    if (statusResult && !statusResult.includes("オペレータが割り当てられていません")) {
-      // 指定オペレータがある場合のみ切り替え処理を行う
-      if (operator && operator !== '' && operator !== null) {
-        // 指定オペレータに切り替え
-        return new Promise((resolve, reject) => {
-          const assignChild = spawn("operator-manager", ["assign", operator], {
-            stdio: ["pipe", "pipe", "pipe"],
-            env: process.env
-          });
-          
-          let stdout = "";
-          let stderr = "";
-          
-          assignChild.stdout.on("data", (data) => {
-            stdout += data.toString();
-          });
-          
-          assignChild.stderr.on("data", (data) => {
-            stderr += data.toString();
-          });
-          
-          assignChild.on("close", (code) => {
-            if (code === 0) {
-              resolve({
-                content: [{
-                  type: "text",
-                  text: stdout.trim()
-                }]
-              });
-            } else {
-              reject(new Error(`operator-manager assign failed: ${stderr}`));
-            }
-          });
-          
-          assignChild.on("error", (err) => {
-            reject(new Error(`Failed to execute operator-manager: ${err.message}`));
-          });
-        });
-      } else {
-        // ランダム選択が指定された場合でも、既存オペレータを返すのではなく新しいランダム選択を実行
-        // 既存のオペレータを返す処理は削除し、下のランダム選択処理に任せる
-      }
+    if (!operatorManager) {
+      throw new Error('OperatorManager not initialized');
     }
     
-    // 新規アサインの場合
-    const assignArgs = (operator && operator !== '' && operator !== null) ? ["assign", operator] : ["assign"];
-    return new Promise((resolve, reject) => {
-      const child = spawn("operator-manager", assignArgs, {
-        stdio: ["pipe", "pipe", "pipe"],
-        env: process.env
+    let assignResult;
+    
+    // オペレータ指定の有無に応じてアサイン
+    if (operator && operator !== '' && operator !== null) {
+      assignResult = await operatorManager.assignSpecificOperator(operator);
+    } else {
+      assignResult = await operatorManager.assignRandomOperator();
+    }
+    
+    // キャラクター情報を取得
+    const operatorConfig = await operatorManager.readJsonFile(operatorManager.operatorConfigFile, { characters: {}, operators: {} });
+    const operatorData = operatorConfig.operators?.[assignResult.operatorId];
+    const character = operatorConfig.characters?.[operatorData?.character_id];
+    
+    if (!character) {
+      throw new Error(`キャラクター情報が見つかりません: ${assignResult.operatorId}`);
+    }
+    
+    // スタイル情報を取得
+    const availableStyles = Object.entries(character.available_styles || {})
+      .filter(([_, style]) => style.enabled)
+      .map(([styleId, style]) => ({
+        id: styleId,
+        name: style.name,
+        personality: style.personality,
+        speakingStyle: style.speaking_style
+      }));
+    
+    // 結果を整形
+    let resultText = `${assignResult.characterName} (${assignResult.operatorId}) をアサインしました。\n\n`;
+    
+    // 現在のスタイル情報
+    if (assignResult.currentStyle) {
+      resultText += `📍 現在のスタイル: ${assignResult.currentStyle.styleName}\n`;
+      resultText += `   性格: ${assignResult.currentStyle.personality}\n`;
+      resultText += `   話し方: ${assignResult.currentStyle.speakingStyle}\n\n`;
+    }
+    
+    // 利用可能なスタイル一覧
+    if (availableStyles.length > 1) {
+      resultText += `🎭 利用可能なスタイル（切り替え可能）:\n`;
+      availableStyles.forEach(style => {
+        const isCurrent = style.id === assignResult.currentStyle?.styleId;
+        const marker = isCurrent ? '→ ' : '  ';
+        resultText += `${marker}${style.id}: ${style.name}\n`;
+        resultText += `    性格: ${style.personality}\n`;
+        resultText += `    話し方: ${style.speakingStyle}\n`;
       });
       
-      let stdout = "";
-      let stderr = "";
-      
-      child.stdout.on("data", (data) => {
-        stdout += data.toString();
-      });
-      
-      child.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
-      
-      child.on("close", (code) => {
-        if (code === 0) {
-          resolve({
-            content: [{
-              type: "text",
-              text: stdout.trim()
-            }]
-          });
-        } else {
-          reject(new Error(`operator-manager assign failed: ${stderr}`));
-        }
-      });
-      
-      child.on("error", (err) => {
-        reject(new Error(`Failed to execute operator-manager: ${err.message}`));
-      });
-    });
+      const otherStyles = availableStyles.filter(s => s.id !== assignResult.currentStyle?.styleId);
+      if (otherStyles.length > 0) {
+        resultText += `\n💡 スタイル切り替え例: say({ message: "テスト", style: "${otherStyles[0].id}" })\n`;
+      }
+    } else {
+      resultText += `ℹ️  このキャラクターは1つのスタイルのみ利用可能です。\n`;
+    }
+    
+    // スタイル選択方法の説明
+    if (character.style_selection === 'random') {
+      resultText += `\n🎲 このキャラクターはランダムスタイル選択が有効です。次回のアサイン時に別のスタイルが選ばれる可能性があります。\n`;
+    }
+    
+    // 挨拶
+    if (assignResult.greeting) {
+      resultText += `\n💬 "${assignResult.greeting}"\n`;
+    }
+    
+    return {
+      content: [{
+        type: "text",
+        text: resultText
+      }]
+    };
+    
   } catch (error) {
     throw new Error(`オペレータ割り当てエラー: ${error.message}`);
   }
@@ -332,6 +302,109 @@ server.registerTool("say", {
     };
   } catch (error) {
     throw new Error(`音声出力エラー: ${error.message}`);
+  }
+});
+
+// スタイル情報表示ツール
+server.registerTool("operator_styles", {
+  description: "現在のオペレータまたは指定したキャラクターの利用可能なスタイル一覧を表示します",
+  inputSchema: {
+    character: z.string().optional().describe("キャラクターID（省略時は現在のオペレータのスタイル情報を表示）")
+  }
+}, async (args) => {
+  const { character } = args || {};
+  
+  try {
+    if (!operatorManager) {
+      throw new Error('OperatorManager not initialized');
+    }
+    
+    let targetCharacter;
+    let targetCharacterId;
+    
+    if (character) {
+      // 指定されたキャラクターの情報を取得
+      try {
+        targetCharacter = await operatorManager.getCharacterInfo(character);
+        targetCharacterId = character;
+      } catch (error) {
+        throw new Error(`キャラクター '${character}' が見つかりません`);
+      }
+    } else {
+      // 現在のオペレータの情報を取得
+      const currentOperator = await operatorManager.showCurrentOperator();
+      if (!currentOperator.operatorId) {
+        throw new Error('現在オペレータが割り当てられていません。まず operator_assign を実行してください。');
+      }
+      
+      const operatorConfig = await operatorManager.readJsonFile(operatorManager.operatorConfigFile, { characters: {}, operators: {} });
+      const operatorData = operatorConfig.operators?.[currentOperator.operatorId];
+      targetCharacter = operatorConfig.characters?.[operatorData?.character_id];
+      targetCharacterId = operatorData?.character_id;
+      
+      if (!targetCharacter) {
+        throw new Error(`現在のオペレータ '${currentOperator.operatorId}' のキャラクター情報が見つかりません`);
+      }
+    }
+    
+    // スタイル情報を取得
+    const availableStyles = Object.entries(targetCharacter.available_styles || {})
+      .filter(([_, style]) => style.enabled)
+      .map(([styleId, style]) => ({
+        id: styleId,
+        name: style.name,
+        personality: style.personality,
+        speakingStyle: style.speaking_style
+      }));
+    
+    // 結果を整形
+    let resultText = `🎭 ${targetCharacter.name} のスタイル情報\n\n`;
+    
+    // キャラクターの基本情報
+    resultText += `📋 基本情報:\n`;
+    resultText += `   性格: ${targetCharacter.personality}\n`;
+    resultText += `   話し方: ${targetCharacter.speaking_style}\n`;
+    resultText += `   スタイル選択方法: ${targetCharacter.style_selection}\n`;
+    resultText += `   デフォルトスタイル: ${targetCharacter.default_style}\n\n`;
+    
+    // 利用可能なスタイル一覧
+    if (availableStyles.length > 0) {
+      resultText += `🎨 利用可能なスタイル (${availableStyles.length}種類):\n`;
+      availableStyles.forEach((style, index) => {
+        const isDefault = style.id === targetCharacter.default_style;
+        const marker = isDefault ? '★ ' : `${index + 1}. `;
+        resultText += `${marker}${style.id}: ${style.name}\n`;
+        resultText += `   性格: ${style.personality}\n`;
+        resultText += `   話し方: ${style.speakingStyle}\n`;
+        if (isDefault) {
+          resultText += `   (デフォルトスタイル)\n`;
+        }
+        resultText += `\n`;
+      });
+      
+      // 使用例
+      resultText += `💡 スタイル指定の使用例:\n`;
+      availableStyles.slice(0, 2).forEach(style => {
+        resultText += `   say({ message: "こんにちは", style: "${style.id}" })\n`;
+      });
+      
+      if (targetCharacter.style_selection === 'random') {
+        resultText += `\n🎲 このキャラクターはランダムスタイル選択が有効です。\n`;
+        resultText += `   アサイン時に利用可能なスタイルからランダムに選ばれます。\n`;
+      }
+    } else {
+      resultText += `⚠️  利用可能なスタイルがありません。\n`;
+    }
+    
+    return {
+      content: [{
+        type: "text",
+        text: resultText
+      }]
+    };
+    
+  } catch (error) {
+    throw new Error(`スタイル情報取得エラー: ${error.message}`);
   }
 });
 
