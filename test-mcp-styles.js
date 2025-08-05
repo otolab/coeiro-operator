@@ -66,16 +66,8 @@ async function testMCPStyles() {
                 resultText += `    性格: ${style.personality}\n`;
                 resultText += `    話し方: ${style.speakingStyle}\n`;
             });
-            
-            const otherStyles = availableStyles.filter(s => s.id !== assignResult.currentStyle?.styleId);
-            if (otherStyles.length > 0) {
-                resultText += `\n💡 スタイル切り替え例: say({ message: "テスト", style: "${otherStyles[0].id}" })\n`;
-            }
-        }
-        
-        // スタイル選択方法の説明
-        if (character.style_selection === 'random') {
-            resultText += `\n🎲 このキャラクターはランダムスタイル選択が有効です。次回のアサイン時に別のスタイルが選ばれる可能性があります。\n`;
+        } else {
+            resultText += `ℹ️  このキャラクターは1つのスタイルのみ利用可能です。\n`;
         }
         
         // 挨拶
