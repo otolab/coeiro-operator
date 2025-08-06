@@ -16,6 +16,8 @@ interface ParsedOptions {
     outputFile: string;
     streamMode: boolean;
     text: string;
+    chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large';
+    bufferSize: number;
 }
 
 class SayCoeiroinkCLI {
@@ -26,29 +28,48 @@ class SayCoeiroinkCLI {
     }
 
     async showUsage(): Promise<void> {
-        console.log(`Usage: say-coeiroink [-v voice] [-r rate] [-o outfile] [-f file | text] [-s]
+        console.log(`Usage: say-coeiroink [-v voice] [-r rate] [-o outfile] [-f file | text] [-s] [--chunk-mode mode] [--buffer-size size]
 
 低レイテンシストリーミング音声合成・再生（macOS sayコマンド互換）
 
 Options:
-    -v voice    Specify voice (voice ID or name, use '?' to list available voices)
-    -r rate     Speech rate in words per minute (default: ${(this.sayCoeiroink as any).config.rate})
-    -o outfile  Write audio to file instead of playing (WAV format)
-    -f file     Read text from file (use '-' for stdin)
-    -s          Force stream mode (auto-enabled for long text)
-    -h          Show this help
+    -v voice           Specify voice (voice ID or name, use '?' to list available voices)
+    -r rate            Speech rate in words per minute (default: ${(this.sayCoeiroink as any).config.rate})
+    -o outfile         Write audio to file instead of playing (WAV format)
+    -f file            Read text from file (use '-' for stdin)
+    -s                 Force stream mode (auto-enabled for long text)
+    --chunk-mode mode  Text splitting mode: auto|none|small|medium|large (default: auto)
+    --buffer-size size Audio buffer size in bytes: 256-8192 (default: 1024)
+    -h                 Show this help
+
+Chunk Modes:
+    none    No text splitting (best for long text, natural speech)
+    small   30 chars (low latency, interactive use)
+    medium  50 chars (balanced, default for auto)
+    large   100 chars (stability focused)
+    auto    Automatic selection based on text length
+
+Buffer Sizes:
+    256     Lowest latency, higher CPU usage
+    512     Low latency, moderate CPU usage
+    1024    Balanced (default)
+    2048    Higher stability, lower CPU usage
+    4096+   Maximum stability, background use
 
 Features:
-    - 低レイテンシ並列合成（バッファサイズ: 3）
-    - 音切れ防止オーバーラップ処理
-    - リアルタイム音声出力（バッファ: 100ms）
+    - ネイティブ音声出力（speakerライブラリ）
+    - カスタマイズ可能な分割制御
+    - バッファサイズ制御
+    - 真のストリーミング再生
     - macOS sayコマンド互換
 
 Examples:
     say-coeiroink "短いテキスト"
     say-coeiroink -v "?" # 音声リスト表示
     say-coeiroink -o output.wav "ファイル保存"
-    say-coeiroink -s "長いテキストをストリーミング再生"
+    say-coeiroink --chunk-mode none "長文を分割せずにスムーズに読み上げ"
+    say-coeiroink --chunk-mode small --buffer-size 256 "低レイテンシ再生"
+    say-coeiroink --buffer-size 2048 "高品質・安定再生"
     echo "テキスト" | say-coeiroink -f -`);
     }
 
@@ -59,7 +80,9 @@ Examples:
             inputFile: '',
             outputFile: '',
             streamMode: false,
-            text: ''
+            text: '',
+            chunkMode: 'auto',
+            bufferSize: 1024
         };
 
         for (let i = 0; i < args.length; i++) {
@@ -101,6 +124,24 @@ Examples:
                 case '-s':
                 case '--stream':
                     options.streamMode = true;
+                    break;
+                
+                case '--chunk-mode':
+                    const chunkMode = args[i + 1];
+                    if (!['auto', 'none', 'small', 'medium', 'large'].includes(chunkMode)) {
+                        throw new Error(`Invalid chunk mode: ${chunkMode}. Must be one of: auto, none, small, medium, large`);
+                    }
+                    options.chunkMode = chunkMode as 'auto' | 'none' | 'small' | 'medium' | 'large';
+                    i++;
+                    break;
+                
+                case '--buffer-size':
+                    const bufferSize = parseInt(args[i + 1]);
+                    if (isNaN(bufferSize) || bufferSize < 256 || bufferSize > 8192) {
+                        throw new Error(`Invalid buffer size: ${args[i + 1]}. Must be a number between 256 and 8192`);
+                    }
+                    options.bufferSize = bufferSize;
+                    i++;
                     break;
                 
                 default:
@@ -157,7 +198,9 @@ Examples:
             voice: options.voice || null,
             rate: options.rate,
             outputFile: options.outputFile || null,
-            streamMode: options.streamMode
+            streamMode: options.streamMode,
+            chunkMode: options.chunkMode,
+            bufferSize: options.bufferSize
         });
 
         if (options.outputFile) {
