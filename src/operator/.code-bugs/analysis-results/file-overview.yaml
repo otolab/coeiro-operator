@@ -1,0 +1,560 @@
+character-defaults.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: character-defaults.ts
+          hash: e44bd0d40f65bf68b186df5067f9c953dd88932441674fa2b3486319f0ecc477
+      version: 1.0.0
+    result:
+      content: |-
+        # 分析レポート: src/operator/character-defaults.ts
+
+        [Analysis Procedure Guide](analysis-procedure-guide) に基づき、対象ファイルの分析結果を以下に示します。
+
+        ---
+
+        ### 1. ファイルの大分類
+
+        - **大分類**: 設定ファイル
+        - **副次的分類**: データファイル
+
+        **根拠**: このファイルは、アプリケーションで利用されるキャラクターのデフォルト設定値を静的なデータとして定義しており、プログラムの動作を構成する設定情報としての役割が強いです。TypeScriptの型定義と定数オブジェクトで構成されているため、データファイルとしての側面も持ちます。
+
+        ---
+
+        ### 2. ファイルの中・小分類
+
+        - **記述言語・技術**: TypeScript
+        - **ファイルタイプ・用途**:
+            - アプリケーション設定（キャラクターのデフォルトプロファイル）
+            - 型定義 (`interface CharacterConfig`)
+        - **利用ツール・フレームワーク**: (ファイル内からは特定不可)
+
+        **根拠**: ファイルはTypeScriptで記述されています。`interface`による型定義と、`export const`による設定データのエクスポートが行われており、他のモジュールから利用される設定ファイルとしての用途が明確です。
+
+        ---
+
+        ### 3. 内容の要約
+
+        このファイルは、COEIROINKで利用される内蔵キャラクターのデフォルト設定を定義するTypeScriptモジュールです。
+        キャラクターのプロファイル情報（名前、性格、話し方、挨拶など）を定義する`CharacterConfig`インターフェースと、それに基づいた具体的なキャラクター設定データ`BUILTIN_CHARACTER_CONFIGS`を提供します。
+        さらに、キャラクターの表示名から内部IDへの変換を行うためのマッピングオブジェクト`SPEAKER_NAME_TO_ID_MAP`もエクスポートしています。
+
+        ---
+
+        ### 4. ファイルの目的の推定
+
+        - **目的**: 設定管理
+
+        **根拠**: ファイルの目的は、アプリケーション内で使用される複数のキャラクターに関する静的な設定情報を一元管理することです。`BUILTIN_CHARACTER_CONFIGS`という定数名が示すように、これは変更されない「組み込み」のデフォルト設定であり、アプリケーションの初期化時やキャラクター選択機能などで参照されることを意図して作成されたと推定されます。
+
+        ---
+
+        ### 5. 改善案・修正点・分かりづらい点
+
+        - **レベル2: データの一貫性（保守性）**
+            - `BUILTIN_CHARACTER_CONFIGS`内に、`dear`と`dia`、`lirin`と`rilin`という類似したIDが存在し、それぞれ同じキャラクター名（`ディアちゃん`、`リリンちゃん`）が設定されています。特に`dear`と`lirin`は`SPEAKER_NAME_TO_ID_MAP`で参照されておらず、未使用データである可能性があります。これは混乱を招くため、未使用であれば削除するか、意図的な重複であればその理由をコメントで明記することが望ましいです。
+
+        - **レベル1: ドキュメントの充実度（ドキュメント）**
+            - `CharacterConfig`インターフェースの各プロパティ（`personality`, `speaking_style`など）にJSDocコメントを追加することで、それぞれの設定項目がアプリケーション内でどのように利用されるかの意図がより明確になり、保守性が向上します。
+
+        - **レベル1: データ構造の冗長性（保守性）**
+            - `BUILTIN_CHARACTER_CONFIGS`内のすべてのキャラクターオブジェクトで、`default_style`と`style_selection`の値がそれぞれ`"normal"`と`"default"`に固定されています。もしこれらの値が将来的に変更される可能性がないのであれば、`CharacterConfig`からこれらのプロパティを削除し、利用側で固定値を適用する方がデータ構造がシンプルになります。変更の可能性がある場合は、その旨をコメントで記載すると親切です。
+
+        - **レベル1: データの一貫性（保守性）**
+            - `SPEAKER_NAME_TO_ID_MAP`には`'AI声優-金苗': 'kanae'`というマッピングが存在しますが、`BUILTIN_CHARACTER_CONFIGS`の`kanae`の`name`は`'金苗'`です。どちらかに統一することで、データの一貫性が高まります。
+      usage: 1547
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: character-defaults.ts
+          hash: e44bd0d40f65bf68b186df5067f9c953dd88932441674fa2b3486319f0ecc477
+      version: 1.0.0
+    result:
+      results:
+        - hasFindings: true
+          name: ファイルの大分類
+          details:
+            - value: 設定ファイル
+              reason: このファイルは、アプリケーションで利用されるキャラクターのデフォルト設定値を静的なデータとして定義しており、プログラムの動作を構成する設定情報としての役割が強いです。TypeScriptの型定義と定数オブジェクトで構成されているため、データファイルとしての側面も持ちます。
+              subItems:
+                - データファイル
+        - hasFindings: true
+          name: ファイルの中・小分類
+          details:
+            - value: 記述言語・技術
+              subItems:
+                - TypeScript
+            - value: ファイルタイプ・用途
+              subItems:
+                - アプリケーション設定（キャラクターのデフォルトプロファイル）
+                - 型定義 (`interface CharacterConfig`)
+            - value: 利用ツール・フレームワーク
+              subItems:
+                - (ファイル内からは特定不可)
+        - hasFindings: true
+          name: 内容の要約
+          details:
+            - value: |-
+                このファイルは、COEIROINKで利用される内蔵キャラクターのデフォルト設定を定義するTypeScriptモジュールです。
+                キャラクターのプロファイル情報（名前、性格、話し方、挨拶など）を定義する`CharacterConfig`インターフェースと、それに基づいた具体的なキャラクター設定データ`BUILTIN_CHARACTER_CONFIGS`を提供します。
+                さらに、キャラクターの表示名から内部IDへの変換を行うためのマッピングオブジェクト`SPEAKER_NAME_TO_ID_MAP`もエクスポートしています。
+        - hasFindings: true
+          name: ファイルの目的の推定
+          details:
+            - value: 設定管理
+              reason: ファイルの目的は、アプリケーション内で使用される複数のキャラクターに関する静的な設定情報を一元管理することです。`BUILTIN_CHARACTER_CONFIGS`という定数名が示すように、これは変更されない「組み込み」のデフォルト設定であり、アプリケーションの初期化時やキャラクター選択機能などで参照されることを意図して作成されたと推定されます。
+        - hasFindings: true
+          name: 改善案・修正点・分かりづらい点
+          details:
+            - value: "レベル2: データの一貫性（保守性）"
+              reason: "`BUILTIN_CHARACTER_CONFIGS`内に、`dear`と`dia`、`lirin`と`rilin`という類似したIDが存在\
+                し、それぞれ同じキャラクター名（`ディアちゃん`、`リリンちゃん`）が設定されています。特に`dear`と`lirin`は`S\
+                PEAKER_NAME_TO_ID_MAP`で参照されておらず、未使用データである可能性があります。これは混乱を招くため、未使\
+                用であれば削除するか、意図的な重複であればその理由をコメントで明記することが望ましいです。"
+            - value: "レベル1: ドキュメントの充実度（ドキュメント）"
+              reason: "`CharacterConfig`インターフェースの各プロパティ（`personality`,
+                `speaking_style`など）にJSDocコメントを追加することで、それぞれの設定項目がアプリケーション内でどのように\
+                利用されるかの意図がより明確になり、保守性が向上します。"
+            - value: "レベル1: データ構造の冗長性（保守性）"
+              reason: '`BUILTIN_CHARACTER_CONFIGS`内のすべてのキャラクターオブジェクトで、`default_style`と`style_selection`の値がそれぞれ`"normal"`と`"default"`に固定されています。もしこれらの値が将来的に変更される可能性がないのであれば、`CharacterConfig`からこれらのプロパティを削除し、利用側で固定値を適用する方がデータ構造がシンプルになります。変更の可能性がある場合は、その旨をコメントで記載すると親切です。'
+            - value: "レベル1: データの一貫性（保守性）"
+              reason: "`SPEAKER_NAME_TO_ID_MAP`には`'AI声優-金苗':
+                'kanae'`というマッピングが存在しますが、`BUILTIN_CHARACTER_CONFIGS`の`kanae`の`na\
+                me`は`'金苗'`です。どちらかに統一することで、データの一貫性が高まります。"
+cli.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: cli.ts
+          hash: 1abd1ad9991257a22ce1462b7ad835568c4989aa6a353a4331964d1e85f10f9c
+      version: 1.0.0
+    result:
+      content: |-
+        # ファイル分析レポート: src/operator/cli.ts
+
+        ## 1. ファイルの大分類
+        大分類: プログラム
+
+        ## 2. ファイルの中・小分類
+        - **記述言語・技術**: TypeScript
+        - **ファイルタイプ・用途**: CLI (コマンドラインインターフェース) ツールのソースコード
+        - **利用ツール・フレームワーク**: Node.js
+
+        ## 3. 内容の要約
+        このファイルは、オペレータの管理を行うためのコマンドラインインターフェース（CLI）ツールです。`OperatorManager`クラスの機能をラップし、コマンドライン引数に応じてオペレータの割り当て、解放、状態確認などの操作を実行します。主要なコマンドとして `assign`, `release`, `status`, `available`, `clear` を提供し、Node.js環境で直接実行されるスクリプトとして実装されています。
+
+        ## 4. ファイルの目的の推定
+        - **目的**: 機能提供
+        - **根拠**: コマンドライン引数に基づいてオペレータ管理機能（割り当て、解放、状態確認など）をユーザーに提供するCLIツールとして実装されているため。`run`メソッドと`switch`文によるコマンドディスパッチ構造や、`showUsage`によるヘルプ機能など、典型的なCLIツールの構成を持っています。
+
+        ## 5. 改善案・修正点・分かりづらい点
+
+        ### レベル3（重要）
+        - **テストコードの欠如**: ファイル全体に対するテストコードが存在しません。コマンドライン引数のパースロジックや、各コマンドの分岐ロジック、`OperatorManager`との連携部分など、動作を保証するための単体テストや結合テストを追加することが強く推奨されます。
+
+        ### レベル2（標準）
+        - **コマンドライン引数パーサーの利用**: `parseAssignArgs`メソッドで手動で引数を解析していますが、`yargs`や`commander`といった専用のライブラリを導入することで、より堅牢で拡張性の高い引数処理（オプションのバリデーション、ヘルプメッセージの自動生成など）が可能になります。
+        - **エラーハンドリングの粒度**: `run`メソッドの最上位でエラーを一括で捕捉していますが、各`handle...`メソッド内で、予期されるエラー（例: `release`時にオペレータが割り当てられていない）を個別で処理し、より具体的なエラーメッセージをユーザーに提示することが望ましいです。
+        - **メソッドの責務分割**: `executeAssignment`メソッドは、`operatorId`の有無や`currentStatus`の状態によって処理が複雑に分岐しています。このロジックをより小さな関数に分割することで、可読性と保守性が向上します。
+
+        ### レベル1（軽微）
+        - **ドキュメントの不足**: クラスや各メソッドにJSDocコメントがありません。引数、返り値、メソッドの役割などを記述することで、コードの理解が容易になります。
+        - **ESMのimportパス**: `import OperatorManager from './index.js';` のように`.js`拡張子を付けていますが、これはTypeScriptのコンパイル設定に依存します。設定によってはビルドエラーの原因となる可能性があるため、プロジェクトの規約を確認・統一することが望ましいです。
+      usage: 1215
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: cli.ts
+          hash: 1abd1ad9991257a22ce1462b7ad835568c4989aa6a353a4331964d1e85f10f9c
+      version: 1.0.0
+    result:
+      results:
+        - hasFindings: true
+          name: ファイルの大分類
+          details:
+            - value: プログラム
+        - hasFindings: true
+          name: ファイルの中・小分類
+          details:
+            - value: 記述言語・技術
+              subItems:
+                - TypeScript
+            - value: ファイルタイプ・用途
+              subItems:
+                - CLI (コマンドラインインターフェース) ツールのソースコード
+            - value: 利用ツール・フレームワーク
+              subItems:
+                - Node.js
+        - hasFindings: true
+          name: 内容の要約
+          details:
+            - value: このファイルは、オペレータの管理を行うためのコマンドラインインターフェース（CLI）ツールです。`OperatorManager`クラスの機能をラップし、コマンドライン引数に応じてオペレータの割り当て、解放、状態確認などの操作を実行します。主要なコマンドとして
+                `assign`, `release`, `status`, `available`, `clear`
+                を提供し、Node.js環境で直接実行されるスクリプトとして実装されています。
+        - hasFindings: true
+          name: ファイルの目的の推定
+          details:
+            - value: 機能提供
+              reason: コマンドライン引数に基づいてオペレータ管理機能（割り当て、解放、状態確認など）をユーザーに提供するCLIツールとして実装されているため。`run`メソッドと`switch`文によるコマンドディスパッチ構造や、`showUsage`によるヘルプ機能など、典型的なCLIツールの構成を持っています。
+        - hasFindings: true
+          name: 改善案・修正点・分かりづらい点
+          details:
+            - value: レベル3（重要）
+              subItems:
+                - "テストコードの欠如:
+                  ファイル全体に対するテストコードが存在しません。コマンドライン引数のパースロジックや、各コマンドの分岐ロジック、`Oper\
+                  atorManager`との連携部分など、動作を保証するための単体テストや結合テストを追加することが強く推奨されます。"
+            - value: レベル2（標準）
+              subItems:
+                - "コマンドライン引数パーサーの利用:
+                  `parseAssignArgs`メソッドで手動で引数を解析していますが、`yargs`や`commander`といった専\
+                  用のライブラリを導入することで、より堅牢で拡張性の高い引数処理（オプションのバリデーション、ヘルプメッセージの自動生成など\
+                  ）が可能になります。"
+                - "エラーハンドリングの粒度:
+                  `run`メソッドの最上位でエラーを一括で捕捉していますが、各`handle...`メソッド内で、予期されるエラー（例:
+                  `release`時にオペレータが割り当てられていない）を個別で処理し、より具体的なエラーメッセージをユーザーに提示するこ\
+                  とが望ましいです。"
+                - "メソッドの責務分割:
+                  `executeAssignment`メソッドは、`operatorId`の有無や`currentStatus`の状態によ\
+                  って処理が複雑に分岐しています。このロジックをより小さな関数に分割することで、可読性と保守性が向上します。"
+            - value: レベル1（軽微）
+              subItems:
+                - "ドキュメントの不足:
+                  クラスや各メソッドにJSDocコメントがありません。引数、返り値、メソッドの役割などを記述することで、コードの理解が容易に\
+                  なります。"
+                - "ESMのimportパス: `import OperatorManager from './index.js';`
+                  のように`.js`拡張子を付けていますが、これはTypeScriptのコンパイル設定に依存します。設定によってはビルドエラ\
+                  ーの原因となる可能性があるため、プロジェクトの規約を確認・統一することが望ましいです。"
+config-manager.test.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: config-manager.test.ts
+          hash: 34eb04af0eae6daaf379847c85fcf10e02172ac9a4535e342adf1073d93562b3
+      version: 1.0.0
+    result:
+      content: |-
+        # ファイル分析レポート: `src/operator/config-manager.test.ts`
+
+        ## 1. ファイルの大分類
+
+        大分類: **プログラム**
+
+        ## 2. ファイルの中・小分類
+
+        -   **記述言語・技術**: TypeScript
+        -   **ファイルタイプ・用途**: テストコード
+        -   **利用ツール・フレームワーク**: Jest (テストフレームワーク), Node.js (実行環境)
+
+        ## 3. 内容の要約
+
+        このファイルは `ConfigManager` クラスの単体テストコードです。テストフレームワークとしてJestが使用されています。ファイルシステムの操作 (`fs/promises`) やAPI通信 (`fetch`) は、一時ファイルやJestのモック機能を利用してシミュレートされています。テスト対象は、設定ファイル（JSON）の読み書き、オブジェクトのディープマージ、COEIROINK APIからの音声情報取得、それらを統合した動的な設定オブジェクトの構築、およびキャッシュ管理機能など、設定管理に関する一連の機能です。
+
+        ## 4. ファイルの目的の推定
+
+        目的: **テスト**
+
+        根拠: ファイル全体がJestの `describe` と `test` (it) ブロックで構成されており、`ConfigManager` クラスの各公開メソッドの動作を検証しています。`beforeEach` と `afterEach` を用いてテストごとに独立した環境（一時ディレクトリ）を構築・破棄しており、これは単体テストの典型的な実装です。正常系だけでなく、ファイルが存在しない場合やAPI通信が失敗した場合などの異常系のテストケースも含まれており、`ConfigManager` クラスの堅牢性と品質を保証することを目的としています。
+
+        ## 5. 改善案・修正点・分かりづらい点
+
+        -   **レベル1（軽微）: テストケースの仕様の明確化（ドキュメント）**
+            -   `speakerNameToId` のテストにおいて、`test('未知のスピーカー名を小文字英数字に変換', ...)` というテストケース名にもかかわらず、`'テスト キャラクター！'` という日本語を含む入力が空文字列 `''` に変換されることを期待しています。この挙動はテスト名と少し異なり、直感的ではありません。これが意図された仕様である場合、なぜそうなるのかをコードコメントで補足すると、将来の保守者が混乱するのを防げます。
+
+        -   **レベル1（軽微）: グローバルモックへの依存（コード品質）**
+            -   `global.fetch = jest.fn()` のようにグローバルオブジェクトを直接モックしています。Jestのセットアップファイルで `jest.spyOn(global, 'fetch')` を使用して管理するか、`jest.mock` を利用することで、テストのスコープをより明確にし、他のテストへの意図しない影響を防ぐことができます。現状でも `jest.clearAllMocks()` でリセットされているため大きな問題ではありませんが、より堅牢な設計への改善案として挙げられます。
+      usage: 1097
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: config-manager.test.ts
+          hash: 34eb04af0eae6daaf379847c85fcf10e02172ac9a4535e342adf1073d93562b3
+      version: 1.0.0
+    result:
+      results:
+        - hasFindings: true
+          name: ファイルの大分類
+          details:
+            - value: プログラム
+        - hasFindings: true
+          name: ファイルの中・小分類
+          details:
+            - value: 記述言語・技術
+              subItems:
+                - TypeScript
+            - value: ファイルタイプ・用途
+              subItems:
+                - テストコード
+            - value: 利用ツール・フレームワーク
+              subItems:
+                - Jest (テストフレームワーク)
+                - Node.js (実行環境)
+        - hasFindings: true
+          name: 内容の要約
+          details:
+            - value: ConfigManager
+                クラスの単体テストコードです。Jestをテストフレームワークとして使用し、ファイルシステム操作やAPI通信はモック機能でシミュレートされています。設定ファイルの読み書き、ディープマージ、APIからの音声情報取得、動的な設定オブジェクト構築、キャッシュ管理など、設定管理に関する一連の機能をテストしています。
+        - hasFindings: true
+          name: ファイルの目的の推定
+          details:
+            - value: テスト
+              reason: ファイル全体がJestの`describe`と`test`ブロックで構成され、`ConfigManager`クラスの各メソッドの正常系・異常系の動作を検証しているため。テストごとに独立した環境を構築・破棄する単体テストの典型的な実装であり、クラスの堅牢性と品質保証を目的としています。
+        - hasFindings: true
+          name: 改善案・修正点・分かりづらい点
+          details:
+            - value: "レベル1: テストケースの仕様の明確化（ドキュメント）"
+              reason: 「未知のスピーカー名を小文字英数字に変換」というテストケース名と、日本語を含む入力が空文字列に変換されるという実際の挙動が直感的に一致しないため、仕様に関するコメントの補足が推奨されます。
+            - value: "レベル1: グローバルモックへの依存（コード品質）"
+              reason: "`global.fetch`を直接モックするのではなく、`jest.spyOn`や`jest.mock`を利用することで、テストのスコープが\
+                より明確になり、堅牢性が向上します。"
+config-manager.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: config-manager.ts
+          hash: fd2208e79c87fdbaea7ba6e1aa6c7f792dffd4003d621406caf6f6d73ef2c6e7
+        - path: config-manager.test.ts
+          hash: 34eb04af0eae6daaf379847c85fcf10e02172ac9a4535e342adf1073d93562b3
+      version: 1.0.0
+    result:
+      content: |-
+        # ファイル分析レポート: src/operator/config-manager.ts
+
+        ## 1. ファイルの大分類
+
+        - **大分類**: プログラム
+        - **説明**: このファイルは、設定情報を動的に取得・マージ・管理するためのロジックを提供する `ConfigManager` クラスを定義しており、実行可能なコードが主体です。
+
+        ## 2. ファイルの中・小分類
+
+        - **記述言語・技術**: TypeScript
+        - **ファイルタイプ・用途**: 設定管理ライブラリ。特に、COEIROINKという音声合成エンジンのキャラクター設定を管理するために特化しています。
+        - **利用ツール・フレームワーク**:
+            - `fs/promises`: 設定ファイルの非同期な読み書きに使用。
+            - `fetch`: COEIROINKサーバーから利用可能な音声情報をHTTP経由で取得するために使用。
+            - `Jest`: 関連テストファイル (`config-manager.test.ts`) から、テストフレームワークとしてJestが使用されていることがわかります。
+
+        ## 3. 内容の要約
+
+        このファイルは、音声合成エンジンCOEIROINKの設定を管理する `ConfigManager` クラスを定義しています。主な機能は、内蔵のデフォルトキャラクター設定、COEIROINKサーバーから動的に取得した音声フォント情報、そしてユーザーによるカスタム設定ファイル（JSON形式）の3つを統合することです。設定のマージ、結果のキャッシュ、ファイルへの安全な書き込みといった機能を提供し、アプリケーションの他の部分がキャラクター設定を容易に利用できるようにします。
+
+        ## 4. ファイルの目的の推定
+
+        - **目的**: 機能提供
+        - **根拠**: 複雑な設定の構築プロセス（動的取得、マージ、キャッシュ）を `ConfigManager` クラス内にカプセル化し、`getCharacterConfig` や `getAvailableCharacterIds` といった明確なインターフェースを外部に提供しています。これにより、他のモジュールは設定の内部実装を意識することなく、必要なキャラクター情報を簡単に取得できるため、再利用可能な機能部品として設計されていると判断できます。
+
+        ## 5. 改善案・修正点・分かりづらい点
+
+        - **レベル3 (重要): `buildDynamicConfig` メソッドの肥大化**
+            - **内容**: `buildDynamicConfig` メソッドが非常に長く、多くの責務（音声フォントからの設定生成、内蔵設定とのフォールバック、ユーザー設定とのマージ、無効化キャラクターのフィルタリング）を担っています。
+            - **改善案**: 責務ごとにプライベートメソッドに分割し、可読性と保守性を向上させるべきです。（例: `_generateConfigFromVoices`, `_applyUserOverrides` など）
+
+        - **レベル2 (標準): `any` 型の使用**
+            - **内容**: `fetchAvailableVoices` 内で、`coeiroinkConfig` からホストやポートを読み取る際に `(coeiroinkConfig as any)` と `any` 型キャストが使用されています。
+            - **改善案**: `coeiroink-config.json` のためのインターフェース（例: `CoeiroinkConfig`）を定義し、型安全なアクセスを行うべきです。
+
+        - **レベル2 (標準): スピーカーID生成ロジックの潜在的な衝突**
+            - **内容**: `speakerNameToId` メソッドで、定義済みマップにないスピーカー名に対して `toLowerCase().replace(/[^a-z0-9]/g, '')` という変換を行っています。これにより、異なる日本語名が同じIDに変換される可能性があります。
+            - **改善案**: より衝突の少ないハッシュ化アルゴリズムを使用するか、ユーザーに一意のIDを明示的に設定させるような仕組みを検討することが望ましいです。
+
+        - **レベル1 (軽微): ドキュメントの拡充**
+            - **内容**: `buildDynamicConfig` メソッドのロジックが複雑であるため、内部の処理フロー（特に設定がマージされる優先順位など）について、JSDocコメント内でより詳細な説明を追加することが推奨されます。
+      usage: 1476
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: config-manager.ts
+          hash: fd2208e79c87fdbaea7ba6e1aa6c7f792dffd4003d621406caf6f6d73ef2c6e7
+        - path: config-manager.test.ts
+          hash: 34eb04af0eae6daaf379847c85fcf10e02172ac9a4535e342adf1073d93562b3
+      version: 1.0.0
+    result:
+      results:
+        - hasFindings: true
+          name: ファイルの大分類
+          details:
+            - value: プログラム
+              reason: このファイルは、設定情報を動的に取得・マージ・管理するためのロジックを提供する `ConfigManager`
+                クラスを定義しており、実行可能なコードが主体です。
+        - hasFindings: true
+          name: ファイルの中・小分類
+          details:
+            - value: "記述言語・技術: TypeScript"
+            - value: "ファイルタイプ・用途: 設定管理ライブラリ"
+              reason: 特に、COEIROINKという音声合成エンジンのキャラクター設定を管理するために特化しています。
+            - value: 利用ツール・フレームワーク
+              subItems:
+                - "`fs/promises`: 設定ファイルの非同期な読み書きに使用。"
+                - "`fetch`: COEIROINKサーバーから利用可能な音声情報をHTTP経由で取得するために使用。"
+                - "`Jest`: 関連テストファイル (`config-manager.test.ts`)
+                  から、テストフレームワークとしてJestが使用されていることがわかります。"
+        - hasFindings: true
+          name: 内容の要約
+          details:
+            - value: このファイルは、音声合成エンジンCOEIROINKの設定を管理する `ConfigManager`
+                クラスを定義しています。主な機能は、内蔵のデフォルトキャラクター設定、COEIROINKサーバーから動的に取得した音声フォント情報、そしてユーザーによるカスタム設定ファイル（JSON形式）の3つを統合することです。設定のマージ、結果のキャッシュ、ファイルへの安全な書き込みといった機能を提供し、アプリケーションの他の部分がキャラクター設定を容易に利用できるようにします。
+        - hasFindings: true
+          name: ファイルの目的の推定
+          details:
+            - value: 機能提供
+              reason: 複雑な設定の構築プロセス（動的取得、マージ、キャッシュ）を `ConfigManager`
+                クラス内にカプセル化し、`getCharacterConfig` や `getAvailableCharacterIds`
+                といった明確なインターフェースを外部に提供しています。これにより、他のモジュールは設定の内部実装を意識することなく、必要なキャラクター情報を簡単に取得できるため、再利用可能な機能部品として設計されていると判断できます。
+        - hasFindings: true
+          name: 改善案・修正点・分かりづらい点
+          details:
+            - value: "レベル3 (重要): `buildDynamicConfig` メソッドの肥大化"
+              reason: "`buildDynamicConfig`
+                メソッドが非常に長く、多くの責務（音声フォントからの設定生成、内蔵設定とのフォールバック、ユーザー設定とのマージ、無効化キャラ\
+                クターのフィルタリング）を担っています。"
+              subItems:
+                - "責務ごとにプライベートメソッドに分割し、可読性と保守性を向上させるべきです。（例:
+                  `_generateConfigFromVoices`, `_applyUserOverrides` など）"
+            - value: "レベル2 (標準): `any` 型の使用"
+              reason: "`fetchAvailableVoices` 内で、`coeiroinkConfig` からホストやポートを読み取る際に
+                `(coeiroinkConfig as any)` と `any` 型キャストが使用されています。"
+              subItems:
+                - "`coeiroink-config.json` のためのインターフェース（例:
+                  `CoeiroinkConfig`）を定義し、型安全なアクセスを行うべきです。"
+            - value: "レベル2 (標準): スピーカーID生成ロジックの潜在的な衝突"
+              reason: "`speakerNameToId` メソッドで、定義済みマップにないスピーカー名に対して
+                `toLowerCase().replace(/[^a-z0-9]/g, '')`
+                という変換を行っています。これにより、異なる日本語名が同じIDに変換される可能性があります。"
+              subItems:
+                - より衝突の少ないハッシュ化アルゴリズムを使用するか、ユーザーに一意のIDを明示的に設定させるような仕組みを検討することが望ましいです。
+            - value: "レベル1 (軽微): ドキュメントの拡充"
+              reason: "`buildDynamicConfig`
+                メソッドのロジックが複雑であるため、内部の処理フロー（特に設定がマージされる優先順位など）について、JSDocコメント内でより\
+                詳細な説明を追加することが推奨されます。"
+index.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: index.ts
+          hash: 9a3540c8104c6e2b7720f320fe0f70fc4d907e34c4715c4d310f54be2f31d88a
+      version: 1.0.0
+    result:
+      content: |-
+        # ファイル分析レポート: src/operator/index.ts
+
+        ## 1. ファイルの大分類
+
+        -   **大分類**: プログラム
+        -   **副次的分類**: 設定ファイル
+
+        **根拠**:
+        `#!/usr/bin/env node` のshebangを持つ実行可能なNode.jsスクリプトです。`OperatorManager`クラスをエクスポートしており、外部モジュールから利用されるライブラリとしての機能を提供します。また、設定ファイル（`active-operators.json`, `coeiroink-config.json`など）の読み書きや管理を行う機能が含まれているため、設定ファイル管理の側面も持ちます。
+
+        ## 2. ファイルの中・小分類
+
+        -   **記述言語・技術**: TypeScript
+        -   **ファイルタイプ・用途**: ソースコード, ユーティリティライブラリ
+        -   **利用ツール・フレームワーク**: Node.js, `fs/promises`, `child_process`
+
+        **根拠**:
+        型定義 (`interface`)、型注釈 (`: Promise<void>`)、`import/export`構文などからTypeScriptで記述されていることがわかります。ファイルの中核は`OperatorManager`クラスであり、COEIROINKのオペレータ（キャラクター）を管理するための具体的な機能（予約、解放、状態確認など）を提供するため、ユーティリティライブラリに分類されます。Node.jsの標準API（ファイルシステム、子プロセス）に依存しています。
+
+        ## 3. 内容の要約
+
+        このファイルは、COEIROINKという音声合成システムで利用される「オペレータ」（キャラクター）を管理するためのTypeScriptライブラリです。主要な`OperatorManager`クラスは、複数のターミナルセッション間でオペレータが重複して使用されないように、排他的な割り当て（予約）と解放の仕組みを提供します。キャラクターのスタイル（声色や話し方）を選択し、関連する設定ファイルを動的に更新する機能も含まれています。ファイルロックに似たJSONファイルベースの状態管理や、セッションIDの自動検出など、堅牢な運用を目指した実装が特徴です。
+
+        ## 4. ファイルの目的の推定
+
+        -   **目的**: 機能提供、ユーティリティ
+
+        **根拠**:
+        `OperatorManager`クラスとしてオペレータ管理機能が体系的に実装され、`export`されていることから、他のCLIツールやアプリケーションから再利用されることを目的としています。オペレータの割り当てという特定の機能を提供し、音声合成を利用する開発プロセスを補助・効率化するためのユーティリティとしての役割が強いと判断できます。
+
+        ## 5. 改善案・修正点・分かりづらい点
+
+        -   **レベル3（重要）: セキュリティ - 一時ディレクトリの不安全な使用**
+            -   `getSessionDir`や`clearAllOperators`で`/tmp`下のパスをハードコードして使用しています。これにより、シンボリックリンク攻撃などの競合状態を利用した脆弱性が生じる可能性があります。Node.jsの`fs.mkdtemp`を使い、システムに一意なディレクトリを安全に作成させるべきです。
+
+        -   **レベル2（標準）: コード品質 - メソッドの責務過多**
+            -   `assignSpecificOperator`メソッドが長大で、既存オペレータの解放、新規オペレータのチェック、予約、スタイル選択など、多くの責務を担っています。これを複数のプライベートメソッドに分割することで、可読性と保守性が大幅に向上します。
+
+        -   **レベル2（標準）: ドキュメント - JSDocの記述不足**
+            -   多くのメソッドが`Error`をスローする可能性がありますが、どのような条件下でエラーが発生するかがコメントされていません。`@param`, `@returns`, `@throws`といったJSDocタグを用いて、各メソッドのインターフェースを明確にドキュメント化することが望まれます。
+
+        -   **レベル1（軽微）: 性能/互換性 - シェルコマンドへの依存**
+            -   `clearAllOperators`内で`exec('rm -f ...')`が使用されています。これは`rm`コマンドが存在しないWindows環境などでは動作しません。クロスプラットフォーム互換性を高めるため、Node.jsの`fs` APIを利用した実装に置き換えることが推奨されます。
+
+        -   **レベル1（軽微）: コード品質 - ロジックの重複**
+            -   `selectStyle`メソッド内の`switch`文で、`'specified'`ケースが`'default'`ケースと実質的に同じ処理になっています。コードの意図を明確にするため、処理を共通化するか、コメントで理由を補強することが望ましいです。
+      usage: 1710
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: index.ts
+          hash: 9a3540c8104c6e2b7720f320fe0f70fc4d907e34c4715c4d310f54be2f31d88a
+      version: 1.0.0
+    result:
+      results:
+        - hasFindings: true
+          name: ファイルの大分類
+          details:
+            - value: プログラム
+              reason: "`#!/usr/bin/env node`
+                のshebangを持つ実行可能なNode.jsスクリプトです。`OperatorManager`クラスをエクスポートしており、\
+                外部モジュールから利用されるライブラリとしての機能を提供します。また、設定ファイル（`active-operators.jso\
+                n`,
+                `coeiroink-config.json`など）の読み書きや管理を行う機能が含まれているため、設定ファイル管理の側面も持ち\
+                ます。"
+              subItems:
+                - 設定ファイル
+        - hasFindings: true
+          name: ファイルの中・小分類
+          details:
+            - value: TypeScript, ソースコード, ユーティリティライブラリ, Node.js
+              reason: "型定義 (`interface`)、型注釈 (`:
+                Promise<void>`)、`import/export`構文などからTypeScriptで記述されていることがわかります\
+                。ファイルの中核は`OperatorManager`クラスであり、COEIROINKのオペレータ（キャラクター）を管理するため\
+                の具体的な機能（予約、解放、状態確認など）を提供するため、ユーティリティライブラリに分類されます。Node.jsの標準API（\
+                ファイルシステム、子プロセス）に依存しています。"
+              subItems:
+                - "記述言語・技術: TypeScript"
+                - "ファイルタイプ・用途: ソースコード, ユーティリティライブラリ"
+                - "利用ツール・フレームワーク: Node.js, `fs/promises`, `child_process`"
+        - hasFindings: true
+          name: 内容の要約
+          details:
+            - value: このファイルは、COEIROINKという音声合成システムで利用される「オペレータ」（キャラクター）を管理するためのTypeScriptライブラリです。主要な`OperatorManager`クラスは、複数のターミナルセッション間でオペレータが重複して使用されないように、排他的な割り当て（予約）と解放の仕組みを提供します。キャラクターのスタイル（声色や話し方）を選択し、関連する設定ファイルを動的に更新する機能も含まれています。ファイルロックに似たJSONファイルベースの状態管理や、セッションIDの自動検出など、堅牢な運用を目指した実装が特徴です。
+        - hasFindings: true
+          name: ファイルの目的の推定
+          details:
+            - value: 機能提供, ユーティリティ
+              reason: "`OperatorManager`クラスとしてオペレータ管理機能が体系的に実装され、`export`されていることから、他のCLIツールやア\
+                プリケーションから再利用されることを目的としています。オペレータの割り当てという特定の機能を提供し、音声合成を利用する開発プロ\
+                セスを補助・効率化するためのユーティリティとしての役割が強いと判断できます。"
+        - hasFindings: true
+          name: 改善案・修正点・分かりづらい点
+          details:
+            - value: "レベル3（重要）: セキュリティ - 一時ディレクトリの不安全な使用"
+              reason: "`getSessionDir`や`clearAllOperators`で`/tmp`下のパスをハードコードして使用しています。これにより、シ\
+                ンボリックリンク攻撃などの競合状態を利用した脆弱性が生じる可能性があります。Node.jsの`fs.mkdtemp`を使い、シ\
+                ステムに一意なディレクトリを安全に作成させるべきです。"
+            - value: "レベル2（標準）: コード品質 - メソッドの責務過多"
+              reason: "`assignSpecificOperator`メソッドが長大で、既存オペレータの解放、新規オペレータのチェック、予約、スタイル選択など、多\
+                くの責務を担っています。これを複数のプライベートメソッドに分割することで、可読性と保守性が大幅に向上します。"
+            - value: "レベル2（標準）: ドキュメント - JSDocの記述不足"
+              reason: 多くのメソッドが`Error`をスローする可能性がありますが、どのような条件下でエラーが発生するかがコメントされていません。`@param`,
+                `@returns`,
+                `@throws`といったJSDocタグを用いて、各メソッドのインターフェースを明確にドキュメント化することが望まれます。
+            - value: "レベル1（軽微）: 性能/互換性 - シェルコマンドへの依存"
+              reason: "`clearAllOperators`内で`exec('rm -f
+                ...')`が使用されています。これは`rm`コマンドが存在しないWindows環境などでは動作しません。クロスプラットフォー\
+                ム互換性を高めるため、Node.jsの`fs` APIを利用した実装に置き換えることが推奨されます。"
+            - value: "レベル1（軽微）: コード品質 - ロジックの重複"
+              reason: "`selectStyle`メソッド内の`switch`文で、`'specified'`ケースが`'default'`ケースと実質的に同じ処理\
+                になっています。コードの意図を明確にするため、処理を共通化するか、コメントで理由を補強することが望ましいです。"

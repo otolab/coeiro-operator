@@ -1,0 +1,120 @@
+index.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: index.ts
+          hash: f798eb473537e20da5d4f105d198a4af1e87300d28cd2717c56ddd45bdde6302
+      version: 0.1.0
+    result:
+      content: |-
+        # コード分析レポート: index.ts
+
+        ## 分析の概要
+
+        提供されたソースコード (`index.ts`) と事前分析結果 ([Investigation result: import-and-export-details](investigation-result-import-and-export-details), [Investigation result: depcruise](investigation-result-depcruise)) を基に、[Analysis Procedure Guide](analysis-procedure-guide) に従ってリファクタリングすべき点の分析を行いました。
+
+        このファイルは、McpServerを起動し、`operator-manager` と `say` の機能をツールとして公開するエントリーポイントです。全体的に `async/await` が使用されており、構造化されていますが、いくつかの点で改善の余地があります。
+
+        ---
+
+        ## 分析結果
+
+        以下に、[Analysis Procedure Guide](analysis-procedure-guide) の各項目に基づいた分析結果を詳述します。
+
+        ### 単一の参照元しか持たないファイル
+
+        **分析結果:** 指摘事項なし
+
+        **理由:**
+        [Investigation result: depcruise](investigation-result-depcruise) の `dependents` が空配列 `[]` であることから、このファイルは他のどのファイルからも参照されていないことがわかります。
+        また、コードの先頭に `#!/usr/bin/env node` という shebang が存在することから、このファイルは直接実行されるエントリーポイントであると判断されます。したがって、単一参照に関する懸念事項は該当しません。
+
+        ### 多すぎるエクスポート
+
+        **分析結果:** 指摘事項なし
+
+        **理由:**
+        [Investigation result: import-and-export-details](investigation-result-import-and-export-details) の `Module interface(exports)` の項目で `hasFindings: false` となっている通り、このファイルは外部に何もエクスポートしていません。したがって、この項目に関する指摘はありません。
+
+        ### 長すぎるメソッド
+
+        **分析結果:** 改善の余地あり
+
+        **理由:**
+        以下の関数は、主に文字列の組み立てを行っており、行数が多くなっています。可読性向上のため、テンプレートリテラルへの変更や、部分的な文字列生成を別の補助関数に切り出すなどのリファクタリングが考えられます。
+
+        - **`formatAssignmentResult(assignResult: AssignResult, availableStyles: StyleInfo[]): string`**
+          - 複数の条件分岐 (`if`) とループ (`forEach`) を含み、`+=` による文字列連結が多用されています。これにより、最終的にどのような文字列が生成されるのかを追うのが少し困難になっています。
+
+        - **`formatStylesResult(character: any, availableStyles: StyleInfo[]): string`**
+          - `formatAssignmentResult` と同様に、複数の `+=` による文字列連結とループ処理で構成されており、見通しが悪くなっています。
+
+        ### callback のメソッド
+
+        **分析結果:** 指摘事項なし
+
+        **理由:**
+        コード全体で `async/await` が一貫して使用されており、問題となるようなコールバックとPromiseの混在は見られません。
+        `spawnAsync` 関数内では `child.on(...)` というイベントリスナー（コールバック形式）が使用されていますが、これは `Promise` でラップされており、他のコードからは `async/await` で扱えるように設計されています。これは `child_process` をモダンな非同期処理と統合するための適切な実装です。
+
+        ### テストすべき関数の未テスト状態
+
+        **分析結果:** 改善の余地あり
+
+        **理由:**
+        このファイルには、テストが容易で、かつ仕様を明確にするためにテストの重要性が高い関数が複数含まれています。対応するテストファイル (`index.test.ts` など) が存在しない、またはこれらの関数のテストが網羅されていない場合、テストの追加を強く推奨します。
+
+        **テストすべき関数の例:**
+
+        - **`validateOperatorInput(operator?: string): void`**
+          - **テストすべき理由:** 正規表現を用いた入力検証ロジックが含まれており、正常系・異常系の両方のパターンで動作を保証する必要があります。
+        - **`extractStyleInfo(character: any): StyleInfo[]`**
+          - **テストすべき理由:** オブジェクトの構造を変換する純粋関数であり、入力データ (`character`) の様々な形式に対して期待通りの配列が返されることを確認すべきです。
+        - **`formatAssignmentResult(...)` と `formatStylesResult(...)`**
+          - **テストすべき理由:** 複数の条件分岐を含む文字列生成ロジックであり、入力によって出力が大きく変わるため、スナップショットテストなどで期待通りの出力が得られることを保証することが重要です。
+        - **`server.registerTool` 内のコールバック関数群**
+          - **テストすべき理由:** 各ツール (`operator_assign`, `say` など) の中核ロジックです。外部依存 (`operatorManager`, `sayCoeiroink`) をモック化することで、各ツールの入力に対する処理ロジックやエラーハンドリングが正しく機能するかをテストすべきです。
+
+        ---
+
+        ## 処理状況
+
+        - 全ての入力チャンク（1/7から7/7まで）の分析が完了しました。
+        - このレポートは、提供されたコード全体を対象とした最終的な分析結果です。
+      usage: 1755
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: index.ts
+          hash: f798eb473537e20da5d4f105d198a4af1e87300d28cd2717c56ddd45bdde6302
+      version: 0.1.0
+    result:
+      results:
+        - hasFindings: false
+          name: 単一の参照元しか持たないファイル
+        - hasFindings: false
+          name: 多すぎるエクスポート
+        - hasFindings: true
+          name: 長すぎるメソッド
+          details:
+            - value: "formatAssignmentResult(assignResult: AssignResult, availableStyles:
+                StyleInfo[]): string"
+              reason: 複数の条件分岐とループを含み、+= による文字列連結が多用されており、可読性が低いため。
+            - value: "formatStylesResult(character: any, availableStyles: StyleInfo[]):
+                string"
+              reason: 複数の += による文字列連結とループ処理で構成されており、見通しが悪いため。
+        - hasFindings: false
+          name: callback のメソッド
+        - hasFindings: true
+          name: テストすべき関数の未テスト状態
+          details:
+            - value: テストファイルが存在しない、またはテストが不十分です。
+              reason: テストが容易で仕様を明確にするために重要な関数が複数含まれていますが、対応するテストファイルが存在しない可能性があります。
+              subItems:
+                - "validateOperatorInput(operator?: string): void"
+                - "extractStyleInfo(character: any): StyleInfo[]"
+                - formatAssignmentResult(...)
+                - formatStylesResult(...)
+                - server.registerTool 内のコールバック関数群

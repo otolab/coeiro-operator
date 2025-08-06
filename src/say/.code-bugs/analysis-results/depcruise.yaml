@@ -1,0 +1,132 @@
+cli.ts:
+  summary:
+    meta:
+      model: <depcruise-analysis>
+      sources:
+        - path: cli.ts
+          hash: 3c03652e1a1e05b9fa34f47bc71c36a9e0eef2b3104494002458559695d50758
+      version: 0.0.1
+    result:
+      dependencies:
+        - dynamic: false
+          module: ./index.js
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - local
+            - import
+          resolved: say/index.ts
+          coreModule: false
+          followable: true
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+        - dynamic: false
+          module: fs
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - core
+            - import
+          resolved: fs
+          coreModule: true
+          followable: false
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+      dependents: []
+      orphan: false
+      valid: true
+index.ts:
+  summary:
+    meta:
+      model: <depcruise-analysis>
+      sources:
+        - path: index.ts
+          hash: 08e33e025cf21d4eaf8affaa03d5267cc8c5dcd2ef463622e7a2b9398e8e36d0
+      version: 0.0.1
+    result:
+      dependencies:
+        - dynamic: false
+          module: child_process
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - core
+            - import
+          resolved: child_process
+          coreModule: true
+          followable: false
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+        - dynamic: false
+          module: fs
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - core
+            - import
+          resolved: fs
+          coreModule: true
+          followable: false
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+        - dynamic: false
+          module: fs/promises
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - core
+            - import
+          resolved: fs/promises
+          coreModule: true
+          followable: false
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+        - dynamic: false
+          module: module
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - core
+            - import
+          resolved: module
+          coreModule: true
+          followable: false
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+        - dynamic: false
+          module: path
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - core
+            - import
+          resolved: path
+          coreModule: true
+          followable: false
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+      dependents:
+        - source: index.ts
+          moduleSystem: es6
+          circular: false
+          dynamic: false
+        - source: say/cli.ts
+          moduleSystem: es6
+          circular: false
+          dynamic: false
+      orphan: false
+      valid: true
