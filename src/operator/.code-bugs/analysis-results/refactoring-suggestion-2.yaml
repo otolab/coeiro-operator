@@ -1,0 +1,598 @@
+character-defaults.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: character-defaults.ts
+          hash: e44bd0d40f65bf68b186df5067f9c953dd88932441674fa2b3486319f0ecc477
+      version: 0.0.1
+    result:
+      content: >-
+        # Analysis Report for `src/operator/character-defaults.ts`
+
+
+        ## 1. Analysis Overview
+
+
+        This report provides an analysis of the source code file
+        `src/operator/character-defaults.ts`.
+
+        The analysis was conducted based on the procedures outlined in the
+        [Analysis Procedure Guide](analysis-procedure-guide).
+
+
+        The target file defines and exports default configurations for COEIROINK
+        characters. It primarily consists of two constant objects:
+        `BUILTIN_CHARACTER_CONFIGS` and `SPEAKER_NAME_TO_ID_MAP`.
+
+
+        The analysis was performed on the entire file, as all 4 chunks were
+        provided in this iteration.
+
+
+        ## 2. Analysis Results based on the Procedure Guide
+
+
+        The following are the results of the analysis for each item specified in
+        the guide.
+
+
+        ### 2.1. Modification of Imported Objects
+
+
+        **Result:** No issues found.
+
+
+        **Reasoning:** The file `src/operator/character-defaults.ts` does not
+        contain any `import` statements. Therefore, there is no code that
+        modifies imported objects.
+
+
+        ### 2.2. References to Internal Modules
+
+
+        **Result:** No issues found.
+
+
+        **Reasoning:** The file does not contain any `import` statements, so
+        there are no references to internal package files or potentially
+        problematic relative path traversals.
+
+
+        ### 2.3. Side Effects on Unnecessary Arguments
+
+
+        **Result:** No issues found.
+
+
+        **Reasoning:** The file does not contain any function definitions. It
+        only defines an interface (`CharacterConfig`) and two constant objects.
+        Consequently, there are no function arguments that could have side
+        effects.
+
+
+        ### 2.4. Deprecated `new Buffer()` Constructor
+
+
+        **Result:** No issues found.
+
+
+        **Reasoning:** A search of the entire file confirmed that the deprecated
+        `new Buffer()` constructor is not used.
+
+
+        ### 2.5. Timing Attack Vulnerability
+
+
+        **Result:** No issues found.
+
+
+        **Reasoning:** The code consists solely of constant data definitions. It
+        does not perform any cryptographic comparisons (such as for HMAC
+        signatures, passwords, or tokens) where timing attacks could be a
+        concern.
+
+
+        ## 3. Conclusion
+
+
+        Based on the analysis following the [Analysis Procedure
+        Guide](analysis-procedure-guide), no specific points requiring
+        refactoring were identified in `src/operator/character-defaults.ts`. The
+        code is straightforward and serves as a data definition module.
+
+
+        ---
+
+        **Processing Status:**
+
+        - **Completed:** The analysis of `src/operator/character-defaults.ts` is
+        complete as all parts (4 of 4) have been processed.
+      usage: 501
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: character-defaults.ts
+          hash: e44bd0d40f65bf68b186df5067f9c953dd88932441674fa2b3486319f0ecc477
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: false
+          name: Modification of Imported Objects
+        - hasFindings: false
+          name: References to Internal Modules
+        - hasFindings: false
+          name: Side Effects on Unnecessary Arguments
+        - hasFindings: false
+          name: Deprecated `new Buffer()` Constructor
+        - hasFindings: false
+          name: Timing Attack Vulnerability
+cli.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: cli.ts
+          hash: 1abd1ad9991257a22ce1462b7ad835568c4989aa6a353a4331964d1e85f10f9c
+      version: 0.0.1
+    result:
+      content: |-
+        # src/operator/cli.ts のリファクタリング分析レポート
+
+        ## 分析サマリー
+
+        分析対象ファイル `src/operator/cli.ts` について、[Analysis Procedure Guide](analysis-procedure-guide) に基づきリファクタリング観点での分析を実施しました。
+
+        **結論として、指定された調査項目において、リファクタリングを強く推奨するような重大な問題点は検出されませんでした。**
+
+        コードはコマンドラインインターフェースとしての役割を明確に実装しており、可読性も高く、一般的なベストプラクティスに従っていると評価できます。
+
+        ---
+
+        ## 事前の解析結果について
+
+        事前に行われた `import-and-export-details` の解析結果は以下の通りです。
+
+        - **依存関係**:
+          - `partOf: 1` の `import OperatorManager from './index.js';` により、同じディレクトリ内の `./index.js` モジュールに依存しています。これは正常な依存関係です。
+        - **モジュールインターフェース (exports)**:
+          - `partOf: 13` の `export default OperatorManagerCLI;` により、`OperatorManagerCLI` クラスがデフォルトエクスポートされています。このクラスは、`assign`, `release`, `status` などのコマンドを処理するための公開メソッドを提供します。
+
+        その他の項目（動的インポート、グローバル変数、プロトタイプ汚染）に関する指摘はありませんでした。
+
+        ---
+
+        ## 調査項目ごとの詳細分析
+
+        ### 1. import されたオブジェクトの変更
+
+        **結果:** 問題は検出されませんでした。
+
+        **理由:**
+        `partOf: 1` で `OperatorManager` がインポートされていますが、このオブジェクト自体やそのプロパティを直接変更するコードは見つかりませんでした。`partOf: 3` で `new OperatorManager()` としてインスタンス化して利用しており、これは正当な使用方法です。
+
+        ### 2. モジュール内部への参照
+
+        **結果:** 問題は検出されませんでした。
+
+        **理由:**
+        `partOf: 1` での `import OperatorManager from './index.js';` は、同一階層のモジュールエントリーポイントへの参照です。これはパッケージの内部実装詳細（例: `dist/internal/...`）への深い参照ではなく、一般的なモジュール利用の範囲内です。プロジェクト外部への不正な相対パス参照 (`../../..` など) もありません。
+
+        ### 3. 不必要な引数に対する副作用
+
+        **結果:** 問題は検出されませんでした。
+
+        **理由:**
+        ファイル内の各メソッド（`parseAssignArgs`, `run`, `handleAssign` など）は、受け取った引数（主に `args: string[]`）を読み取り専用で利用しています。引数オブジェクトや配列そのものを変更するような副作用は見られませんでした。例えば `partOf: 7` の `run` メソッドでは `args.slice(1)` を使用しており、元の配列を変更しないように配慮されています。
+
+        ### 4. 非推奨のnew Buffer()コンストラクタ
+
+        **結果:** 問題は検出されませんでした。
+
+        **理由:**
+        コード全体を走査した結果、セキュリティ上のリスクがある非推奨の `new Buffer()` コンストラクタの使用箇所は見つかりませんでした。
+
+        ### 5. タイミング攻撃脆弱性
+
+        **結果:** 問題は検出されませんでした。
+
+        **理由:**
+        コード内で行われている比較処理は、CLIの引数やコマンド文字列の判定（`partOf: 4`, `partOf: 7`）、またはスクリプトの実行元判定（`partOf: 13`）のみです。パスワード、HMAC署名、APIトークンといった機密情報を比較するロジックは当ファイル内には含まれておらず、タイミング攻撃のリスクはありません。
+      usage: 1347
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: cli.ts
+          hash: 1abd1ad9991257a22ce1462b7ad835568c4989aa6a353a4331964d1e85f10f9c
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: false
+          name: import されたオブジェクトの変更
+        - hasFindings: false
+          name: モジュール内部への参照
+        - hasFindings: false
+          name: 不必要な引数に対する副作用
+        - hasFindings: false
+          name: 非推奨のnew Buffer()コンストラクタ
+        - hasFindings: false
+          name: タイミング攻撃脆弱性
+config-manager.test.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: config-manager.test.ts
+          hash: 34eb04af0eae6daaf379847c85fcf10e02172ac9a4535e342adf1073d93562b3
+      version: 0.0.1
+    result:
+      content: >-
+        # コード分析レポート: `src/operator/config-manager.test.ts`
+
+
+        ## 1. 分析概要
+
+
+        本レポートは、`src/operator/config-manager.test.ts`
+        ファイルに対する静的コード分析の結果をまとめたものです。[Analysis Procedure
+        Guide](analysis-procedure-guide) に基づき、リファクタリングが推奨される点や潜在的な問題点を指摘します。
+
+
+        - **分析対象ファイル**: `src/operator/config-manager.test.ts`
+
+        - **ファイル概要**: このファイルは `ConfigManager` クラスの単体テストです。`jest`
+        フレームワークを使用し、ファイルシステムの操作や `fetch` API
+        の呼び出しをモックして、設定の読み込み、書き込み、マージ、動的生成などの機能が正しく動作することを確認しています。
+
+
+        ## 2. 分析結果サマリー
+
+
+        | 調査項目 | 結果 | 概要 |
+
+        | :--- | :--- | :--- |
+
+        | **import されたオブジェクトの変更** | 該当なし | インポートされたオブジェクトを直接変更するコードは検出されませんでした。
+        |
+
+        | **モジュール内部への参照** | 該当なし | プロジェクト外部やパッケージ内部への不適切な参照は検出されませんでした。 |
+
+        | **不必要な引数に対する副作用** | **指摘あり** | `deepMerge`
+        メソッドが第一引数を変更する可能性があり、その副作用がテストされていません。 |
+
+        | **非推奨のnew Buffer()コンストラクタ** | 該当なし | 非推奨の `new Buffer()`
+        コンストラクタの使用は検出されませんでした。 |
+
+        | **タイミング攻撃脆弱性** | 該当なし | テストコードであり、セキュリティ上機微な情報の比較は行われていませんでした。 |
+
+
+        ---
+
+
+        ## 3. 詳細な分析結果
+
+
+        ### 3.1. 不必要な引数に対する副作用
+
+
+        `deepMerge` メソッドのテストにおいて、第一引数に対する副作用（ミューテーション）の可能性が考慮されていません。
+
+
+        - **該当箇所**: `partOf: 7 of 11`
+          ```typescript
+          describe('deepMerge', () => {
+              test('ネストしたオブジェクトを正しくマージ', () => {
+                  const target = {
+                      a: 1,
+                      b: { c: 2, d: 3 },
+                      e: [1, 2]
+                  };
+                  const source = {
+                      b: { c: 20, f: 4 },
+                      g: 5
+                  };
+
+                  const result = configManager.deepMerge(target, source);
+
+                  expect(result).toEqual({
+                      a: 1,
+                      b: { c: 20, d: 3, f: 4 },
+                      e: [1, 2],
+                      g: 5
+                  });
+              });
+              // ...
+          });
+          ```
+
+        - **問題点**:
+          `deepMerge` のような関数は、第一引数 `target` を直接変更する実装（破壊的変更）と、変更せずに新しいオブジェクトを返す実装（非破壊的変更）の両方が考えられます。現在のテストでは、返り値 `result` のみを検証しており、`target` オブジェクトが意図せず変更されていないかどうかの確認が漏れています。
+          もし `deepMerge` が `target` を変更する場合、呼び出し元が予期しない副作用となり、デバッグが困難なバグの原因となる可能性があります。
+
+        - **改善提案**:
+          1.  **関数の不変性（Immutability）の担保**: `deepMerge` メソッドが第一引数を変更しない（非破壊的な）実装であることを確認してください。一般的に、ユーティリティ関数は引数を変更しない方が安全です。
+          2.  **テストの強化**: `target` オブジェクトが変更されていないことを検証するアサーションをテストケースに追加します。これにより、関数の副作用の有無を明確に保証できます。
+
+          ```typescript
+          // 改善提案のテストコード例
+          test('第一引数(target)が変更されないことを確認', () => {
+              const target = { a: 1, b: { c: 2 } };
+              // 比較用に元のオブジェクトをディープコピーしておく
+              const originalTarget = JSON.parse(JSON.stringify(target)); 
+              const source = { b: { d: 3 }, e: 4 };
+
+              configManager.deepMerge(target, source);
+
+              // targetが実行前と変わらないことを確認
+              expect(target).toEqual(originalTarget);
+          });
+          ```
+
+        ## 4. 処理状況
+
+
+        - **完了状況**: `11 of 11` チャンクの処理が完了しました。
+
+        - **次のチャンクへの影響**: 全てのチャンクが処理されたため、次のイテレーションはありません。
+      usage: 1592
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: config-manager.test.ts
+          hash: 34eb04af0eae6daaf379847c85fcf10e02172ac9a4535e342adf1073d93562b3
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: false
+          name: import されたオブジェクトの変更
+        - hasFindings: false
+          name: モジュール内部への参照
+        - hasFindings: true
+          name: 不必要な引数に対する副作用
+          details:
+            - value: deepMergeメソッドのテスト
+              reason: deepMergeメソッドのテストでは、返り値の検証のみが行われており、第一引数（target）が変更されていないことの確認が漏れています。もしこのメソッドが第一引数を変更する（副作用を持つ）場合、呼び出し元で予期しない問題を引き起こす可能性があります。
+              subItems:
+                - 第一引数が変更されていないことを確認するテストを追加し、関数の不変性（Immutability）を保証することが推奨されます。
+        - hasFindings: false
+          name: 非推奨のnew Buffer()コンストラクタ
+        - hasFindings: false
+          name: タイミング攻撃脆弱性
+config-manager.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: config-manager.ts
+          hash: fd2208e79c87fdbaea7ba6e1aa6c7f792dffd4003d621406caf6f6d73ef2c6e7
+        - path: config-manager.test.ts
+          hash: 34eb04af0eae6daaf379847c85fcf10e02172ac9a4535e342adf1073d93562b3
+      version: 0.0.1
+    result:
+      content: |-
+        # コード分析レポート: src/operator/config-manager.ts
+
+        ## 1. 分析の概要
+
+        - **対象ファイル**: `src/operator/config-manager.ts`
+        - **処理状況**: 100% 完了 (全21チャンクを処理)
+        - **目的**: [Analysis Procedure Guide](analysis-procedure-guide) に基づき、リファクタリングおよび修正が推奨されるコードを特定し、改善提案を行う。
+
+        ## 2. 分析結果サマリー
+
+        指定された調査項目に基づき分析を行った結果、ほとんどの項目で問題は確認されませんでした。しかし、調査項目の範囲外で、セキュリティリスクとなりうる潜在的なプロトタイプ汚染の脆弱性が `deepMerge` メソッドに存在することが確認されました。
+
+        | 調査項目 | 結果 |
+        | :--- | :--- |
+        | import されたオブジェクトの変更 | 問題なし |
+        | モジュール内部への参照 | 問題なし |
+        | 不必要な引数に対する副作用 | 問題なし |
+        | 非推奨のnew Buffer()コンストラクタ | 問題なし |
+        | タイミング攻撃脆弱性 | 問題なし |
+        | **(追加) プロトタイプ汚染の可能性** | **要修正** |
+
+        ---
+
+        ## 3. 詳細な分析結果
+
+        ### 3.1. [Analysis Procedure Guide](analysis-procedure-guide) に基づく分析
+
+        #### import されたオブジェクトの変更
+        - **結果**: 問題なし
+        - **理由**: `import` された `BUILTIN_CHARACTER_CONFIGS` および `SPEAKER_NAME_TO_ID_MAP` は、読み取り専用で利用されており、オブジェクトへの書き込みや変更は行われていませんでした。
+
+        #### モジュール内部への参照
+        - **結果**: 問題なし
+        - **理由**: `import` 文は、Node.jsのコアモジュール (`fs/promises`, `fs`, `path`) および同一ディレクトリ内のモジュール (`./character-defaults.js`) のみを参照しており、パッケージの内部実装に依存するような不適切な参照はありませんでした。
+
+        #### 不必要な引数に対する副作用
+        - **結果**: 問題なし
+        - **理由**: 引数を変更する可能性のある `deepMerge` メソッドでは、第一引数 `target` のコピー (`const result = { ...target };`) を作成してからマージ処理を行っており、引数自体への副作用は発生しないように実装されています。
+
+        #### 非推奨のnew Buffer()コンストラクタ
+        - **結果**: 問題なし
+        - **理由**: コード全体で、非推奨の `new Buffer()` コンストラクタの使用は確認されませんでした。
+
+        #### タイミング攻撃脆弱性
+        - **結果**: 問題なし
+        - **理由**: コード内で行われている等価比較 (`===`) は、APIレスポンスのステータスチェックや設定値の判定など、暗号学的な機密情報の比較ではないため、タイミング攻撃の脆弱性には該当しません。
+
+        ---
+
+        ### 3.2. その他の発見事項と改善提案
+
+        #### プロトタイプ汚染 (Prototype Pollution) の脆弱性の可能性
+
+        事前分析 ([Investigation result: import-and-export-details](investigation-result-import-and-export-details)) では検出されませんでしたが、手動レビューにより `deepMerge` メソッドに潜在的なプロトタイプ汚染の脆弱性が発見されました。
+
+        - **問題箇所**:
+          ```typescript
+          // partOf: 14 of 21
+          deepMerge(target: any, source: any): any {
+              const result = { ...target };
+              
+              for (const key in source) { // <-- 問題点
+                  if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+                      result[key] = this.deepMerge(result[key] || {}, source[key]);
+                  } else {
+                      result[key] = source[key];
+                  }
+              }
+              
+              return result;
+          }
+          ```
+
+        - **問題の詳細**:
+          `for...in` ループは、オブジェクト自身のプロパティだけでなく、プロトタイプチェーンを遡って継承されたプロパティも列挙します。悪意のある入力（例: `JSON.parse('{"__proto__": {"polluted": true}}')`) が `source` として渡された場合、`key` に `__proto__` が含まれる可能性があります。これにより、`result[key] = ...` の代入が `Object.prototype` を変更してしまい、アプリケーション全体に影響を及ぼすプロトタイプ汚染を引き起こす可能性があります。
+
+        - **具体的な改善提案**:
+          `for...in` ループを避け、オブジェクト自身のプロパティのみを処理する `Object.keys()` や `Object.entries()` を使用するか、ループ内で `Object.prototype.hasOwnProperty.call()` を用いてプロパティの所有権をチェックすることで、この脆弱性を防ぐことができます。
+
+          **修正案1: `Object.keys()` を使用する**
+          ```typescript
+          deepMerge(target: any, source: any): any {
+              const result = { ...target };
+              
+              Object.keys(source).forEach(key => {
+                  if (key === '__proto__') return; // 安全のため __proto__ を明示的にスキップ
+                  
+                  const sourceValue = source[key];
+                  const targetValue = result[key];
+                  
+                  if (sourceValue && typeof sourceValue === 'object' && !Array.isArray(sourceValue)) {
+                      result[key] = this.deepMerge(targetValue || {}, sourceValue);
+                  } else {
+                      result[key] = sourceValue;
+                  }
+              });
+              
+              return result;
+          }
+          ```
+
+          **修正案2: `hasOwnProperty` でチェックする**
+          ```typescript
+          deepMerge(target: any, source: any): any {
+              const result = { ...target };
+              
+              for (const key in source) {
+                  if (Object.prototype.hasOwnProperty.call(source, key)) {
+                      const sourceValue = source[key];
+                      const targetValue = result[key];
+                      
+                      if (sourceValue && typeof sourceValue === 'object' && !Array.isArray(sourceValue)) {
+                          result[key] = this.deepMerge(targetValue || {}, sourceValue);
+                      } else {
+                          result[key] = sourceValue;
+                      }
+                  }
+              }
+              
+              return result;
+          }
+          ```
+
+        ## 4. 結論
+
+        分析対象のコード `src/operator/config-manager.ts` は、概ねクリーンでよく構造化されています。しかし、`deepMerge` ヘルパーメソッドに潜在的なプロトタイプ汚染の脆弱性が存在するため、早急な修正を強く推奨します。上記で提案した修正案のいずれかを適用することで、より安全な実装に改善できます。
+      usage: 2108
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: config-manager.ts
+          hash: fd2208e79c87fdbaea7ba6e1aa6c7f792dffd4003d621406caf6f6d73ef2c6e7
+        - path: config-manager.test.ts
+          hash: 34eb04af0eae6daaf379847c85fcf10e02172ac9a4535e342adf1073d93562b3
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: false
+          name: import されたオブジェクトの変更
+        - hasFindings: false
+          name: モジュール内部への参照
+        - hasFindings: false
+          name: 不必要な引数に対する副作用
+        - hasFindings: false
+          name: 非推奨のnew Buffer()コンストラクタ
+        - hasFindings: false
+          name: タイミング攻撃脆弱性
+        - hasFindings: true
+          name: プロトタイプ汚染の可能性
+          details:
+            - value: deepMergeメソッドに潜在的なプロトタイプ汚染の脆弱性が発見されました。
+              reason: for...inループが継承されたプロパティも列挙するため、悪意のある入力によって`Object.prototype`が変更される可能性があります。`Object.keys()`の使用や`hasOwnProperty`でのチェックによって修正が可能です。
+index.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: index.ts
+          hash: 9a3540c8104c6e2b7720f320fe0f70fc4d907e34c4715c4d310f54be2f31d88a
+      version: 0.0.1
+    result:
+      content: |-
+        # コード分析レポート: src/operator/index.ts
+
+        ## 分析概要
+
+        `src/operator/index.ts` のソースコードについて、[Analysis Procedure Guide](analysis-procedure-guide) に基づき分析を実施しました。
+        分析の結果、ガイドラインで指摘されているリファクタリング対象の項目は、本ファイルには見つかりませんでした。
+
+        ---
+
+        ## 調査項目別分析結果
+
+        ### 1. import されたオブジェクトの変更
+
+        -   **分析結果**: 該当なし
+        -   **理由**: ソースコード全体を調査した結果、`import`文でインポートされたオブジェクトやそのプロパティを直接変更するようなコードは確認されませんでした。
+
+        ### 2. モジュール内部への参照
+
+        -   **分析結果**: 該当なし
+        -   **理由**: `import`されているモジュールは、`fs/promises`や`path`などのNode.js標準モジュール、または`./config-manager.js`のような同一階層のモジュールのみでした。パッケージの内部実装に依存するような深いパスでの参照や、プロジェクト外部を参照する可能性のある相対パス (`../../../` など) は確認されませんでした。
+
+        ### 3. 不必要な引数に対する副作用
+
+        -   **分析結果**: 該当なし
+        -   **理由**: 各関数およびメソッドの引数を確認したところ、意図しない副作用を及ぼすような引数オブジェクトの変更は見つかりませんでした。`updateVoiceSetting`メソッド内でオブジェクトのプロパティが変更されていますが、これは関数内で生成されたローカルな設定オブジェクトに対するものであり、設定ファイルを更新するという関数の目的に沿った意図的な実装であると判断しました。
+
+        ### 4. 非推奨のnew Buffer()コンストラクタ
+
+        -   **分析結果**: 該当なし
+        -   **理由**: ソースコード全体で `new Buffer()` コンストラクタの使用は確認されませんでした。
+
+        ### 5. タイミング攻撃脆弱性
+
+        -   **分析結果**: 該当なし
+        -   **理由**: コード内で使用されている等価比較演算子 (`===`) は、スタイル名やオペレータIDの比較など、機密情報や暗号学的な値を扱う箇所ではありませんでした。そのため、タイミング攻撃のリスクは低いと判断しました。
+      usage: 855
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: index.ts
+          hash: 9a3540c8104c6e2b7720f320fe0f70fc4d907e34c4715c4d310f54be2f31d88a
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: false
+          name: import されたオブジェクトの変更
+          details: []
+        - hasFindings: false
+          name: モジュール内部への参照
+          details: []
+        - hasFindings: false
+          name: 不必要な引数に対する副作用
+          details: []
+        - hasFindings: false
+          name: 非推奨のnew Buffer()コンストラクタ
+          details: []
+        - hasFindings: false
+          name: タイミング攻撃脆弱性
+          details: []

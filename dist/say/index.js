@@ -126,26 +126,35 @@ export class SayCoeiroink {
         }
         return chunks;
     }
+    async execCommand(command, args) {
+        return new Promise((resolve, reject) => {
+            const child = spawn(command, args, {
+                stdio: ['pipe', 'pipe', 'pipe']
+            });
+            let stdout = '';
+            let stderr = '';
+            child.stdout?.on('data', (data) => {
+                stdout += data.toString();
+            });
+            child.stderr?.on('data', (data) => {
+                stderr += data.toString();
+            });
+            child.on('close', (code) => {
+                if (code === 0) {
+                    resolve(stdout.trim());
+                }
+                else {
+                    reject(new Error(`Command failed with code ${code}: ${stderr}`));
+                }
+            });
+            child.on('error', (err) => {
+                reject(new Error(`Failed to execute command: ${err.message}`));
+            });
+        });
+    }
     async getCurrentOperatorVoice() {
         try {
-            const operatorStatus = await new Promise((resolve, reject) => {
-                const child = spawn('operator-manager', ['status'], {
-                    stdio: ['pipe', 'pipe', 'pipe']
-                });
-                let stdout = '';
-                child.stdout?.on('data', (data) => {
-                    stdout += data.toString();
-                });
-                child.on('close', (code) => {
-                    if (code === 0) {
-                        resolve(stdout.trim());
-                    }
-                    else {
-                        reject(new Error('operator-manager failed'));
-                    }
-                });
-                child.on('error', reject);
-            });
+            const operatorStatus = await this.execCommand('operator-manager', ['status']);
             if (operatorStatus === 'オペレータは割り当てられていません') {
                 console.error('エラー: オペレータが割り当てられていません。');
                 return null;
@@ -292,23 +301,13 @@ export class SayCoeiroink {
         }
     }
     async playAudioFile(audioFile) {
-        return new Promise((resolve, reject) => {
+        try {
             const audioPlayer = this.detectAudioPlayerSync();
-            const child = spawn(audioPlayer, [audioFile], {
-                stdio: ['pipe', 'pipe', 'pipe']
-            });
-            child.on('close', (code) => {
-                if (code === 0) {
-                    resolve();
-                }
-                else {
-                    reject(new Error(`音声再生エラー: exit code ${code}`));
-                }
-            });
-            child.on('error', (err) => {
-                reject(new Error(`音声再生エラー: ${err.message}`));
-            });
-        });
+            await this.execCommand(audioPlayer, [audioFile]);
+        }
+        catch (error) {
+            throw new Error(`音声再生エラー: ${error.message}`);
+        }
     }
     detectAudioPlayerSync() {
         const players = ['afplay', 'aplay', 'paplay', 'play'];
@@ -325,15 +324,18 @@ export class SayCoeiroink {
     }
     applyCrossfade(pcmData, overlapSamples) {
         // 簡単なクロスフェード実装（音切れ軽減）
+        // 副作用を避けるため、新しい配列を作成して返す
+        const result = new Uint8Array(pcmData);
         if (overlapSamples > 0 && overlapSamples < pcmData.length / 2) {
             for (let i = 0; i < overlapSamples * 2; i += 2) {
                 const factor = i / (overlapSamples * 2);
                 const sample = (pcmData[i] | (pcmData[i + 1] << 8));
                 const fadedSample = Math.floor(sample * factor);
-                pcmData[i] = fadedSample & 0xFF;
-                pcmData[i + 1] = (fadedSample >> 8) & 0xFF;
+                result[i] = fadedSample & 0xFF;
+                result[i + 1] = (fadedSample >> 8) & 0xFF;
             }
         }
+        return result;
     }
     convertRateToSpeed(rate) {
         const baseRate = 200;

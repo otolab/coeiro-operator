@@ -1,0 +1,410 @@
+cli.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: cli.ts
+          hash: 3c03652e1a1e05b9fa34f47bc71c36a9e0eef2b3104494002458559695d50758
+      version: 0.0.3
+    result:
+      content: >-
+        # Analysis Report for `src/say/cli.ts`
+
+
+        This document provides an analysis of the source code file
+        `src/say/cli.ts` based on the provided analysis procedure guide. The
+        entire file was processed in this iteration.
+
+
+        ## 1. Dependency details
+
+
+        The file's dependencies on external and internal modules are as follows.
+
+
+        ```yaml
+
+        fs:
+          - readFileSync
+          - existsSync
+        ./index.js:
+          - SayCoeiroink
+          - loadConfig
+        ```
+
+
+        **Rationale:**
+
+        The analysis is based on the following `import` statements found at the
+        beginning of the file:
+
+
+        ```typescript
+
+        import { readFileSync, existsSync } from 'fs';
+
+        import { SayCoeiroink, loadConfig } from './index.js';
+
+        ```
+
+
+        - It imports `readFileSync` and `existsSync` from Node.js's built-in
+        `fs` module.
+
+        - It imports the `SayCoeiroink` class and the `loadConfig` function from
+        a local module `./index.js`.
+
+
+        ## 2. Dynamic import determined at run-time
+
+
+        No dynamic imports where the module path is determined by a variable at
+        runtime were found in this file. All `import` statements are static.
+
+
+        **Rationale:**
+
+        A full scan of the code confirms that there are no instances of
+        `import()` or `require()` with variable-based paths, such as
+        `require(\`./modules/${moduleName}\`)`.
+
+
+        ## 3. Global variables / constants
+
+
+        There is no use of non-standard global variables or constants in this
+        file.
+
+
+        **Rationale:**
+
+        The code utilizes standard Node.js global objects, which are not subject
+        to reporting:
+
+        - `process`: Used for command-line arguments (`process.argv`),
+        environment variables (`process.env`), standard input (`process.stdin`),
+        and exiting the process (`process.exit`).
+
+        - `console`: Used for logging output (`console.log`, `console.error`).
+
+        - `Buffer`: Used to handle data from `process.stdin`.
+
+
+        No other undefined variables that would imply reliance on a custom
+        global scope were found.
+
+
+        ## 4. Prototype Pollution
+
+
+        No potential instances of Prototype Pollution were detected during this
+        analysis.
+
+
+        **Rationale:**
+
+        The code does not appear to modify the prototypes of native JavaScript
+        objects (e.g., `Object.prototype`, `Array.prototype`), nor does it call
+        any non-standard methods on them. The analysis was performed on a
+        best-effort basis.
+
+
+        ## 5. Module interface
+
+
+        The module exports a single class, `SayCoeiroinkCLI`, as its default
+        export.
+
+
+        ```
+
+        details:
+          - value: export default class SayCoeiroinkCLI { constructor(sayCoeiroink: SayCoeiroink); showUsage(): Promise<void>; run(args: string[]): Promise<void>; }
+        ```
+
+
+        **Rationale:**
+
+        The public interface is defined by the `SayCoeiroinkCLI` class. The
+        `export` statement is at the end of the file:
+
+
+        ```typescript
+
+        export default SayCoeiroinkCLI;
+
+        ```
+
+
+        The class exposes the following public methods:
+
+        - `constructor(sayCoeiroink: SayCoeiroink)`: Initializes the CLI with an
+        instance of `SayCoeiroink`.
+
+        - `async showUsage(): Promise<void>`: Displays the help message.
+
+        - `async run(args: string[]): Promise<void>`: Executes the main logic of
+        the CLI.
+
+
+        The `interface ParsedOptions` and private methods (`parseArguments`,
+        `getInputText`) are not part of the external interface.
+      usage: 715
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: cli.ts
+          hash: 3c03652e1a1e05b9fa34f47bc71c36a9e0eef2b3104494002458559695d50758
+      version: 0.0.3
+    result:
+      results:
+        - hasFindings: true
+          name: Dependency details
+          details:
+            - value: fs
+              subItems:
+                - readFileSync
+                - existsSync
+            - value: ./index.js
+              subItems:
+                - SayCoeiroink
+                - loadConfig
+        - hasFindings: false
+          name: Dynamic import determined at run-time
+        - hasFindings: false
+          name: Global variables / constants
+        - hasFindings: false
+          name: Prototype Pollution
+        - hasFindings: true
+          name: Module interface
+          details:
+            - value: "export default class SayCoeiroinkCLI { constructor(sayCoeiroink:
+                SayCoeiroink); showUsage(): Promise<void>; run(args: string[]):
+                Promise<void>; }"
+index.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: index.ts
+          hash: 08e33e025cf21d4eaf8affaa03d5267cc8c5dcd2ef463622e7a2b9398e8e36d0
+      version: 0.0.3
+    result:
+      content: >-
+        # Analysis Report for `src/say/index.ts`
+
+
+        This report details the analysis of the source file `src/say/index.ts`
+        based on the [Analysis Procedure Guide](analysis-procedure-guide).
+
+
+        ## 1. Dependency details
+
+
+        The file's dependencies on other modules are as follows. This includes
+        both static and dynamic imports found in the code.
+
+
+        ```yaml
+
+        fs/promises:
+          - readFile
+          - access
+          - mkdir
+        fs:
+          - constants
+          - *
+        child_process:
+          - spawn
+          - ChildProcess
+        path:
+          - join
+        module:
+          - createRequire
+        ```
+
+
+        **Rationale:**
+
+        - Static imports are declared at the beginning of the file:
+          - `import { readFile, access, mkdir } from 'fs/promises';`
+          - `import { constants } from 'fs';`
+          - `import { spawn, ChildProcess } from 'child_process';`
+          - `import { join } from 'path';`
+          - `import { createRequire } from 'module';`
+        - A dynamic import for the `fs` module is used within the
+        `playAudioStream` and `saveAudio` methods. Since specific methods
+        (`promises.writeFile`, `promises.unlink`) are accessed from the imported
+        module, it is reported as a dependency on the entire module (`*`) for
+        simplicity.
+          - `const fs = await import('fs');`
+          - `await fs.promises.writeFile(...)`
+          - `await fs.promises.unlink(...)`
+
+        ## 2. Dynamic import determined at run-time
+
+
+        The file contains dynamic imports, but none of them are "variable"
+        dynamic imports where the module path is determined by a variable at
+        runtime.
+
+
+        The following dynamic imports were found:
+
+        - `const fs = await import('fs');` in `playAudioStream` method.
+
+        - `const fs = await import('fs');` in `saveAudio` method.
+
+
+        **Rationale:**
+
+        These imports use a static string `'fs'` as the module specifier. They
+        are dynamic in terms of execution timing but not in terms of module
+        resolution path. No instances like `require(\`plugins/\${pluginName}\`)`
+        were found.
+
+
+        ## 3. Global variables / constants
+
+
+        No non-standard global variables or constants were detected.
+
+
+        **Rationale:**
+
+        The code utilizes several global objects, but they are all standard
+        features of the Node.js runtime environment. These include:
+
+        - `process` (e.g., `process.env.HOME`, `process.cwd()`)
+
+        - `console` (e.g., `console.error`, `console.log`)
+
+        - `fetch`, `AbortSignal`
+
+        - `Date`, `Math`, `JSON`
+
+        - `Promise`, `DataView`, `Uint8Array`, `Buffer`
+
+
+        According to the guide, standard environmental globals are not to be
+        reported.
+
+
+        ## 4. Prototype Pollution
+
+
+        No potential instances of prototype pollution were detected during this
+        best-effort analysis.
+
+
+        **Rationale:**
+
+        The code does not appear to modify the prototypes of native JavaScript
+        objects (e.g., `Object.prototype`, `Array.prototype`).
+
+
+        ## 5. Module interface
+
+
+        The module exports the `SayCoeiroink` class and a `loadConfig` function.
+        The `SayCoeiroink` class is also the default export.
+
+
+        ```
+
+        details:
+          - value: export async function loadConfig(configFile?: string | null): Promise<Config>
+          - value: export class SayCoeiroink { constructor(config?: Config | null); initializeAudioPlayer(): Promise<boolean>; splitTextIntoChunks(text: string): Chunk[]; getCurrentOperatorVoice(): Promise<OperatorVoice | null>; synthesizeChunk(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<AudioResult>; extractPCMFromWAV(wavBuffer: ArrayBuffer): Uint8Array; playAudioStream(audioResult: AudioResult): Promise<void>; playAudioFile(audioFile: string): Promise<void>; detectAudioPlayerSync(): string; applyCrossfade(pcmData: Uint8Array, overlapSamples: number): Uint8Array; convertRateToSpeed(rate: number): number; streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number): Promise<void>; listVoices(): Promise<void>; saveAudio(audioBuffer: ArrayBuffer, outputFile: string): Promise<void>; checkServerConnection(): Promise<boolean>; enqueueSpeech(text: string, options?: SynthesizeOptions): SynthesizeResult; processSpeechQueue(): Promise<void>; synthesizeText(text: string, options?: SynthesizeOptions): Promise<SynthesizeResult>; synthesizeTextInternal(text: string, options?: SynthesizeOptions): Promise<SynthesizeResult>; }
+          - value: export default SayCoeiroink
+        ```
+
+
+        **Rationale:**
+
+        The interface is determined by the `export` statements in the code:
+
+        - `export async function loadConfig(...)` in chunk 4.
+
+        - `export class SayCoeiroink { ... }` in chunk 5.
+
+        - `export default SayCoeiroink;` in chunk 10.
+
+        The detailed list of public methods within the `SayCoeiroink` class
+        constitutes its interface. Private methods like `execCommand` are
+        excluded.
+      usage: 1066
+  errors:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: index.ts
+          hash: 08e33e025cf21d4eaf8affaa03d5267cc8c5dcd2ef463622e7a2b9398e8e36d0
+      version: 0.0.0
+    result:
+      - fsモジュールへの依存関係の報告が不正確です。「constants」と「*」が両方リストされていますが、「*」は「constants」を含むため冗長です。また、動的インポートは「fs.promises」として利用されているため、より正確には「promises」と報告すべきです。
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: index.ts
+          hash: 08e33e025cf21d4eaf8affaa03d5267cc8c5dcd2ef463622e7a2b9398e8e36d0
+      version: 0.0.3
+    result:
+      results:
+        - hasFindings: true
+          name: Dependency details
+          details:
+            - value: fs/promises
+              subItems:
+                - readFile
+                - access
+                - mkdir
+            - value: fs
+              subItems:
+                - constants
+                - "*"
+            - value: child_process
+              subItems:
+                - spawn
+                - ChildProcess
+            - value: path
+              subItems:
+                - join
+            - value: module
+              subItems:
+                - createRequire
+        - hasFindings: false
+          name: Dynamic import determined at run-time
+        - hasFindings: false
+          name: Global variables / constants
+        - hasFindings: false
+          name: Prototype Pollution
+        - hasFindings: true
+          name: Module interface
+          details:
+            - value: "export async function loadConfig(configFile?: string | null):
+                Promise<Config>"
+            - value: "export class SayCoeiroink { constructor(config?: Config | null);
+                initializeAudioPlayer(): Promise<boolean>;
+                splitTextIntoChunks(text: string): Chunk[];
+                getCurrentOperatorVoice(): Promise<OperatorVoice | null>;
+                synthesizeChunk(chunk: Chunk, voiceInfo: string | OperatorVoice,
+                speed: number): Promise<AudioResult>;
+                extractPCMFromWAV(wavBuffer: ArrayBuffer): Uint8Array;
+                playAudioStream(audioResult: AudioResult): Promise<void>;
+                playAudioFile(audioFile: string): Promise<void>;
+                detectAudioPlayerSync(): string; applyCrossfade(pcmData:
+                Uint8Array, overlapSamples: number): Uint8Array;
+                convertRateToSpeed(rate: number): number;
+                streamSynthesizeAndPlay(text: string, voiceId: string |
+                OperatorVoice, speed: number): Promise<void>; listVoices():
+                Promise<void>; saveAudio(audioBuffer: ArrayBuffer, outputFile:
+                string): Promise<void>; checkServerConnection():
+                Promise<boolean>; enqueueSpeech(text: string, options?:
+                SynthesizeOptions): SynthesizeResult; processSpeechQueue():
+                Promise<void>; synthesizeText(text: string, options?:
+                SynthesizeOptions): Promise<SynthesizeResult>;
+                synthesizeTextInternal(text: string, options?:
+                SynthesizeOptions): Promise<SynthesizeResult>; }"
+            - value: export default SayCoeiroink

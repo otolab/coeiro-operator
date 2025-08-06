@@ -23,7 +23,7 @@ npm test
 ### リント・型チェック
 ```bash
 npm run lint
-npm run type-check
+npm run typecheck
 ```
 
 ### ビルド

@@ -28,11 +28,53 @@ interface StatusResult {
     message: string;
 }
 
+interface ParsedArgs {
+    operatorId: string | null;
+    style: string | null;
+}
+
 class OperatorManagerCLI {
     private manager: OperatorManager;
 
     constructor() {
         this.manager = new OperatorManager();
+    }
+
+    private parseAssignArgs(args: string[]): ParsedArgs {
+        let operatorId: string | null = null;
+        let style: string | null = null;
+        
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            if (arg.startsWith('--style=')) {
+                style = arg.substring(8);
+            } else if (!arg.startsWith('--')) {
+                operatorId = arg;
+            }
+        }
+        
+        return { operatorId, style };
+    }
+
+    private async executeAssignment(operatorId: string | null, style: string | null): Promise<void> {
+        if (operatorId) {
+            const result: AssignResult = await this.manager.assignSpecificOperator(operatorId, style);
+            console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
+            if (result.currentStyle) {
+                console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
+            }
+        } else {
+            const currentStatus: StatusResult = await this.manager.showCurrentOperator();
+            if (currentStatus.operatorId) {
+                console.log(currentStatus.message);
+            } else {
+                const result: AssignResult = await this.manager.assignRandomOperator(style);
+                console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
+                if (result.currentStyle) {
+                    console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
+                }
+            }
+        }
     }
 
     async showUsage(): Promise<void> {
@@ -79,22 +121,6 @@ class OperatorManagerCLI {
             console.error(`エラー: ${(error as Error).message}`);
             process.exit(1);
         }
-    }
-
-    private parseAssignArgs(args: string[]): { operatorId: string | null; style: string | null } {
-        let operatorId: string | null = null;
-        let style: string | null = null;
-        
-        for (let i = 0; i < args.length; i++) {
-            const arg = args[i];
-            if (arg.startsWith('--style=')) {
-                style = arg.substring(8); // '--style='の8文字を除去
-            } else if (!arg.startsWith('--')) {
-                operatorId = arg; // 最初の非オプション引数をオペレータIDとする
-            }
-        }
-        
-        return { operatorId, style };
     }
 
     private async executeAssignment(operatorId: string | null, style: string | null): Promise<void> {

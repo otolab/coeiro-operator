@@ -1,0 +1,163 @@
+index.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: index.ts
+          hash: f798eb473537e20da5d4f105d198a4af1e87300d28cd2717c56ddd45bdde6302
+      version: 0.0.1
+    result:
+      content: |-
+        # コード分析レポート
+
+        ## 分析の概要
+
+        指定されたコードファイル（`coeiro-operator` のエントリーポイント）の分析を行いました。
+        このファイルは `#!/usr/bin/env node` から始まる実行可能スクリプトであり、外部モジュールとして利用されることを意図した `export` は含まれていません。
+        [Analysis Procedure Guide](analysis-procedure-guide) に基づき、リファクタリングの観点から以下の点を評価しました。
+
+        ---
+
+        ### 1. 型定義が曖昧な export
+
+        このファイルには外部向けの `export` は存在しません。しかし、ファイル内部で使用される関数の引数において、型定義が曖昧な箇所が複数見つかりました。`any` 型が使用されている箇所は、型の安全性を低下させ、予期せぬエラーの原因となる可能性があるため、具体的な型定義に修正することが推奨されます。
+
+        #### 指摘事項
+
+        以下の関数で、`character` 引数が `any` 型として定義されています。これは、`operator-manager` から取得されるキャラクター情報の型が明確でないことに起因します。
+
+        - **`extractStyleInfo(character: any)`**
+        - **`getTargetCharacter(...)` の戻り値 `Promise<{ character: any; ... }>`**
+        - **`formatStylesResult(character: any, ...)`**
+
+        ```typescript
+        // partOf: 7 of 7
+        function extractStyleInfo(character: any): StyleInfo[] {
+          return Object.entries(character.available_styles || {})
+            // ...
+        }
+
+        // partOf: 7 of 7
+        async function getTargetCharacter(
+          manager: OperatorManager, 
+          characterId?: string
+        ): Promise<{ character: any; characterId: string }> {
+          // ...
+        }
+
+        // partOf: 7 of 7
+        function formatStylesResult(character: any, availableStyles: StyleInfo[]): string {
+          // ...
+        }
+        ```
+
+        #### 改善提案
+
+        `character` オブジェクトの構造に基づいた型を定義し、`any` 型を置き換えることを推奨します。コードから推測される `character` の構造は以下のようになります。
+
+        ```typescript
+        // スタイルの詳細な型定義
+        interface CharacterStyle {
+          enabled: boolean;
+          name: string;
+          personality: string;
+          speaking_style: string;
+        }
+
+        // キャラクター情報の型定義
+        interface CharacterInfo {
+          name: string;
+          personality: string;
+          speaking_style: string;
+          style_selection: string;
+          default_style: string;
+          available_styles: {
+            [styleId: string]: CharacterStyle;
+          };
+        }
+        ```
+
+        この型定義を導入することで、各関数のシグネチャを以下のように改善できます。
+
+        ```typescript
+        // 改善後の関数シグネチャ
+        function extractStyleInfo(character: CharacterInfo): StyleInfo[] {
+          // ...
+        }
+
+        async function getTargetCharacter(
+          manager: OperatorManager, 
+          characterId?: string
+        ): Promise<{ character: CharacterInfo; characterId: string }> {
+          // ...
+        }
+
+        function formatStylesResult(character: CharacterInfo, availableStyles: StyleInfo[]): string {
+          // ...
+        }
+        ```
+
+        これにより、`character` オブジェクトのプロパティ（`name`, `available_styles` など）へのアクセスが型安全になり、開発時の補完や静的チェックの恩恵を受けられるようになります。
+
+        ---
+
+        ### 2. 定数の as const 付与
+
+        このファイルには、外部に `export` される定数や、`as const` を付与することでメリットが得られるような、イミュータブルなデータ構造として定義された定数は見つかりませんでした。したがって、この項目に関する指摘事項はありません。
+
+        ---
+
+        ### 3. ESM 方式での export
+
+        このファイルは `import` / `export` 構文を使用しており、すでに ESM (ECMAScript Modules) 方式で記述されています。CommonJS 形式の `module.exports` や `exports` は使用されていません。
+        また、[Investigation result: depcruise](investigation-result-depcruise) の `dependents` が空であることからも、このファイルが CommonJS モジュールから `require` される状況は想定されていません。
+        したがって、この項目に関する修正は不要です。
+
+        ---
+
+        ### 4. 名前付きインポート
+
+        ファイルの先頭でモジュールをインポートする際に、名前付きインポート（`import { ... } from '...'`）が適切に使用されています。`require()` の使用や、不必要なデフォルトインポートは見られませんでした。
+
+        ```typescript
+        // partOf: 1 of 7
+        import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+        import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+        import { spawn, ChildProcess } from "child_process";
+        import { z } from "zod";
+        import { SayCoeiroink, loadConfig } from "./say/index.js";
+        import { OperatorManager } from "./operator/index.js";
+        ```
+
+        したがって、この項目に関する指摘事項はありません。
+
+        ---
+        ### 処理状況
+
+        入力されたすべてのチャンク（7/7）の分析が完了しました。
+      usage: 1501
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: index.ts
+          hash: f798eb473537e20da5d4f105d198a4af1e87300d28cd2717c56ddd45bdde6302
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: true
+          name: 型定義が曖昧な export
+          details:
+            - value: 内部関数でany型が使用されています
+              reason: 関数の引数 `character` が `any` 型として定義されており、型の安全性を低下させています。`CharacterInfo`
+                のような具体的な型を定義し、置き換えることが推奨されます。
+              subItems:
+                - "extractStyleInfo(character: any)"
+                - "getTargetCharacter(...): Promise<{ character: any; ... }>"
+                - "formatStylesResult(character: any, ...)"
+        - hasFindings: false
+          name: 定数の as const 付与
+        - hasFindings: false
+          name: ESM 方式での export
+        - hasFindings: false
+          name: 名前付きインポート

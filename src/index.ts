@@ -66,6 +66,126 @@ try {
   await operatorManager.initialize();
 }
 
+// Utility functions for operator assignment
+function validateOperatorInput(operator?: string): void {
+  if (operator !== undefined && operator !== '' && operator !== null) {
+    if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(operator)) {
+      throw new Error('オペレータ名は英語表記で指定してください（例: tsukuyomi, alma）。日本語は使用できません。');
+    }
+  }
+}
+
+async function assignOperator(
+  manager: OperatorManager, 
+  operator?: string, 
+  style?: string
+): Promise<AssignResult> {
+  if (operator && operator !== '' && operator !== null) {
+    return await manager.assignSpecificOperator(operator, style);
+  } else {
+    return await manager.assignRandomOperator(style);
+  }
+}
+
+function extractStyleInfo(character: any): StyleInfo[] {
+  return Object.entries(character.available_styles || {})
+    .filter(([_, style]) => (style as any).enabled)
+    .map(([styleId, style]) => ({
+      id: styleId,
+      name: (style as any).name,
+      personality: (style as any).personality,
+      speakingStyle: (style as any).speaking_style
+    }));
+}
+
+function formatAssignmentResult(
+  assignResult: AssignResult, 
+  availableStyles: StyleInfo[]
+): string {
+  let resultText = `${assignResult.characterName} (${assignResult.operatorId}) をアサインしました。\n\n`;
+  
+  if (assignResult.currentStyle) {
+    resultText += `📍 現在のスタイル: ${assignResult.currentStyle.styleName}\n`;
+    resultText += `   性格: ${assignResult.currentStyle.personality}\n`;
+    resultText += `   話し方: ${assignResult.currentStyle.speakingStyle}\n\n`;
+  }
+  
+  if (availableStyles.length > 1) {
+    resultText += `🎭 利用可能なスタイル（切り替え可能）:\n`;
+    availableStyles.forEach(style => {
+      const isCurrent = style.id === assignResult.currentStyle?.styleId;
+      const marker = isCurrent ? '→ ' : '  ';
+      resultText += `${marker}${style.id}: ${style.name}\n`;
+      resultText += `    性格: ${style.personality}\n`;
+      resultText += `    話し方: ${style.speakingStyle}\n`;
+    });
+  } else {
+    resultText += `ℹ️  このキャラクターは1つのスタイルのみ利用可能です。\n`;
+  }
+  
+  if (assignResult.greeting) {
+    resultText += `\n💬 \"${assignResult.greeting}\"\n`;
+  }
+  
+  return resultText;
+}
+
+// Utility functions for operator styles
+async function getTargetCharacter(
+  manager: OperatorManager, 
+  characterId?: string
+): Promise<{ character: any; characterId: string }> {
+  if (characterId) {
+    try {
+      const character = await manager.getCharacterInfo(characterId);
+      return { character, characterId };
+    } catch (error) {
+      throw new Error(`キャラクター '${characterId}' が見つかりません`);
+    }
+  } else {
+    const currentOperator = await manager.showCurrentOperator();
+    if (!currentOperator.operatorId) {
+      throw new Error('現在オペレータが割り当てられていません。まず operator_assign を実行してください。');
+    }
+    
+    const character = await manager.getCharacterInfo(currentOperator.operatorId);
+    if (!character) {
+      throw new Error(`現在のオペレータ '${currentOperator.operatorId}' のキャラクター情報が見つかりません`);
+    }
+    
+    return { character, characterId: currentOperator.operatorId };
+  }
+}
+
+function formatStylesResult(character: any, availableStyles: StyleInfo[]): string {
+  let resultText = `🎭 ${character.name} のスタイル情報\n\n`;
+  
+  resultText += `📋 基本情報:\n`;
+  resultText += `   性格: ${character.personality}\n`;
+  resultText += `   話し方: ${character.speaking_style}\n`;
+  resultText += `   スタイル選択方法: ${character.style_selection}\n`;
+  resultText += `   デフォルトスタイル: ${character.default_style}\n\n`;
+  
+  if (availableStyles.length > 0) {
+    resultText += `🎨 利用可能なスタイル (${availableStyles.length}種類):\n`;
+    availableStyles.forEach((style, index) => {
+      const isDefault = style.id === character.default_style;
+      const marker = isDefault ? '★ ' : `${index + 1}. `;
+      resultText += `${marker}${style.id}: ${style.name}\n`;
+      resultText += `   性格: ${style.personality}\n`;
+      resultText += `   話し方: ${style.speakingStyle}\n`;
+      if (isDefault) {
+        resultText += `   (デフォルトスタイル)\n`;
+      }
+      resultText += `\n`;
+    });
+  } else {
+    resultText += `⚠️  利用可能なスタイルがありません。\n`;
+  }
+  
+  return resultText;
+}
+
 // Promiseを返すspawn wrapper
 function spawnAsync(command: string, args: string[], env?: NodeJS.ProcessEnv): Promise<string> {
   return new Promise((resolve, reject) => {

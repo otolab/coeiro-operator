@@ -8,6 +8,8 @@ declare class SayCoeiroinkCLI {
     private sayCoeiroink;
     constructor(sayCoeiroink: SayCoeiroink);
     showUsage(): Promise<void>;
+    private parseArguments;
+    private getInputText;
     run(args: string[]): Promise<void>;
 }
 export default SayCoeiroinkCLI;

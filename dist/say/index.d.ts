@@ -62,13 +62,14 @@ export declare class SayCoeiroink {
     constructor(config?: Config | null);
     initializeAudioPlayer(): Promise<boolean>;
     splitTextIntoChunks(text: string): Chunk[];
+    private execCommand;
     getCurrentOperatorVoice(): Promise<OperatorVoice | null>;
     synthesizeChunk(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<AudioResult>;
     extractPCMFromWAV(wavBuffer: ArrayBuffer): Uint8Array;
     playAudioStream(audioResult: AudioResult): Promise<void>;
     playAudioFile(audioFile: string): Promise<void>;
     detectAudioPlayerSync(): string;
-    applyCrossfade(pcmData: Uint8Array, overlapSamples: number): void;
+    applyCrossfade(pcmData: Uint8Array, overlapSamples: number): Uint8Array;
     convertRateToSpeed(rate: number): number;
     streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number): Promise<void>;
     listVoices(): Promise<void>;

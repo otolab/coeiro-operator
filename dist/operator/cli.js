@@ -9,6 +9,42 @@ class OperatorManagerCLI {
     constructor() {
         this.manager = new OperatorManager();
     }
+    parseAssignArgs(args) {
+        let operatorId = null;
+        let style = null;
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            if (arg.startsWith('--style=')) {
+                style = arg.substring(8);
+            }
+            else if (!arg.startsWith('--')) {
+                operatorId = arg;
+            }
+        }
+        return { operatorId, style };
+    }
+    async executeAssignment(operatorId, style) {
+        if (operatorId) {
+            const result = await this.manager.assignSpecificOperator(operatorId, style);
+            console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
+            if (result.currentStyle) {
+                console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
+            }
+        }
+        else {
+            const currentStatus = await this.manager.showCurrentOperator();
+            if (currentStatus.operatorId) {
+                console.log(currentStatus.message);
+            }
+            else {
+                const result = await this.manager.assignRandomOperator(style);
+                console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
+                if (result.currentStyle) {
+                    console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
+                }
+            }
+        }
+    }
     async showUsage() {
         console.log(`使用法: operator-manager {assign|release|status|available|clear}
   assign [オペレータID] [--style=スタイル名] - オペレータを割り当て（IDを指定しない場合はランダム）
@@ -48,41 +84,8 @@ class OperatorManagerCLI {
         }
     }
     async handleAssign(args) {
-        // 引数をパース
-        let operatorId = null;
-        let style = null;
-        for (let i = 0; i < args.length; i++) {
-            const arg = args[i];
-            if (arg.startsWith('--style=')) {
-                style = arg.substring(8); // '--style='の8文字を除去
-            }
-            else if (!arg.startsWith('--')) {
-                operatorId = arg; // 最初の非オプション引数をオペレータIDとする
-            }
-        }
-        if (operatorId) {
-            // 指定されたオペレータを割り当て
-            const result = await this.manager.assignSpecificOperator(operatorId, style);
-            console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
-            if (result.currentStyle) {
-                console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
-            }
-        }
-        else {
-            // 既にオペレータが割り当てられている場合は現在の状態を表示
-            const currentStatus = await this.manager.showCurrentOperator();
-            if (currentStatus.operatorId) {
-                console.log(currentStatus.message);
-            }
-            else {
-                // ランダム割り当て
-                const result = await this.manager.assignRandomOperator(style);
-                console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
-                if (result.currentStyle) {
-                    console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
-                }
-            }
-        }
+        const { operatorId, style } = this.parseAssignArgs(args);
+        await this.executeAssignment(operatorId, style);
     }
     async handleRelease() {
         const result = await this.manager.releaseOperator();
