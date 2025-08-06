@@ -2,49 +2,64 @@
 
 COEIRO Operatorの詳細な設定とカスタマイズ方法について説明します。
 
-基本的なインストール手順については [README.md](README.md) を参照してください。
+基本的なインストール手順については [@README.md](README.md) を参照してください。
 
-## 音声フォントについて
+## 重要な変更点 🚀
+
+- COEIROINKサーバーから音声フォントを自動検出
+- 内蔵のデフォルト設定で即座に利用可能
+- 必要に応じてユーザー設定でカスタマイズ可能
+
+## 初期セットアップ
+
+### 1. COEIROINKの起動確認
+
+```bash
+# COEIROINKの動作確認
+curl -X GET "http://localhost:50032/v1/speakers"
+```
+
+### 2. 動作テスト
+
+```bash
+# 音声出力テスト
+say-coeiroink "セットアップ完了です"
+
+# オペレータ管理テスト
+operator-manager assign
+```
+
+**これだけで利用開始できます！** 設定ファイルは自動的に内蔵設定から構築されます。
+
+## 音声フォントのダウンロード
 
 ### デフォルト利用可能音声
 
-COEIROINKは**つくよみちゃんのみがデフォルト**で利用可能です。その他のキャラクターは個別にダウンロードが必要です。
+- **つくよみちゃん**: デフォルトで利用可能
+- **その他12キャラクター**: COEIROINKアプリでダウンロード後、自動的に利用可能
 
 ### 利用可能音声の確認
 
 ```bash
-# ダウンロード済みキャラクターの確認
-curl -X GET "http://localhost:50032/v1/speakers" | jq -r '.[].speakerName' | sort
+# 現在利用可能なキャラクター
+curl -X GET "http://localhost:50032/v1/speakers" | jq -r '.[].speakerName'
 
-# ダウンロード可能なキャラクターの確認
-curl -X GET "http://localhost:50032/v1/downloadable_speakers" | jq -r '.[].speakerName' | sort
+# ダウンロード可能なキャラクター
+curl -X GET "http://localhost:50032/v1/downloadable_speakers" | jq -r '.[].speakerName'
 ```
 
-### 音声フォントのダウンロード
+### キャラクター追加手順
 
-COEIROINKアプリケーションから追加の音声フォントをダウンロードできます：
+1. **COEIROINKアプリを起動**
+2. **ライブラリ → キャラクターダウンロード**
+3. **利用したいキャラクターを選択してダウンロード**
+4. **自動的にCOEIRO Operatorで利用可能**
 
-- アンジーさん
-- アルマちゃん  
-- ディアちゃん
-- KANA
-- 金苗
-- リリンちゃん
-- MANA
-- AI声優-朱花
+## カスタマイズ（任意）
 
-## 設定ファイル
+### 基本設定のカスタマイズ
 
-### 設定ファイルの場所
-
-COEIRO Operatorは以下の場所で設定ファイルを検索します：
-
-1. 作業ディレクトリ内の `.coeiroink/` フォルダ
-2. ホームディレクトリ内の `~/.coeiro-operator/` フォルダ
-
-### 基本設定（任意）
-
-COEIROINK接続設定 `coeiroink-config.json`：
+COEIROINK接続設定 `~/.coeiro-operator/coeiroink-config.json`：
 
 ```json
 {
@@ -53,68 +68,42 @@ COEIROINK接続設定 `coeiroink-config.json`：
 }
 ```
 
-### オペレータ設定の作成
+### キャラクター設定のカスタマイズ
 
-#### 自動音声ID取得による設定作成
+`~/.coeiro-operator/operator-config.json` でキャラクター設定を部分的にオーバーライド可能：
 
-```bash
-# つくよみちゃんの音声ID取得
-TSUKUYOMI_ID=$(curl -s -X GET "http://localhost:50032/v1/speakers" | jq -r '.[] | select(.speakerName == "つくよみちゃん") | .speakerUuid')
-
-# 設定ファイル作成
-mkdir -p ~/.coeiro-operator
-cat > ~/.coeiro-operator/operator-config.json << EOF
+```json
 {
   "characters": {
     "tsukuyomi": {
-      "name": "つくよみちゃん",
-      "voice_id": "$TSUKUYOMI_ID",
-      "enabled": true,
-      "default_style": "normal",
-      "style_selection": "default",
-      "personality": "冷静で丁寧、報告は簡潔で正確",
-      "speaking_style": "敬語、落ち着いた口調",
-      "greeting": "本日も作業をサポートさせていただきます。つくよみちゃんです。",
-      "farewell": "本日の作業、お疲れさまでした。",
-      "available_styles": {
-        "normal": {
-          "name": "れいせい",
-          "style_id": 0,
-          "enabled": true,
-          "personality": "落ち着いた知的な性格",
-          "speaking_style": "丁寧で上品な敬語"
-        }
-      }
+      "greeting": "カスタマイズされた挨拶メッセージ",
+      "personality": "カスタマイズされた性格設定"
+    },
+    "angie": {
+      "disabled": true
     }
   }
 }
-EOF
 ```
 
-## 設定ファイル仕様
+### 設定のカスタマイズ項目
 
-### キャラクター設定の詳細
+- `greeting`: 挨拶メッセージ
+- `farewell`: お別れメッセージ  
+- `personality`: 性格設定（説明用）
+- `speaking_style`: 話し方（説明用）
+- `disabled`: キャラクターの無効化
 
-利用可能なオペレータの詳細については **[prompts/CHARACTERS.md](prompts/CHARACTERS.md)** を参照してください。
+## 動作確認・トラブルシューティング
 
-### 設定更新
-
-キャラクター設定の更新方法については **[prompts/UPDATE_CHARACTER_SETTINGS.md](prompts/UPDATE_CHARACTER_SETTINGS.md)** を参照してください。
-
-## 環境確認コマンド
-
-### 利用可能音声の詳細確認
+### 利用可能キャラクターの確認
 
 ```bash
-# 音声一覧取得
-curl -X GET "http://localhost:50032/v1/speakers" > available-voices.json
+# 現在利用可能なキャラクター確認
+operator-manager available
 
-# 音声名・IDの確認
-jq '.[] | {name: .speakerName, uuid: .speakerUuid, styles: [.styles[].styleName]}' available-voices.json
-
-# 特定キャラクターの音声ID取得例
-echo "つくよみちゃんの音声ID:"
-jq '.[] | select(.speakerName == "つくよみちゃん") | .speakerUuid' available-voices.json
+# 動的設定の詳細確認（デバッグ用）
+node debug-config.js
 ```
 
 ### 設定ファイルの確認
@@ -122,13 +111,9 @@ jq '.[] | select(.speakerName == "つくよみちゃん") | .speakerUuid' availa
 ```bash
 # 設定ディレクトリの確認
 ls -la ~/.coeiro-operator/
-ls -la ./.coeiroink/
 
-# 設定ファイル内容の確認
-cat ~/.coeiro-operator/operator-config.json 2>/dev/null || echo "設定ファイルが存在しません"
-
-# 音声ID整合性確認
-jq -r '.characters | to_entries[] | "\(.key): \(.value.name) (\(.value.voice_id))"' ~/.coeiro-operator/operator-config.json
+# ユーザー設定ファイル内容の確認（存在する場合）
+cat ~/.coeiro-operator/operator-config.json 2>/dev/null || echo "ユーザー設定ファイルなし（内蔵設定を使用）"
 ```
 
 ## トラブルシューティング
@@ -136,15 +121,22 @@ jq -r '.characters | to_entries[] | "\(.key): \(.value.name) (\(.value.voice_id)
 ### COEIROINK接続エラー
 1. COEIROINKが起動していることを確認
 2. ポート50032が利用可能であることを確認
-3. 設定ファイルのhost/port設定を確認
+3. 必要に応じて `~/.coeiro-operator/coeiroink-config.json` でhost/port設定
 
 ### 音声出力されない
 1. COEIROINKのスピーカー設定を確認
 2. システムの音量設定を確認
 3. 音声ファイルの保存場所の権限を確認
 
-### 設定ファイルの場所
-- `~/.coeiro-operator/coeiroink-config.json` - 音声合成設定
-- `~/.coeiro-operator/operator-config.json` - オペレータ定義
-- `~/.coeiro-operator/active-operators.json` - 利用状況管理（自動生成）
-- `/tmp/coeiroink-mcp-session-*/session-operator-*.json` - セッション情報（自動生成）
+### 利用可能キャラクターが少ない
+1. COEIROINKアプリでキャラクターダウンロード
+2. COEIRO Operatorを再起動（動的検出のため）
+
+### 関連ドキュメント
+
+- **[docs/CHARACTERS.md](docs/CHARACTERS.md)** - 全キャラクター詳細
+- **[prompts/UPDATE_CHARACTER_SETTINGS.md](prompts/UPDATE_CHARACTER_SETTINGS.md)** - 設定更新手順
+
+### 自動生成ファイル
+- `~/.coeiro-operator/active-operators.json` - 利用状況管理
+- `/tmp/coeiroink-mcp-session-*/` - セッション情報

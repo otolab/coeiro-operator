@@ -1,4 +1,3 @@
-
 # COEIRO Operator
 
 COEIROINK音声合成システムのMCPサーバーとオペレータ管理システム
@@ -9,11 +8,13 @@ COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシ�
 
 ### 主な機能
 
-- **音声オペレータシステム**: 9種類のキャラクターによる音声通知
+- **音声オペレータシステム**: 13種類のキャラクターによる音声通知
+- **動的設定管理**: COEIROINKサーバーから音声フォントを自動検出
 - **非同期音声合成**: 低レイテンシストリーミング対応
 - **MCPサーバー**: Claude Codeとの統合
 - **セッション管理**: 複数セッション間でのオペレータ重複防止
 - **コマンドライン互換**: macOS sayコマンド互換インターフェース
+- **設定の階層マージ**: 内蔵設定 + 動的検出 + ユーザー設定の統合
 
 ## インストール
 
@@ -26,7 +27,7 @@ COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシ�
 ### NPMからのインストール
 
 ```bash
-npm install -g @otolab/coeiro-operator
+npm install -g coeiro-operator
 ```
 
 ### ソースからのインストール（開発用）
@@ -65,16 +66,6 @@ operator-manager assign
 operator-manager status
 ```
 
-### 3. Claude Codeでの使用
-
-```
-# 挨拶でオペレータ自動アサイン
-こんにちは
-
-# 作業完了での自動解放
-ありがとう
-```
-
 ## 基本的な使用方法
 
 ### コマンドライン
@@ -88,16 +79,6 @@ say-coeiroink -r 150 "ゆっくり話します"
 operator-manager assign      # ランダム割り当て
 operator-manager status      # 現在のステータス
 operator-manager release     # オペレータ解放
-```
-
-### Claude Codeでの使用
-
-```
-# 挨拶でオペレータ自動アサイン
-こんにちは
-
-# 作業完了での自動解放
-ありがとう
 ```
 
 ## MCPツール
@@ -114,7 +95,7 @@ COEIRO Operatorは以下のMCPツールを提供します：
 
 - **[INSTALLATION.md](INSTALLATION.md)** - 詳細設定・カスタマイズガイド
 - **[prompts/OPERATOR_SYSTEM.md](prompts/OPERATOR_SYSTEM.md)** - システム仕様書
-- **[prompts/CHARACTERS.md](prompts/CHARACTERS.md)** - オペレータキャラクター詳細
+- **[docs/CHARACTERS.md](docs/CHARACTERS.md)** - オペレータキャラクター詳細
 - **[prompts/UPDATE_CHARACTER_SETTINGS.md](prompts/UPDATE_CHARACTER_SETTINGS.md)** - キャラクター設定の更新方法
 
 ## 開発
@@ -128,11 +109,15 @@ coeiro-operator/
 │   ├── operator/           # オペレータ管理
 │   └── say/               # 音声合成
 ├── scripts/               # シェルスクリプト
-├── prompts/              # プロンプト・仕様書
+├── docs/                 # ドキュメント
+│   ├── CONFIGURATION.md        # 設定ファイル仕様
+│   └── CHARACTERS.md            # キャラクター詳細
+├── prompts/              # プロンプト・仕様書・開発手順
 │   ├── OPERATOR_SYSTEM.md       # システム仕様
-│   ├── CHARACTERS.md            # キャラクター詳細
-│   └── UPDATE_CHARACTER_SETTINGS.md # 設定更新手順
+│   └── UPDATE_CHARACTER_SETTINGS.md # 設定更新・開発手順
 └── INSTALLATION.md       # インストールガイド
+
+**prompts/ディレクトリについて**: システム仕様書、キャラクター情報、ユーザー向け設定手順に加えて、開発者向けの内部設定更新手順も含んでいます。
 ```
 
 ### 貢献
@@ -144,6 +129,23 @@ npm install
 npm link
 ```
 
+**prompts/ディレクトリについて**: システム仕様書、キャラクター情報、ユーザー向け設定手順に加えて、開発者向けの内部設定更新手順も含んでいます。
+
 ## ライセンス
 
-ISC
+MIT License
+
+Copyright (c) 2025 COEIRO Operator
+
+詳細については [LICENSE](LICENSE) ファイルをご確認ください。
+
+## 関連プロジェクト
+
+- **[COEIROINK](https://coeiroink.com/)** - 音声合成エンジン本体
+- **[Claude Code](https://claude.ai/code)** - AI開発支援ツール（MCP対応）
+
+## サポート
+
+- Issue報告: [GitHub Issues](https://github.com/otolab/coeiro-operator/issues)
+- 機能要望: [GitHub Issues](https://github.com/otolab/coeiro-operator/issues/new)
+- ドキュメント: [INSTALLATION.md](INSTALLATION.md)

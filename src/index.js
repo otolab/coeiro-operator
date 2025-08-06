@@ -39,10 +39,11 @@ let operatorManager = null;
 server.registerTool("operator_assign", {
   description: "オペレータをランダム選択して割り当てます。アサイン後に現在のスタイルと利用可能な他のスタイル情報を表示します。スタイル切り替えはsayツールのstyleパラメータで可能です（例: say({message: \"テスト\", style: \"ura\"})）。ランダムスタイル選択キャラクターは次回アサイン時に異なるスタイルが選ばれる場合があります。",
   inputSchema: {
-    operator: z.string().optional().describe("指定するオペレータ名（英語表記、例: 'tsukuyomi', 'alma'など。省略時または空文字列時はランダム選択。日本語表記は無効）")
+    operator: z.string().optional().describe("指定するオペレータ名（英語表記、例: 'tsukuyomi', 'alma'など。省略時または空文字列時はランダム選択。日本語表記は無効）"),
+    style: z.string().optional().describe("指定するスタイル名（例: 'normal', 'ura', 'sleepy'など。省略時はキャラクターのデフォルト設定に従う）")
   }
 }, async (args) => {
-  const { operator } = args || {};
+  const { operator, style } = args || {};
   
   // 引数バリデーション（空文字列はランダム選択として扱う）
   if (operator !== undefined && operator !== '' && operator !== null) {
@@ -61,9 +62,9 @@ server.registerTool("operator_assign", {
     
     // オペレータ指定の有無に応じてアサイン
     if (operator && operator !== '' && operator !== null) {
-      assignResult = await operatorManager.assignSpecificOperator(operator);
+      assignResult = await operatorManager.assignSpecificOperator(operator, style);
     } else {
-      assignResult = await operatorManager.assignRandomOperator();
+      assignResult = await operatorManager.assignRandomOperator(style);
     }
     
     // キャラクター情報を取得

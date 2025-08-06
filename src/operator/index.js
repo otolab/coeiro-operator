@@ -142,13 +142,27 @@ export class OperatorManager {
     /**
      * スタイルを選択
      */
-    selectStyle(character) {
+    selectStyle(character, specifiedStyle = null) {
         const availableStyles = Object.entries(character.available_styles || {})
             .filter(([_, style]) => !style.disabled) // disabledフラグをチェック
             .map(([styleId, style]) => ({ styleId, ...style }));
         
         if (availableStyles.length === 0) {
             throw new Error(`キャラクター '${character.name}' に利用可能なスタイルがありません`);
+        }
+        
+        // 明示的にスタイルが指定された場合はそれを優先
+        if (specifiedStyle) {
+            const requestedStyle = availableStyles.find(s => 
+                s.styleId === specifiedStyle || 
+                s.name === specifiedStyle ||
+                s.styleId.toString() === specifiedStyle
+            );
+            if (requestedStyle) {
+                return requestedStyle;
+            }
+            // 指定されたスタイルが見つからない場合は警告ログを出力してデフォルト処理に続行
+            console.warn(`指定されたスタイル '${specifiedStyle}' が見つかりません。デフォルト選択を使用します。`);
         }
         
         switch (character.style_selection) {
@@ -163,8 +177,8 @@ export class OperatorManager {
                 
             case 'specified':
                 // 指定されたスタイル（今回は default と同じ扱い）
-                const specifiedStyle = availableStyles.find(s => s.styleId === character.default_style);
-                return specifiedStyle || availableStyles[0];
+                const specifiedStyleFromConfig = availableStyles.find(s => s.styleId === character.default_style);
+                return specifiedStyleFromConfig || availableStyles[0];
                 
             default:
                 return availableStyles[0];
@@ -280,7 +294,7 @@ export class OperatorManager {
     /**
      * ランダムオペレータ選択と詳細情報付きアサイン
      */
-    async assignRandomOperator() {
+    async assignRandomOperator(style = null) {
         const availableOperators = await this.getAvailableOperators();
         
         if (availableOperators.length === 0) {
@@ -290,13 +304,13 @@ export class OperatorManager {
         // ランダム選択
         const selectedOperator = availableOperators[Math.floor(Math.random() * availableOperators.length)];
         
-        return await this.assignSpecificOperator(selectedOperator);
+        return await this.assignSpecificOperator(selectedOperator, style);
     }
 
     /**
      * 指定されたオペレータを詳細情報付きでアサイン
      */
-    async assignSpecificOperator(specifiedOperator) {
+    async assignSpecificOperator(specifiedOperator, style = null) {
         if (!specifiedOperator) {
             throw new Error('オペレータIDを指定してください');
         }
@@ -317,7 +331,7 @@ export class OperatorManager {
             
             // 同じオペレータが指定された場合は何もしない
             if (currentOperator === specifiedOperator) {
-                const selectedStyle = this.selectStyle(character);
+                const selectedStyle = this.selectStyle(character, style);
                 
                 return {
                     operatorId: specifiedOperator,
@@ -357,7 +371,7 @@ export class OperatorManager {
         await this.reserveOperator(specifiedOperator);
         
         // スタイルを選択
-        const selectedStyle = this.selectStyle(character);
+        const selectedStyle = this.selectStyle(character, style);
         
         // 音声設定を更新
         await this.updateVoiceSetting(character.voice_id, selectedStyle.style_id);

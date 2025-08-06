@@ -54,7 +54,7 @@ Claude Desktop統合環境で利用可能：
 
 利用可能なオペレータキャラクターの詳細については、以下を参照してください：
 
-**@CHARACTERS.md**
+**@../docs/CHARACTERS.md**
 
 9種類のオペレータキャラクター（つくよみちゃん、アンジーさん、アルマちゃん、朱花、ディアちゃん、KANA、金苗、リリンちゃん、MANA）が利用可能で、それぞれ異なる性格と音声特性を持ちます。
 
@@ -78,7 +78,7 @@ macOS `say`コマンド互換の音声合成CLI
 **作成日**: 2025年8月5日  
 **更新日**: 2025年8月5日 (ドキュメント再構成)
 **関連ファイル**: 
-- **[CHARACTERS.md](CHARACTERS.md)** - オペレータキャラクター詳細
+- **[CHARACTERS.md](../docs/CHARACTERS.md)** - オペレータキャラクター詳細
 - **[UPDATE_CHARACTER_SETTINGS.md](UPDATE_CHARACTER_SETTINGS.md)** - キャラクター設定更新手順
 - **[../INSTALLATION.md](../INSTALLATION.md)** - インストールガイド
 - **[../README.md](../README.md)** - プロジェクト概要

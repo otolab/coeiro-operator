@@ -264,7 +264,7 @@ MCPツールの`say`でスタイルを一時的に指定可能：
 
 ## 関連ファイル
 
-- **キャラクター詳細情報**: [../prompts/CHARACTERS.md](../prompts/CHARACTERS.md)
+- **キャラクター詳細情報**: [CHARACTERS.md](CHARACTERS.md)
 - **音声ID更新手順**: [../prompts/UPDATE_CHARACTER_SETTINGS.md](../prompts/UPDATE_CHARACTER_SETTINGS.md)
 - **インストールガイド**: [../INSTALLATION.md](../INSTALLATION.md)
 
