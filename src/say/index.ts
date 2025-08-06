@@ -5,82 +5,25 @@
 
 import { readFile, access, mkdir } from 'fs/promises';
 import { constants } from 'fs';
-import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
 import { createRequire } from 'module';
 import { OperatorManager } from '../operator/index.js';
+import { SpeechQueue } from './speech-queue.js';
+import { AudioPlayer } from './audio-player.js';
+import { AudioSynthesizer } from './audio-synthesizer.js';
+import type {
+    Config,
+    StreamConfig,
+    Chunk,
+    AudioResult,
+    OperatorVoice,
+    SpeechTask,
+    SynthesizeOptions,
+    SynthesizeResult
+} from './types.js';
 
 // ES Modules環境でrequireを使用
 const require = createRequire(import.meta.url);
-
-// インターフェース定義
-interface Config {
-    host: string;
-    port: string;
-    rate: number;
-    voice_id?: string;
-    style_id?: number;
-}
-
-interface StreamConfig {
-    chunkSizeChars: number;
-    overlapChars: number;
-    bufferSize: number;
-    audioBufferMs: number;
-    silencePaddingMs: number;
-    preloadChunks: number;
-}
-
-interface Chunk {
-    text: string;
-    index: number;
-    isFirst: boolean;
-    isLast: boolean;
-    overlap: number;
-}
-
-interface AudioResult {
-    chunk: Chunk;
-    audioBuffer: ArrayBuffer;
-    latency: number;
-}
-
-interface OperatorVoice {
-    voice_id: string;
-    character?: {
-        available_styles?: Record<string, {
-            enabled: boolean;
-            style_id: number;
-            name: string;
-        }>;
-        style_selection: string;
-        default_style: string;
-    };
-}
-
-interface SpeechTask {
-    id: number;
-    text: string;
-    options: SynthesizeOptions;
-    timestamp: number;
-}
-
-interface SynthesizeOptions {
-    voice?: string | OperatorVoice | null;
-    rate?: number;
-    outputFile?: string | null;
-    streamMode?: boolean;
-    style?: string;
-}
-
-interface SynthesizeResult {
-    success: boolean;
-    taskId?: number;
-    queueLength?: number;
-    outputFile?: string;
-    latency?: number;
-    mode?: string;
-}
 
 // デフォルト設定
 const DEFAULT_CONFIG: Config = {
@@ -160,18 +103,21 @@ export async function loadConfig(configFile: string | null = null): Promise<Conf
 
 export class SayCoeiroink {
     private config: Config;
-    private audioPlayer: string | null = null;
-    private audioQueue: AudioResult[] = [];
-    private isPlaying: boolean = false;
-    private synthesisQueue: any[] = [];
-    private activeSynthesis: Map<any, any> = new Map();
-    private speechQueue: SpeechTask[] = [];
-    private isProcessing: boolean = false;
     private operatorManager: OperatorManager;
+    private speechQueue: SpeechQueue;
+    private audioPlayer: AudioPlayer;
+    private audioSynthesizer: AudioSynthesizer;
 
     constructor(config: Config | null = null) {
         this.config = config || DEFAULT_CONFIG;
         this.operatorManager = new OperatorManager();
+        this.audioPlayer = new AudioPlayer();
+        this.audioSynthesizer = new AudioSynthesizer(this.config);
+        
+        // SpeechQueueを初期化（処理コールバックを渡す）
+        this.speechQueue = new SpeechQueue(async (task: SpeechTask) => {
+            await this.synthesizeTextInternal(task.text, task.options);
+        });
     }
 
     async initialize(): Promise<void> {
@@ -191,70 +137,12 @@ export class SayCoeiroink {
     }
 
     async initializeAudioPlayer(): Promise<boolean> {
-        try {
-            // Fallback to system audio command for compatibility
-            console.error(`音声プレーヤー初期化: システムオーディオ使用（低レイテンシモード）`);
-            this.audioPlayer = 'system';
-            return true;
-        } catch (error) {
-            console.error(`音声プレーヤー初期化エラー: ${(error as Error).message}`);
-            return false;
-        }
+        return await this.audioPlayer.initialize();
     }
 
-    // テキストを音切れ防止のためのオーバーラップ付きチャンクに分割
+    // AudioSynthesizer の splitTextIntoChunks メソッドを使用
     splitTextIntoChunks(text: string): Chunk[] {
-        const chunks: Chunk[] = [];
-        const chunkSize = STREAM_CONFIG.chunkSizeChars;
-        const overlap = STREAM_CONFIG.overlapChars;
-        
-        for (let i = 0; i < text.length; i += chunkSize - overlap) {
-            const end = Math.min(i + chunkSize, text.length);
-            const chunk = text.slice(i, end);
-            
-            if (chunk.trim().length > 0) {
-                chunks.push({
-                    text: chunk,
-                    index: chunks.length,
-                    isFirst: i === 0,
-                    isLast: end >= text.length,
-                    overlap: i > 0 ? overlap : 0
-                });
-            }
-        }
-        
-        return chunks;
-    }
-
-    private async execCommand(command: string, args: string[]): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const child: ChildProcess = spawn(command, args, {
-                stdio: ['pipe', 'pipe', 'pipe']
-            });
-
-            let stdout = '';
-            let stderr = '';
-
-            child.stdout?.on('data', (data) => {
-                stdout += data.toString();
-            });
-
-            child.stderr?.on('data', (data) => {
-                stderr += data.toString();
-            });
-
-            child.on('close', (code) => {
-                if (code === 0) {
-                    resolve(stdout.trim());
-                } else {
-                    reject(new Error(`Command failed with code ${code}: ${stderr}`));
-                }
-            });
-
-            child.on('error', (err) => {
-                reject(new Error(`Failed to execute command: ${err.message}`));
-            });
-        });
+        return this.audioSynthesizer.splitTextIntoChunks(text);
     }
 
     async getCurrentOperatorVoice(): Promise<OperatorVoice | null> {
@@ -281,303 +169,77 @@ export class SayCoeiroink {
         }
     }
 
+    // AudioSynthesizer の synthesizeChunk メソッドを使用
     async synthesizeChunk(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<AudioResult> {
-        const url = `http://${this.config.host}:${this.config.port}/v1/synthesis`;
-        
-        // voiceInfoから音声IDとスタイルIDを取得
-        let voiceId: string;
-        let styleId = 0;
-        
-        if (typeof voiceInfo === 'object' && voiceInfo.voice_id) {
-            // 新しいアーキテクチャ: オペレータ情報付き
-            voiceId = voiceInfo.voice_id;
-            
-            // キャラクターのスタイル選択ロジックを適用
-            if (voiceInfo.character) {
-                const character = voiceInfo.character;
-                const availableStyles = Object.entries(character.available_styles || {})
-                    .filter(([_, style]) => style.enabled)
-                    .map(([styleId, style]) => ({ styleId, ...style }));
-                
-                if (availableStyles.length > 0) {
-                    let selectedStyle: any;
-                    switch (character.style_selection) {
-                        case 'default':
-                            selectedStyle = availableStyles.find(s => s.styleId === character.default_style);
-                            break;
-                        case 'random':
-                            selectedStyle = availableStyles[Math.floor(Math.random() * availableStyles.length)];
-                            break;
-                        default:
-                            selectedStyle = availableStyles[0];
-                    }
-                    
-                    // フォールバック: default_styleが見つからない場合は最初のスタイルを使用
-                    if (!selectedStyle) {
-                        selectedStyle = availableStyles[0];
-                    }
-                    
-                    styleId = selectedStyle?.style_id || 0;
-                }
-            }
-        } else {
-            // 従来の形式: 音声IDのみ
-            voiceId = voiceInfo as string;
-        }
-
-        // 音切れ防止: 前後に無音パディングを追加
-        const paddingMs = chunk.isFirst ? STREAM_CONFIG.silencePaddingMs : STREAM_CONFIG.silencePaddingMs / 2;
-        const postPaddingMs = chunk.isLast ? STREAM_CONFIG.silencePaddingMs : STREAM_CONFIG.silencePaddingMs / 2;
-
-        const synthesisParam = {
-            text: chunk.text,
-            speakerUuid: voiceId,
-            styleId: styleId,
-            speedScale: speed,
-            volumeScale: 1.0,
-            pitchScale: 0.0,
-            intonationScale: 1.0,
-            prePhonemeLength: paddingMs / 1000,
-            postPhonemeLength: postPaddingMs / 1000,
-            outputSamplingRate: 24000
-        };
-
-
-        const startTime = Date.now();
-        
-        try {
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(synthesisParam)
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            const audioBuffer = await response.arrayBuffer();
-            const latency = Date.now() - startTime;
-            
-            
-            return {
-                chunk,
-                audioBuffer,
-                latency
-            };
-        } catch (error) {
-            throw new Error(`チャンク${chunk.index}合成エラー: ${(error as Error).message}`);
-        }
+        return await this.audioSynthesizer.synthesizeChunk(chunk, voiceInfo, speed);
     }
 
-    // WAVヘッダーを除去してPCMデータを抽出
+    // AudioPlayer の extractPCMFromWAV メソッドを使用
     extractPCMFromWAV(wavBuffer: ArrayBuffer): Uint8Array {
-        const view = new DataView(wavBuffer);
-        
-        // WAVヘッダーの検証とデータ位置の特定
-        if (view.getUint32(0, false) !== 0x52494646) { // "RIFF"
-            throw new Error('Invalid WAV file');
-        }
-        
-        let dataOffset = 12; // RIFFヘッダー後
-        while (dataOffset < wavBuffer.byteLength - 8) {
-            const chunkType = view.getUint32(dataOffset, false);
-            const chunkSize = view.getUint32(dataOffset + 4, true);
-            
-            if (chunkType === 0x64617461) { // "data"
-                // データチャンクが見つかった
-                const pcmData = wavBuffer.slice(dataOffset + 8, dataOffset + 8 + chunkSize);
-                return new Uint8Array(pcmData);
-            }
-            
-            dataOffset += 8 + chunkSize;
-        }
-        
-        throw new Error('WAV data chunk not found');
+        return this.audioPlayer.extractPCMFromWAV(wavBuffer);
     }
 
+    // AudioPlayer の playAudioStream メソッドを使用
     async playAudioStream(audioResult: AudioResult): Promise<void> {
-        try {
-            const tempFile = `/tmp/stream_${Date.now()}_${audioResult.chunk.index}.wav`;
-            
-            const fs = await import('fs');
-            await fs.promises.writeFile(tempFile, Buffer.from(audioResult.audioBuffer));
-
-            const playPromise = this.playAudioFile(tempFile);
-            
-            // ファイルクリーンアップを遅延実行
-            playPromise.finally(() => {
-                setTimeout(() => {
-                    fs.promises.unlink(tempFile).catch(() => {});
-                }, 1000);
-            });
-
-            return playPromise;
-            
-        } catch (error) {
-            console.error(`音声再生エラー: ${(error as Error).message}`);
-        }
+        return await this.audioPlayer.playAudioStream(audioResult);
     }
 
+    // AudioPlayer の playAudioFile メソッドを使用
     async playAudioFile(audioFile: string): Promise<void> {
-        try {
-            const audioPlayer = this.detectAudioPlayerSync();
-            await this.execCommand(audioPlayer, [audioFile]);
-        } catch (error) {
-            throw new Error(`音声再生エラー: ${(error as Error).message}`);
-        }
+        return await this.audioPlayer.playAudioFile(audioFile);
     }
 
+    // AudioPlayer の detectAudioPlayerSync メソッドを使用
     detectAudioPlayerSync(): string {
-        const players = ['afplay', 'aplay', 'paplay', 'play'];
-        
-        for (const player of players) {
-            try {
-                spawn('which', [player], { stdio: 'ignore' });
-                return player;
-            } catch {
-                continue;
-            }
-        }
-        
-        return 'afplay'; // デフォルト（macOS）
+        return this.audioPlayer.detectAudioPlayerSync();
     }
 
+    // AudioPlayer の applyCrossfade メソッドを使用
     applyCrossfade(pcmData: Uint8Array, overlapSamples: number): Uint8Array {
-        // 簡単なクロスフェード実装（音切れ軽減）
-        // 副作用を避けるため、新しい配列を作成して返す
-        const result = new Uint8Array(pcmData);
-        
-        if (overlapSamples > 0 && overlapSamples < pcmData.length / 2) {
-            for (let i = 0; i < overlapSamples * 2; i += 2) {
-                const factor = i / (overlapSamples * 2);
-                const sample = (pcmData[i] | (pcmData[i + 1] << 8));
-                const fadedSample = Math.floor(sample * factor);
-                result[i] = fadedSample & 0xFF;
-                result[i + 1] = (fadedSample >> 8) & 0xFF;
-            }
-        }
-        
-        return result;
+        return this.audioPlayer.applyCrossfade(pcmData, overlapSamples);
     }
 
+    // AudioSynthesizer の convertRateToSpeed メソッドを使用
     convertRateToSpeed(rate: number): number {
-        const baseRate = 200;
-        let speed = rate / baseRate;
-        if (speed < 0.5) speed = 0.5;
-        if (speed > 2.0) speed = 2.0;
-        return speed;
+        return this.audioSynthesizer.convertRateToSpeed(rate);
     }
 
     async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number): Promise<void> {
-        const chunks = this.splitTextIntoChunks(text);
-
-        // 順次処理でシンプルに実装
-        for (let i = 0; i < chunks.length; i++) {
-            const chunk = chunks[i];
-            const result = await this.synthesizeChunk(chunk, voiceId, speed);
-            await this.playAudioStream(result);
+        // AudioSynthesizer の synthesizeStream と AudioPlayer を組み合わせて使用
+        for await (const audioResult of this.audioSynthesizer.synthesizeStream(text, voiceId, speed)) {
+            await this.audioPlayer.playAudioStream(audioResult);
         }
     }
 
+    // AudioSynthesizer の listVoices メソッドを使用
     async listVoices(): Promise<void> {
-        const url = `http://${this.config.host}:${this.config.port}/v1/speakers`;
-        
-        try {
-            const response = await fetch(url, { 
-                signal: AbortSignal.timeout(3000) 
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
-            const speakers = await response.json();
-            console.log('Available voices:');
-            
-            speakers.forEach((speaker: any) => {
-                console.log(`${speaker.speakerUuid}: ${speaker.speakerName}`);
-                speaker.styles.forEach((style: any) => {
-                    console.log(`  Style ${style.styleId}: ${style.styleName}`);
-                });
-            });
-        } catch (error) {
-            console.error(`Error: Cannot connect to COEIROINK server at http://${this.config.host}:${this.config.port}`);
-            console.error('Make sure the server is running.');
-            throw error;
-        }
+        return await this.audioSynthesizer.listVoices();
     }
 
+    // AudioPlayer の saveAudio メソッドを使用
     async saveAudio(audioBuffer: ArrayBuffer, outputFile: string): Promise<void> {
-        try {
-            const fs = await import('fs');
-            await fs.promises.writeFile(outputFile, Buffer.from(audioBuffer));
-        } catch (error) {
-            throw new Error(`音声ファイル保存エラー: ${(error as Error).message}`);
-        }
+        return await this.audioPlayer.saveAudio(audioBuffer, outputFile);
     }
 
+    // AudioSynthesizer の checkServerConnection メソッドを使用
     async checkServerConnection(): Promise<boolean> {
-        const url = `http://${this.config.host}:${this.config.port}/v1/speakers`;
-        
-        try {
-            const response = await fetch(url, { 
-                signal: AbortSignal.timeout(3000) 
-            });
-            return response.ok;
-        } catch (error) {
-            return false;
-        }
+        return await this.audioSynthesizer.checkServerConnection();
     }
 
-    // 音声キューに追加（非同期処理用）
-    enqueueSpeech(text: string, options: SynthesizeOptions = {}): SynthesizeResult {
+    // SpeechQueue の enqueue メソッドを使用
+    async enqueueSpeech(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         console.log(`DEBUG: enqueueSpeech called with text: "${text}"`);
-        const speechTask: SpeechTask = {
-            id: Date.now() + Math.random(),
-            text,
-            options,
-            timestamp: Date.now()
-        };
-        
-        this.speechQueue.push(speechTask);
-        console.log(`DEBUG: Task enqueued, queue length: ${this.speechQueue.length}`);
-        this.processSpeechQueue();
-        
-        return {
-            success: true,
-            taskId: speechTask.id,
-            queueLength: this.speechQueue.length
-        };
+        return await this.speechQueue.enqueue(text, options);
     }
 
-    // 音声キューの処理
-    async processSpeechQueue(): Promise<void> {
-        console.log(`DEBUG: processSpeechQueue called, isProcessing: ${this.isProcessing}, queueLength: ${this.speechQueue.length}`);
-        if (this.isProcessing || this.speechQueue.length === 0) {
-            console.log(`DEBUG: Skipping queue processing - already processing or empty queue`);
-            return;
-        }
-        
-        this.isProcessing = true;
-        console.log(`DEBUG: Starting queue processing`);
-        
-        while (this.speechQueue.length > 0) {
-            const task = this.speechQueue.shift();
-            if (!task) break;
-            
-            console.log(`DEBUG: Processing task ${task.id} with text: "${task.text}"`);
-            try {
-                await this.synthesizeTextInternal(task.text, task.options);
-                console.error(`音声タスク完了: ${task.id}`);
-            } catch (error) {
-                console.error(`音声タスクエラー: ${task.id}, ${(error as Error).message}`);
-            }
-        }
-        
-        this.isProcessing = false;
+    // SpeechQueue のステータスを取得
+    getSpeechQueueStatus() {
+        return this.speechQueue.getStatus();
+    }
+
+    // SpeechQueue をクリア
+    clearSpeechQueue(): void {
+        this.speechQueue.clear();
     }
 
     // CLIからの直接呼び出し用メソッド
@@ -587,7 +249,7 @@ export class SayCoeiroink {
 
     // MCPサーバから呼び出される非同期キューイング版メソッド
     async synthesizeTextAsync(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
-        return this.enqueueSpeech(text, options);
+        return await this.enqueueSpeech(text, options);
     }
 
     // 内部用の実際の音声合成処理
@@ -622,7 +284,7 @@ export class SayCoeiroink {
         if (style && typeof selectedVoice === 'object' && selectedVoice.character) {
             const character = selectedVoice.character;
             const specifiedStyle = Object.entries(character.available_styles || {})
-                .find(([styleId, styleData]) => styleId === style && styleData.enabled);
+                .find(([styleId, styleData]) => styleId === style && !styleData.disabled);
             
             if (specifiedStyle) {
                 // 指定されたスタイルが有効な場合、一時的にキャラクターの設定を上書き
@@ -649,14 +311,7 @@ export class SayCoeiroink {
         
         if (outputFile) {
             // ファイル出力モード
-            const chunks: Chunk[] = [{
-                text,
-                index: 0,
-                isFirst: true,
-                isLast: true,
-                overlap: 0
-            }];
-            const result = await this.synthesizeChunk(chunks[0], selectedVoice, speed);
+            const result = await this.audioSynthesizer.synthesize(text, selectedVoice, speed);
             await this.saveAudio(result.audioBuffer, outputFile);
             return { success: true, outputFile, latency: result.latency };
         } else if (streamMode || text.length > STREAM_CONFIG.chunkSizeChars) {
@@ -673,14 +328,7 @@ export class SayCoeiroink {
                 throw new Error('音声プレーヤーの初期化に失敗しました');
             }
             
-            const chunks: Chunk[] = [{
-                text,
-                index: 0,
-                isFirst: true,
-                isLast: true,
-                overlap: 0
-            }];
-            const result = await this.synthesizeChunk(chunks[0], selectedVoice, speed);
+            const result = await this.audioSynthesizer.synthesize(text, selectedVoice, speed);
             await this.playAudioStream(result);
             return { success: true, mode: 'normal', latency: result.latency };
         }
