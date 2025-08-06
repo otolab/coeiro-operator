@@ -248,3 +248,189 @@ index.ts:
           name: 非推奨のnew Buffer()コンストラクタ
         - hasFindings: false
           name: タイミング攻撃脆弱性
+speech-queue.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: speech-queue.ts
+          hash: 7e2075a45628d42ef1fcb0a54299bbf0be8e9c12b65ad6c942b6df20148e505c
+      version: 0.0.1
+    result:
+      content: |-
+        はい、承知いたしました。
+        提供されたコードと資料に基づき、分析を開始します。
+
+        # コード分析レポート
+
+        ## 1. 分析概要
+
+        - **対象ファイル**: `src/say/speech-queue.ts`
+        - **分析の目的**: [Analysis Procedure Guide](analysis-procedure-guide) に基づき、コードのリファクタリングに繋がる潜在的な問題を特定します。
+
+        ## 2. 分析結果サマリー
+
+        指定された観点に基づき分析を行った結果、対象ファイルにおいてリファクタリングを推奨する箇所は**見つかりませんでした**。
+        各項目の詳細な分析結果は以下の通りです。
+
+        ---
+
+        ## 3. 詳細な分析結果
+
+        ### 3.1. import されたオブジェクトの変更
+
+        - **分析結果**: 該当なし
+
+        **理由**:
+        対象ファイルでは、`import type { ... } from './types.js';` のように TypeScript の型定義のみをインポートしています。型定義は実行時のコードには含まれず、オブジェクトとして存在しないため、インポートされたオブジェクトが変更されることはありません。
+
+        ### 3.2. モジュール内部への参照
+
+        - **分析結果**: 該当なし
+
+        **理由**:
+        `import` 文は `./types.js` という同一ディレクトリ内のファイルへの参照のみであり、プロジェクトの外部や、パッケージの内部実装への不適切な参照は見つかりませんでした。
+
+        ### 3.3. 不必要な引数に対する副作用
+
+        - **分析結果**: 該当なし
+
+        **理由**:
+        `enqueue` メソッドは `options` オブジェクトを引数として受け取りますが、メソッド内でこのオブジェクト自体に変更（プロパティの追加や変更）を加える処理はありませんでした。渡された `options` オブジェクトは、そのまま新しいタスクオブジェクトの一部として利用されており、意図しない副作用を生む可能性は低いと判断しました。
+
+        ```typescript
+        // src/say/speech-queue.ts L23-L29
+        async enqueue(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+            const taskId = this.taskIdCounter++;
+            const task: SpeechTask = {
+                id: taskId,
+                text,
+                options, // <- 引数の options がそのまま代入される
+                timestamp: Date.now()
+            };
+        // ...
+        ```
+
+        ### 3.4. 非推奨のnew Buffer()コンストラクタ
+
+        - **分析結果**: 該当なし
+
+        **理由**:
+        コード全体を調査した結果、セキュリティ上のリスクとなりうる非推奨の `new Buffer()` コンストラクタの使用は見つかりませんでした。
+
+        ### 3.5. タイミング攻撃脆弱性
+
+        - **分析結果**: 該当なし
+
+        **理由**:
+        コード内で行われている比較処理 (`this.speechQueue.length === 0`) は、キューの長さをチェックするものであり、パスワードや署名といった機密情報の比較ではありません。そのため、タイミング攻撃の脆弱性はありません。
+      usage: 1042
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: speech-queue.ts
+          hash: 7e2075a45628d42ef1fcb0a54299bbf0be8e9c12b65ad6c942b6df20148e505c
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: false
+          name: import されたオブジェクトの変更
+        - hasFindings: false
+          name: モジュール内部への参照
+        - hasFindings: false
+          name: 不必要な引数に対する副作用
+        - hasFindings: false
+          name: 非推奨のnew Buffer()コンストラクタ
+        - hasFindings: false
+          name: タイミング攻撃脆弱性
+types.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: types.ts
+          hash: 50262a9b7d2db5099c6d5a5bf0e68638530cc1e4b977ae614cebc307c5221383
+      version: 0.0.1
+    result:
+      content: |-
+        はい、承知いたしました。分析を開始します。
+
+        ## コード分析レポート
+
+        ### 分析対象ファイル
+        - `src/say/types.ts`
+
+        ### 分析のサマリー
+        提供されたファイル `src/say/types.ts` は、音声合成システムで使用されるTypeScriptの型定義（インターフェース）のみを含んでいます。実行可能なロジックや具体的な実装は含まれていません。
+
+        [Analysis Procedure Guide](analysis-procedure-guide) に基づいて分析した結果、リファクタリングを推奨する該当箇所は見つかりませんでした。以下に各項目の詳細な分析結果を示します。
+
+        ---
+
+        ### 1. import されたオブジェクトの変更
+        #### 分析結果
+        該当するコードはありません。
+
+        #### 理由
+        このファイルには `import` 文が存在せず、外部からインポートしたオブジェクトを変更する処理は含まれていません。
+
+        ---
+
+        ### 2. モジュール内部への参照
+        #### 分析結果
+        該当するコードはありません。
+
+        #### 理由
+        このファイルには `import` 文が存在せず、他のモジュールへの参照は行われていません。
+
+        ---
+
+        ### 3. 不必要な引数に対する副作用
+        #### 分析結果
+        該当するコードはありません。
+
+        #### 理由
+        このファイルは型定義のみを含んでおり、関数の実装が存在しないため、引数への副作用を分析する対象がありません。
+
+        ---
+
+        ### 4. 非推奨のnew Buffer()コンストラクタ
+        #### 分析結果
+        該当するコードはありません。
+
+        #### 理由
+        このファイルには `new Buffer()` の呼び出しは含まれていません。
+
+        ---
+
+        ### 5. タイミング攻撃脆弱性
+        #### 分析結果
+        該当するコードはありません。
+
+        #### 理由
+        このファイルは型定義のみを含んでおり、文字列比較などの暗号学的な比較処理は含まれていません。
+
+        ---
+        ### 処理の完了状態
+        入力された `1 of 1` のチャンクの分析が完了しました。このファイルは他のチャンクに影響を与えません。
+      usage: 721
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: types.ts
+          hash: 50262a9b7d2db5099c6d5a5bf0e68638530cc1e4b977ae614cebc307c5221383
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: false
+          name: import されたオブジェクトの変更
+        - hasFindings: false
+          name: モジュール内部への参照
+        - hasFindings: false
+          name: 不必要な引数に対する副作用
+        - hasFindings: false
+          name: 非推奨のnew Buffer()コンストラクタ
+        - hasFindings: false
+          name: タイミング攻撃脆弱性

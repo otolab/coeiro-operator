@@ -6,7 +6,6 @@
 import { readFile, access, mkdir } from 'fs/promises';
 import { constants } from 'fs';
 import { join } from 'path';
-import { createRequire } from 'module';
 import { OperatorManager } from '../operator/index.js';
 import { SpeechQueue } from './speech-queue.js';
 import { AudioPlayer } from './audio-player.js';
@@ -22,8 +21,6 @@ import type {
     SynthesizeResult
 } from './types.js';
 
-// ES Modules環境でrequireを使用
-const require = createRequire(import.meta.url);
 
 // デフォルト設定
 const DEFAULT_CONFIG: Config = {
@@ -140,10 +137,6 @@ export class SayCoeiroink {
         return await this.audioPlayer.initialize();
     }
 
-    // AudioSynthesizer の splitTextIntoChunks メソッドを使用
-    splitTextIntoChunks(text: string): Chunk[] {
-        return this.audioSynthesizer.splitTextIntoChunks(text);
-    }
 
     async getCurrentOperatorVoice(): Promise<OperatorVoice | null> {
         try {
@@ -169,15 +162,7 @@ export class SayCoeiroink {
         }
     }
 
-    // AudioSynthesizer の synthesizeChunk メソッドを使用
-    async synthesizeChunk(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<AudioResult> {
-        return await this.audioSynthesizer.synthesizeChunk(chunk, voiceInfo, speed);
-    }
 
-    // AudioPlayer の extractPCMFromWAV メソッドを使用
-    extractPCMFromWAV(wavBuffer: ArrayBuffer): Uint8Array {
-        return this.audioPlayer.extractPCMFromWAV(wavBuffer);
-    }
 
     // AudioPlayer の playAudioStream メソッドを使用
     async playAudioStream(audioResult: AudioResult): Promise<void> {
@@ -189,15 +174,7 @@ export class SayCoeiroink {
         return await this.audioPlayer.playAudioFile(audioFile);
     }
 
-    // AudioPlayer の detectAudioPlayerSync メソッドを使用
-    detectAudioPlayerSync(): string {
-        return this.audioPlayer.detectAudioPlayerSync();
-    }
 
-    // AudioPlayer の applyCrossfade メソッドを使用
-    applyCrossfade(pcmData: Uint8Array, overlapSamples: number): Uint8Array {
-        return this.audioPlayer.applyCrossfade(pcmData, overlapSamples);
-    }
 
     // AudioSynthesizer の convertRateToSpeed メソッドを使用
     convertRateToSpeed(rate: number): number {
@@ -310,27 +287,33 @@ export class SayCoeiroink {
         const speed = this.convertRateToSpeed(rate);
         
         if (outputFile) {
-            // ファイル出力モード
-            const result = await this.audioSynthesizer.synthesize(text, selectedVoice, speed);
-            await this.saveAudio(result.audioBuffer, outputFile);
-            return { success: true, outputFile, latency: result.latency };
-        } else if (streamMode || text.length > STREAM_CONFIG.chunkSizeChars) {
-            // ストリーミング再生
+            // ファイル出力モード：ストリーミング合成してファイルに保存
+            const audioChunks: ArrayBuffer[] = [];
+            for await (const audioResult of this.audioSynthesizer.synthesizeStream(text, selectedVoice, speed)) {
+                audioChunks.push(audioResult.audioBuffer);
+            }
+            
+            // 全チャンクを結合
+            const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+            const combinedBuffer = new ArrayBuffer(totalLength);
+            const view = new Uint8Array(combinedBuffer);
+            let offset = 0;
+            
+            for (const chunk of audioChunks) {
+                view.set(new Uint8Array(chunk), offset);
+                offset += chunk.byteLength;
+            }
+            
+            await this.saveAudio(combinedBuffer, outputFile);
+            return { success: true, outputFile, mode: 'file' };
+        } else {
+            // 統一されたストリーミング再生
             if (!(await this.initializeAudioPlayer())) {
                 throw new Error('音声プレーヤーの初期化に失敗しました');
             }
             
             await this.streamSynthesizeAndPlay(text, selectedVoice, speed);
             return { success: true, mode: 'streaming' };
-        } else {
-            // 通常再生（短いテキスト）
-            if (!(await this.initializeAudioPlayer())) {
-                throw new Error('音声プレーヤーの初期化に失敗しました');
-            }
-            
-            const result = await this.audioSynthesizer.synthesize(text, selectedVoice, speed);
-            await this.playAudioStream(result);
-            return { success: true, mode: 'normal', latency: result.latency };
         }
     }
 }
