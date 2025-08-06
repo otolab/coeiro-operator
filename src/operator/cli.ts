@@ -1,18 +1,41 @@
 #!/usr/bin/env node
 
 /**
- * src/operator/cli.js: オペレータ管理CLI
+ * src/operator/cli.ts: オペレータ管理CLI
  * operator-managerスクリプトのJavaScript版
  */
 
 import OperatorManager from './index.js';
 
+interface AssignResult {
+    operatorId: string;
+    characterName: string;
+    currentStyle?: {
+        styleId: string;
+        styleName: string;
+        personality: string;
+        speakingStyle: string;
+    };
+    greeting?: string;
+}
+
+interface ReleaseResult {
+    characterName: string;
+}
+
+interface StatusResult {
+    operatorId?: string;
+    message: string;
+}
+
 class OperatorManagerCLI {
+    private manager: OperatorManager;
+
     constructor() {
         this.manager = new OperatorManager();
     }
 
-    async showUsage() {
+    async showUsage(): Promise<void> {
         console.log(`使用法: operator-manager {assign|release|status|available|clear}
   assign [オペレータID] [--style=スタイル名] - オペレータを割り当て（IDを指定しない場合はランダム）
   release                                    - 現在のオペレータを返却
@@ -21,7 +44,7 @@ class OperatorManagerCLI {
   clear                                      - 全てのオペレータ利用状況をクリア`);
     }
 
-    async run(args) {
+    async run(args: string[]): Promise<void> {
         await this.manager.initialize();
 
         const command = args[0];
@@ -53,15 +76,15 @@ class OperatorManagerCLI {
                     process.exit(1);
             }
         } catch (error) {
-            console.error(`エラー: ${error.message}`);
+            console.error(`エラー: ${(error as Error).message}`);
             process.exit(1);
         }
     }
 
-    async handleAssign(args) {
+    async handleAssign(args: string[]): Promise<void> {
         // 引数をパース
-        let operatorId = null;
-        let style = null;
+        let operatorId: string | null = null;
+        let style: string | null = null;
         
         for (let i = 0; i < args.length; i++) {
             const arg = args[i];
@@ -74,19 +97,19 @@ class OperatorManagerCLI {
         
         if (operatorId) {
             // 指定されたオペレータを割り当て
-            const result = await this.manager.assignSpecificOperator(operatorId, style);
+            const result: AssignResult = await this.manager.assignSpecificOperator(operatorId, style);
             console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
             if (result.currentStyle) {
                 console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
             }
         } else {
             // 既にオペレータが割り当てられている場合は現在の状態を表示
-            const currentStatus = await this.manager.showCurrentOperator();
+            const currentStatus: StatusResult = await this.manager.showCurrentOperator();
             if (currentStatus.operatorId) {
                 console.log(currentStatus.message);
             } else {
                 // ランダム割り当て
-                const result = await this.manager.assignRandomOperator(style);
+                const result: AssignResult = await this.manager.assignRandomOperator(style);
                 console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
                 if (result.currentStyle) {
                     console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
@@ -95,22 +118,22 @@ class OperatorManagerCLI {
         }
     }
 
-    async handleRelease() {
-        const result = await this.manager.releaseOperator();
-        console.log(`オペレータ返却: ${result.operatorName}`);
+    async handleRelease(): Promise<void> {
+        const result: ReleaseResult = await this.manager.releaseOperator();
+        console.log(`オペレータ返却: ${result.characterName}`);
     }
 
-    async handleStatus() {
-        const result = await this.manager.showCurrentOperator();
+    async handleStatus(): Promise<void> {
+        const result: StatusResult = await this.manager.showCurrentOperator();
         console.log(result.message);
     }
 
-    async handleAvailable() {
-        const available = await this.manager.getAvailableOperators();
+    async handleAvailable(): Promise<void> {
+        const available: string[] = await this.manager.getAvailableOperators();
         console.log(`利用可能なオペレータ: ${available.join(' ')}`);
     }
 
-    async handleClear() {
+    async handleClear(): Promise<void> {
         await this.manager.clearAllOperators();
         console.log('全てのオペレータ利用状況をクリアしました');
     }

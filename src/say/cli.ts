@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * src/say/cli.js: say-coeiroinkコマンドラインインターフェース
+ * src/say/cli.ts: say-coeiroinkコマンドラインインターフェース
  * macOS sayコマンド互換のCLIツール
  */
 
@@ -9,18 +9,20 @@ import { readFileSync, existsSync } from 'fs';
 import { SayCoeiroink, loadConfig } from './index.js';
 
 class SayCoeiroinkCLI {
-    constructor(sayCoeiroink) {
+    private sayCoeiroink: SayCoeiroink;
+
+    constructor(sayCoeiroink: SayCoeiroink) {
         this.sayCoeiroink = sayCoeiroink;
     }
 
-    async showUsage() {
+    async showUsage(): Promise<void> {
         console.log(`Usage: say-coeiroink [-v voice] [-r rate] [-o outfile] [-f file | text] [-s]
 
 低レイテンシストリーミング音声合成・再生（macOS sayコマンド互換）
 
 Options:
     -v voice    Specify voice (voice ID or name, use '?' to list available voices)
-    -r rate     Speech rate in words per minute (default: ${this.sayCoeiroink.config.rate})
+    -r rate     Speech rate in words per minute (default: ${(this.sayCoeiroink as any).config.rate})
     -o outfile  Write audio to file instead of playing (WAV format)
     -f file     Read text from file (use '-' for stdin)
     -s          Force stream mode (auto-enabled for long text)
@@ -40,9 +42,9 @@ Examples:
     echo "テキスト" | say-coeiroink -f -`);
     }
 
-    async run(args) {
+    async run(args: string[]): Promise<void> {
         let voice = process.env.COEIROINK_VOICE || '';
-        let rate = this.sayCoeiroink.config.rate;
+        let rate = (this.sayCoeiroink as any).config.rate;
         let text = '';
         let inputFile = '';
         let outputFile = '';
@@ -105,9 +107,9 @@ Examples:
         // テキスト入力処理
         if (inputFile) {
             if (inputFile === '-') {
-                const chunks = [];
+                const chunks: Buffer[] = [];
                 for await (const chunk of process.stdin) {
-                    chunks.push(chunk);
+                    chunks.push(chunk as Buffer);
                 }
                 text = Buffer.concat(chunks).toString('utf8').trim();
             } else {
@@ -118,9 +120,9 @@ Examples:
                 text = readFileSync(inputFile, 'utf8').trim();
             }
         } else if (!text) {
-            const chunks = [];
+            const chunks: Buffer[] = [];
             for await (const chunk of process.stdin) {
-                chunks.push(chunk);
+                chunks.push(chunk as Buffer);
             }
             text = Buffer.concat(chunks).toString('utf8').trim();
         }
@@ -134,7 +136,7 @@ Examples:
             const result = await this.sayCoeiroink.synthesizeText(text, {
                 voice: voice || null,
                 rate,
-                outputFile,
+                outputFile: outputFile || null,
                 streamMode
             });
 
@@ -144,7 +146,7 @@ Examples:
 
             process.exit(0);
         } catch (error) {
-            console.error(`Error: ${error.message}`);
+            console.error(`Error: ${(error as Error).message}`);
             process.exit(1);
         }
     }
@@ -158,7 +160,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         const cli = new SayCoeiroinkCLI(sayCoeiroink);
         await cli.run(process.argv.slice(2));
     } catch (error) {
-        console.error(`Fatal error: ${error.message}`);
+        console.error(`Fatal error: ${(error as Error).message}`);
         process.exit(1);
     }
 }

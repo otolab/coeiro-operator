@@ -1,10 +1,37 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { spawn } from "child_process";
+import { spawn, ChildProcess } from "child_process";
 import { z } from "zod";
-import { SayCoeiroink } from "./say/index.js";
+import { SayCoeiroink, loadConfig } from "./say/index.js";
 import { OperatorManager } from "./operator/index.js";
+
+interface StyleInfo {
+  id: string;
+  name: string;
+  personality: string;
+  speakingStyle: string;
+}
+
+interface AssignResult {
+  operatorId: string;
+  characterName: string;
+  currentStyle?: {
+    styleId: string;
+    styleName: string;
+    personality: string;
+    speakingStyle: string;
+  };
+  greeting?: string;
+}
+
+interface ToolResponse {
+  content: Array<{
+    type: "text";
+    text: string;
+  }>;
+  [key: string]: unknown;
+}
 
 const server = new McpServer({
   name: "coeiro-operator",
@@ -15,10 +42,8 @@ const server = new McpServer({
   } 
 });
 
-import { loadConfig } from "./say/index.js";
-
-let sayCoeiroink = null;
-let operatorManager = null;
+let sayCoeiroink: SayCoeiroink | null = null;
+let operatorManager: OperatorManager | null = null;
 
 // 初期化を非同期で実行
 (async () => {
@@ -30,10 +55,43 @@ let operatorManager = null;
     await operatorManager.initialize();
     console.error("SayCoeiroink initialized with config");
   } catch (error) {
-    console.error("Failed to initialize SayCoeiroink:", error.message);
+    console.error("Failed to initialize SayCoeiroink:", (error as Error).message);
     sayCoeiroink = new SayCoeiroink(); // デフォルト設定でフォールバック
   }
 })();
+
+// Promiseを返すspawn wrapper
+function spawnAsync(command: string, args: string[], env?: NodeJS.ProcessEnv): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child: ChildProcess = spawn(command, args, {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: env || process.env
+    });
+    
+    let stdout = "";
+    let stderr = "";
+    
+    child.stdout?.on("data", (data) => {
+      stdout += data.toString();
+    });
+    
+    child.stderr?.on("data", (data) => {
+      stderr += data.toString();
+    });
+    
+    child.on("close", (code) => {
+      if (code === 0) {
+        resolve(stdout.trim());
+      } else {
+        reject(new Error(`Command failed with code ${code}: ${stderr}`));
+      }
+    });
+    
+    child.on("error", (err) => {
+      reject(new Error(`Failed to execute command: ${err.message}`));
+    });
+  });
+}
 
 // operator-manager操作ツール
 server.registerTool("operator_assign", {
@@ -42,7 +100,7 @@ server.registerTool("operator_assign", {
     operator: z.string().optional().describe("指定するオペレータ名（英語表記、例: 'tsukuyomi', 'alma'など。省略時または空文字列時はランダム選択。日本語表記は無効）"),
     style: z.string().optional().describe("指定するスタイル名（例: 'normal', 'ura', 'sleepy'など。省略時はキャラクターのデフォルト設定に従う）")
   }
-}, async (args) => {
+}, async (args): Promise<ToolResponse> => {
   const { operator, style } = args || {};
   
   // 引数バリデーション（空文字列はランダム選択として扱う）
@@ -58,7 +116,7 @@ server.registerTool("operator_assign", {
       throw new Error('OperatorManager not initialized');
     }
     
-    let assignResult;
+    let assignResult: AssignResult;
     
     // オペレータ指定の有無に応じてアサイン
     if (operator && operator !== '' && operator !== null) {
@@ -68,21 +126,20 @@ server.registerTool("operator_assign", {
     }
     
     // キャラクター情報を取得
-    const operatorConfig = await operatorManager.readJsonFile(operatorManager.operatorConfigFile, { characters: {} });
-    const character = operatorConfig.characters?.[assignResult.operatorId];
+    const character = await operatorManager.getCharacterInfo(assignResult.operatorId);
     
     if (!character) {
       throw new Error(`キャラクター情報が見つかりません: ${assignResult.operatorId}`);
     }
     
     // スタイル情報を取得
-    const availableStyles = Object.entries(character.available_styles || {})
-      .filter(([_, style]) => style.enabled)
+    const availableStyles: StyleInfo[] = Object.entries(character.available_styles || {})
+      .filter(([_, style]) => (style as any).enabled)
       .map(([styleId, style]) => ({
         id: styleId,
-        name: style.name,
-        personality: style.personality,
-        speakingStyle: style.speaking_style
+        name: (style as any).name,
+        personality: (style as any).personality,
+        speakingStyle: (style as any).speaking_style
       }));
     
     // 結果を整形
@@ -112,7 +169,7 @@ server.registerTool("operator_assign", {
     
     // 挨拶
     if (assignResult.greeting) {
-      resultText += `\n💬 "${assignResult.greeting}"\n`;
+      resultText += `\n💬 \"${assignResult.greeting}\"\n`;
     }
     
     return {
@@ -123,139 +180,58 @@ server.registerTool("operator_assign", {
     };
     
   } catch (error) {
-    throw new Error(`オペレータ割り当てエラー: ${error.message}`);
+    throw new Error(`オペレータ割り当てエラー: ${(error as Error).message}`);
   }
 });
 
 server.registerTool("operator_release", {
   description: "現在のオペレータを解放します",
   inputSchema: {}
-}, async () => {
+}, async (): Promise<ToolResponse> => {
   try {
-    return new Promise((resolve, reject) => {
-      const child = spawn("operator-manager", ["release"], {
-        stdio: ["pipe", "pipe", "pipe"],
-        env: process.env
-      });
-      
-      let stdout = "";
-      let stderr = "";
-      
-      child.stdout.on("data", (data) => {
-        stdout += data.toString();
-      });
-      
-      child.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
-      
-      child.on("close", (code) => {
-        if (code === 0) {
-          resolve({
-            content: [{
-              type: "text",
-              text: stdout.trim()
-            }]
-          });
-        } else {
-          reject(new Error(`operator-manager release failed: ${stderr}`));
-        }
-      });
-      
-      child.on("error", (err) => {
-        reject(new Error(`Failed to execute operator-manager: ${err.message}`));
-      });
-    });
+    const result = await spawnAsync("operator-manager", ["release"]);
+    return {
+      content: [{
+        type: "text",
+        text: result
+      }]
+    };
   } catch (error) {
-    throw new Error(`オペレータ解放エラー: ${error.message}`);
+    throw new Error(`オペレータ解放エラー: ${(error as Error).message}`);
   }
 });
 
 server.registerTool("operator_status", {
   description: "現在のオペレータ状況を確認します",
   inputSchema: {}
-}, async () => {
+}, async (): Promise<ToolResponse> => {
   try {
-    return new Promise((resolve, reject) => {
-      const child = spawn("operator-manager", ["status"], {
-        stdio: ["pipe", "pipe", "pipe"],
-        env: process.env
-      });
-      
-      let stdout = "";
-      let stderr = "";
-      
-      child.stdout.on("data", (data) => {
-        stdout += data.toString();
-      });
-      
-      child.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
-      
-      child.on("close", (code) => {
-        if (code === 0) {
-          resolve({
-            content: [{
-              type: "text",
-              text: stdout.trim()
-            }]
-          });
-        } else {
-          reject(new Error(`operator-manager status failed: ${stderr}`));
-        }
-      });
-      
-      child.on("error", (err) => {
-        reject(new Error(`Failed to execute operator-manager: ${err.message}`));
-      });
-    });
+    const result = await spawnAsync("operator-manager", ["status"]);
+    return {
+      content: [{
+        type: "text",
+        text: result
+      }]
+    };
   } catch (error) {
-    throw new Error(`オペレータ状況確認エラー: ${error.message}`);
+    throw new Error(`オペレータ状況確認エラー: ${(error as Error).message}`);
   }
 });
 
 server.registerTool("operator_available", {
   description: "利用可能なオペレータ一覧を表示します",
   inputSchema: {}
-}, async () => {
+}, async (): Promise<ToolResponse> => {
   try {
-    return new Promise((resolve, reject) => {
-      const child = spawn("operator-manager", ["available"], {
-        stdio: ["pipe", "pipe", "pipe"],
-        env: process.env
-      });
-      
-      let stdout = "";
-      let stderr = "";
-      
-      child.stdout.on("data", (data) => {
-        stdout += data.toString();
-      });
-      
-      child.stderr.on("data", (data) => {
-        stderr += data.toString();
-      });
-      
-      child.on("close", (code) => {
-        if (code === 0) {
-          resolve({
-            content: [{
-              type: "text",
-              text: stdout.trim()
-            }]
-          });
-        } else {
-          reject(new Error(`operator-manager available failed: ${stderr}`));
-        }
-      });
-      
-      child.on("error", (err) => {
-        reject(new Error(`Failed to execute operator-manager: ${err.message}`));
-      });
-    });
+    const result = await spawnAsync("operator-manager", ["available"]);
+    return {
+      content: [{
+        type: "text",
+        text: result
+      }]
+    };
   } catch (error) {
-    throw new Error(`利用可能オペレータ確認エラー: ${error.message}`);
+    throw new Error(`利用可能オペレータ確認エラー: ${(error as Error).message}`);
   }
 });
 
@@ -269,7 +245,7 @@ server.registerTool("say", {
     streamMode: z.boolean().optional().describe("ストリーミングモード強制（デフォルト自動）"),
     style: z.string().optional().describe("スタイルID（オペレータのスタイル選択を上書き）")
   }
-}, async (args) => {
+}, async (args): Promise<ToolResponse> => {
   const { message, voice, rate, streamMode, style } = args;
   
   try {
@@ -292,7 +268,7 @@ server.registerTool("say", {
       }]
     };
   } catch (error) {
-    throw new Error(`音声出力エラー: ${error.message}`);
+    throw new Error(`音声出力エラー: ${(error as Error).message}`);
   }
 });
 
@@ -302,7 +278,7 @@ server.registerTool("operator_styles", {
   inputSchema: {
     character: z.string().optional().describe("キャラクターID（省略時は現在のオペレータのスタイル情報を表示）")
   }
-}, async (args) => {
+}, async (args): Promise<ToolResponse> => {
   const { character } = args || {};
   
   try {
@@ -310,8 +286,8 @@ server.registerTool("operator_styles", {
       throw new Error('OperatorManager not initialized');
     }
     
-    let targetCharacter;
-    let targetCharacterId;
+    let targetCharacter: any;
+    let targetCharacterId: string;
     
     if (character) {
       // 指定されたキャラクターの情報を取得
@@ -328,8 +304,7 @@ server.registerTool("operator_styles", {
         throw new Error('現在オペレータが割り当てられていません。まず operator_assign を実行してください。');
       }
       
-      const operatorConfig = await operatorManager.readJsonFile(operatorManager.operatorConfigFile, { characters: {} });
-      targetCharacter = operatorConfig.characters?.[currentOperator.operatorId];
+      targetCharacter = await operatorManager.getCharacterInfo(currentOperator.operatorId);
       targetCharacterId = currentOperator.operatorId;
       
       if (!targetCharacter) {
@@ -338,13 +313,13 @@ server.registerTool("operator_styles", {
     }
     
     // スタイル情報を取得
-    const availableStyles = Object.entries(targetCharacter.available_styles || {})
-      .filter(([_, style]) => style.enabled)
+    const availableStyles: StyleInfo[] = Object.entries(targetCharacter.available_styles || {})
+      .filter(([_, style]) => (style as any).enabled)
       .map(([styleId, style]) => ({
         id: styleId,
-        name: style.name,
-        personality: style.personality,
-        speakingStyle: style.speaking_style
+        name: (style as any).name,
+        personality: (style as any).personality,
+        speakingStyle: (style as any).speaking_style
       }));
     
     // 結果を整形
@@ -384,12 +359,12 @@ server.registerTool("operator_styles", {
     };
     
   } catch (error) {
-    throw new Error(`スタイル情報取得エラー: ${error.message}`);
+    throw new Error(`スタイル情報取得エラー: ${(error as Error).message}`);
   }
 });
 
 // サーバーの起動
-async function main() {
+async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error("Say COEIROINK MCP Server started");

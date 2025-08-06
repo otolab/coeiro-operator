@@ -1,13 +1,38 @@
 #!/usr/bin/env node
 /**
- * src/operator/index.js: オペレータ管理システム（JavaScript実装）
+ * src/operator/index.ts: オペレータ管理システム（TypeScript実装）
  * キャラクター:スタイル単位での管理とMCP情報提供に対応
  */
 import { readFile, writeFile, access, mkdir, unlink } from 'fs/promises';
 import { constants } from 'fs';
 import { join } from 'path';
-import { spawn } from 'child_process';
 import ConfigManager from './config-manager.js';
+// CharacterConfigからCharacterに変換するヘルパー関数
+function convertCharacterConfigToCharacter(config) {
+    const availableStyles = {};
+    for (const [styleId, style] of Object.entries(config.available_styles)) {
+        availableStyles[styleId] = {
+            styleId: styleId,
+            name: style.name,
+            personality: style.personality,
+            speaking_style: style.speaking_style,
+            style_id: style.style_id,
+            enabled: !style.disabled,
+            disabled: style.disabled
+        };
+    }
+    return {
+        name: config.name,
+        voice_id: config.voice_id,
+        available_styles: availableStyles,
+        style_selection: config.style_selection,
+        default_style: config.default_style,
+        greeting: config.greeting,
+        farewell: config.farewell,
+        personality: config.personality,
+        speaking_style: config.speaking_style
+    };
+}
 /**
  * 設定ディレクトリを決定（ホームディレクトリベース）
  */
@@ -62,15 +87,16 @@ function getSessionId() {
     }
 }
 export class OperatorManager {
+    sessionId;
+    configDir = null;
+    sessionDir = null;
+    activeOperatorsFile = null;
+    speechLockFile = null;
+    sessionOperatorFile = null;
+    coeiroinkConfigFile = null;
+    configManager = null;
     constructor() {
         this.sessionId = getSessionId();
-        this.configDir = null;
-        this.sessionDir = null;
-        this.activeOperatorsFile = null;
-        this.speechLockFile = null;
-        this.sessionOperatorFile = null;
-        this.coeiroinkConfigFile = null;
-        this.configManager = null;
     }
     async initialize() {
         this.configDir = await getConfigDir();
@@ -113,6 +139,9 @@ export class OperatorManager {
      * 利用中オペレータファイルの初期化
      */
     async initActiveOperators() {
+        if (!this.activeOperatorsFile) {
+            throw new Error('activeOperatorsFile is not initialized');
+        }
         try {
             await access(this.activeOperatorsFile, constants.F_OK);
         }
@@ -128,7 +157,11 @@ export class OperatorManager {
      * キャラクター情報を取得
      */
     async getCharacterInfo(characterId) {
-        return await this.configManager.getCharacterConfig(characterId);
+        if (!this.configManager) {
+            throw new Error('ConfigManager is not initialized');
+        }
+        const config = await this.configManager.getCharacterConfig(characterId);
+        return convertCharacterConfigToCharacter(config);
     }
     /**
      * スタイルを選択
@@ -136,7 +169,7 @@ export class OperatorManager {
     selectStyle(character, specifiedStyle = null) {
         const availableStyles = Object.entries(character.available_styles || {})
             .filter(([_, style]) => !style.disabled) // disabledフラグをチェック
-            .map(([styleId, style]) => ({ styleId, ...style }));
+            .map(([styleId, style]) => ({ ...style, styleId }));
         if (availableStyles.length === 0) {
             throw new Error(`キャラクター '${character.name}' に利用可能なスタイルがありません`);
         }
@@ -171,6 +204,9 @@ export class OperatorManager {
      * 挨拶パターンを自動抽出
      */
     async extractGreetingPatterns() {
+        if (!this.configManager) {
+            throw new Error('ConfigManager is not initialized');
+        }
         return await this.configManager.getGreetingPatterns();
     }
     /**
@@ -178,8 +214,11 @@ export class OperatorManager {
      */
     async getAvailableOperators() {
         await this.initActiveOperators();
+        if (!this.configManager || !this.activeOperatorsFile) {
+            throw new Error('Manager is not initialized');
+        }
         const allOperators = await this.configManager.getAvailableCharacterIds();
-        const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {} });
+        const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {}, last_updated: '' });
         const availableOperators = allOperators.filter(op => !activeOperators.active[op]);
         return availableOperators;
     }
@@ -188,7 +227,10 @@ export class OperatorManager {
      */
     async reserveOperator(operatorId) {
         await this.initActiveOperators();
-        const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {} });
+        if (!this.activeOperatorsFile || !this.sessionOperatorFile) {
+            throw new Error('File paths are not initialized');
+        }
+        const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {}, last_updated: '' });
         // オペレータが利用可能かチェック
         if (activeOperators.active[operatorId]) {
             throw new Error(`オペレータ ${operatorId} は既に利用中です`);
@@ -210,6 +252,9 @@ export class OperatorManager {
      * オペレータを返却
      */
     async releaseOperator() {
+        if (!this.sessionOperatorFile || !this.activeOperatorsFile) {
+            throw new Error('File paths are not initialized');
+        }
         try {
             await access(this.sessionOperatorFile, constants.F_OK);
         }
@@ -219,16 +264,19 @@ export class OperatorManager {
         const sessionData = await this.readJsonFile(this.sessionOperatorFile);
         const operatorId = sessionData.operator_id;
         // オペレータを返却
-        const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {} });
+        const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {}, last_updated: '' });
         delete activeOperators.active[operatorId];
         activeOperators.last_updated = new Date().toISOString();
         await this.writeJsonFile(this.activeOperatorsFile, activeOperators);
         // セッションファイルを削除
         await unlink(this.sessionOperatorFile);
         // お別れの挨拶情報を取得
-        let character;
+        let character = null;
         try {
-            character = await this.configManager.getCharacterConfig(operatorId);
+            if (this.configManager) {
+                const config = await this.configManager.getCharacterConfig(operatorId);
+                character = convertCharacterConfigToCharacter(config);
+            }
         }
         catch {
             character = null;
@@ -243,6 +291,9 @@ export class OperatorManager {
      * 全ての利用状況をクリア
      */
     async clearAllOperators() {
+        if (!this.activeOperatorsFile) {
+            throw new Error('activeOperatorsFile is not initialized');
+        }
         // 利用中オペレータファイルを削除
         try {
             await unlink(this.activeOperatorsFile);
@@ -276,10 +327,14 @@ export class OperatorManager {
         if (!specifiedOperator) {
             throw new Error('オペレータIDを指定してください');
         }
+        if (!this.configManager || !this.sessionOperatorFile || !this.activeOperatorsFile) {
+            throw new Error('Manager is not initialized');
+        }
         // キャラクター情報を取得
         let character;
         try {
-            character = await this.configManager.getCharacterConfig(specifiedOperator);
+            const config = await this.configManager.getCharacterConfig(specifiedOperator);
+            character = convertCharacterConfigToCharacter(config);
         }
         catch (error) {
             throw new Error(`オペレータ '${specifiedOperator}' は存在しないか無効です`);
@@ -302,14 +357,14 @@ export class OperatorManager {
                         speakingStyle: selectedStyle.speaking_style
                     },
                     voiceConfig: {
-                        voiceId: character.voice_id,
+                        voiceId: character.voice_id || '',
                         styleId: selectedStyle.style_id
                     },
                     message: `現在のオペレータ: ${character.name} (${specifiedOperator})`
                 };
             }
             // 現在のオペレータをサイレントリリース
-            const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {} });
+            const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {}, last_updated: '' });
             delete activeOperators.active[currentOperator];
             activeOperators.last_updated = new Date().toISOString();
             await this.writeJsonFile(this.activeOperatorsFile, activeOperators);
@@ -320,7 +375,7 @@ export class OperatorManager {
         }
         // 指定されたオペレータが他のセッションで利用中かチェック
         await this.initActiveOperators();
-        const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {} });
+        const activeOperators = await this.readJsonFile(this.activeOperatorsFile, { active: {}, last_updated: '' });
         if (activeOperators.active[specifiedOperator]) {
             throw new Error(`オペレータ '${specifiedOperator}' は既に他のセッションで利用中です`);
         }
@@ -340,7 +395,7 @@ export class OperatorManager {
                 speakingStyle: selectedStyle.speaking_style
             },
             voiceConfig: {
-                voiceId: character.voice_id,
+                voiceId: character.voice_id || '',
                 styleId: selectedStyle.style_id
             },
             greeting: character.greeting || ''
@@ -350,6 +405,9 @@ export class OperatorManager {
      * 音声設定を更新
      */
     async updateVoiceSetting(voiceId, styleId = 0) {
+        if (!this.coeiroinkConfigFile) {
+            throw new Error('coeiroinkConfigFile is not initialized');
+        }
         try {
             const config = await this.readJsonFile(this.coeiroinkConfigFile, {});
             config.voice_id = voiceId;
@@ -364,6 +422,9 @@ export class OperatorManager {
      * 現在のオペレータ情報表示
      */
     async showCurrentOperator() {
+        if (!this.sessionOperatorFile || !this.configManager) {
+            throw new Error('Manager is not initialized');
+        }
         try {
             await access(this.sessionOperatorFile, constants.F_OK);
         }
@@ -376,7 +437,8 @@ export class OperatorManager {
         const operatorId = sessionData.operator_id;
         let character;
         try {
-            character = await this.configManager.getCharacterConfig(operatorId);
+            const config = await this.configManager.getCharacterConfig(operatorId);
+            character = convertCharacterConfigToCharacter(config);
         }
         catch {
             return {

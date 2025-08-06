@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 /**
- * src/operator/cli.js: オペレータ管理CLI
+ * src/operator/cli.ts: オペレータ管理CLI
  * operator-managerスクリプトのJavaScript版
  */
 import OperatorManager from './index.js';
 class OperatorManagerCLI {
+    manager;
     constructor() {
         this.manager = new OperatorManager();
     }
@@ -85,7 +86,7 @@ class OperatorManagerCLI {
     }
     async handleRelease() {
         const result = await this.manager.releaseOperator();
-        console.log(`オペレータ返却: ${result.operatorName}`);
+        console.log(`オペレータ返却: ${result.characterName}`);
     }
     async handleStatus() {
         const result = await this.manager.showCurrentOperator();

@@ -1,5 +1,5 @@
 /**
- * src/say/index.js: COEIROINK音声合成ライブラリ
+ * src/say/index.ts: COEIROINK音声合成ライブラリ
  * MCPサーバから直接呼び出し可能なモジュール
  */
 import { readFile, access, mkdir } from 'fs/promises';
@@ -83,15 +83,16 @@ export async function loadConfig(configFile = null) {
     }
 }
 export class SayCoeiroink {
+    config;
+    audioPlayer = null;
+    audioQueue = [];
+    isPlaying = false;
+    synthesisQueue = [];
+    activeSynthesis = new Map();
+    speechQueue = [];
+    isProcessing = false;
     constructor(config = null) {
         this.config = config || DEFAULT_CONFIG;
-        this.audioPlayer = null;
-        this.audioQueue = [];
-        this.isPlaying = false;
-        this.synthesisQueue = [];
-        this.activeSynthesis = new Map();
-        this.speechQueue = [];
-        this.isProcessing = false;
     }
     async initializeAudioPlayer() {
         try {
@@ -132,7 +133,7 @@ export class SayCoeiroink {
                     stdio: ['pipe', 'pipe', 'pipe']
                 });
                 let stdout = '';
-                child.stdout.on('data', (data) => {
+                child.stdout?.on('data', (data) => {
                     stdout += data.toString();
                 });
                 child.on('close', (code) => {
@@ -179,7 +180,8 @@ export class SayCoeiroink {
     async synthesizeChunk(chunk, voiceInfo, speed) {
         const url = `http://${this.config.host}:${this.config.port}/v1/synthesis`;
         // voiceInfoから音声IDとスタイルIDを取得
-        let voiceId, styleId = 0;
+        let voiceId;
+        let styleId = 0;
         if (typeof voiceInfo === 'object' && voiceInfo.voice_id) {
             // 新しいアーキテクチャ: オペレータ情報付き
             voiceId = voiceInfo.voice_id;
@@ -346,35 +348,13 @@ export class SayCoeiroink {
         const chunks = this.splitTextIntoChunks(text);
         console.error(`ストリーミング開始: ${chunks.length}チャンク, 文字数${text.length}`);
         const overallStartTime = Date.now();
-        const synthesisPromises = [];
         let totalLatency = 0;
-        // 並列音声合成（低レイテンシのため）
+        // 順次処理でシンプルに実装
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
-            // バッファサイズ制限で並列数を制御
-            if (synthesisPromises.length >= STREAM_CONFIG.bufferSize) {
-                const result = await Promise.race(synthesisPromises);
-                synthesisPromises.splice(synthesisPromises.indexOf(result), 1);
-                await this.playAudioStream(await result);
-                totalLatency += (await result).latency;
-            }
-            // 新しい合成を開始
-            const synthesisPromise = this.synthesizeChunk(chunk, voiceId, speed);
-            synthesisPromises.push(synthesisPromise);
-            // 最初のチャンクは即座に再生開始
-            if (i === 0) {
-                const firstResult = await synthesisPromise;
-                synthesisPromises.splice(synthesisPromises.indexOf(synthesisPromise), 1);
-                await this.playAudioStream(firstResult);
-                totalLatency += firstResult.latency;
-            }
-        }
-        // 残りの合成完了を待機
-        while (synthesisPromises.length > 0) {
-            const result = await Promise.race(synthesisPromises);
-            synthesisPromises.splice(synthesisPromises.indexOf(result), 1);
-            await this.playAudioStream(await result);
-            totalLatency += (await result).latency;
+            const result = await this.synthesizeChunk(chunk, voiceId, speed);
+            await this.playAudioStream(result);
+            totalLatency += result.latency;
         }
         const overallTime = Date.now() - overallStartTime;
         const avgLatency = totalLatency / chunks.length;
@@ -391,9 +371,9 @@ export class SayCoeiroink {
             }
             const speakers = await response.json();
             console.log('Available voices:');
-            speakers.forEach(speaker => {
+            speakers.forEach((speaker) => {
                 console.log(`${speaker.speakerUuid}: ${speaker.speakerName}`);
-                speaker.styles.forEach(style => {
+                speaker.styles.forEach((style) => {
                     console.log(`  Style ${style.styleId}: ${style.styleName}`);
                 });
             });
@@ -449,6 +429,8 @@ export class SayCoeiroink {
         this.isProcessing = true;
         while (this.speechQueue.length > 0) {
             const task = this.speechQueue.shift();
+            if (!task)
+                break;
             try {
                 await this.synthesizeTextInternal(task.text, task.options);
                 console.error(`音声タスク完了: ${task.id}`);

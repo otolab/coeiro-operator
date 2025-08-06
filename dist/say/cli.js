@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * src/say/cli.js: say-coeiroinkコマンドラインインターフェース
+ * src/say/cli.ts: say-coeiroinkコマンドラインインターフェース
  * macOS sayコマンド互換のCLIツール
  */
 import { readFileSync, existsSync } from 'fs';
 import { SayCoeiroink, loadConfig } from './index.js';
 class SayCoeiroinkCLI {
+    sayCoeiroink;
     constructor(sayCoeiroink) {
         this.sayCoeiroink = sayCoeiroink;
     }
@@ -121,7 +122,7 @@ Examples:
             const result = await this.sayCoeiroink.synthesizeText(text, {
                 voice: voice || null,
                 rate,
-                outputFile,
+                outputFile: outputFile || null,
                 streamMode
             });
             if (outputFile) {

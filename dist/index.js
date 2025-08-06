@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { spawn } from "child_process";
 import { z } from "zod";
-import { SayCoeiroink } from "./say/index.js";
+import { SayCoeiroink, loadConfig } from "./say/index.js";
 import { OperatorManager } from "./operator/index.js";
 const server = new McpServer({
     name: "coeiro-operator",
@@ -13,7 +13,6 @@ const server = new McpServer({
         tools: {}
     }
 });
-import { loadConfig } from "./say/index.js";
 let sayCoeiroink = null;
 let operatorManager = null;
 // 初期化を非同期で実行
@@ -30,6 +29,34 @@ let operatorManager = null;
         sayCoeiroink = new SayCoeiroink(); // デフォルト設定でフォールバック
     }
 })();
+// Promiseを返すspawn wrapper
+function spawnAsync(command, args, env) {
+    return new Promise((resolve, reject) => {
+        const child = spawn(command, args, {
+            stdio: ["pipe", "pipe", "pipe"],
+            env: env || process.env
+        });
+        let stdout = "";
+        let stderr = "";
+        child.stdout?.on("data", (data) => {
+            stdout += data.toString();
+        });
+        child.stderr?.on("data", (data) => {
+            stderr += data.toString();
+        });
+        child.on("close", (code) => {
+            if (code === 0) {
+                resolve(stdout.trim());
+            }
+            else {
+                reject(new Error(`Command failed with code ${code}: ${stderr}`));
+            }
+        });
+        child.on("error", (err) => {
+            reject(new Error(`Failed to execute command: ${err.message}`));
+        });
+    });
+}
 // operator-manager操作ツール
 server.registerTool("operator_assign", {
     description: "オペレータをランダム選択して割り当てます。アサイン後に現在のスタイルと利用可能な他のスタイル情報を表示します。スタイル切り替えはsayツールのstyleパラメータで可能です（例: say({message: \"テスト\", style: \"ura\"})）。ランダムスタイル選択キャラクターは次回アサイン時に異なるスタイルが選ばれる場合があります。",
@@ -59,8 +86,7 @@ server.registerTool("operator_assign", {
             assignResult = await operatorManager.assignRandomOperator(style);
         }
         // キャラクター情報を取得
-        const operatorConfig = await operatorManager.readJsonFile(operatorManager.operatorConfigFile, { characters: {} });
-        const character = operatorConfig.characters?.[assignResult.operatorId];
+        const character = await operatorManager.getCharacterInfo(assignResult.operatorId);
         if (!character) {
             throw new Error(`キャラクター情報が見つかりません: ${assignResult.operatorId}`);
         }
@@ -97,7 +123,7 @@ server.registerTool("operator_assign", {
         }
         // 挨拶
         if (assignResult.greeting) {
-            resultText += `\n💬 "${assignResult.greeting}"\n`;
+            resultText += `\n💬 \"${assignResult.greeting}\"\n`;
         }
         return {
             content: [{
@@ -115,36 +141,13 @@ server.registerTool("operator_release", {
     inputSchema: {}
 }, async () => {
     try {
-        return new Promise((resolve, reject) => {
-            const child = spawn("operator-manager", ["release"], {
-                stdio: ["pipe", "pipe", "pipe"],
-                env: process.env
-            });
-            let stdout = "";
-            let stderr = "";
-            child.stdout.on("data", (data) => {
-                stdout += data.toString();
-            });
-            child.stderr.on("data", (data) => {
-                stderr += data.toString();
-            });
-            child.on("close", (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                                type: "text",
-                                text: stdout.trim()
-                            }]
-                    });
-                }
-                else {
-                    reject(new Error(`operator-manager release failed: ${stderr}`));
-                }
-            });
-            child.on("error", (err) => {
-                reject(new Error(`Failed to execute operator-manager: ${err.message}`));
-            });
-        });
+        const result = await spawnAsync("operator-manager", ["release"]);
+        return {
+            content: [{
+                    type: "text",
+                    text: result
+                }]
+        };
     }
     catch (error) {
         throw new Error(`オペレータ解放エラー: ${error.message}`);
@@ -155,36 +158,13 @@ server.registerTool("operator_status", {
     inputSchema: {}
 }, async () => {
     try {
-        return new Promise((resolve, reject) => {
-            const child = spawn("operator-manager", ["status"], {
-                stdio: ["pipe", "pipe", "pipe"],
-                env: process.env
-            });
-            let stdout = "";
-            let stderr = "";
-            child.stdout.on("data", (data) => {
-                stdout += data.toString();
-            });
-            child.stderr.on("data", (data) => {
-                stderr += data.toString();
-            });
-            child.on("close", (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                                type: "text",
-                                text: stdout.trim()
-                            }]
-                    });
-                }
-                else {
-                    reject(new Error(`operator-manager status failed: ${stderr}`));
-                }
-            });
-            child.on("error", (err) => {
-                reject(new Error(`Failed to execute operator-manager: ${err.message}`));
-            });
-        });
+        const result = await spawnAsync("operator-manager", ["status"]);
+        return {
+            content: [{
+                    type: "text",
+                    text: result
+                }]
+        };
     }
     catch (error) {
         throw new Error(`オペレータ状況確認エラー: ${error.message}`);
@@ -195,36 +175,13 @@ server.registerTool("operator_available", {
     inputSchema: {}
 }, async () => {
     try {
-        return new Promise((resolve, reject) => {
-            const child = spawn("operator-manager", ["available"], {
-                stdio: ["pipe", "pipe", "pipe"],
-                env: process.env
-            });
-            let stdout = "";
-            let stderr = "";
-            child.stdout.on("data", (data) => {
-                stdout += data.toString();
-            });
-            child.stderr.on("data", (data) => {
-                stderr += data.toString();
-            });
-            child.on("close", (code) => {
-                if (code === 0) {
-                    resolve({
-                        content: [{
-                                type: "text",
-                                text: stdout.trim()
-                            }]
-                    });
-                }
-                else {
-                    reject(new Error(`operator-manager available failed: ${stderr}`));
-                }
-            });
-            child.on("error", (err) => {
-                reject(new Error(`Failed to execute operator-manager: ${err.message}`));
-            });
-        });
+        const result = await spawnAsync("operator-manager", ["available"]);
+        return {
+            content: [{
+                    type: "text",
+                    text: result
+                }]
+        };
     }
     catch (error) {
         throw new Error(`利用可能オペレータ確認エラー: ${error.message}`);
@@ -294,8 +251,7 @@ server.registerTool("operator_styles", {
             if (!currentOperator.operatorId) {
                 throw new Error('現在オペレータが割り当てられていません。まず operator_assign を実行してください。');
             }
-            const operatorConfig = await operatorManager.readJsonFile(operatorManager.operatorConfigFile, { characters: {} });
-            targetCharacter = operatorConfig.characters?.[currentOperator.operatorId];
+            targetCharacter = await operatorManager.getCharacterInfo(currentOperator.operatorId);
             targetCharacterId = currentOperator.operatorId;
             if (!targetCharacter) {
                 throw new Error(`現在のオペレータ '${currentOperator.operatorId}' のキャラクター情報が見つかりません`);

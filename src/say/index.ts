@@ -1,26 +1,93 @@
 /**
- * src/say/index.js: COEIROINK音声合成ライブラリ
+ * src/say/index.ts: COEIROINK音声合成ライブラリ
  * MCPサーバから直接呼び出し可能なモジュール
  */
 
 import { readFile, access, mkdir } from 'fs/promises';
 import { constants } from 'fs';
-import { spawn } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
 import { createRequire } from 'module';
 
 // ES Modules環境でrequireを使用
 const require = createRequire(import.meta.url);
 
+// インターフェース定義
+interface Config {
+    host: string;
+    port: string;
+    rate: number;
+}
+
+interface StreamConfig {
+    chunkSizeChars: number;
+    overlapChars: number;
+    bufferSize: number;
+    audioBufferMs: number;
+    silencePaddingMs: number;
+    preloadChunks: number;
+}
+
+interface Chunk {
+    text: string;
+    index: number;
+    isFirst: boolean;
+    isLast: boolean;
+    overlap: number;
+}
+
+interface AudioResult {
+    chunk: Chunk;
+    audioBuffer: ArrayBuffer;
+    latency: number;
+}
+
+interface OperatorVoice {
+    voice_id: string;
+    character?: {
+        available_styles?: Record<string, {
+            enabled: boolean;
+            style_id: number;
+            name: string;
+        }>;
+        style_selection: string;
+        default_style: string;
+    };
+}
+
+interface SpeechTask {
+    id: number;
+    text: string;
+    options: SynthesizeOptions;
+    timestamp: number;
+}
+
+interface SynthesizeOptions {
+    voice?: string | OperatorVoice | null;
+    rate?: number;
+    outputFile?: string | null;
+    streamMode?: boolean;
+    style?: string;
+}
+
+interface SynthesizeResult {
+    success: boolean;
+    taskId?: number;
+    queueLength?: number;
+    outputFile?: string;
+    latency?: number;
+    mode?: string;
+}
+
 // デフォルト設定
-const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG: Config = {
     host: 'localhost',
     port: '50032',
     rate: 200
 };
 
 // ストリーミング設定
-const STREAM_CONFIG = {
+const STREAM_CONFIG: StreamConfig = {
     chunkSizeChars: 50,          // 文字単位でのチャンク分割
     overlapChars: 5,             // チャンク間のオーバーラップ（音切れ防止）
     bufferSize: 3,               // 音声バッファサイズ（並列処理数）
@@ -32,7 +99,7 @@ const STREAM_CONFIG = {
 /**
  * 設定ディレクトリを決定（ホームディレクトリベース）
  */
-async function getConfigDir() {
+async function getConfigDir(): Promise<string> {
     // ホームディレクトリの ~/.coeiro-operator/ を優先
     const homeDir = join(process.env.HOME || process.env.USERPROFILE || '~', '.coeiro-operator');
     
@@ -59,7 +126,7 @@ async function getConfigDir() {
 /**
  * 設定ファイルのパスを取得
  */
-async function getConfigPath(filename) {
+async function getConfigPath(filename: string): Promise<string> {
     const configDir = await getConfigDir();
     return join(configDir, filename);
 }
@@ -67,7 +134,7 @@ async function getConfigPath(filename) {
 /**
  * 設定ファイルを読み込み
  */
-export async function loadConfig(configFile = null) {
+export async function loadConfig(configFile: string | null = null): Promise<Config> {
     if (!configFile) {
         configFile = await getConfigPath('coeiroink-config.json');
     }
@@ -83,39 +150,40 @@ export async function loadConfig(configFile = null) {
         const config = JSON.parse(configData);
         return { ...DEFAULT_CONFIG, ...config };
     } catch (error) {
-        console.error(`設定ファイル読み込みエラー: ${error.message}`);
+        console.error(`設定ファイル読み込みエラー: ${(error as Error).message}`);
         return DEFAULT_CONFIG;
     }
 }
 
 export class SayCoeiroink {
-    constructor(config = null) {
+    private config: Config;
+    private audioPlayer: string | null = null;
+    private audioQueue: AudioResult[] = [];
+    private isPlaying: boolean = false;
+    private synthesisQueue: any[] = [];
+    private activeSynthesis: Map<any, any> = new Map();
+    private speechQueue: SpeechTask[] = [];
+    private isProcessing: boolean = false;
+
+    constructor(config: Config | null = null) {
         this.config = config || DEFAULT_CONFIG;
-        this.audioPlayer = null;
-        this.audioQueue = [];
-        this.isPlaying = false;
-        this.synthesisQueue = [];
-        this.activeSynthesis = new Map();
-        this.speechQueue = [];
-        this.isProcessing = false;
     }
 
-
-    async initializeAudioPlayer() {
+    async initializeAudioPlayer(): Promise<boolean> {
         try {
             // Fallback to system audio command for compatibility
             console.error(`音声プレーヤー初期化: システムオーディオ使用（低レイテンシモード）`);
             this.audioPlayer = 'system';
             return true;
         } catch (error) {
-            console.error(`音声プレーヤー初期化エラー: ${error.message}`);
+            console.error(`音声プレーヤー初期化エラー: ${(error as Error).message}`);
             return false;
         }
     }
 
     // テキストを音切れ防止のためのオーバーラップ付きチャンクに分割
-    splitTextIntoChunks(text) {
-        const chunks = [];
+    splitTextIntoChunks(text: string): Chunk[] {
+        const chunks: Chunk[] = [];
         const chunkSize = STREAM_CONFIG.chunkSizeChars;
         const overlap = STREAM_CONFIG.overlapChars;
         
@@ -137,15 +205,15 @@ export class SayCoeiroink {
         return chunks;
     }
 
-    async getCurrentOperatorVoice() {
+    async getCurrentOperatorVoice(): Promise<OperatorVoice | null> {
         try {
-            const operatorStatus = await new Promise((resolve, reject) => {
-                const child = spawn('operator-manager', ['status'], {
+            const operatorStatus = await new Promise<string>((resolve, reject) => {
+                const child: ChildProcess = spawn('operator-manager', ['status'], {
                     stdio: ['pipe', 'pipe', 'pipe']
                 });
 
                 let stdout = '';
-                child.stdout.on('data', (data) => {
+                child.stdout?.on('data', (data) => {
                     stdout += data.toString();
                 });
 
@@ -185,21 +253,22 @@ export class SayCoeiroink {
                         };
                     }
                 } catch (configError) {
-                    console.error(`オペレータ設定読み込みエラー: ${configError.message}`);
+                    console.error(`オペレータ設定読み込みエラー: ${(configError as Error).message}`);
                 }
             }
         } catch (error) {
-            console.error(`オペレータ音声取得エラー: ${error.message}`);
+            console.error(`オペレータ音声取得エラー: ${(error as Error).message}`);
         }
 
         return null;
     }
 
-    async synthesizeChunk(chunk, voiceInfo, speed) {
+    async synthesizeChunk(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<AudioResult> {
         const url = `http://${this.config.host}:${this.config.port}/v1/synthesis`;
         
         // voiceInfoから音声IDとスタイルIDを取得
-        let voiceId, styleId = 0;
+        let voiceId: string;
+        let styleId = 0;
         
         if (typeof voiceInfo === 'object' && voiceInfo.voice_id) {
             // 新しいアーキテクチャ: オペレータ情報付き
@@ -213,7 +282,7 @@ export class SayCoeiroink {
                     .map(([styleId, style]) => ({ styleId, ...style }));
                 
                 if (availableStyles.length > 0) {
-                    let selectedStyle;
+                    let selectedStyle: any;
                     switch (character.style_selection) {
                         case 'default':
                             selectedStyle = availableStyles.find(s => s.styleId === character.default_style);
@@ -230,7 +299,7 @@ export class SayCoeiroink {
             }
         } else {
             // 従来の形式: 音声IDのみ
-            voiceId = voiceInfo;
+            voiceId = voiceInfo as string;
         }
 
         // 音切れ防止: 前後に無音パディングを追加
@@ -276,12 +345,12 @@ export class SayCoeiroink {
                 latency
             };
         } catch (error) {
-            throw new Error(`チャンク${chunk.index}合成エラー: ${error.message}`);
+            throw new Error(`チャンク${chunk.index}合成エラー: ${(error as Error).message}`);
         }
     }
 
     // WAVヘッダーを除去してPCMデータを抽出
-    extractPCMFromWAV(wavBuffer) {
+    extractPCMFromWAV(wavBuffer: ArrayBuffer): Uint8Array {
         const view = new DataView(wavBuffer);
         
         // WAVヘッダーの検証とデータ位置の特定
@@ -306,7 +375,7 @@ export class SayCoeiroink {
         throw new Error('WAV data chunk not found');
     }
 
-    async playAudioStream(audioResult) {
+    async playAudioStream(audioResult: AudioResult): Promise<void> {
         try {
             // 一時ファイルに保存して即座に再生（低レイテンシ）
             const tempFile = `/tmp/stream_${Date.now()}_${audioResult.chunk.index}.wav`;
@@ -327,11 +396,11 @@ export class SayCoeiroink {
             return playPromise;
             
         } catch (error) {
-            console.error(`音声再生エラー: ${error.message}`);
+            console.error(`音声再生エラー: ${(error as Error).message}`);
         }
     }
 
-    async playAudioFile(audioFile) {
+    async playAudioFile(audioFile: string): Promise<void> {
         return new Promise((resolve, reject) => {
             const audioPlayer = this.detectAudioPlayerSync();
             const child = spawn(audioPlayer, [audioFile], {
@@ -352,7 +421,7 @@ export class SayCoeiroink {
         });
     }
 
-    detectAudioPlayerSync() {
+    detectAudioPlayerSync(): string {
         const players = ['afplay', 'aplay', 'paplay', 'play'];
         
         for (const player of players) {
@@ -367,7 +436,7 @@ export class SayCoeiroink {
         return 'afplay'; // デフォルト（macOS）
     }
 
-    applyCrossfade(pcmData, overlapSamples) {
+    applyCrossfade(pcmData: Uint8Array, overlapSamples: number): void {
         // 簡単なクロスフェード実装（音切れ軽減）
         if (overlapSamples > 0 && overlapSamples < pcmData.length / 2) {
             for (let i = 0; i < overlapSamples * 2; i += 2) {
@@ -380,7 +449,7 @@ export class SayCoeiroink {
         }
     }
 
-    convertRateToSpeed(rate) {
+    convertRateToSpeed(rate: number): number {
         const baseRate = 200;
         let speed = rate / baseRate;
         if (speed < 0.5) speed = 0.5;
@@ -388,45 +457,19 @@ export class SayCoeiroink {
         return speed;
     }
 
-    async streamSynthesizeAndPlay(text, voiceId, speed) {
+    async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number): Promise<void> {
         const chunks = this.splitTextIntoChunks(text);
         console.error(`ストリーミング開始: ${chunks.length}チャンク, 文字数${text.length}`);
         
         const overallStartTime = Date.now();
-        const synthesisPromises = [];
         let totalLatency = 0;
 
-        // 並列音声合成（低レイテンシのため）
+        // 順次処理でシンプルに実装
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
-            
-            // バッファサイズ制限で並列数を制御
-            if (synthesisPromises.length >= STREAM_CONFIG.bufferSize) {
-                const result = await Promise.race(synthesisPromises);
-                synthesisPromises.splice(synthesisPromises.indexOf(result), 1);
-                await this.playAudioStream(await result);
-                totalLatency += (await result).latency;
-            }
-            
-            // 新しい合成を開始
-            const synthesisPromise = this.synthesizeChunk(chunk, voiceId, speed);
-            synthesisPromises.push(synthesisPromise);
-            
-            // 最初のチャンクは即座に再生開始
-            if (i === 0) {
-                const firstResult = await synthesisPromise;
-                synthesisPromises.splice(synthesisPromises.indexOf(synthesisPromise), 1);
-                await this.playAudioStream(firstResult);
-                totalLatency += firstResult.latency;
-            }
-        }
-
-        // 残りの合成完了を待機
-        while (synthesisPromises.length > 0) {
-            const result = await Promise.race(synthesisPromises);
-            synthesisPromises.splice(synthesisPromises.indexOf(result), 1);
-            await this.playAudioStream(await result);
-            totalLatency += (await result).latency;
+            const result = await this.synthesizeChunk(chunk, voiceId, speed);
+            await this.playAudioStream(result);
+            totalLatency += result.latency;
         }
 
         const overallTime = Date.now() - overallStartTime;
@@ -435,7 +478,7 @@ export class SayCoeiroink {
         console.error(`ストリーミング完了: 総時間${overallTime}ms, 平均レイテンシ${avgLatency.toFixed(1)}ms/チャンク`);
     }
 
-    async listVoices() {
+    async listVoices(): Promise<void> {
         const url = `http://${this.config.host}:${this.config.port}/v1/speakers`;
         
         try {
@@ -450,9 +493,9 @@ export class SayCoeiroink {
             const speakers = await response.json();
             console.log('Available voices:');
             
-            speakers.forEach(speaker => {
+            speakers.forEach((speaker: any) => {
                 console.log(`${speaker.speakerUuid}: ${speaker.speakerName}`);
-                speaker.styles.forEach(style => {
+                speaker.styles.forEach((style: any) => {
                     console.log(`  Style ${style.styleId}: ${style.styleName}`);
                 });
             });
@@ -463,16 +506,16 @@ export class SayCoeiroink {
         }
     }
 
-    async saveAudio(audioBuffer, outputFile) {
+    async saveAudio(audioBuffer: ArrayBuffer, outputFile: string): Promise<void> {
         try {
             const fs = await import('fs');
             await fs.promises.writeFile(outputFile, Buffer.from(audioBuffer));
         } catch (error) {
-            throw new Error(`音声ファイル保存エラー: ${error.message}`);
+            throw new Error(`音声ファイル保存エラー: ${(error as Error).message}`);
         }
     }
 
-    async checkServerConnection() {
+    async checkServerConnection(): Promise<boolean> {
         const url = `http://${this.config.host}:${this.config.port}/v1/speakers`;
         
         try {
@@ -486,8 +529,8 @@ export class SayCoeiroink {
     }
 
     // 音声キューに追加（非同期処理用）
-    enqueueSpeech(text, options = {}) {
-        const speechTask = {
+    enqueueSpeech(text: string, options: SynthesizeOptions = {}): SynthesizeResult {
+        const speechTask: SpeechTask = {
             id: Date.now() + Math.random(),
             text,
             options,
@@ -505,7 +548,7 @@ export class SayCoeiroink {
     }
 
     // 音声キューの処理
-    async processSpeechQueue() {
+    async processSpeechQueue(): Promise<void> {
         if (this.isProcessing || this.speechQueue.length === 0) {
             return;
         }
@@ -514,12 +557,13 @@ export class SayCoeiroink {
         
         while (this.speechQueue.length > 0) {
             const task = this.speechQueue.shift();
+            if (!task) break;
             
             try {
                 await this.synthesizeTextInternal(task.text, task.options);
                 console.error(`音声タスク完了: ${task.id}`);
             } catch (error) {
-                console.error(`音声タスクエラー: ${task.id}, ${error.message}`);
+                console.error(`音声タスクエラー: ${task.id}, ${(error as Error).message}`);
             }
         }
         
@@ -527,12 +571,12 @@ export class SayCoeiroink {
     }
 
     // MCPサーバから呼び出される主要メソッド（即座に戻る）
-    async synthesizeText(text, options = {}) {
+    async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         return this.enqueueSpeech(text, options);
     }
 
     // 内部用の実際の音声合成処理
-    async synthesizeTextInternal(text, options = {}) {
+    async synthesizeTextInternal(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         const {
             voice = null,
             rate = this.config.rate,
@@ -542,7 +586,7 @@ export class SayCoeiroink {
         } = options;
 
         // 音声選択の優先順位処理
-        let selectedVoice = voice;
+        let selectedVoice: string | OperatorVoice | null = voice;
         if (!selectedVoice) {
             // 1. operator-manager から現在のオペレータの音声を取得
             const operatorVoice = await this.getCurrentOperatorVoice();
@@ -585,7 +629,7 @@ export class SayCoeiroink {
         
         if (outputFile) {
             // ファイル出力モード
-            const chunks = [{
+            const chunks: Chunk[] = [{
                 text,
                 index: 0,
                 isFirst: true,
@@ -609,7 +653,7 @@ export class SayCoeiroink {
                 throw new Error('音声プレーヤーの初期化に失敗しました');
             }
             
-            const chunks = [{
+            const chunks: Chunk[] = [{
                 text,
                 index: 0,
                 isFirst: true,
