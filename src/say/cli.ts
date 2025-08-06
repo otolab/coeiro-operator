@@ -5,7 +5,8 @@
  * macOS sayコマンド互換のCLIツール
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFile, access } from 'fs/promises';
+import { constants } from 'fs';
 import { SayCoeiroink, loadConfig } from './index.js';
 
 interface ParsedOptions {
@@ -51,7 +52,7 @@ Examples:
     echo "テキスト" | say-coeiroink -f -`);
     }
 
-    private parseArguments(args: string[]): ParsedOptions {
+    private async parseArguments(args: string[]): Promise<ParsedOptions> {
         const options: ParsedOptions = {
             voice: process.env.COEIROINK_VOICE || '',
             rate: (this.sayCoeiroink as any).config.rate,
@@ -67,14 +68,13 @@ Examples:
             switch (arg) {
                 case '-h':
                 case '--help':
-                    this.showUsage();
-                    process.exit(0);
-                    break;
-                
+                    await this.showUsage();
+                    throw new Error('HELP_REQUESTED');
+                    
                 case '-v':
                     if (args[i + 1] === '?') {
-                        this.sayCoeiroink.listVoices();
-                        process.exit(0);
+                        await this.sayCoeiroink.listVoices();
+                        throw new Error('VOICE_LIST_REQUESTED');
                     }
                     options.voice = args[i + 1];
                     i++;
@@ -105,8 +105,7 @@ Examples:
                 
                 default:
                     if (arg.startsWith('-')) {
-                        console.error(`Error: Unknown option ${arg}`);
-                        process.exit(1);
+                        throw new Error(`Unknown option ${arg}`);
                     } else {
                         options.text = options.text ? `${options.text} ${arg}` : arg;
                     }
@@ -128,11 +127,12 @@ Examples:
                 }
                 text = Buffer.concat(chunks).toString('utf8').trim();
             } else {
-                if (!existsSync(options.inputFile)) {
-                    console.error(`Error: File '${options.inputFile}' not found`);
-                    process.exit(1);
+                try {
+                    await access(options.inputFile, constants.F_OK);
+                    text = (await readFile(options.inputFile, 'utf8')).trim();
+                } catch {
+                    throw new Error(`File '${options.inputFile}' not found`);
                 }
-                text = readFileSync(options.inputFile, 'utf8').trim();
             }
         } else if (!text) {
             const chunks: Buffer[] = [];
@@ -143,48 +143,66 @@ Examples:
         }
 
         if (!text) {
-            console.error('Error: No text to speak');
-            process.exit(1);
+            throw new Error('No text to speak');
         }
 
         return text;
     }
 
     async run(args: string[]): Promise<void> {
-        try {
-            const options = this.parseArguments(args);
-            const text = await this.getInputText(options);
+        const options = await this.parseArguments(args);
+        const text = await this.getInputText(options);
 
-            const result = await this.sayCoeiroink.synthesizeText(text, {
-                voice: options.voice || null,
-                rate: options.rate,
-                outputFile: options.outputFile || null,
-                streamMode: options.streamMode
-            });
+        const result = await this.sayCoeiroink.synthesizeText(text, {
+            voice: options.voice || null,
+            rate: options.rate,
+            outputFile: options.outputFile || null,
+            streamMode: options.streamMode
+        });
 
-            if (options.outputFile) {
-                console.error(`Audio saved to: ${options.outputFile}`);
-            }
-
-            process.exit(0);
-        } catch (error) {
-            console.error(`Error: ${(error as Error).message}`);
-            process.exit(1);
+        if (options.outputFile) {
+            console.error(`Audio saved to: ${options.outputFile}`);
         }
     }
 }
 
-// メイン実行（top-level await）
-if (import.meta.url === `file://${process.argv[1]}`) {
-    try {
-        const config = await loadConfig();
-        const sayCoeiroink = new SayCoeiroink(config);
-        const cli = new SayCoeiroinkCLI(sayCoeiroink);
-        await cli.run(process.argv.slice(2));
-    } catch (error) {
-        console.error(`Fatal error: ${(error as Error).message}`);
-        process.exit(1);
-    }
+// プロセス終了ハンドリング
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error.message);
+    process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection:', reason);
+    process.exit(1);
+});
+
+// メイン実行関数
+async function main(): Promise<void> {
+    const config = await loadConfig();
+    const sayCoeiroink = new SayCoeiroink(config);
+    
+    await sayCoeiroink.initialize();
+    await sayCoeiroink.buildDynamicConfig();
+    
+    const cli = new SayCoeiroinkCLI(sayCoeiroink);
+    await cli.run(process.argv.slice(2));
 }
+
+// メイン実行
+main()
+    .then(() => {
+        process.exit(0);
+    })
+    .catch((error) => {
+        // 特別なエラーメッセージは正常終了扱い
+        if ((error as Error).message === 'HELP_REQUESTED' || 
+            (error as Error).message === 'VOICE_LIST_REQUESTED') {
+            process.exit(0);
+        } else {
+            console.error(`Error: ${(error as Error).message}`);
+            process.exit(1);
+        }
+    });
 
 export default SayCoeiroinkCLI;

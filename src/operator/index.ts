@@ -5,7 +5,7 @@
  * キャラクター:スタイル単位での管理とMCP情報提供に対応
  */
 
-import { readFile, writeFile, access, mkdir, unlink } from 'fs/promises';
+import { readFile, writeFile, stat, mkdir, unlink, rename, access } from 'fs/promises';
 import { constants } from 'fs';
 import { join } from 'path';
 import { spawn } from 'child_process';
@@ -185,6 +185,29 @@ export class OperatorManager {
         
         // 設定管理システムを初期化
         this.configManager = new ConfigManager(this.configDir);
+        
+        // ConfigManagerの動的設定を事前にビルドして初期化を完了
+        try {
+            await this.configManager.buildDynamicConfig();
+        } catch (error) {
+            console.warn(`OperatorManager dynamic config build failed:`, (error as Error).message);
+        }
+    }
+
+    /**
+     * 設定の事前構築（外部からの呼び出し用）
+     */
+    async buildDynamicConfig(): Promise<void> {
+        if (!this.configManager) {
+            throw new Error('ConfigManager is not initialized');
+        }
+        
+        try {
+            await this.configManager.buildDynamicConfig();
+        } catch (error) {
+            console.error(`OperatorManager buildDynamicConfig failed:`, (error as Error).message);
+            throw error;
+        }
     }
 
     /**
@@ -195,7 +218,8 @@ export class OperatorManager {
             await access(filePath, constants.F_OK);
             const content = await readFile(filePath, 'utf8');
             return JSON.parse(content);
-        } catch {
+        } catch (error) {
+            console.error(`ファイル読み込みエラー: ${filePath}, ${(error as Error).message}`);
             return defaultValue;
         }
     }
@@ -212,8 +236,7 @@ export class OperatorManager {
             await unlink(filePath);
         } catch {}
         
-        const fs = await import('fs');
-        await fs.promises.rename(tempFile, filePath);
+        await rename(tempFile, filePath);
     }
 
     /**
@@ -225,7 +248,7 @@ export class OperatorManager {
         }
 
         try {
-            await access(this.activeOperatorsFile, constants.F_OK);
+            await stat(this.activeOperatorsFile);
         } catch {
             const initialData: ActiveOperators = {
                 active: {},
@@ -362,7 +385,7 @@ export class OperatorManager {
         }
 
         try {
-            await access(this.sessionOperatorFile, constants.F_OK);
+            await stat(this.sessionOperatorFile);
         } catch {
             throw new Error('このセッションにはオペレータが割り当てられていません');
         }
@@ -459,7 +482,7 @@ export class OperatorManager {
         
         // 既存のオペレータがいる場合は自動的にリリース（交代処理）
         try {
-            await access(this.sessionOperatorFile, constants.F_OK);
+            await stat(this.sessionOperatorFile);
             const currentData = await this.readJsonFile<SessionData>(this.sessionOperatorFile);
             const currentOperator = currentData.operator_id;
             
@@ -568,7 +591,7 @@ export class OperatorManager {
         try {
             const config = await this.configManager.getCharacterConfig(operatorId);
             character = convertCharacterConfigToCharacter(config);
-        } catch {
+        } catch (error) {
             return {
                 operatorId,
                 message: `現在のオペレータ: ${operatorId} (キャラクター情報なし)`
