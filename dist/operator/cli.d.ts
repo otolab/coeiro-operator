@@ -6,6 +6,8 @@
 declare class OperatorManagerCLI {
     private manager;
     constructor();
+    private parseAssignArgs;
+    private executeAssignment;
     showUsage(): Promise<void>;
     run(args: string[]): Promise<void>;
     handleAssign(args: string[]): Promise<void>;
