@@ -42,23 +42,29 @@ const server = new McpServer({
   } 
 });
 
-let sayCoeiroink: SayCoeiroink | null = null;
-let operatorManager: OperatorManager | null = null;
+// top-level awaitを使用した同期的初期化
+console.error("Initializing COEIRO Operator services...");
 
-// 初期化を非同期で実行
-(async () => {
-  try {
-    const config = await loadConfig();
-    sayCoeiroink = new SayCoeiroink(config);
-    
-    operatorManager = new OperatorManager();
-    await operatorManager.initialize();
-    console.error("SayCoeiroink initialized with config");
-  } catch (error) {
-    console.error("Failed to initialize SayCoeiroink:", (error as Error).message);
-    sayCoeiroink = new SayCoeiroink(); // デフォルト設定でフォールバック
-  }
-})();
+let sayCoeiroink: SayCoeiroink;
+let operatorManager: OperatorManager;
+
+try {
+  const config = await loadConfig();
+  sayCoeiroink = new SayCoeiroink(config);
+  
+  operatorManager = new OperatorManager();
+  await operatorManager.initialize();
+  
+  console.error("SayCoeiroink and OperatorManager initialized successfully");
+} catch (error) {
+  console.error("Failed to initialize services:", (error as Error).message);
+  console.error("Using fallback configuration...");
+  
+  // フォールバック設定で初期化
+  sayCoeiroink = new SayCoeiroink();
+  operatorManager = new OperatorManager();
+  await operatorManager.initialize();
+}
 
 // Promiseを返すspawn wrapper
 function spawnAsync(command: string, args: string[], env?: NodeJS.ProcessEnv): Promise<string> {
@@ -170,10 +176,6 @@ server.registerTool("operator_assign", {
   validateOperatorInput(operator);
   
   try {
-    if (!operatorManager) {
-      throw new Error('OperatorManager not initialized');
-    }
-    
     const assignResult = await executeAssignment(operatorManager, operator, style);
     const character = await operatorManager.getCharacterInfo(assignResult.operatorId);
     
@@ -261,10 +263,6 @@ server.registerTool("say", {
   const { message, voice, rate, streamMode, style } = args;
   
   try {
-    if (!sayCoeiroink) {
-      throw new Error('SayCoeiroink not initialized');
-    }
-    
     // src/say/index.jsを直接呼び出し（enqueue処理で即座に戻る）
     const result = await sayCoeiroink.synthesizeText(message, {
       voice: voice || null,
@@ -294,10 +292,6 @@ server.registerTool("operator_styles", {
   const { character } = args || {};
   
   try {
-    if (!operatorManager) {
-      throw new Error('OperatorManager not initialized');
-    }
-    
     let targetCharacter: any;
     let targetCharacterId: string;
     
