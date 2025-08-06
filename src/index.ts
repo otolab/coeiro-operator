@@ -42,23 +42,29 @@ const server = new McpServer({
   } 
 });
 
-let sayCoeiroink: SayCoeiroink | null = null;
-let operatorManager: OperatorManager | null = null;
+// top-level awaitを使用した同期的初期化
+console.error("Initializing COEIRO Operator services...");
 
-// 初期化を非同期で実行
-(async () => {
-  try {
-    const config = await loadConfig();
-    sayCoeiroink = new SayCoeiroink(config);
-    
-    operatorManager = new OperatorManager();
-    await operatorManager.initialize();
-    console.error("SayCoeiroink initialized with config");
-  } catch (error) {
-    console.error("Failed to initialize SayCoeiroink:", (error as Error).message);
-    sayCoeiroink = new SayCoeiroink(); // デフォルト設定でフォールバック
-  }
-})();
+let sayCoeiroink: SayCoeiroink;
+let operatorManager: OperatorManager;
+
+try {
+  const config = await loadConfig();
+  sayCoeiroink = new SayCoeiroink(config);
+  
+  operatorManager = new OperatorManager();
+  await operatorManager.initialize();
+  
+  console.error("SayCoeiroink and OperatorManager initialized successfully");
+} catch (error) {
+  console.error("Failed to initialize services:", (error as Error).message);
+  console.error("Using fallback configuration...");
+  
+  // フォールバック設定で初期化
+  sayCoeiroink = new SayCoeiroink();
+  operatorManager = new OperatorManager();
+  await operatorManager.initialize();
+}
 
 // Utility functions for operator assignment
 function validateOperatorInput(operator?: string): void {
@@ -213,6 +219,70 @@ function spawnAsync(command: string, args: string[], env?: NodeJS.ProcessEnv): P
   });
 }
 
+// オペレータ入力バリデーション関数
+function validateOperatorInput(operator?: string): void {
+  if (operator !== undefined && operator !== '' && operator !== null) {
+    // 日本語文字（ひらがな、カタカナ、漢字）の検出
+    if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(operator)) {
+      throw new Error('オペレータ名は英語表記で指定してください（例: tsukuyomi, alma）。日本語は使用できません。');
+    }
+  }
+}
+
+// アサインメント実行関数
+async function executeAssignment(operatorManager: OperatorManager, operator?: string, style?: string): Promise<AssignResult> {
+  if (operator && operator !== '' && operator !== null) {
+    return await operatorManager.assignSpecificOperator(operator, style);
+  } else {
+    return await operatorManager.assignRandomOperator(style);
+  }
+}
+
+// スタイル情報生成関数
+function generateStyleInfoList(character: any): StyleInfo[] {
+  return Object.entries(character.available_styles || {})
+    .filter(([_, style]) => (style as any).enabled)
+    .map(([styleId, style]) => ({
+      id: styleId,
+      name: (style as any).name,
+      personality: (style as any).personality,
+      speakingStyle: (style as any).speaking_style
+    }));
+}
+
+// 結果テキスト生成関数
+function formatAssignmentResult(assignResult: AssignResult, availableStyles: StyleInfo[]): string {
+  let resultText = `${assignResult.characterName} (${assignResult.operatorId}) をアサインしました。\n\n`;
+  
+  // 現在のスタイル情報
+  if (assignResult.currentStyle) {
+    resultText += `📍 現在のスタイル: ${assignResult.currentStyle.styleName}\n`;
+    resultText += `   性格: ${assignResult.currentStyle.personality}\n`;
+    resultText += `   話し方: ${assignResult.currentStyle.speakingStyle}\n\n`;
+  }
+  
+  // 利用可能なスタイル一覧
+  if (availableStyles.length > 1) {
+    resultText += `🎭 利用可能なスタイル（切り替え可能）:\n`;
+    availableStyles.forEach(style => {
+      const isCurrent = style.id === assignResult.currentStyle?.styleId;
+      const marker = isCurrent ? '→ ' : '  ';
+      resultText += `${marker}${style.id}: ${style.name}\n`;
+      resultText += `    性格: ${style.personality}\n`;
+      resultText += `    話し方: ${style.speakingStyle}\n`;
+    });
+  } else {
+    resultText += `ℹ️  このキャラクターは1つのスタイルのみ利用可能です。\n`;
+  }
+  
+  // 挨拶
+  if (assignResult.greeting) {
+    resultText += `\n💬 \"${assignResult.greeting}\"\n`;
+  }
+  
+  return resultText;
+}
+
 // operator-manager操作ツール
 server.registerTool("operator_assign", {
   description: "オペレータをランダム選択して割り当てます。アサイン後に現在のスタイルと利用可能な他のスタイル情報を表示します。スタイル切り替えはsayツールのstyleパラメータで可能です（例: say({message: \"テスト\", style: \"ura\"})）。ランダムスタイル選択キャラクターは次回アサイン時に異なるスタイルが選ばれる場合があります。",
@@ -223,21 +293,17 @@ server.registerTool("operator_assign", {
 }, async (args): Promise<ToolResponse> => {
   const { operator, style } = args || {};
   
+  validateOperatorInput(operator);
+  
   try {
-    validateOperatorInput(operator);
-    
-    if (!operatorManager) {
-      throw new Error('OperatorManager not initialized');
-    }
-    
-    const assignResult = await assignOperator(operatorManager, operator, style);
+    const assignResult = await executeAssignment(operatorManager, operator, style);
     const character = await operatorManager.getCharacterInfo(assignResult.operatorId);
     
     if (!character) {
       throw new Error(`キャラクター情報が見つかりません: ${assignResult.operatorId}`);
     }
     
-    const availableStyles = extractStyleInfo(character);
+    const availableStyles = generateStyleInfoList(character);
     const resultText = formatAssignmentResult(assignResult, availableStyles);
     
     return {
@@ -317,10 +383,6 @@ server.registerTool("say", {
   const { message, voice, rate, streamMode, style } = args;
   
   try {
-    if (!sayCoeiroink) {
-      throw new Error('SayCoeiroink not initialized');
-    }
-    
     // src/say/index.jsを直接呼び出し（enqueue処理で即座に戻る）
     const result = await sayCoeiroink.synthesizeText(message, {
       voice: voice || null,
@@ -350,13 +412,70 @@ server.registerTool("operator_styles", {
   const { character } = args || {};
   
   try {
-    if (!operatorManager) {
-      throw new Error('OperatorManager not initialized');
+    let targetCharacter: any;
+    let targetCharacterId: string;
+    
+    if (character) {
+      // 指定されたキャラクターの情報を取得
+      try {
+        targetCharacter = await operatorManager.getCharacterInfo(character);
+        targetCharacterId = character;
+      } catch (error) {
+        throw new Error(`キャラクター '${character}' が見つかりません`);
+      }
+    } else {
+      // 現在のオペレータの情報を取得
+      const currentOperator = await operatorManager.showCurrentOperator();
+      if (!currentOperator.operatorId) {
+        throw new Error('現在オペレータが割り当てられていません。まず operator_assign を実行してください。');
+      }
+      
+      targetCharacter = await operatorManager.getCharacterInfo(currentOperator.operatorId);
+      targetCharacterId = currentOperator.operatorId;
+      
+      if (!targetCharacter) {
+        throw new Error(`現在のオペレータ '${currentOperator.operatorId}' のキャラクター情報が見つかりません`);
+      }
     }
     
-    const { character: targetCharacter } = await getTargetCharacter(operatorManager, character);
-    const availableStyles = extractStyleInfo(targetCharacter);
-    const resultText = formatStylesResult(targetCharacter, availableStyles);
+    // スタイル情報を取得
+    const availableStyles: StyleInfo[] = Object.entries(targetCharacter.available_styles || {})
+      .filter(([_, style]) => (style as any).enabled)
+      .map(([styleId, style]) => ({
+        id: styleId,
+        name: (style as any).name,
+        personality: (style as any).personality,
+        speakingStyle: (style as any).speaking_style
+      }));
+    
+    // 結果を整形
+    let resultText = `🎭 ${targetCharacter.name} のスタイル情報\n\n`;
+    
+    // キャラクターの基本情報
+    resultText += `📋 基本情報:\n`;
+    resultText += `   性格: ${targetCharacter.personality}\n`;
+    resultText += `   話し方: ${targetCharacter.speaking_style}\n`;
+    resultText += `   スタイル選択方法: ${targetCharacter.style_selection}\n`;
+    resultText += `   デフォルトスタイル: ${targetCharacter.default_style}\n\n`;
+    
+    // 利用可能なスタイル一覧
+    if (availableStyles.length > 0) {
+      resultText += `🎨 利用可能なスタイル (${availableStyles.length}種類):\n`;
+      availableStyles.forEach((style, index) => {
+        const isDefault = style.id === targetCharacter.default_style;
+        const marker = isDefault ? '★ ' : `${index + 1}. `;
+        resultText += `${marker}${style.id}: ${style.name}\n`;
+        resultText += `   性格: ${style.personality}\n`;
+        resultText += `   話し方: ${style.speakingStyle}\n`;
+        if (isDefault) {
+          resultText += `   (デフォルトスタイル)\n`;
+        }
+        resultText += `\n`;
+      });
+      
+    } else {
+      resultText += `⚠️  利用可能なスタイルがありません。\n`;
+    }
     
     return {
       content: [{
