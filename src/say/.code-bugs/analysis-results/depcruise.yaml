@@ -1,10 +1,102 @@
+audio-player.ts:
+  summary:
+    meta:
+      model: <depcruise-analysis>
+      sources:
+        - path: audio-player.ts
+          hash: 7a2edc80f410b4e8150dc7671f5579d794ca2bf0f700516c85f06187fc4f62a1
+      version: 0.0.1
+    result:
+      dependencies:
+        - dynamic: false
+          module: ./types.js
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - local
+            - type-only
+            - import
+          resolved: say/types.ts
+          coreModule: false
+          followable: true
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+        - dynamic: false
+          module: child_process
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - core
+            - import
+          resolved: child_process
+          coreModule: true
+          followable: false
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+        - dynamic: false
+          module: fs/promises
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - core
+            - import
+          resolved: fs/promises
+          coreModule: true
+          followable: false
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+      dependents:
+        - source: say/index.ts
+          moduleSystem: es6
+          circular: false
+          dynamic: false
+      orphan: false
+      valid: true
+audio-synthesizer.ts:
+  summary:
+    meta:
+      model: <depcruise-analysis>
+      sources:
+        - path: audio-synthesizer.ts
+          hash: 95407dada899f15c4a276ff7c0c94f6c8a62057ee7ca1e86a01e491e6cafa8bd
+      version: 0.0.1
+    result:
+      dependencies:
+        - dynamic: false
+          module: ./types.js
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - local
+            - type-only
+            - import
+          resolved: say/types.ts
+          coreModule: false
+          followable: true
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+      dependents:
+        - source: say/index.ts
+          moduleSystem: es6
+          circular: false
+          dynamic: false
+      orphan: false
+      valid: true
 cli.ts:
   summary:
     meta:
       model: <depcruise-analysis>
       sources:
         - path: cli.ts
-          hash: 3c03652e1a1e05b9fa34f47bc71c36a9e0eef2b3104494002458559695d50758
+          hash: 3d992ab9f58d052a8b409aa7fc91a0bea3f1da173003b7adb134d07d9a316205
       version: 0.0.1
     result:
       dependencies:
@@ -36,6 +128,20 @@ cli.ts:
           matchesDoNotFollow: false
           circular: false
           valid: true
+        - dynamic: false
+          module: fs/promises
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - core
+            - import
+          resolved: fs/promises
+          coreModule: true
+          followable: false
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
       dependents: []
       orphan: false
       valid: true
@@ -45,20 +151,77 @@ index.ts:
       model: <depcruise-analysis>
       sources:
         - path: index.ts
-          hash: 08e33e025cf21d4eaf8affaa03d5267cc8c5dcd2ef463622e7a2b9398e8e36d0
+          hash: 3bc1256da73315bcf53a1ab10aa33f7ef2bcf9d3723f3df5479faab85059aa68
       version: 0.0.1
     result:
       dependencies:
         - dynamic: false
-          module: child_process
+          module: ../operator/index.js
           moduleSystem: es6
           exoticallyRequired: false
           dependencyTypes:
-            - core
+            - local
             - import
-          resolved: child_process
-          coreModule: true
-          followable: false
+          resolved: operator/index.ts
+          coreModule: false
+          followable: true
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+        - dynamic: false
+          module: ./audio-player.js
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - local
+            - import
+          resolved: say/audio-player.ts
+          coreModule: false
+          followable: true
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+        - dynamic: false
+          module: ./audio-synthesizer.js
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - local
+            - import
+          resolved: say/audio-synthesizer.ts
+          coreModule: false
+          followable: true
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+        - dynamic: false
+          module: ./speech-queue.js
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - local
+            - import
+          resolved: say/speech-queue.ts
+          coreModule: false
+          followable: true
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+        - dynamic: false
+          module: ./types.js
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - local
+            - type-only
+            - import
+          resolved: say/types.ts
+          coreModule: false
+          followable: true
           couldNotResolve: false
           matchesDoNotFollow: false
           circular: false
@@ -125,6 +288,67 @@ index.ts:
           circular: false
           dynamic: false
         - source: say/cli.ts
+          moduleSystem: es6
+          circular: false
+          dynamic: false
+      orphan: false
+      valid: true
+speech-queue.ts:
+  summary:
+    meta:
+      model: <depcruise-analysis>
+      sources:
+        - path: speech-queue.ts
+          hash: 7e2075a45628d42ef1fcb0a54299bbf0be8e9c12b65ad6c942b6df20148e505c
+      version: 0.0.1
+    result:
+      dependencies:
+        - dynamic: false
+          module: ./types.js
+          moduleSystem: es6
+          exoticallyRequired: false
+          dependencyTypes:
+            - local
+            - type-only
+            - import
+          resolved: say/types.ts
+          coreModule: false
+          followable: true
+          couldNotResolve: false
+          matchesDoNotFollow: false
+          circular: false
+          valid: true
+      dependents:
+        - source: say/index.ts
+          moduleSystem: es6
+          circular: false
+          dynamic: false
+      orphan: false
+      valid: true
+types.ts:
+  summary:
+    meta:
+      model: <depcruise-analysis>
+      sources:
+        - path: types.ts
+          hash: 50262a9b7d2db5099c6d5a5bf0e68638530cc1e4b977ae614cebc307c5221383
+      version: 0.0.1
+    result:
+      dependencies: []
+      dependents:
+        - source: say/index.ts
+          moduleSystem: es6
+          circular: false
+          dynamic: false
+        - source: say/audio-player.ts
+          moduleSystem: es6
+          circular: false
+          dynamic: false
+        - source: say/audio-synthesizer.ts
+          moduleSystem: es6
+          circular: false
+          dynamic: false
+        - source: say/speech-queue.ts
           moduleSystem: es6
           circular: false
           dynamic: false

@@ -184,15 +184,6 @@ export class SayCoeiroink {
         return await this.audioPlayer.playAudioStream(audioResult);
     }
 
-    // AudioPlayer の playAudioFile メソッドを使用
-    async playAudioFile(audioFile: string): Promise<void> {
-        return await this.audioPlayer.playAudioFile(audioFile);
-    }
-
-    // AudioPlayer の detectAudioPlayerSync メソッドを使用
-    detectAudioPlayerSync(): string {
-        return this.audioPlayer.detectAudioPlayerSync();
-    }
 
     // AudioPlayer の applyCrossfade メソッドを使用
     applyCrossfade(pcmData: Uint8Array, overlapSamples: number): Uint8Array {
@@ -228,7 +219,6 @@ export class SayCoeiroink {
 
     // SpeechQueue の enqueue メソッドを使用
     async enqueueSpeech(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
-        console.log(`DEBUG: enqueueSpeech called with text: "${text}"`);
         return await this.speechQueue.enqueue(text, options);
     }
 

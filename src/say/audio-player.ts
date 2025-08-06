@@ -1,20 +1,28 @@
 /**
  * src/say/audio-player.ts: 音声再生管理
- * 音声ファイルの再生と音声プレーヤーの管理を担当
+ * speakerライブラリによるネイティブ音声出力を担当
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import { writeFile, unlink } from 'fs/promises';
+import Speaker from 'speaker';
+import { writeFile } from 'fs/promises';
 import type { AudioResult, Chunk } from './types.js';
 
 export class AudioPlayer {
-    private audioPlayer: string | null = null;
+    private speaker: Speaker | null = null;
+    private sampleRate: number = 24000;
+    private channels: number = 1;
+    private bitDepth: number = 16;
 
     async initialize(): Promise<boolean> {
         try {
-            // システムオーディオコマンドを使用（低レイテンシモード）
-            console.error(`音声プレーヤー初期化: システムオーディオ使用（低レイテンシモード）`);
-            this.audioPlayer = 'system';
+            // speakerライブラリを使用（ネイティブ音声出力）
+            this.speaker = new Speaker({
+                channels: this.channels,
+                bitDepth: this.bitDepth,
+                sampleRate: this.sampleRate
+            });
+            
+            console.error(`音声プレーヤー初期化: speakerライブラリ使用（ネイティブ出力）`);
             return true;
         } catch (error) {
             console.error(`音声プレーヤー初期化エラー: ${(error as Error).message}`);
@@ -23,59 +31,44 @@ export class AudioPlayer {
     }
 
     /**
-     * 音声ファイルを再生
+     * 音声ストリームを再生（speakerライブラリを使用）
      */
-    async playAudioFile(audioFile: string): Promise<void> {
+    async playAudioStream(audioResult: AudioResult): Promise<void> {
+        if (!this.speaker) {
+            throw new Error('音声プレーヤーが初期化されていません');
+        }
+
         try {
-            const audioPlayer = this.detectAudioPlayerSync();
-            await this.execCommand(audioPlayer, [audioFile]);
+            // WAVデータからPCMデータを抽出
+            const pcmData = this.extractPCMFromWAV(audioResult.audioBuffer);
+            
+            // PCMデータを直接speakerに送信
+            return new Promise((resolve, reject) => {
+                // 新しいSpeakerインスタンスを作成（ストリーミング用）
+                const streamSpeaker = new Speaker({
+                    channels: this.channels,
+                    bitDepth: this.bitDepth,
+                    sampleRate: this.sampleRate
+                });
+
+                streamSpeaker.on('close', () => {
+                    resolve();
+                });
+
+                streamSpeaker.on('error', (error) => {
+                    reject(new Error(`音声再生エラー: ${error.message}`));
+                });
+
+                // PCMデータを書き込み
+                streamSpeaker.write(Buffer.from(pcmData));
+                streamSpeaker.end();
+            });
+            
         } catch (error) {
             throw new Error(`音声再生エラー: ${(error as Error).message}`);
         }
     }
 
-    /**
-     * 音声ストリームを再生
-     */
-    async playAudioStream(audioResult: AudioResult): Promise<void> {
-        try {
-            const tempFile = `/tmp/stream_${Date.now()}_${audioResult.chunk.index}.wav`;
-            
-            await writeFile(tempFile, Buffer.from(audioResult.audioBuffer));
-
-            const playPromise = this.playAudioFile(tempFile);
-            
-            // ファイルクリーンアップを遅延実行
-            playPromise.finally(() => {
-                setTimeout(() => {
-                    unlink(tempFile).catch(() => {});
-                }, 1000);
-            });
-
-            return playPromise;
-            
-        } catch (error) {
-            console.error(`音声再生エラー: ${(error as Error).message}`);
-        }
-    }
-
-    /**
-     * 利用可能な音声プレーヤーを検出
-     */
-    detectAudioPlayerSync(): string {
-        const players = ['afplay', 'aplay', 'paplay', 'play'];
-        
-        for (const player of players) {
-            try {
-                spawn('which', [player], { stdio: 'ignore' });
-                return player;
-            } catch {
-                continue;
-            }
-        }
-        
-        return 'afplay'; // デフォルト（macOS）
-    }
 
     /**
      * 音声ファイルを保存
@@ -137,37 +130,4 @@ export class AudioPlayer {
         return result;
     }
 
-    /**
-     * コマンドを実行
-     */
-    private async execCommand(command: string, args: string[]): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const child: ChildProcess = spawn(command, args, {
-                stdio: ['pipe', 'pipe', 'pipe']
-            });
-
-            let stdout = '';
-            let stderr = '';
-
-            child.stdout?.on('data', (data) => {
-                stdout += data.toString();
-            });
-
-            child.stderr?.on('data', (data) => {
-                stderr += data.toString();
-            });
-
-            child.on('close', (code) => {
-                if (code === 0) {
-                    resolve(stdout.trim());
-                } else {
-                    reject(new Error(`Command failed with code ${code}: ${stderr}`));
-                }
-            });
-
-            child.on('error', (err) => {
-                reject(new Error(`Failed to execute command: ${err.message}`));
-            });
-        });
-    }
 }

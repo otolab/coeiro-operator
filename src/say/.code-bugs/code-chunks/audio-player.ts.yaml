@@ -1,0 +1,182 @@
+meta:
+  model: vertexai:gemini-2.5-flash
+  sources:
+    - path: audio-player.ts
+      hash: 7a2edc80f410b4e8150dc7671f5579d794ca2bf0f700516c85f06187fc4f62a1
+  version: 0.0.0
+result:
+  - |
+    /**
+     * src/say/audio-player.ts: 音声再生管理
+     * 音声ファイルの再生と音声プレーヤーの管理を担当
+     */
+  - |
+    import { spawn, ChildProcess } from 'child_process';
+    import { writeFile, unlink } from 'fs/promises';
+    import type { AudioResult, Chunk } from './types.js';
+  - |
+    export class AudioPlayer {
+        private audioPlayer: string | null = null;
+
+        async initialize(): Promise<boolean> {
+            try {
+                // システムオーディオコマンドを使用（低レイテンシモード）
+                console.error(`音声プレーヤー初期化: システムオーディオ使用（低レイテンシモード）`);
+                this.audioPlayer = 'system';
+                return true;
+            } catch (error) {
+                console.error(`音声プレーヤー初期化エラー: ${(error as Error).message}`);
+                return false;
+            }
+        }
+  - |2
+        /**
+         * 音声ファイルを再生
+         */
+        async playAudioFile(audioFile: string): Promise<void> {
+            try {
+                const audioPlayer = this.detectAudioPlayerSync();
+                await this.execCommand(audioPlayer, [audioFile]);
+            } catch (error) {
+                throw new Error(`音声再生エラー: ${(error as Error).message}`);
+            }
+        }
+  - >2-
+        /**
+         * 音声ストリームを再生
+         */
+        async playAudioStream(audioResult: AudioResult): Promise<void> {
+            try {
+                const tempFile = `/tmp/stream_${Date.now()}_${audioResult.chunk.index}.wav`;
+                
+                await writeFile(tempFile, Buffer.from(audioResult.audioBuffer));
+
+                const playPromise = this.playAudioFile(tempFile);
+                
+                // ファイルクリーンアップを遅延実行
+                playPromise.finally(() => {
+                    setTimeout(() => {
+                        unlink(tempFile).catch(() => {});
+                    }, 1000);
+                });
+
+                return playPromise;
+                
+            } catch (error) {
+                console.error(`音声再生エラー: ${(error as Error).message}`);
+            }
+        }
+
+        /**
+  - >2-
+         * 利用可能な音声プレーヤーを検出
+         */
+        detectAudioPlayerSync(): string {
+            const players = ['afplay', 'aplay', 'paplay', 'play'];
+            
+            for (const player of players) {
+                try {
+                    spawn('which', [player], { stdio: 'ignore' });
+                    return player;
+                } catch {
+                    continue;
+                }
+            }
+            
+            return 'afplay'; // デフォルト（macOS）
+        }
+
+        /**
+         * 音声ファイルを保存
+         */
+        async saveAudio(audioBuffer: ArrayBuffer, outputFile: string): Promise<void> {
+            try {
+                await writeFile(outputFile, Buffer.from(audioBuffer));
+            } catch (error) {
+                throw new Error(`音声ファイル保存エラー: ${(error as Error).message}`);
+            }
+        }
+
+        /**
+         * WAVヘッダーを除去してPCMデータを抽出
+         */
+        extractPCMFromWAV(wavBuffer: ArrayBuffer): Uint8Array {
+            const view = new DataView(wavBuffer);
+            
+            // WAVヘッダーの検証とデータ位置の特定
+            if (view.getUint32(0, false) !== 0x52494646) { // "RIFF"
+                throw new Error('Invalid WAV file');
+            }
+            
+            let dataOffset = 12; // RIFFヘッダー後
+            while (dataOffset < wavBuffer.byteLength - 8) {
+                const chunkType = view.getUint32(dataOffset, false);
+                const chunkSize = view.getUint32(dataOffset + 4, true);
+                
+                if (chunkType === 0x64617461) { // "data"
+                    // データチャンクが見つかった
+                    const pcmData = wavBuffer.slice(dataOffset + 8, dataOffset + 8 + chunkSize);
+                    return new Uint8Array(pcmData);
+                }
+                
+                dataOffset += 8 + chunkSize;
+            }
+            
+            throw new Error('WAV data chunk not found');
+        }
+
+        /**
+         * クロスフェード処理を適用
+         */
+        applyCrossfade(pcmData: Uint8Array, overlapSamples: number): Uint8Array {
+            // 簡単なクロスフェード実装（音切れ軽減）
+            // 副作用を避けるため、新しい配列を作成して返す
+            const result = new Uint8Array(pcmData);
+            
+            if (overlapSamples > 0 && overlapSamples < pcmData.length / 2) {
+                for (let i = 0; i < overlapSamples * 2; i += 2) {
+                    const factor = i / (overlapSamples * 2);
+                    const sample = (pcmData[i] | (pcmData[i + 1] << 8));
+                    const fadedSample = Math.floor(sample * factor);
+                    result[i] = fadedSample & 0xFF;
+                    result[i + 1] = (fadedSample >> 8) & 0xFF;
+                }
+            }
+            
+            return result;
+        }
+
+        /**
+         * コマンドを実行
+         */
+        private async execCommand(command: string, args: string[]): Promise<string> {
+            return new Promise((resolve, reject) => {
+                const child: ChildProcess = spawn(command, args, {
+                    stdio: ['pipe', 'pipe', 'pipe']
+                });
+
+                let stdout = '';
+                let stderr = '';
+
+                child.stdout?.on('data', (data) => {
+                    stdout += data.toString();
+                });
+
+                child.stderr?.on('data', (data) => {
+                    stderr += data.toString();
+                });
+
+                child.on('close', (code) => {
+                    if (code === 0) {
+                        resolve(stdout.trim());
+                    } else {
+                        reject(new Error(`Command failed with code ${code}: ${stderr}`));
+                    }
+                });
+
+                child.on('error', (err) => {
+                    reject(new Error(`Failed to execute command: ${err.message}`));
+                });
+            });
+        }
+    }

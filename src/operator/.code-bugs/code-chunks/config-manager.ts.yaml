@@ -2,7 +2,7 @@ meta:
   model: vertexai:gemini-2.5-flash
   sources:
     - path: config-manager.ts
-      hash: fd2208e79c87fdbaea7ba6e1aa6c7f792dffd4003d621406caf6f6d73ef2c6e7
+      hash: 9a9feafe6f398f019b14315b3463d36c9cc97b1b1dd830703fe129f9fc060370
   version: 0.0.0
 result:
   - |
@@ -11,7 +11,7 @@ result:
      * 動的音声フォント取得、設定マージ、キャッシュ管理を担当
      */
   - >
-    import { readFile, writeFile, access, mkdir } from 'fs/promises';
+    import { readFile, writeFile, mkdir, access } from 'fs/promises';
 
     import { constants } from 'fs';
 
@@ -25,14 +25,14 @@ result:
         name: string;
         style_id: number;
     }
-  - |
+
     interface Voice {
         id: string;
         name: string;
         voice_id: string;
         styles: VoiceStyle[];
     }
-  - |-
+  - |
     export interface CharacterStyle {
         name: string;
         style_id: number;
@@ -42,7 +42,6 @@ result:
     }
 
     export interface CharacterConfig {
-  - |2
         name: string;
         personality: string;
         speaking_style: string;
@@ -58,11 +57,11 @@ result:
     interface UserConfig {
         characters: Record<string, Partial<CharacterConfig>>;
     }
-  - |
+
     interface MergedConfig {
         characters: Record<string, CharacterConfig>;
     }
-  - |-
+  - |
     export class ConfigManager {
         private configDir: string;
         private operatorConfigFile: string;
@@ -75,9 +74,8 @@ result:
             this.operatorConfigFile = join(configDir, 'operator-config.json');
             this.coeiroinkConfigFile = join(configDir, 'coeiroink-config.json');
         }
-
+  - >2-
         /**
-  - |2
          * JSONファイルを安全に読み込み
          */
         async readJsonFile<T>(filePath: string, defaultValue: T): Promise<T> {
@@ -89,7 +87,7 @@ result:
                 return defaultValue;
             }
         }
-  - |2
+
         /**
          * JSONファイルを安全に書き込み
          */
@@ -105,7 +103,7 @@ result:
                 throw error;
             }
         }
-  - >2
+
         /**
          * COEIROINKサーバーから利用可能な音声フォントを取得
          */
@@ -139,7 +137,7 @@ result:
                 this.availableVoices = [];
             }
         }
-  - |2
+
         /**
          * 音声名からIDを生成（英語名への変換）
          */
@@ -147,7 +145,7 @@ result:
             return SPEAKER_NAME_TO_ID_MAP[speakerName] || 
                    speakerName.toLowerCase().replace(/[^a-z0-9]/g, '');
         }
-  - >2
+
         /**
          * 再帰的なオブジェクトマージ
          */
@@ -164,7 +162,7 @@ result:
             
             return result;
         }
-  - >2
+
         /**
          * 動的設定の構築（内蔵設定 + 動的音声情報 + ユーザー設定）
          */
@@ -254,7 +252,7 @@ result:
             
             return this.mergedConfig;
         }
-  - |2
+
         /**
          * 設定をリフレッシュ（キャッシュクリア）
          */
@@ -262,7 +260,7 @@ result:
             this.availableVoices = null;
             this.mergedConfig = null;
         }
-  - >2
+
         /**
          * 特定キャラクターの設定を取得
          */
@@ -276,7 +274,7 @@ result:
             
             return character;
         }
-  - |2
+
         /**
          * 利用可能なキャラクターIDリストを取得
          */
@@ -284,7 +282,7 @@ result:
             const config = await this.buildDynamicConfig();
             return Object.keys(config.characters || {});
         }
-  - |2-
+
         /**
          * 挨拶パターンリストを取得
          */
@@ -297,7 +295,6 @@ result:
 
         /**
          * デバッグ用：現在の設定状況を出力
-  - >2-
          */
         async debugConfig(): Promise<void> {
             console.log('=== ConfigManager Debug Info ===');
@@ -312,6 +309,6 @@ result:
             console.log('User Config:', JSON.stringify(userConfig, null, 2));
         }
     }
-  - |-
-    
+
+
     export default ConfigManager;

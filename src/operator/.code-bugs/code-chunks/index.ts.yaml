@@ -2,7 +2,7 @@ meta:
   model: vertexai:gemini-2.5-flash
   sources:
     - path: index.ts
-      hash: 9a3540c8104c6e2b7720f320fe0f70fc4d907e34c4715c4d310f54be2f31d88a
+      hash: 883b43da087b6cf61636d947bc12801914c6afd72fe4075d9ec8d4bea04dfa90
   version: 0.0.0
 result:
   - |
@@ -13,7 +13,8 @@ result:
      * キャラクター:スタイル単位での管理とMCP情報提供に対応
      */
   - >-
-    import { readFile, writeFile, access, mkdir, unlink } from 'fs/promises';
+    import { readFile, writeFile, stat, mkdir, unlink, rename, access } from
+    'fs/promises';
 
     import { constants } from 'fs';
 
@@ -26,7 +27,7 @@ result:
 
 
     // インターフェース定義
-  - |
+  - |-
     interface Style {
         styleId: string;
         name: string;
@@ -36,7 +37,7 @@ result:
         enabled: boolean;
         disabled?: boolean;
     }
-  - |
+
     interface Character {
         name: string;
         voice_id: string | null;
@@ -48,12 +49,12 @@ result:
         personality: string;
         speaking_style: string;
     }
-  - |
+
     interface ActiveOperators {
         active: Record<string, string>;
         last_updated: string;
     }
-  - |-
+
     interface SessionData {
         operator_id: string;
         session_id: string;
@@ -90,7 +91,7 @@ result:
             speaking_style: config.speaking_style
         };
     }
-  - >-
+  - |
     interface AssignResult {
         operatorId: string;
         characterName: string;
@@ -107,15 +108,13 @@ result:
         greeting?: string;
         message?: string;
     }
-
-
+  - |
     interface ReleaseResult {
         operatorId: string;
         characterName: string;
         farewell: string;
     }
-
-
+  - |
     interface StatusResult {
         operatorId?: string;
         characterName?: string;
@@ -127,8 +126,7 @@ result:
         };
         message: string;
     }
-
-
+  - >
     /**
      * 設定ディレクトリを決定（ホームディレクトリベース）
      */
@@ -155,8 +153,7 @@ result:
             }
         }
     }
-
-
+  - |
     /**
      * セッション固有ディレクトリを決定
      */
@@ -167,8 +164,7 @@ result:
         } catch {}
         return sessionDir;
     }
-
-
+  - |
     /**
      * セッションIDを取得
      */
@@ -181,8 +177,7 @@ result:
             return process.ppid.toString();
         }
     }
-
-
+  - >
     export class OperatorManager {
         private sessionId: string;
         private configDir: string | null = null;
@@ -208,8 +203,31 @@ result:
             
             // 設定管理システムを初期化
             this.configManager = new ConfigManager(this.configDir);
+            
+            // ConfigManagerの動的設定を事前にビルドして初期化を完了
+            try {
+                await this.configManager.buildDynamicConfig();
+            } catch (error) {
+                console.warn(`OperatorManager dynamic config build failed:`, (error as Error).message);
+            }
         }
-
+  - >2
+        /**
+         * 設定の事前構築（外部からの呼び出し用）
+         */
+        async buildDynamicConfig(): Promise<void> {
+            if (!this.configManager) {
+                throw new Error('ConfigManager is not initialized');
+            }
+            
+            try {
+                await this.configManager.buildDynamicConfig();
+            } catch (error) {
+                console.error(`OperatorManager buildDynamicConfig failed:`, (error as Error).message);
+                throw error;
+            }
+        }
+  - >2
         /**
          * JSONファイルを安全に読み込み
          */
@@ -218,11 +236,12 @@ result:
                 await access(filePath, constants.F_OK);
                 const content = await readFile(filePath, 'utf8');
                 return JSON.parse(content);
-            } catch {
+            } catch (error) {
+                console.error(`ファイル読み込みエラー: ${filePath}, ${(error as Error).message}`);
                 return defaultValue;
             }
         }
-
+  - |2-
         /**
          * JSONファイルを安全に書き込み
          */
@@ -235,11 +254,11 @@ result:
                 await unlink(filePath);
             } catch {}
             
-            const fs = await import('fs');
-            await fs.promises.rename(tempFile, filePath);
+            await rename(tempFile, filePath);
         }
 
         /**
+  - |2
          * 利用中オペレータファイルの初期化
          */
         async initActiveOperators(): Promise<void> {
@@ -248,7 +267,7 @@ result:
             }
 
             try {
-                await access(this.activeOperatorsFile, constants.F_OK);
+                await stat(this.activeOperatorsFile);
             } catch {
                 const initialData: ActiveOperators = {
                     active: {},
@@ -257,7 +276,7 @@ result:
                 await this.writeJsonFile(this.activeOperatorsFile, initialData);
             }
         }
-
+  - >2
         /**
          * キャラクター情報を取得
          */
@@ -268,7 +287,7 @@ result:
             const config = await this.configManager.getCharacterConfig(characterId);
             return convertCharacterConfigToCharacter(config);
         }
-
+  - >2
         /**
          * スタイルを選択
          */
@@ -314,7 +333,7 @@ result:
                     return availableStyles[0];
             }
         }
-
+  - |2
         /**
          * 挨拶パターンを自動抽出
          */
@@ -324,7 +343,7 @@ result:
             }
             return await this.configManager.getGreetingPatterns();
         }
-
+  - >2
         /**
          * 利用可能なオペレータを取得
          */
@@ -342,7 +361,7 @@ result:
             
             return availableOperators;
         }
-
+  - >2
         /**
          * オペレータを予約
          */
@@ -375,7 +394,7 @@ result:
             
             return true;
         }
-
+  - >2-
         /**
          * オペレータを返却
          */
@@ -385,7 +404,7 @@ result:
             }
 
             try {
-                await access(this.sessionOperatorFile, constants.F_OK);
+                await stat(this.sessionOperatorFile);
             } catch {
                 throw new Error('このセッションにはオペレータが割り当てられていません');
             }
@@ -419,7 +438,8 @@ result:
                 farewell: character?.farewell || ''
             };
         }
-
+  - >2
+    
         /**
          * 全ての利用状況をクリア
          */
@@ -442,7 +462,7 @@ result:
             
             return true;
         }
-
+  - >2
         /**
          * ランダムオペレータ選択と詳細情報付きアサイン
          */
@@ -458,7 +478,7 @@ result:
             
             return await this.assignSpecificOperator(selectedOperator, style);
         }
-
+  - >2
         /**
          * 指定されたオペレータを詳細情報付きでアサイン
          */
@@ -482,7 +502,7 @@ result:
             
             // 既存のオペレータがいる場合は自動的にリリース（交代処理）
             try {
-                await access(this.sessionOperatorFile, constants.F_OK);
+                await stat(this.sessionOperatorFile);
                 const currentData = await this.readJsonFile<SessionData>(this.sessionOperatorFile);
                 const currentOperator = currentData.operator_id;
                 
@@ -549,7 +569,7 @@ result:
                 greeting: character.greeting || ''
             };
         }
-
+  - >2
         /**
          * 音声設定を更新
          */
@@ -567,7 +587,7 @@ result:
                 console.error(`音声設定更新エラー: ${(error as Error).message}`);
             }
         }
-
+  - >2-
         /**
          * 現在のオペレータ情報表示
          */
@@ -591,7 +611,7 @@ result:
             try {
                 const config = await this.configManager.getCharacterConfig(operatorId);
                 character = convertCharacterConfigToCharacter(config);
-            } catch {
+            } catch (error) {
                 return {
                     operatorId,
                     message: `現在のオペレータ: ${operatorId} (キャラクター情報なし)`
@@ -613,6 +633,6 @@ result:
             };
         }
     }
-
-
+  - |-
+    
     export default OperatorManager;

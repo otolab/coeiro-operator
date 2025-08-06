@@ -2,7 +2,7 @@ meta:
   model: vertexai:gemini-2.5-flash
   sources:
     - path: cli.ts
-      hash: 1abd1ad9991257a22ce1462b7ad835568c4989aa6a353a4331964d1e85f10f9c
+      hash: 57b41f336786a32baf45d6277bb3ad01e9fd39b5bb892710c658026de35c2fc1
   version: 0.0.0
 result:
   - |
@@ -40,10 +40,11 @@ result:
         operatorId: string | null;
         style: string | null;
     }
-  - |
+  - |-
     class OperatorManagerCLI {
         private manager: OperatorManager;
-
+  - |2
+    
         constructor() {
             this.manager = new OperatorManager();
         }
@@ -94,7 +95,7 @@ result:
       available                                  - 利用可能なオペレータを表示
       clear                                      - 全てのオペレータ利用状況をクリア`);
         }
-  - |2
+  - |2+
         async run(args: string[]): Promise<void> {
             await this.manager.initialize();
 
@@ -131,6 +132,7 @@ result:
                 process.exit(1);
             }
         }
+
   - |2
         async handleAssign(args: string[]): Promise<void> {
             const { operatorId, style } = this.parseAssignArgs(args);
@@ -151,18 +153,16 @@ result:
             const available: string[] = await this.manager.getAvailableOperators();
             console.log(`利用可能なオペレータ: ${available.join(' ')}`);
         }
-  - |2-
+  - |2
         async handleClear(): Promise<void> {
             await this.manager.clearAllOperators();
             console.log('全てのオペレータ利用状況をクリアしました');
         }
     }
-  - |-
-    
+  - |
     // メイン実行
     if (import.meta.url === `file://${process.argv[1]}`) {
         const cli = new OperatorManagerCLI();
         await cli.run(process.argv.slice(2));
     }
-
-    export default OperatorManagerCLI;
+  - export default OperatorManagerCLI;

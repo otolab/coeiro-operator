@@ -21,7 +21,7 @@ cli.ts:
       model: <depcruise-analysis>
       sources:
         - path: cli.ts
-          hash: 1abd1ad9991257a22ce1462b7ad835568c4989aa6a353a4331964d1e85f10f9c
+          hash: 57b41f336786a32baf45d6277bb3ad01e9fd39b5bb892710c658026de35c2fc1
       version: 0.0.1
     result:
       dependencies:
@@ -48,7 +48,7 @@ config-manager.ts:
       model: <depcruise-analysis>
       sources:
         - path: config-manager.ts
-          hash: fd2208e79c87fdbaea7ba6e1aa6c7f792dffd4003d621406caf6f6d73ef2c6e7
+          hash: 9a9feafe6f398f019b14315b3463d36c9cc97b1b1dd830703fe129f9fc060370
       version: 0.0.1
     result:
       dependencies:
@@ -121,7 +121,7 @@ index.ts:
       model: <depcruise-analysis>
       sources:
         - path: index.ts
-          hash: 9a3540c8104c6e2b7720f320fe0f70fc4d907e34c4715c4d310f54be2f31d88a
+          hash: 883b43da087b6cf61636d947bc12801914c6afd72fe4075d9ec8d4bea04dfa90
       version: 0.0.1
     result:
       dependencies:
@@ -197,6 +197,10 @@ index.ts:
           valid: true
       dependents:
         - source: index.ts
+          moduleSystem: es6
+          circular: false
+          dynamic: false
+        - source: say/index.ts
           moduleSystem: es6
           circular: false
           dynamic: false
