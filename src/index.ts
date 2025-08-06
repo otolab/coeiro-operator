@@ -219,69 +219,6 @@ function spawnAsync(command: string, args: string[], env?: NodeJS.ProcessEnv): P
   });
 }
 
-// オペレータ入力バリデーション関数
-function validateOperatorInput(operator?: string): void {
-  if (operator !== undefined && operator !== '' && operator !== null) {
-    // 日本語文字（ひらがな、カタカナ、漢字）の検出
-    if (/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(operator)) {
-      throw new Error('オペレータ名は英語表記で指定してください（例: tsukuyomi, alma）。日本語は使用できません。');
-    }
-  }
-}
-
-// アサインメント実行関数
-async function executeAssignment(operatorManager: OperatorManager, operator?: string, style?: string): Promise<AssignResult> {
-  if (operator && operator !== '' && operator !== null) {
-    return await operatorManager.assignSpecificOperator(operator, style);
-  } else {
-    return await operatorManager.assignRandomOperator(style);
-  }
-}
-
-// スタイル情報生成関数
-function generateStyleInfoList(character: any): StyleInfo[] {
-  return Object.entries(character.available_styles || {})
-    .filter(([_, style]) => (style as any).enabled)
-    .map(([styleId, style]) => ({
-      id: styleId,
-      name: (style as any).name,
-      personality: (style as any).personality,
-      speakingStyle: (style as any).speaking_style
-    }));
-}
-
-// 結果テキスト生成関数
-function formatAssignmentResult(assignResult: AssignResult, availableStyles: StyleInfo[]): string {
-  let resultText = `${assignResult.characterName} (${assignResult.operatorId}) をアサインしました。\n\n`;
-  
-  // 現在のスタイル情報
-  if (assignResult.currentStyle) {
-    resultText += `📍 現在のスタイル: ${assignResult.currentStyle.styleName}\n`;
-    resultText += `   性格: ${assignResult.currentStyle.personality}\n`;
-    resultText += `   話し方: ${assignResult.currentStyle.speakingStyle}\n\n`;
-  }
-  
-  // 利用可能なスタイル一覧
-  if (availableStyles.length > 1) {
-    resultText += `🎭 利用可能なスタイル（切り替え可能）:\n`;
-    availableStyles.forEach(style => {
-      const isCurrent = style.id === assignResult.currentStyle?.styleId;
-      const marker = isCurrent ? '→ ' : '  ';
-      resultText += `${marker}${style.id}: ${style.name}\n`;
-      resultText += `    性格: ${style.personality}\n`;
-      resultText += `    話し方: ${style.speakingStyle}\n`;
-    });
-  } else {
-    resultText += `ℹ️  このキャラクターは1つのスタイルのみ利用可能です。\n`;
-  }
-  
-  // 挨拶
-  if (assignResult.greeting) {
-    resultText += `\n💬 \"${assignResult.greeting}\"\n`;
-  }
-  
-  return resultText;
-}
 
 // operator-manager操作ツール
 server.registerTool("operator_assign", {
@@ -296,14 +233,14 @@ server.registerTool("operator_assign", {
   validateOperatorInput(operator);
   
   try {
-    const assignResult = await executeAssignment(operatorManager, operator, style);
+    const assignResult = await assignOperator(operatorManager, operator, style);
     const character = await operatorManager.getCharacterInfo(assignResult.operatorId);
     
     if (!character) {
       throw new Error(`キャラクター情報が見つかりません: ${assignResult.operatorId}`);
     }
     
-    const availableStyles = generateStyleInfoList(character);
+    const availableStyles = extractStyleInfo(character);
     const resultText = formatAssignmentResult(assignResult, availableStyles);
     
     return {
