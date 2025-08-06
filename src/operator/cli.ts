@@ -81,8 +81,7 @@ class OperatorManagerCLI {
         }
     }
 
-    async handleAssign(args: string[]): Promise<void> {
-        // 引数をパース
+    private parseAssignArgs(args: string[]): { operatorId: string | null; style: string | null } {
         let operatorId: string | null = null;
         let style: string | null = null;
         
@@ -95,6 +94,10 @@ class OperatorManagerCLI {
             }
         }
         
+        return { operatorId, style };
+    }
+
+    private async executeAssignment(operatorId: string | null, style: string | null): Promise<void> {
         if (operatorId) {
             // 指定されたオペレータを割り当て
             const result: AssignResult = await this.manager.assignSpecificOperator(operatorId, style);
@@ -116,6 +119,11 @@ class OperatorManagerCLI {
                 }
             }
         }
+    }
+
+    async handleAssign(args: string[]): Promise<void> {
+        const { operatorId, style } = this.parseAssignArgs(args);
+        await this.executeAssignment(operatorId, style);
     }
 
     async handleRelease(): Promise<void> {

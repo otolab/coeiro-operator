@@ -8,6 +8,15 @@
 import { readFileSync, existsSync } from 'fs';
 import { SayCoeiroink, loadConfig } from './index.js';
 
+interface ParsedOptions {
+    voice: string;
+    rate: number;
+    inputFile: string;
+    outputFile: string;
+    streamMode: boolean;
+    text: string;
+}
+
 class SayCoeiroinkCLI {
     private sayCoeiroink: SayCoeiroink;
 
@@ -42,55 +51,56 @@ Examples:
     echo "テキスト" | say-coeiroink -f -`);
     }
 
-    async run(args: string[]): Promise<void> {
-        let voice = process.env.COEIROINK_VOICE || '';
-        let rate = (this.sayCoeiroink as any).config.rate;
-        let text = '';
-        let inputFile = '';
-        let outputFile = '';
-        let streamMode = false;
+    private parseArguments(args: string[]): ParsedOptions {
+        const options: ParsedOptions = {
+            voice: process.env.COEIROINK_VOICE || '',
+            rate: (this.sayCoeiroink as any).config.rate,
+            inputFile: '',
+            outputFile: '',
+            streamMode: false,
+            text: ''
+        };
 
-        // 引数解析
         for (let i = 0; i < args.length; i++) {
             const arg = args[i];
             
             switch (arg) {
                 case '-h':
                 case '--help':
-                    await this.showUsage();
+                    this.showUsage();
                     process.exit(0);
                     break;
                 
                 case '-v':
                     if (args[i + 1] === '?') {
-                        await this.sayCoeiroink.listVoices();
+                        this.sayCoeiroink.listVoices();
                         process.exit(0);
                     }
-                    voice = args[i + 1];
+                    options.voice = args[i + 1];
                     i++;
                     break;
                 
                 case '-r':
                 case '--rate':
-                    rate = parseInt(args[i + 1]);
+                    options.rate = parseInt(args[i + 1]);
                     i++;
                     break;
                 
                 case '-o':
                 case '--output-file':
-                    outputFile = args[i + 1];
+                    options.outputFile = args[i + 1];
                     i++;
                     break;
                 
                 case '-f':
                 case '--input-file':
-                    inputFile = args[i + 1];
+                    options.inputFile = args[i + 1];
                     i++;
                     break;
                 
                 case '-s':
                 case '--stream':
-                    streamMode = true;
+                    options.streamMode = true;
                     break;
                 
                 default:
@@ -98,26 +108,31 @@ Examples:
                         console.error(`Error: Unknown option ${arg}`);
                         process.exit(1);
                     } else {
-                        text = text ? `${text} ${arg}` : arg;
+                        options.text = options.text ? `${options.text} ${arg}` : arg;
                     }
                     break;
             }
         }
 
-        // テキスト入力処理
-        if (inputFile) {
-            if (inputFile === '-') {
+        return options;
+    }
+
+    private async getInputText(options: ParsedOptions): Promise<string> {
+        let text = options.text;
+
+        if (options.inputFile) {
+            if (options.inputFile === '-') {
                 const chunks: Buffer[] = [];
                 for await (const chunk of process.stdin) {
                     chunks.push(chunk as Buffer);
                 }
                 text = Buffer.concat(chunks).toString('utf8').trim();
             } else {
-                if (!existsSync(inputFile)) {
-                    console.error(`Error: File '${inputFile}' not found`);
+                if (!existsSync(options.inputFile)) {
+                    console.error(`Error: File '${options.inputFile}' not found`);
                     process.exit(1);
                 }
-                text = readFileSync(inputFile, 'utf8').trim();
+                text = readFileSync(options.inputFile, 'utf8').trim();
             }
         } else if (!text) {
             const chunks: Buffer[] = [];
@@ -132,16 +147,23 @@ Examples:
             process.exit(1);
         }
 
+        return text;
+    }
+
+    async run(args: string[]): Promise<void> {
         try {
+            const options = this.parseArguments(args);
+            const text = await this.getInputText(options);
+
             const result = await this.sayCoeiroink.synthesizeText(text, {
-                voice: voice || null,
-                rate,
-                outputFile: outputFile || null,
-                streamMode
+                voice: options.voice || null,
+                rate: options.rate,
+                outputFile: options.outputFile || null,
+                streamMode: options.streamMode
             });
 
-            if (outputFile) {
-                console.error(`Audio saved to: ${outputFile}`);
+            if (options.outputFile) {
+                console.error(`Audio saved to: ${options.outputFile}`);
             }
 
             process.exit(0);
