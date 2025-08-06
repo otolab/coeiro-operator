@@ -2,7 +2,7 @@ meta:
   model: vertexai:gemini-2.5-flash
   sources:
     - path: character-defaults.ts
-      hash: e44bd0d40f65bf68b186df5067f9c953dd88932441674fa2b3486319f0ecc477
+      hash: 25b835873e44ca53d2912c5f8ca6ae7909b1d202063129114c6ba71e230f46c8
   version: 0.0.0
 result:
   - |
@@ -20,7 +20,7 @@ result:
         default_style: string;
         style_selection: string;
     }
-  - |
+  - |-
     export const BUILTIN_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
         tsukuyomi: {
             name: "つくよみちゃん",
@@ -58,15 +58,6 @@ result:
             default_style: "normal",
             style_selection: "default"
         },
-        dear: {
-            name: "ディアちゃん",
-            personality: "好奇心旺盛で活発、エネルギッシュ",
-            speaking_style: "元気で弾むような口調",
-            greeting: "こんにちは！今日も元気にがんばりましょう！",
-            farewell: "今日もお疲れさまでした！",
-            default_style: "normal",
-            style_selection: "default"
-        },
         kana: {
             name: "KANA",
             personality: "落ち着いていて知的、分析的",
@@ -82,15 +73,6 @@ result:
             speaking_style: "穏やかで協力的な口調",
             greeting: "こんにちは。一緒にがんばりましょう。",
             farewell: "今日もお疲れさまでした。",
-            default_style: "normal",
-            style_selection: "default"
-        },
-        lirin: {
-            name: "リリンちゃん",
-            personality: "可愛らしく親しみやすい、愛嬌がある",
-            speaking_style: "可愛らしく親しみやすい口調",
-            greeting: "こんにちは〜！今日もよろしくお願いします！",
-            farewell: "今日もお疲れさまでした〜！",
             default_style: "normal",
             style_selection: "default"
         },
@@ -158,7 +140,7 @@ result:
             style_selection: "default"
         }
     };
-  - |-
+
     // 音声名からIDへのマッピング
     export const SPEAKER_NAME_TO_ID_MAP: Record<string, string> = {
         'つくよみちゃん': 'tsukuyomi',

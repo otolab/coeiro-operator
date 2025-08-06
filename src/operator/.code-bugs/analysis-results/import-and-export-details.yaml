@@ -121,129 +121,144 @@ cli.ts:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: cli.ts
-          hash: 1abd1ad9991257a22ce1462b7ad835568c4989aa6a353a4331964d1e85f10f9c
+          hash: 57b41f336786a32baf45d6277bb3ad01e9fd39b5bb892710c658026de35c2fc1
       version: 0.0.3
     result:
       content: >-
-        # 分析レポート: src/operator/cli.ts
+        # Analysis Report for src/operator/cli.ts
 
 
-        ## 1. 依存関係の詳細
+        This report details the analysis of the source code file
+        `src/operator/cli.ts` based on the provided analysis procedure guide.
 
 
-        このファイルは以下のモジュールに依存しています。
+        ## 1. Dependency details
 
 
-        - `./index.js`:
-          - `default` (as `OperatorManager`)
-
-        **根拠:**
-
-        - `partOf: 1` の `import OperatorManager from './index.js';`
-        により、`./index.js` モジュールのデフォルトエクスポートに依存していることがわかります。
+        The file has the following dependencies:
 
 
-        ## 2. 実行時に決定される動的インポート
+        ```yaml
+
+        ./index.js:
+          - *
+        process:
+          - argv
+          - exit
+        ```
 
 
-        このファイルには、実行時にパスが決定される動的インポートは含まれていません。
+        **Reasoning:**
+
+        - The line `import OperatorManager from './index.js';` imports the
+        default export from the `./index.js` module. This is represented as `*`.
+
+        - The code uses `process.argv` to read command-line arguments and
+        `process.exit` to terminate the script, indicating a dependency on the
+        Node.js global `process` object.
 
 
-        **根拠:**
-
-        - 提供されたコードチャンク全体を調査した結果、`require()` や `import()`
-        の引数が変数やテンプレートリテラルで構成されている箇所は見つかりませんでした。
+        ## 2. Dynamic import determined at run-time
 
 
-        ## 3. グローバル変数/定数
+        No dynamically determined imports were found in this file.
 
 
-        このファイルでは、Node.jsの標準グローバルオブジェクトである `process` (`process.argv`,
-        `process.exit`) と `console`
-        が利用されています。ガイドラインに基づき、これらは非標準のグローバル変数・定数とは見なされないため、報告対象外です。
+        **Reasoning:**
+
+        - The code does not contain any `import()` or `require()` statements
+        where the module path is constructed from variables or template
+        literals. All imports are static.
 
 
-        **根拠:**
-
-        - `partOf: 7` で `process.exit(1)` が、`partOf: 13` で `process.argv`
-        が使用されています。
-
-        - `console.log` や `console.error` はファイル全体で広く使用されています。
-
-        - これら以外の、未定義のグローバル変数や定数へのアクセスは見つかりませんでした。
+        ## 3. Global variables / constants
 
 
-        ## 4. プロトタイプ汚染
+        No non-standard global variables or constants are used.
 
 
-        ネイティブオブジェクトのプロトタイプを汚染する可能性のあるコードは、ベストエフォートでの解析の結果、検出されませんでした。
+        **Reasoning:**
+
+        - The code utilizes standard global objects like `process` and
+        `console`, which are part of the Node.js runtime environment. There are
+        no references to custom or undefined global variables.
 
 
-        **根拠:**
-
-        - ファイル全体をスキャンした結果、`Object.prototype` や `Array.prototype`
-        など、ネイティブオブジェクトのプロトタイプを直接変更するようなコードは見つかりませんでした。
+        ## 4. Prototype Pollution
 
 
-        ## 5. モジュールインターフェース
+        No potential prototype pollution was detected.
 
 
-        このモジュールは、`OperatorManagerCLI` クラスをデフォルトエクスポートしています。
+        **Reasoning:**
+
+        - A best-effort analysis of the code did not reveal any modifications to
+        the prototypes of native JavaScript objects (e.g., `Object.prototype`).
+
+
+        ## 5. Module interface
+
+
+        The module exports a single class as its default export.
 
 
         ```
 
         details:
-          - value: default class OperatorManagerCLI { constructor(); async showUsage(): Promise<void>; async run(args: string[]): Promise<void>; async handleAssign(args: string[]): Promise<void>; async handleRelease(): Promise<void>; async handleStatus(): Promise<void>; async handleAvailable(): Promise<void>; async handleClear(): Promise<void>; }
+          - value: export default class OperatorManagerCLI
         ```
 
 
-        **根拠:**
+        **Reasoning:**
 
-        - `partOf: 13` の `export default OperatorManagerCLI;`
-        により、`OperatorManagerCLI` クラスがデフォルトエクスポートされていることがわかります。
-
-        - `partOf: 3` から `partOf: 12` にかけて定義されている `OperatorManagerCLI`
-        クラスには、コンストラクタと複数の公開 `async` メソッドが含まれています。プライベートメソッド (`parseAssignArgs`,
-        `executeAssignment`) は外部インターフェースには含まれません。
-      usage: 956
+        - The file concludes with the statement `export default
+        OperatorManagerCLI;`. This makes the `OperatorManagerCLI` class the sole
+        public interface of this module. The class encapsulates the entire
+        command-line functionality, including methods like `run`,
+        `handleAssign`, `handleRelease`, etc. The internal interfaces
+        (`AssignResult`, `ReleaseResult`, etc.) are not exported.
+      usage: 425
   summary:
     meta:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: cli.ts
-          hash: 1abd1ad9991257a22ce1462b7ad835568c4989aa6a353a4331964d1e85f10f9c
+          hash: 57b41f336786a32baf45d6277bb3ad01e9fd39b5bb892710c658026de35c2fc1
       version: 0.0.3
     result:
       results:
         - hasFindings: true
-          name: 依存関係の詳細
+          name: Dependency details
           details:
             - value: ./index.js
-              reason: "partOf: 1 の `import OperatorManager from './index.js';`
-                により、`./index.js` モジュールのデフォルトエクスポートに依存していることがわかります。"
+              reason: The line `import OperatorManager from './index.js';` imports the default
+                export from the `./index.js` module. This is represented as `*`.
               subItems:
-                - default
+                - "*"
+            - value: process
+              reason: The code uses `process.argv` to read command-line arguments and
+                `process.exit` to terminate the script, indicating a dependency
+                on the Node.js global `process` object.
+              subItems:
+                - argv
+                - exit
         - hasFindings: false
-          name: 実行時に決定される動的インポート
+          name: Dynamic import determined at run-time
         - hasFindings: false
-          name: グローバル変数/定数
+          name: Global variables / constants
         - hasFindings: false
-          name: プロトタイプ汚染
+          name: Prototype Pollution
         - hasFindings: true
-          name: モジュールインターフェース
+          name: Module interface
           details:
-            - value: "default class OperatorManagerCLI { constructor(); async showUsage():
-                Promise<void>; async run(args: string[]): Promise<void>; async
-                handleAssign(args: string[]): Promise<void>; async
-                handleRelease(): Promise<void>; async handleStatus():
-                Promise<void>; async handleAvailable(): Promise<void>; async
-                handleClear(): Promise<void>; }"
-              reason: "partOf: 13 の `export default OperatorManagerCLI;`
-                により、`OperatorManagerCLI` クラスがデフォルトエクスポートされていることがわかります。partOf: 3
-                から `partOf: 12` にかけて定義されている `OperatorManagerCLI`
-                クラスには、コンストラクタと複数の公開 `async` メソッドが含まれています。プライベートメソッド
-                (`parseAssignArgs`, `executeAssignment`) は外部インターフェースには含まれません。"
+            - value: export default class OperatorManagerCLI
+              reason: The file concludes with the statement `export default
+                OperatorManagerCLI;`. This makes the `OperatorManagerCLI` class
+                the sole public interface of this module. The class encapsulates
+                the entire command-line functionality, including methods like
+                `run`, `handleAssign`, `handleRelease`, etc. The internal
+                interfaces (`AssignResult`, `ReleaseResult`, etc.) are not
+                exported.
 config-manager.test.ts:
   analysis:
     meta:
@@ -440,36 +455,36 @@ config-manager.ts:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: config-manager.ts
-          hash: fd2208e79c87fdbaea7ba6e1aa6c7f792dffd4003d621406caf6f6d73ef2c6e7
+          hash: 09f766e9b04dda685a02927ec2099e747f77fc0110d4c7ff1468b5f89fe22f3b
         - path: config-manager.test.ts
           hash: 34eb04af0eae6daaf379847c85fcf10e02172ac9a4535e342adf1073d93562b3
       version: 0.0.3
     result:
-      content: |-
-        # 分析レポート: `src/operator/config-manager.ts`
+      content: >-
+        # Analysis Report for `src/operator/config-manager.ts`
 
-        ## 概要
 
-        このファイルは、アプリケーションの設定管理を担当する `ConfigManager` クラスを定義しています。主な機能は以下の通りです。
+        This report provides a detailed analysis of the source code file
+        `src/operator/config-manager.ts`. The analysis is based on the full
+        content of the file, which was provided in its entirety.
 
-        -   COEIROINK互換サーバーから動的に音声フォント（キャラクター情報）を取得する。
-        -   内蔵のデフォルトキャラクター設定、動的に取得した音声フォント情報、ユーザーによるカスタム設定をマージして、最終的なアプリケーション設定を構築する。
-        -   設定の読み込み、書き込み、キャッシュ管理を行う。
-        -   設定ファイルはJSON形式で、`operator-config.json`（ユーザー設定）と`coeiroink-config.json`（サーバー接続情報）を扱います。
 
         ## 1. Dependency details
 
-        このモジュールは、ファイルシステム操作、パス操作、およびアプリケーション内のデフォルト設定モジュールに依存しています。また、設定の書き込み処理において、動的に`fs`モジュールをインポートしています。
+
+        The module's dependencies on other modules are as follows.
+
 
         ```yaml
+
         fs/promises:
           - readFile
           - writeFile
-          - access
           - mkdir
+          - access
         fs:
           - constants
-          - '*'
+          - promises
         path:
           - join
         ./character-defaults.js:
@@ -477,58 +492,156 @@ config-manager.ts:
           - SPEAKER_NAME_TO_ID_MAP
         ```
 
-        **根拠:**
 
-        -   `import { readFile, writeFile, access, mkdir } from 'fs/promises';`
-        -   `import { constants } from 'fs';`
-        -   `import { join } from 'path';`
-        -   `import { BUILTIN_CHARACTER_CONFIGS, SPEAKER_NAME_TO_ID_MAP } from './character-defaults.js';`
-        -   `const fs = await import('fs');` (`writeJsonFile` メソッド内)
+        **Reasoning:**
+
+
+        -   **`fs/promises`**: The functions `readFile`, `writeFile`, `mkdir`,
+        and `access` are explicitly imported from `fs/promises` at the beginning
+        of the file.
+            ```typescript
+            import { readFile, writeFile, mkdir, access } from 'fs/promises';
+            ```
+        -   **`fs`**: The `constants` object is imported from `fs`.
+        Additionally, the `fs` module is dynamically imported within the
+        `writeJsonFile` method to use `fs.promises.rename`.
+            ```typescript
+            import { constants } from 'fs';
+            // ...
+            const fs = await import('fs');
+            await fs.promises.rename(tempFile, filePath);
+            ```
+        -   **`path`**: The `join` function is imported from `path` and used to
+        construct file paths.
+            ```typescript
+            import { join } from 'path';
+            ```
+        -   **`./character-defaults.js`**: `BUILTIN_CHARACTER_CONFIGS` and
+        `SPEAKER_NAME_TO_ID_MAP` are imported to provide default character
+        settings and speaker name-to-ID mappings.
+            ```typescript
+            import { BUILTIN_CHARACTER_CONFIGS, SPEAKER_NAME_TO_ID_MAP } from './character-defaults.js';
+            ```
 
         ## 2. Dynamic import determined at run-time
 
-        実行時の変数によってインポートパスが決定されるような動的インポートは、このファイル内では検出されませんでした。
 
-        `writeJsonFile`メソッド内で`await import('fs')`という動的インポートが使用されていますが、インポートパスは静的な文字列であり、実行時の変数には依存していません。
+        There are no dynamic imports where the module path is determined by a
+        variable at run-time.
+
+
+        **Reasoning:**
+
+
+        The file contains a dynamic `import('fs')` statement within the
+        `writeJsonFile` method. However, the module specifier `'fs'` is a static
+        string literal, not a variable. Therefore, it does not fall under the
+        category of a run-time determined dynamic import.
+
+
+        ```typescript
+
+        // in writeJsonFile method
+
+        const fs = await import('fs'); // The path 'fs' is static.
+
+        ```
+
 
         ## 3. Global variables / constants
 
-        標準提供外のグローバル変数として `fetch` が利用されています。
 
-        -   **`fetch`**: COEIROINKサーバーから音声フォント情報を取得するために使用されています。
+        The module depends on the following non-standard global
+        variables/constants.
 
-        **根拠:**
 
-        `fetchAvailableVoices` メソッド内で、`fetch` が直接呼び出されています。これは、Node.js v18以降のグローバル関数、またはブラウザ環境やPolyfillによって提供されることを期待しています。関連テストコード [Related test: config-manager.test.ts](related-file-config-manager.test.ts) でも `global.fetch` がモックされており、グローバルスコープへの依存が明確です。
+        -   `fetch`
+
+
+        **Reasoning:**
+
+
+        The `fetchAvailableVoices` method uses the `fetch` function to make an
+        HTTP request to the COEIROINK server. `fetch` is assumed to be available
+        in the global scope of the execution environment (e.g., Node.js v18+ or
+        a browser-like environment). This is also supported by the provided test
+        file ([Related test:
+        config-manager.test.ts](related-file-config-manager.test.ts)), where
+        `global.fetch` is mocked.
+
 
         ```typescript
-        // src/operator/config-manager.ts:L146
+
+        // in fetchAvailableVoices method
+
         const response = await fetch(`http://${host}:${port}/v1/speakers`);
+
         ```
+
+
+        Standard global objects like `console` and `JSON` are used but are not
+        included in this report as per the guidelines.
+
 
         ## 4. Prototype Pollution
 
-        ネイティブオブジェクトのプロトタイプを変更するような、Prototype Pollutionの可能性があるコードは検出されませんでした。`deepMerge` メソッドはオブジェクトを再帰的にマージしますが、新しいオブジェクトを生成して返す実装となっており、既存のオブジェクトのプロトタイプには影響を与えません。
+
+        No potential prototype pollution vulnerabilities were detected in a
+        best-effort analysis.
+
+
+        **Reasoning:**
+
+
+        The code was reviewed for direct modifications to the prototypes of
+        built-in objects (e.g., `Object.prototype`, `Array.prototype`). The
+        `deepMerge` function iterates over object keys using a `for...in` loop
+        without a `hasOwnProperty` check, which could be a vector if the
+        `Object.prototype` is already polluted. However, the function itself
+        does not cause pollution. No other parts of the code appear to modify
+        native object prototypes.
+
 
         ## 5. Module interface
 
-        このモジュールは、設定管理を行う `ConfigManager` クラスと、関連するTypeScriptインターフェイスをエクスポートしています。
+
+        The module exports the `ConfigManager` class as the default export,
+        along with two interfaces, `CharacterStyle` and `CharacterConfig`.
+
 
         ```
+
         details:
           - value: export interface CharacterStyle { name: string; style_id: number; personality: string; speaking_style: string; disabled?: boolean; }
           - value: export interface CharacterConfig { name: string; personality: string; speaking_style: string; greeting: string; farewell: string; default_style: string; style_selection: string; voice_id: string | null; available_styles: Record<string, CharacterStyle>; disabled?: boolean; }
-          - value: export class ConfigManager
+          - value: export class ConfigManager { constructor(configDir: string); readJsonFile<T>(filePath: string, defaultValue: T): Promise<T>; writeJsonFile(filePath: string, data: any): Promise<void>; fetchAvailableVoices(): Promise<void>; speakerNameToId(speakerName: string): string; deepMerge(target: any, source: any): any; buildDynamicConfig(forceRefresh?: boolean): Promise<{ characters: Record<string, CharacterConfig> }>; refreshConfig(): void; getCharacterConfig(characterId: string): Promise<CharacterConfig>; getAvailableCharacterIds(): Promise<string[]>; getGreetingPatterns(): Promise<string[]>; debugConfig(): Promise<void>; }
           - value: export default ConfigManager
         ```
 
-        **根拠:**
 
-        -   `export interface CharacterStyle { ... }`
-        -   `export interface CharacterConfig { ... }`
-        -   `export class ConfigManager { ... }`
-        -   `export default ConfigManager;`
-      usage: 1283
+        **Reasoning:**
+
+
+        The following exports were identified in the source code:
+
+
+        -   **Interfaces**: `CharacterStyle` and `CharacterConfig` are exported
+        for use in other modules.
+            ```typescript
+            export interface CharacterStyle { /* ... */ }
+            export interface CharacterConfig { /* ... */ }
+            ```
+        -   **Class**: The `ConfigManager` class, containing all the logic for
+        configuration management, is defined and exported.
+            ```typescript
+            export class ConfigManager { /* ... */ }
+            ```
+        -   **Default Export**: The `ConfigManager` class is also the default
+        export of the module.
+            ```typescript
+            export default ConfigManager;
+            ```
+      usage: 1228
   errors:
     meta:
       model: vertexai:gemini-2.5-pro
@@ -549,7 +662,7 @@ config-manager.ts:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: config-manager.ts
-          hash: fd2208e79c87fdbaea7ba6e1aa6c7f792dffd4003d621406caf6f6d73ef2c6e7
+          hash: 09f766e9b04dda685a02927ec2099e747f77fc0110d4c7ff1468b5f89fe22f3b
         - path: config-manager.test.ts
           hash: 34eb04af0eae6daaf379847c85fcf10e02172ac9a4535e342adf1073d93562b3
       version: 0.0.3
@@ -562,12 +675,12 @@ config-manager.ts:
               subItems:
                 - readFile
                 - writeFile
-                - access
                 - mkdir
+                - access
             - value: fs
               subItems:
                 - constants
-                - "*"
+                - promises
             - value: path
               subItems:
                 - join
@@ -581,9 +694,13 @@ config-manager.ts:
           name: Global variables / constants
           details:
             - value: fetch
-              reason: "COEIROINKサーバーから音声フォント情報を取得するために使用されています。関連テストコード [Related test:
-                config-manager.test.ts](related-file-config-manager.test.ts) でも
-                `global.fetch` がモックされており、グローバルスコープへの依存が明確です。"
+              reason: "The `fetchAvailableVoices` method uses the `fetch` function to make an
+                HTTP request to the COEIROINK server. `fetch` is assumed to be
+                available in the global scope of the execution environment
+                (e.g., Node.js v18+ or a browser-like environment). This is also
+                supported by the provided test file ([Related test:
+                config-manager.test.ts](related-file-config-manager.test.ts)),
+                where `global.fetch` is mocked."
         - hasFindings: false
           name: Prototype Pollution
         - hasFindings: true
@@ -597,7 +714,17 @@ config-manager.ts:
                 default_style: string; style_selection: string; voice_id: string
                 | null; available_styles: Record<string, CharacterStyle>;
                 disabled?: boolean; }"
-            - value: export class ConfigManager
+            - value: "export class ConfigManager { constructor(configDir: string);
+                readJsonFile<T>(filePath: string, defaultValue: T): Promise<T>;
+                writeJsonFile(filePath: string, data: any): Promise<void>;
+                fetchAvailableVoices(): Promise<void>;
+                speakerNameToId(speakerName: string): string; deepMerge(target:
+                any, source: any): any; buildDynamicConfig(forceRefresh?:
+                boolean): Promise<{ characters: Record<string, CharacterConfig>
+                }>; refreshConfig(): void; getCharacterConfig(characterId:
+                string): Promise<CharacterConfig>; getAvailableCharacterIds():
+                Promise<string[]>; getGreetingPatterns(): Promise<string[]>;
+                debugConfig(): Promise<void>; }"
             - value: export default ConfigManager
 index.ts:
   analysis:
@@ -605,126 +732,85 @@ index.ts:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: index.ts
-          hash: 9a3540c8104c6e2b7720f320fe0f70fc4d907e34c4715c4d310f54be2f31d88a
+          hash: 883b43da087b6cf61636d947bc12801914c6afd72fe4075d9ec8d4bea04dfa90
       version: 0.0.3
     result:
       content: |-
-        # Analysis Report for `src/operator/index.ts`
+        ### ファイル分析レポート: `src/operator/index.ts`
 
-        このファイルは、オペレーター管理システムを実装したNode.jsスクリプトです。`OperatorManager`クラスを定義し、キャラクターとスタイルの管理、セッションごとのオペレーターの割り当て、解放、状態確認などの機能を提供します。設定ファイルやセッション情報は、ユーザーのホームディレクトリ等にJSONファイルとして永続化されます。
-
-        ---
-
-        ## 1. Dependency details
-
-        このファイルは、Node.jsの標準モジュール、および同一ディレクトリ内の `config-manager.js` に依存しています。
-
-        **根拠:**
-        ファイルの先頭にある `import` 文、およびクラスメソッド内で使用されている動的な `import()` 構文から依存関係を抽出しました。
-
-        ```yaml
-        fs/promises:
-          - readFile
-          - writeFile
-          - access
-          - mkdir
-          - unlink
-        fs:
-          - constants
-          - '*' # writeJsonFileメソッド内での動的インポート
-        child_process:
-          - spawn
-          - '*' # clearAllOperatorsメソッド内での動的インポート
-        path:
-          - join
-        ./config-manager.js:
-          - '*' # default export (ConfigManager)
-          - CharacterConfig
-          - CharacterStyle
-        ```
+        このレポートは、`src/operator/index.ts` ファイルの静的分析結果をまとめたものです。
 
         ---
 
-        ## 2. Dynamic import determined at run-time
+        #### 1. 依存関係の詳細 (Dependency details)
 
-        実行時の変数によってインポートするモジュールが決定されるような動的インポートは、このファイルには含まれていません。
+        このファイルは以下のモジュールおよびその要素に依存しています。
 
-        **根拠:**
-        ファイル内で `import()` 構文が使用されていますが、インポートパスは静的な文字列リテラルです。
+        - **fs/promises**:
+          - `readFile`
+          - `writeFile`
+          - `stat`
+          - `mkdir`
+          - `unlink`
+          - `rename`
+          - `access`
+        - **fs**:
+          - `constants`
+          - `*` ( `clearAllOperators` 関数内での動的インポートによる)
+        - **path**:
+          - `join`
+        - **child_process**:
+          - `spawn`
+          - `exec` ( `clearAllOperators` 関数内での動的インポートによる)
+        - **./config-manager.js**:
+          - `*` (デフォルトエクスポート `ConfigManager`)
+          - `CharacterConfig` (型)
+          - `CharacterStyle` (型)
 
-        ```typescript
-        // in writeJsonFile method
-        const fs = await import('fs');
-
-        // in clearAllOperators method
-        const { exec } = await import('child_process');
-        ```
-
-        これらのインポートパスは変数を含んでおらず、実行時に解決される依存関係ではありません。
-
-        ---
-
-        ## 3. Global variables / constants
-
-        このファイルは、Node.jsの標準グローバルオブジェクトである `process` に依存しています。
-
-        **根拠:**
-        以下の関数で `process` オブジェクトのプロパティが参照されています。
-
-        -   `getConfigDir()`: `process.env.HOME`, `process.env.USERPROFILE`, `process.cwd()`
-        -   `getSessionId()`: `process.env.ITERM_SESSION_ID`, `process.env.TERM_SESSION_ID`, `process.ppid`
-
-        ```
-        * process (env, cwd, ppid プロパティへのアクセス)
-        ```
+        **分析の根拠:**
+        - ファイル冒頭の `import` 文から静的な依存関係を特定しました。
+        - `clearAllOperators` 関数内で `await import('fs')` と `await import('child_process')` が使用されているため、これらも依存関係に含めました。`import()` はモジュール全体をインポートするため `*` と表記しています。
 
         ---
 
-        ## 4. Prototype Pollution
+        #### 2. 実行時に決定される動的インポート (Dynamic import determined at run-time)
 
-        ベストエフォートでの解析の結果、ネイティブオブジェクトのプロトタイプを変更するような、Prototype Pollutionの可能性のあるコードは検出されませんでした。
+        このファイルには、実行時の変数によってインポート対象が変化するような動的インポートは含まれていません。
+
+        **分析の根拠:**
+        - `clearAllOperators` 関数内に `await import(...)` 構文が存在しますが、インポートするモジュール名は `'fs'` および `'child_process'` という文字列リテラルで固定されています。これは実行時にパスが動的に決定されるものではないため、本項目には該当しないと判断しました。
 
         ---
 
-        ## 5. Module interface
+        #### 3. グローバル変数・定数 (Global variables / constants)
 
-        このモジュールは `OperatorManager` クラスをエクスポートしています。このクラスがモジュールの主たるインターフェースとなります。
+        このファイルでは、非標準のグローバル変数や定数の使用は確認されませんでした。
 
-        **根拠:**
-        ファイル末尾の `export` 文に基づきます。
+        **分析の根拠:**
+        - `process` オブジェクト (`process.env`, `process.cwd`, `process.ppid`) や `console`, `Math`, `JSON`, `Date`, `Error` など、コード内で使用されているグローバルオブジェクトはすべてNode.jsの標準的な実行環境で提供されるものです。
 
-        ```typescript
-        export class OperatorManager {
-            // ... private properties and constructor
-            
-            async initialize(): Promise<void> { /* ... */ }
-            async readJsonFile<T>(filePath: string, defaultValue: T): Promise<T> { /* ... */ }
-            async writeJsonFile(filePath: string, data: any): Promise<void> { /* ... */ }
-            async initActiveOperators(): Promise<void> { /* ... */ }
-            async getCharacterInfo(characterId: string): Promise<Character> { /* ... */ }
-            selectStyle(character: Character, specifiedStyle: string | null): Style { /* ... */ }
-            async extractGreetingPatterns(): Promise<any> { /* ... */ }
-            async getAvailableOperators(): Promise<string[]> { /* ... */ }
-            async reserveOperator(operatorId: string): Promise<boolean> { /* ... */ }
-            async releaseOperator(): Promise<ReleaseResult> { /* ... */ }
-            async clearAllOperators(): Promise<boolean> { /* ... */ }
-            async assignRandomOperator(style: string | null): Promise<AssignResult> { /* ... */ }
-            async assignSpecificOperator(specifiedOperator: string, style: string | null): Promise<AssignResult> { /* ... */ }
-            async updateVoiceSetting(voiceId: string | null, styleId: number): Promise<void> { /* ... */ }
-            async showCurrentOperator(): Promise<StatusResult> { /* ... */ }
-        }
+        ---
 
-        export default OperatorManager;
-        ```
+        #### 4. プロトタイプ汚染 (Prototype Pollution)
 
-        **エクスポートされるインターフェース:**
+        コードを調査した結果、ネイティブオブジェクトのプロトタイプを意図的に変更するような、プロトタイプ汚染の可能性のあるコードは見つかりませんでした。
 
-        ```
-        details:
-          - value: export class OperatorManager { constructor(); async initialize(): Promise<void>; async readJsonFile<T>(...): Promise<T>; async writeJsonFile(...): Promise<void>; async initActiveOperators(): Promise<void>; async getCharacterInfo(...): Promise<Character>; selectStyle(...): Style; async extractGreetingPatterns(): Promise<any>; async getAvailableOperators(): Promise<string[]>; async reserveOperator(...): Promise<boolean>; async releaseOperator(): Promise<ReleaseResult>; async clearAllOperators(): Promise<boolean>; async assignRandomOperator(...): Promise<AssignResult>; async assignSpecificOperator(...): Promise<AssignResult>; async updateVoiceSetting(...): Promise<void>; async showCurrentOperator(): Promise<StatusResult>; }
-          - value: export default OperatorManager
-        ```
-      usage: 1386
+        **分析の根拠:**
+        - `Object.prototype` など、JavaScriptの組み込みオブジェクトのプロトタイプを拡張または変更するコードはファイル内に存在しませんでした。これはベストエフォートでの検出結果です。
+
+        ---
+
+        #### 5. モジュールインターフェース (Module interface)
+
+        このモジュールは、以下のインターフェースを外部に公開しています。
+
+        - `details:`
+          - `value: export class OperatorManager`
+          - `value: export default OperatorManager`
+
+        **分析の根拠:**
+        - ファイルの末尾にある `export class OperatorManager { ... }` と `export default OperatorManager;` の記述に基づきます。これにより、`OperatorManager` クラスが名前付きエクスポートおよびデフォルトエクスポートとして公開されています。クラスのすべてのpublicメソッドとプロパティが外部から利用可能なインターフェースとなります。
+      usage: 1160
   errors:
     meta:
       model: vertexai:gemini-2.5-pro
@@ -744,7 +830,7 @@ index.ts:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: index.ts
-          hash: 9a3540c8104c6e2b7720f320fe0f70fc4d907e34c4715c4d310f54be2f31d88a
+          hash: 883b43da087b6cf61636d947bc12801914c6afd72fe4075d9ec8d4bea04dfa90
       version: 0.0.3
     result:
       results:
@@ -755,20 +841,22 @@ index.ts:
               subItems:
                 - readFile
                 - writeFile
-                - access
+                - stat
                 - mkdir
                 - unlink
+                - rename
+                - access
             - value: fs
               subItems:
                 - constants
                 - "*"
-            - value: child_process
-              subItems:
-                - spawn
-                - "*"
             - value: path
               subItems:
                 - join
+            - value: child_process
+              subItems:
+                - spawn
+                - exec
             - value: ./config-manager.js
               subItems:
                 - "*"
@@ -776,29 +864,12 @@ index.ts:
                 - CharacterStyle
         - hasFindings: false
           name: Dynamic import determined at run-time
-          details: []
-        - hasFindings: true
+        - hasFindings: false
           name: Global variables / constants
-          details:
-            - value: "* process"
-              reason: env, cwd, ppid プロパティへのアクセス
         - hasFindings: false
           name: Prototype Pollution
-          details: []
         - hasFindings: true
           name: Module interface
           details:
-            - value: "export class OperatorManager { constructor(); async initialize():
-                Promise<void>; async readJsonFile<T>(...): Promise<T>; async
-                writeJsonFile(...): Promise<void>; async initActiveOperators():
-                Promise<void>; async getCharacterInfo(...): Promise<Character>;
-                selectStyle(...): Style; async extractGreetingPatterns():
-                Promise<any>; async getAvailableOperators(): Promise<string[]>;
-                async reserveOperator(...): Promise<boolean>; async
-                releaseOperator(): Promise<ReleaseResult>; async
-                clearAllOperators(): Promise<boolean>; async
-                assignRandomOperator(...): Promise<AssignResult>; async
-                assignSpecificOperator(...): Promise<AssignResult>; async
-                updateVoiceSetting(...): Promise<void>; async
-                showCurrentOperator(): Promise<StatusResult>; }"
+            - value: export class OperatorManager
             - value: export default OperatorManager

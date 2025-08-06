@@ -50,15 +50,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
         default_style: "normal",
         style_selection: "default"
     },
-    dear: {
-        name: "ディアちゃん",
-        personality: "好奇心旺盛で活発、エネルギッシュ",
-        speaking_style: "元気で弾むような口調",
-        greeting: "こんにちは！今日も元気にがんばりましょう！",
-        farewell: "今日もお疲れさまでした！",
-        default_style: "normal",
-        style_selection: "default"
-    },
     kana: {
         name: "KANA",
         personality: "落ち着いていて知的、分析的",
@@ -74,15 +65,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
         speaking_style: "穏やかで協力的な口調",
         greeting: "こんにちは。一緒にがんばりましょう。",
         farewell: "今日もお疲れさまでした。",
-        default_style: "normal",
-        style_selection: "default"
-    },
-    lirin: {
-        name: "リリンちゃん",
-        personality: "可愛らしく親しみやすい、愛嬌がある",
-        speaking_style: "可愛らしく親しみやすい口調",
-        greeting: "こんにちは〜！今日もよろしくお願いします！",
-        farewell: "今日もお疲れさまでした〜！",
         default_style: "normal",
         style_selection: "default"
     },

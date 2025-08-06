@@ -4,7 +4,7 @@ index.ts:
       model: <depcruise-analysis>
       sources:
         - path: index.ts
-          hash: f798eb473537e20da5d4f105d198a4af1e87300d28cd2717c56ddd45bdde6302
+          hash: 08a3da49189cdaf76d02999f7b9123a355293a2eae92f5736c52ababe62eff16
       version: 0.0.1
     result:
       dependencies:
