@@ -2,7 +2,7 @@ meta:
   model: vertexai:gemini-2.5-flash
   sources:
     - path: index.ts
-      hash: e82520c803380902ac9554cba347711da604bde8741c750a5aa673b864af2811
+      hash: 2e201604819c152a64d1fa1ab17bf3e4368551da61c5d3ec1c8afe9220c8f915
   version: 0.0.0
 result:
   - |
@@ -10,11 +10,10 @@ result:
      * src/say/index.ts: COEIROINK音声合成ライブラリ
      * MCPサーバから直接呼び出し可能なモジュール
      */
-  - |-
+  - |+
     import { readFile, access, mkdir } from 'fs/promises';
     import { constants } from 'fs';
     import { join } from 'path';
-    import { createRequire } from 'module';
     import { OperatorManager } from '../operator/index.js';
     import { SpeechQueue } from './speech-queue.js';
     import { AudioPlayer } from './audio-player.js';
@@ -30,12 +29,8 @@ result:
         SynthesizeResult
     } from './types.js';
 
-    // ES Modules環境でrequireを使用
   - |-
-    const require = createRequire(import.meta.url);
-
     // デフォルト設定
-  - |-
     const DEFAULT_CONFIG: Config = {
         host: 'localhost',
         port: '50032',
@@ -54,9 +49,9 @@ result:
     };
 
     /**
+  - >2-
      * 設定ディレクトリを決定（ホームディレクトリベース）
      */
-  - >-
     async function getConfigDir(): Promise<string> {
         // ホームディレクトリの ~/.coeiro-operator/ を優先
         const homeDir = join(process.env.HOME || process.env.USERPROFILE || '~', '.coeiro-operator');
@@ -83,16 +78,16 @@ result:
 
 
     /**
+  - |2-
      * 設定ファイルのパスを取得
      */
-  - >-
     async function getConfigPath(filename: string): Promise<string> {
         const configDir = await getConfigDir();
         return join(configDir, filename);
     }
 
-
     /**
+  - >2
      * 設定ファイルを読み込み
      */
     export async function loadConfig(configFile: string | null = null):
@@ -116,8 +111,7 @@ result:
             return DEFAULT_CONFIG;
         }
     }
-
-
+  - |
     export class SayCoeiroink {
         private config: Config;
         private operatorManager: OperatorManager;
@@ -136,7 +130,7 @@ result:
                 await this.synthesizeTextInternal(task.text, task.options);
             });
         }
-
+  - >2
         async initialize(): Promise<void> {
             try {
                 await this.operatorManager.initialize();
@@ -144,7 +138,7 @@ result:
                 throw new Error(`SayCoeiroink initialization failed: ${(err as Error).message}`);
             }
         }
-
+  - >2
         async buildDynamicConfig(): Promise<void> {
             try {
                 await this.operatorManager.buildDynamicConfig();
@@ -152,16 +146,12 @@ result:
                 throw new Error(`buildDynamicConfig failed: ${(err as Error).message}`);
             }
         }
-
+  - |2+
         async initializeAudioPlayer(): Promise<boolean> {
             return await this.audioPlayer.initialize();
         }
 
-        // AudioSynthesizer の splitTextIntoChunks メソッドを使用
-        splitTextIntoChunks(text: string): Chunk[] {
-            return this.audioSynthesizer.splitTextIntoChunks(text);
-        }
-
+  - >2-
         async getCurrentOperatorVoice(): Promise<OperatorVoice | null> {
             try {
                 const currentStatus = await this.operatorManager.showCurrentOperator();
@@ -186,42 +176,30 @@ result:
             }
         }
 
-        // AudioSynthesizer の synthesizeChunk メソッドを使用
-        async synthesizeChunk(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<AudioResult> {
-            return await this.audioSynthesizer.synthesizeChunk(chunk, voiceInfo, speed);
-        }
 
-        // AudioPlayer の extractPCMFromWAV メソッドを使用
-        extractPCMFromWAV(wavBuffer: ArrayBuffer): Uint8Array {
-            return this.audioPlayer.extractPCMFromWAV(wavBuffer);
-        }
 
         // AudioPlayer の playAudioStream メソッドを使用
+  - |2-
         async playAudioStream(audioResult: AudioResult): Promise<void> {
             return await this.audioPlayer.playAudioStream(audioResult);
         }
 
         // AudioPlayer の playAudioFile メソッドを使用
+  - |2-
         async playAudioFile(audioFile: string): Promise<void> {
             return await this.audioPlayer.playAudioFile(audioFile);
         }
 
-        // AudioPlayer の detectAudioPlayerSync メソッドを使用
-        detectAudioPlayerSync(): string {
-            return this.audioPlayer.detectAudioPlayerSync();
-        }
 
-        // AudioPlayer の applyCrossfade メソッドを使用
-        applyCrossfade(pcmData: Uint8Array, overlapSamples: number): Uint8Array {
-            return this.audioPlayer.applyCrossfade(pcmData, overlapSamples);
-        }
 
         // AudioSynthesizer の convertRateToSpeed メソッドを使用
+  - |2
         convertRateToSpeed(rate: number): number {
             return this.audioSynthesizer.convertRateToSpeed(rate);
         }
-
-        async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number): Promise<void> {
+  - >2-
+        async streamSynthesizeAndPlay(text: string, voiceId: string |
+    OperatorVoice, speed: number): Promise<void> {
             // AudioSynthesizer の synthesizeStream と AudioPlayer を組み合わせて使用
             for await (const audioResult of this.audioSynthesizer.synthesizeStream(text, voiceId, speed)) {
                 await this.audioPlayer.playAudioStream(audioResult);
@@ -229,48 +207,62 @@ result:
         }
 
         // AudioSynthesizer の listVoices メソッドを使用
+  - |2-
         async listVoices(): Promise<void> {
             return await this.audioSynthesizer.listVoices();
         }
 
         // AudioPlayer の saveAudio メソッドを使用
-        async saveAudio(audioBuffer: ArrayBuffer, outputFile: string): Promise<void> {
+  - >2-
+        async saveAudio(audioBuffer: ArrayBuffer, outputFile: string):
+    Promise<void> {
             return await this.audioPlayer.saveAudio(audioBuffer, outputFile);
         }
 
         // AudioSynthesizer の checkServerConnection メソッドを使用
+  - |2-
         async checkServerConnection(): Promise<boolean> {
             return await this.audioSynthesizer.checkServerConnection();
         }
 
         // SpeechQueue の enqueue メソッドを使用
-        async enqueueSpeech(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+  - >2-
+        async enqueueSpeech(text: string, options: SynthesizeOptions = {}):
+    Promise<SynthesizeResult> {
             console.log(`DEBUG: enqueueSpeech called with text: "${text}"`);
             return await this.speechQueue.enqueue(text, options);
         }
 
         // SpeechQueue のステータスを取得
+  - |2-
         getSpeechQueueStatus() {
             return this.speechQueue.getStatus();
         }
 
         // SpeechQueue をクリア
+  - |2-
         clearSpeechQueue(): void {
             this.speechQueue.clear();
         }
 
         // CLIからの直接呼び出し用メソッド
-        async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+  - >2-
+        async synthesizeText(text: string, options: SynthesizeOptions = {}):
+    Promise<SynthesizeResult> {
             return await this.synthesizeTextInternal(text, options);
         }
 
         // MCPサーバから呼び出される非同期キューイング版メソッド
-        async synthesizeTextAsync(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+  - >2-
+        async synthesizeTextAsync(text: string, options: SynthesizeOptions =
+    {}): Promise<SynthesizeResult> {
             return await this.enqueueSpeech(text, options);
         }
 
         // 内部用の実際の音声合成処理
-        async synthesizeTextInternal(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+  - >2
+        async synthesizeTextInternal(text: string, options: SynthesizeOptions =
+    {}): Promise<SynthesizeResult> {
             const {
                 voice = null,
                 rate = this.config.rate,
@@ -357,8 +349,6 @@ result:
             }
         }
     }
-
-
+  - |-
     // デフォルトエクスポート
-
     export default SayCoeiroink;

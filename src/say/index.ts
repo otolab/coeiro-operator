@@ -26,7 +26,15 @@ import type {
 const DEFAULT_CONFIG: Config = {
     host: 'localhost',
     port: '50032',
-    rate: 200
+    rate: 200,
+    // 音声品質・パフォーマンス制御のデフォルト値
+    defaultChunkMode: 'auto',
+    defaultBufferSize: 1024,
+    // ストリーミング制御のデフォルト値
+    chunkSizeSmall: 30,
+    chunkSizeMedium: 50,
+    chunkSizeLarge: 100,
+    overlapRatio: 0.1  // 10%のオーバーラップ
 };
 
 // ストリーミング設定
@@ -181,11 +189,12 @@ export class SayCoeiroink {
         return this.audioSynthesizer.convertRateToSpeed(rate);
     }
 
-    async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number): Promise<void> {
-        // AudioSynthesizer の synthesizeStream と AudioPlayer を組み合わせて使用
-        for await (const audioResult of this.audioSynthesizer.synthesizeStream(text, voiceId, speed)) {
-            await this.audioPlayer.playAudioStream(audioResult);
-        }
+    async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' = 'auto', bufferSize?: number): Promise<void> {
+        // 真のストリーミング再生：ジェネレータを直接AudioPlayerに渡す
+        await this.audioPlayer.playStreamingAudio(
+            this.audioSynthesizer.synthesizeStream(text, voiceId, speed, chunkMode),
+            bufferSize
+        );
     }
 
     // AudioSynthesizer の listVoices メソッドを使用
@@ -236,7 +245,9 @@ export class SayCoeiroink {
             rate = this.config.rate,
             outputFile = null,
             streamMode = false,
-            style = null
+            style = null,
+            chunkMode = this.config.defaultChunkMode || 'auto',
+            bufferSize = this.config.defaultBufferSize || 1024
         } = options;
 
         // 音声選択の優先順位処理
@@ -289,7 +300,7 @@ export class SayCoeiroink {
         if (outputFile) {
             // ファイル出力モード：ストリーミング合成してファイルに保存
             const audioChunks: ArrayBuffer[] = [];
-            for await (const audioResult of this.audioSynthesizer.synthesizeStream(text, selectedVoice, speed)) {
+            for await (const audioResult of this.audioSynthesizer.synthesizeStream(text, selectedVoice, speed, chunkMode)) {
                 audioChunks.push(audioResult.audioBuffer);
             }
             
@@ -312,7 +323,7 @@ export class SayCoeiroink {
                 throw new Error('音声プレーヤーの初期化に失敗しました');
             }
             
-            await this.streamSynthesizeAndPlay(text, selectedVoice, speed);
+            await this.streamSynthesizeAndPlay(text, selectedVoice, speed, chunkMode, bufferSize);
             return { success: true, mode: 'streaming' };
         }
     }

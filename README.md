@@ -10,7 +10,9 @@ COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシ�
 
 - **音声オペレータシステム**: 13種類のキャラクターによる音声通知
 - **動的設定管理**: COEIROINKサーバーから音声フォントを自動検出
-- **非同期音声合成**: 低レイテンシストリーミング対応
+- **🆕 ネイティブ音声ストリーミング**: speakerライブラリによる高品質再生
+- **🆕 分割モード制御**: テキスト分割なし〜細分化まで5段階選択
+- **🆕 バッファリング制御**: レイテンシと安定性の最適化
 - **MCPサーバー**: Claude Codeとの統合
 - **セッション管理**: 複数セッション間でのオペレータ重複防止
 - **コマンドライン互換**: macOS sayコマンド互換インターフェース
@@ -22,7 +24,10 @@ COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシ�
 
 - **Node.js 18以上** (推奨: LTS版)
 - **COEIROINK** - 音声合成エンジン（localhost:50032で動作）
-- **macOS** - 音声再生にafplayを使用
+- **Audio System** - ネイティブ音声デバイス対応OS
+  - macOS: Core Audio
+  - Linux: ALSA/PulseAudio  
+  - Windows: WASAPI
 
 ### NPMからのインストール
 
@@ -75,6 +80,11 @@ operator-manager status
 say-coeiroink "こんにちは"
 say-coeiroink -r 150 "ゆっくり話します"
 
+# 新機能: 分割モード制御（v2.0.0+）
+say-coeiroink --chunk-mode none "長文を分割せずにスムーズに読み上げ"
+say-coeiroink --chunk-mode small "短いレスポンス"  # 低レイテンシ
+say-coeiroink --buffer-size 2048 "高品質再生"      # バッファ制御
+
 # オペレータ管理
 operator-manager assign      # ランダム割り当て
 operator-manager status      # 現在のステータス
@@ -89,11 +99,12 @@ COEIRO Operatorは以下のMCPツールを提供します：
 - `operator_release` - オペレータ解放  
 - `operator_status` - 状況確認
 - `operator_available` - 利用可能一覧
-- `say` - 音声出力（非同期キュー処理）
+- `say` - 音声出力（ストリーミング再生・分割モード・バッファ制御対応）
 
 ## ドキュメント
 
 - **[INSTALLATION.md](INSTALLATION.md)** - 詳細設定・カスタマイズガイド
+- **🆕 [docs/audio-streaming-guide.md](docs/audio-streaming-guide.md)** - 音声ストリーミング機能ガイド
 - **[prompts/OPERATOR_SYSTEM.md](prompts/OPERATOR_SYSTEM.md)** - システム仕様書
 - **[docs/CHARACTERS.md](docs/CHARACTERS.md)** - オペレータキャラクター詳細
 - **[prompts/UPDATE_CHARACTER_SETTINGS.md](prompts/UPDATE_CHARACTER_SETTINGS.md)** - キャラクター設定の更新方法

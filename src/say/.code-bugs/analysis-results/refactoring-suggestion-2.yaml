@@ -1,148 +1,247 @@
+audio-player.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: audio-player.ts
+          hash: 7a2edc80f410b4e8150dc7671f5579d794ca2bf0f700516c85f06187fc4f62a1
+      version: 0.0.1
+    result:
+      content: |-
+        # コード分析レポート
+
+        ## 対象ファイル: src/say/audio-player.ts
+
+        ### 1. import されたオブジェクトの変更
+
+        **分析結果:**
+        - インポートされたオブジェクトやそのプロパティを変更するコードは検出されませんでした。
+        - `child_process` や `fs/promises` からインポートされた関数は、呼び出されているだけで、オブジェクト自体への変更はありませんでした。
+
+        ---
+
+        ### 2. モジュール内部への参照
+
+        **分析結果:**
+        - パッケージから明示的にエクスポートされていない内部ファイルへの参照や、プロジェクトのルートディレクトリを超えるような不適切な相対パス参照は検出されませんでした。
+        - `import type { AudioResult, Chunk } from './types.js';` は、同一ディレクトリ内の型定義ファイルへの参照であり、正当なものです。
+
+        ---
+
+        ### 3. 不必要な引数に対する副作用
+
+        **分析結果:**
+        - 関数の引数として渡されたオブジェクトを直接変更するような、意図しない副作用を持つ可能性のあるコードは検出されませんでした。
+        - `applyCrossfade` 関数では、引数 `pcmData` のコピーを作成してから処理を行っており、副作用を避けるための適切な実装がなされています。
+
+        ---
+
+        ### 4. 非推奨のnew Buffer()コンストラクタ
+
+        **分析結果:**
+        - セキュリティ上のリスクがある非推奨の `new Buffer()` コンストラクタの使用は検出されませんでした。
+        - `playAudioStream` 関数および `saveAudio` 関数では、推奨される `Buffer.from()` が使用されています。
+
+        ---
+
+        ### 5. タイミング攻撃脆弱性
+
+        **分析結果:**
+        - HMAC署名、パスワード、トークンなどの機密情報を `===` や `==` で比較するような、タイミング攻撃に対して脆弱なコードは検出されませんでした。
+        - ファイル内で行われている比較処理は、WAVファイルのフォーマット識別子や子プロセスの終了コードのチェックなど、セキュリティとは関連しないものでした。
+      usage: 767
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: audio-player.ts
+          hash: 7a2edc80f410b4e8150dc7671f5579d794ca2bf0f700516c85f06187fc4f62a1
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: false
+          name: import されたオブジェクトの変更
+        - hasFindings: false
+          name: モジュール内部への参照
+        - hasFindings: false
+          name: 不必要な引数に対する副作用
+        - hasFindings: false
+          name: 非推奨のnew Buffer()コンストラクタ
+        - hasFindings: false
+          name: タイミング攻撃脆弱性
+audio-synthesizer.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: audio-synthesizer.ts
+          hash: 95407dada899f15c4a276ff7c0c94f6c8a62057ee7ca1e86a01e491e6cafa8bd
+      version: 0.0.1
+    result:
+      content: |-
+        # コード分析レポート
+
+        ## 分析対象ファイル
+        - `src/say/audio-synthesizer.ts`
+
+        ## 分析の進捗
+        - 全1ファイル中、1ファイルを分析完了。
+
+        ---
+
+        ## 分析結果サマリー
+
+        [Analysis Procedure Guide](analysis-procedure-guide) に基づき、`src/say/audio-synthesizer.ts` のコードを分析しました。
+        結果として、ガイドラインで指摘されているリファクタリング対象の項目は、今回の分析範囲では見つかりませんでした。
+
+        ---
+
+        ## 詳細な分析結果
+
+        ### 1. import されたオブジェクトの変更
+        - **結果**: 該当なし
+        - **理由**: ソースコード内で `import` されているのは `./types.js` からの型定義のみです。型定義は実行時のオブジェクトではないため、値の変更は発生しません。その他のモジュールからのオブジェクトインポートと、そのオブジェクトへの変更操作は見つかりませんでした。
+
+        ### 2. モジュール内部への参照
+        - **結果**: 該当なし
+        - **理由**: `import` 文は `./types.js` という同一ディレクトリ内のファイルを参照しているのみです。プロジェクトの外部や、パッケージの内部実装に依存するような深いパスへの参照は見つかりませんでした。
+
+        ### 3. 不必要な引数に対する副作用
+        - **結果**: 該当なし
+        - **理由**: ファイル内の各メソッド (`constructor`, `synthesizeChunk`, `splitTextIntoChunks` など) を確認したところ、引数として受け取ったオブジェクトや値を直接変更するような副作用のあるコードは見つかりませんでした。引数は読み取り専用として扱われています。
+
+        ### 4. 非推奨のnew Buffer()コンストラクタ
+        - **結果**: 該当なし
+        - **理由**: ソースコード全体で `new Buffer()` コンストラクタの使用は見つかりませんでした。
+
+        ### 5. タイミング攻撃脆弱性
+        - **結果**: 該当なし
+        - **理由**: ソースコード内には、HMAC署名、パスワード、APIキーといった機密情報を比較する処理は含まれていません。`crypto.timingSafeEqual()` を使用すべき箇所は見つかりませんでした。
+      usage: 795
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: audio-synthesizer.ts
+          hash: 95407dada899f15c4a276ff7c0c94f6c8a62057ee7ca1e86a01e491e6cafa8bd
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: false
+          name: import されたオブジェクトの変更
+        - hasFindings: false
+          name: モジュール内部への参照
+        - hasFindings: false
+          name: 不必要な引数に対する副作用
+        - hasFindings: false
+          name: 非推奨のnew Buffer()コンストラクタ
+        - hasFindings: false
+          name: タイミング攻撃脆弱性
 cli.ts:
   analysis:
     meta:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: cli.ts
-          hash: 3c03652e1a1e05b9fa34f47bc71c36a9e0eef2b3104494002458559695d50758
+          hash: 3d992ab9f58d052a8b409aa7fc91a0bea3f1da173003b7adb134d07d9a316205
       version: 0.0.1
     result:
-      content: >-
-        # Analysis Report for `src/say/cli.ts`
+      content: |-
+        # コード分析レポート: `src/say/cli.ts`
 
+        ## 1. 分析概要
 
-        This report analyzes the provided source code based on the procedures
-        outlined in the `Analysis Procedure Guide`. The entire file
-        `src/say/cli.ts` was processed in this iteration.
+        本レポートは、`src/say/cli.ts`のソースコードを[Analysis Procedure Guide](analysis-procedure-guide)に基づき分析した結果をまとめたものです。このファイルは、macOSの`say`コマンド互換の機能を提供するコマンドラインインターフェースを実装しています。
 
+        分析の結果、[Analysis Procedure Guide](analysis-procedure-guide)で指摘されている懸念事項は、本ファイル内では確認されませんでした。コードはクリーンで、ガイドラインに沿った実装がなされています。
 
-        ---
-
-
-        ## 1. 事前の解析結果について (Review of Pre-analysis Results)
-
-
-        The pre-analysis results from `import-and-export-details` were
-        referenced.
-
-        - **Dependencies**: The code imports `readFileSync`, `existsSync` from
-        `fs`, and `SayCoeiroink`, `loadConfig` from `./index.js`. This aligns
-        with the source code.
-
-        - **Module Interface**: The code correctly exports `SayCoeiroinkCLI` as
-        the default export.
-
+        以下に、各調査項目ごとの詳細な分析結果を報告します。
 
         ---
 
+        ## 2. 調査項目別分析結果
 
-        ## 2. 調査項目 (Investigation Items)
+        ### 2.1. importされたオブジェクトの変更
 
+        **分析結果:** 該当なし
 
-        ### 2.1. import されたオブジェクトの変更 (Modification of Imported Objects)
+        **理由:**
+        本コードでは、`fs/promises`、`fs`、`./index.js`からモジュールをインポートしています。
+        [Investigation result: import-and-export-details](investigation-result-import-and-export-details)で示されている通り、インポートされたオブジェクト（`readFile`, `access`, `constants`, `SayCoeiroink`, `loadConfig`）に対して、その値を変更するような処理（プロパティの変更や再代入）は確認されませんでした。インポートされたモジュールは、意図された通りに使用されています。
 
+        ### 2.2. モジュール内部への参照
 
-        **Analysis Result:** No issues found.
+        **分析結果:** 該当なし
 
+        **理由:**
+        本コードの`import`文は以下の通りです。
+        - `import { readFile, access } from 'fs/promises';`
+        - `import { constants } from 'fs';`
+        - `import { SayCoeiroink, loadConfig } from './index.js';`
 
-        **Reasoning:**
+        これらは、Node.jsの標準モジュール、または同一階層の`index.js`からのインポートであり、パッケージの内部実装に深く依存するような参照（例: `../../..` や `dist`フォルダ内のファイルへの直接参照）は含まれていません。依存関係は適切に管理されています。
 
-        The imported modules (`readFileSync`, `existsSync`, `SayCoeiroink`,
-        `loadConfig`) are used as functions or classes. There is no code that
-        modifies the properties or methods of these imported objects.
+        ### 2.3. 不必要な引数に対する副作用
 
+        **分析結果:** 該当なし
 
-        ### 2.2. モジュール内部への参照 (References to Module Internals)
+        **理由:**
+        ファイル内の各メソッド（`parseArguments`, `getInputText`, `run`など）を調査した結果、引数として受け取ったオブジェクトを直接変更するような副作用は確認されませんでした。
 
-
-        **Analysis Result:** No issues found.
-
-
-        **Reasoning:**
-
-        The code contains the import statement `import { SayCoeiroink,
-        loadConfig } from './index.js';`. This is a relative path import to a
-        file within the same directory, which is a standard practice for
-        referencing modules within the same package. There are no deep imports
-        into `node_modules` or relative path traversals (`../`) that suggest
-        referencing outside the project scope.
-
-
-        ### 2.3. 不必要な引数に対する副作用 (Side Effects on Unnecessary Arguments)
-
-
-        **Analysis Result:** No issues found.
-
-
-        **Reasoning:**
-
-        All functions and methods in the provided code, such as
-        `parseArguments`, `getInputText`, and `run`, treat their arguments as
-        read-only. No modifications are made to the argument objects themselves.
-        For instance, the `options` object in `getInputText` is only read from,
-        not written to.
-
-
-        ### 2.4. 非推奨のnew Buffer()コンストラクタ (Deprecated `new Buffer()` Constructor)
-
-
-        **Analysis Result:** No issues found.
-
-
-        **Reasoning:**
-
-        The code uses `Buffer` in the `getInputText` method to handle standard
-        input.
+        特に、引数をパースしてオプションを構築する`parseArguments`メソッドでは、新しい`options`オブジェクトを内部で生成し、そのオブジェクトを更新しています。これにより、呼び出し元への意図しない副作用を防いでいます。
 
         ```typescript
+        // src/say/cli.ts L100-L107
+        private async parseArguments(args: string[]): Promise<ParsedOptions> {
+            const options: ParsedOptions = {
+                voice: process.env.COEIROINK_VOICE || '',
+                rate: (this.sayCoeiroink as any).config.rate,
+                inputFile: '',
+                outputFile: '',
+                streamMode: false,
+                text: ''
+            };
+            // ... optionsオブジェクトを更新 ...
+            return options;
+        }
+        ```
 
+        ### 2.4. 非推奨のnew Buffer()コンストラクタ
+
+        **分析結果:** 該当なし
+
+        **理由:**
+        `getInputText`メソッド内で`Buffer`が使用されていますが、`new Buffer()`コンストラクタは使用されていません。代わりに、安全な`Buffer.concat()`が使用されており、セキュリティ上の懸念はありません。
+
+        ```typescript
+        // src/say/cli.ts L164-L167
         const chunks: Buffer[] = [];
-
         for await (const chunk of process.stdin) {
             chunks.push(chunk as Buffer);
         }
-
         text = Buffer.concat(chunks).toString('utf8').trim();
-
         ```
 
-        This implementation uses `Buffer.concat()`, which is a safe and
-        recommended method for handling buffers. The deprecated and insecure
-        `new Buffer()` constructor is not used.
+        ### 2.5. タイミング攻撃脆弱性
 
+        **分析結果:** 該当なし
 
-        ### 2.5. タイミング攻撃脆弱性 (Timing Attack Vulnerability)
-
-
-        **Analysis Result:** No issues found.
-
-
-        **Reasoning:**
-
-        The string comparisons in the code are for parsing command-line
-        arguments (e.g., `arg === '-h'`) and checking the execution context
-        (`import.meta.url === \`file://${process.argv[1]}\``). These comparisons
-        do not involve cryptographic secrets like passwords, tokens, or
-        signatures. Therefore, they are not susceptible to timing attacks.
-
+        **理由:**
+        コード全体を調査した結果、HMAC署名、パスワード、APIキーといった機密情報を比較する処理は存在しませんでした。
+        文字列比較 (`===`) は、コマンドライン引数 (`args[i + 1] === '?'`) やエラーメッセージ (`(error as Error).message === 'HELP_REQUESTED'`) の判定に使用されていますが、これらはセキュリティ上の機密情報ではないため、タイミング攻撃の対象とはなりません。したがって、`crypto.timingSafeEqual()`を使用する必要はありません。
 
         ---
 
+        ## 3. 結論
 
-        ## Summary
-
-
-        The analysis of `src/say/cli.ts` is complete. No issues corresponding to
-        the investigation items in the `Analysis Procedure Guide` were
-        identified. The code is well-structured and follows modern
-        JavaScript/TypeScript best practices.
-      usage: 772
+        `src/say/cli.ts`は、[Analysis Procedure Guide](analysis-procedure-guide)に記載されたリファクタリング観点において、問題となる箇所は見つかりませんでした。コードは堅牢かつクリーンに記述されており、現時点での修正提案はありません。
+      usage: 1517
   summary:
     meta:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: cli.ts
-          hash: 3c03652e1a1e05b9fa34f47bc71c36a9e0eef2b3104494002458559695d50758
+          hash: 3d992ab9f58d052a8b409aa7fc91a0bea3f1da173003b7adb134d07d9a316205
       version: 0.0.1
     result:
       results:
@@ -162,84 +261,156 @@ index.ts:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: index.ts
-          hash: 08e33e025cf21d4eaf8affaa03d5267cc8c5dcd2ef463622e7a2b9398e8e36d0
+          hash: 2e201604819c152a64d1fa1ab17bf3e4368551da61c5d3ec1c8afe9220c8f915
       version: 0.0.1
     result:
-      content: >-
+      content: |-
         # コード分析レポート: src/say/index.ts
 
+        ## 1. 分析概要
 
-        ## 処理概要
+        本レポートは、`src/say/index.ts` ファイルに対して、[Analysis Procedure Guide](analysis-procedure-guide) に基づく静的コード分析を実施した結果をまとめたものです。リファクタリングの要否を判断するための情報を提供することを目的とします。
 
+        ### 分析サマリー
 
-        - **対象ファイル**: `src/say/index.ts`
-
-        - **処理状況**: 入力された全10チャンクの解析が完了しました。
-
-        - **次のチャンクへの影響**: すべてのチャンクが処理されたため、次のチャンクへの影響はありません。
-
+        | 調査項目 | 結果 | 詳細 |
+        | :--- | :--- | :--- |
+        | **importされたオブジェクトの変更** | 問題なし | インポートされたオブジェクトを直接変更するコードは検出されませんでした。 |
+        | **モジュール内部への参照** | 問題なし | プロジェクト外部への参照や、パッケージの非公開APIへの参照は検出されませんでした。 |
+        | **不必要な引数に対する副作用** | 問題なし | 引数として受け取ったオブジェクトを直接変更するような副作用は見つかりませんでした。 |
+        | **非推奨のnew Buffer()コンストラクタ** | 問題なし | 非推奨の `new Buffer()` コンストラクタの使用は検出されませんでした。 |
+        | **タイミング攻撃脆弱性** | 問題なし | 機密情報の比較に `===` を使用している箇所はなく、タイミング攻撃のリスクは低いと判断されます。 |
 
         ---
 
+        ## 2. 詳細な分析結果
 
-        ## 調査項目別分析結果
+        以下に、[Analysis Procedure Guide](analysis-procedure-guide) の各項目に基づいた詳細な分析結果を記述します。
 
+        ### 2.1. import されたオブジェクトの変更
 
-        以下に、[Analysis Procedure Guide](analysis-procedure-guide) に基づく分析結果を報告します。
+        **定義:**
+        > インポートした値を変更するコードが存在する場合に報告してください。
 
+        **分析結果:**
+        ファイル全体を調査した結果、`import`文でインポートされたオブジェクトや変数のプロパティを直接変更するようなコードは見つかりませんでした。
 
-        ### 1. import されたオブジェクトの変更
+        - `import`されたモジュールは、主にクラス (`OperatorManager`, `SpeechQueue`など) や関数 (`readFile`, `join`など) です。
+        - クラスは `new` キーワードでインスタンス化されてから使用されており、インポートされたクラス定義自体が変更されることはありませんでした。
 
+        したがって、この項目に該当する問題はありません。
 
-        - **分析結果**: 該当するコードは見つかりませんでした。
+        ### 2.2. モジュール内部への参照
 
-        - **理由**:
-          - ソースコード全体を確認した結果、`import`文でインポートされたモジュールやオブジェクトのプロパティを直接変更するようなコードは存在しませんでした。
+        **定義:**
+        > パッケージから明示的にエクスポートされていないであろうファイルへの参照に関しては警告を出し、修正できないか検討するべきです。
 
-        ### 2. モジュール内部への参照
+        **分析結果:**
+        [Investigation result: import-and-export-details](investigation-result-import-and-export-details) の依存関係リストとソースコード内の `import` 文を確認しました。
 
+        ```typescript
+        // partOf: 2 of 26
+        import { OperatorManager } from '../operator/index.js';
+        import { SpeechQueue } from './speech-queue.js';
+        import { AudioPlayer } from './audio-player.js';
+        import { AudioSynthesizer } from './audio-synthesizer.js';
+        ```
 
-        - **分析結果**: 該当するコードは見つかりませんでした。
+        - `../operator/index.js` という相対パスによる参照が存在します。
+        - このパスは `src/say/index.ts` から `src/operator/index.js` を指しており、同一プロジェクト内のモジュール間参照です。
+        - `index.js` ファイルからのインポートであることから、モジュールの公開インターフェースを利用していると推測され、問題のある内部参照ではありません。
+        - プロジェクトのルートディレクトリを越えるような深い階層への相対パス参照 (`../../..` など) は見つかりませんでした。
 
-        - **理由**:
-          - `import`文はすべてNode.jsのコアモジュール (`fs/promises`, `fs`, `child_process`, `path`, `module`) を対象としており、プロジェクト内部のプライベートなファイルや、プロジェクト外部への相対パス (`../`) を用いた参照は確認されませんでした。
+        したがって、この項目に該当する問題はありません。
 
-        ### 3. 不必要な引数に対する副作用
+        ### 2.3. 不必要な引数に対する副作用
 
+        **定義:**
+        > 多くの場合、引数に対する副作用は意図しないものです。意図的なものは第一引数に置く傾向があります。特にオプションのオブジェクトへの書き込みはバグの温床となりえます。
 
-        - **分析結果**: 該当するコードは見つかりませんでした。
+        **分析結果:**
+        ファイル内のすべての関数およびメソッド定義を調査しました。特に、オプションオブジェクトを受け取る可能性のある `synthesizeTextInternal` メソッドを重点的に確認しました。
 
-        - **理由**:
-          - `synthesizeTextInternal` メソッドでは、`options`引数から分割代入で値を取り出しており、元のオブジェクトを変更していません。また、`voice`引数から派生する`selectedVoice`オブジェクトが変更される箇所では、スプレッド構文 (`...`) を用いて新しいオブジェクトが作成されており、元の引数への副作用は発生しません。
-          - `applyCrossfade` メソッドでは、`new Uint8Array(pcmData)` によって引数のコピーが作成されており、副作用を意図的に回避する設計になっています。
+        ```typescript
+        // partOf: 25 of 26
+        async synthesizeTextInternal(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+            const {
+                voice = null,
+                rate = this.config.rate,
+                outputFile = null,
+                streamMode = false,
+                style = null
+            } = options;
 
-        ### 4. 非推奨のnew Buffer()コンストラクタ
+            // ...
 
+            if (style && typeof selectedVoice === 'object' && selectedVoice.character) {
+                // ...
+                const modifiedCharacter = {
+                    ...character,
+                    style_selection: 'specified',
+                    default_style: style
+                };
+                selectedVoice = {
+                    ...selectedVoice,
+                    character: modifiedCharacter
+                };
+            }
+            // ...
+        }
+        ```
 
-        - **分析結果**: 該当するコードは見つかりませんでした。
+        - `options` 引数は、分割代入によってローカル変数に値が取り出されており、`options` オブジェクト自体は変更されていません。
+        - `style` が指定された場合の `selectedVoice` の更新処理では、スプレッド構文 (`...`) を用いて新しいオブジェクト (`modifiedCharacter`, `selectedVoice`) が作成されています。これにより、元の引数やそのプロパティが変更されることはなく、副作用を避ける設計になっています。
 
-        - **理由**:
-          - ソースコード内で`Buffer`オブジェクトを生成している箇所 (`playAudioStream`メソッド、`saveAudio`メソッド) では、推奨されている `Buffer.from()` が使用されていました。非推奨の `new Buffer()` コンストラクタの使用は確認されませんでした。
+        したがって、この項目に該当する問題はありません。
 
-        ### 5. タイミング攻撃脆弱性
+        ### 2.4. 非推奨のnew Buffer()コンストラクタ
 
+        **定義:**
+        > セキュリティ脆弱性となるため、new Buffer()の利用は非推奨になっています。
 
-        - **分析結果**: 該当するコードは見つかりませんでした。
+        **分析結果:**
+        ソースコード全体をスキャンした結果、非推奨である `new Buffer()` コンストラクタの使用箇所は見つかりませんでした。
 
-        - **理由**:
-          - このモジュールは音声合成クライアントとしての役割を担っており、HMAC署名、パスワード、APIキーといった機密情報を比較する処理は含まれていませんでした。文字列比較 (`===`) は行われていますが (`getCurrentOperatorVoice`メソッド内など)、暗号学的に重要な情報の比較ではないため、タイミング攻撃の脆弱性には該当しません。
-      usage: 1066
+        ファイル内では、音声データを扱うために `ArrayBuffer` や `Uint8Array` が使用されていますが、これらは安全な方法です。
+
+        ```typescript
+        // partOf: 25 of 26
+        const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+        const combinedBuffer = new ArrayBuffer(totalLength);
+        const view = new Uint8Array(combinedBuffer);
+        ```
+
+        したがって、この項目に該当する問題はありません。
+
+        ### 2.5. タイミング攻撃脆弱性
+
+        **定義:**
+        > 暗号学的な比較（HMAC署名、パスワード、トークンなど）において、通常の文字列比較演算子（`===`、`==`）を使用すると、タイミング攻撃の脆弱性となる可能性があります。
+
+        **分析結果:**
+        ソースコード内で使用されている等価比較演算子 (`===`, `==`) の使用箇所を調査しました。
+
+        - `if (!configFile)`
+        - `if (!currentStatus.operatorId)`
+        - `find(([styleId, styleData]) => styleId === style && ...)`
+
+        これらの比較は、設定ファイルの有無、IDの存在確認、スタイル文字列の一致確認など、機密情報や暗号学的な値を扱っていません。処理時間の差異から機密情報が漏洩するリスクは極めて低いと判断されます。
+
+        したがって、この項目に該当する問題はありません。
+      usage: 2361
   summary:
     meta:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: index.ts
-          hash: 08e33e025cf21d4eaf8affaa03d5267cc8c5dcd2ef463622e7a2b9398e8e36d0
+          hash: 2e201604819c152a64d1fa1ab17bf3e4368551da61c5d3ec1c8afe9220c8f915
       version: 0.0.1
     result:
       results:
         - hasFindings: false
-          name: import されたオブジェクトの変更
+          name: importされたオブジェクトの変更
         - hasFindings: false
           name: モジュール内部への参照
         - hasFindings: false
