@@ -1,20 +1,20 @@
 /**
  * src/say/audio-player.ts: 音声再生管理
- * 音声ファイルの再生と音声プレーヤーの管理を担当
+ * speakerライブラリを使用した直接音声再生を担当
  */
 
-import { spawn, ChildProcess } from 'child_process';
-import { writeFile, unlink } from 'fs/promises';
+import Speaker from 'speaker';
+import { writeFile } from 'fs/promises';
 import type { AudioResult, Chunk } from './types.js';
 
 export class AudioPlayer {
-    private audioPlayer: string | null = null;
+    private isInitialized = false;
 
     async initialize(): Promise<boolean> {
         try {
-            // システムオーディオコマンドを使用（低レイテンシモード）
-            console.error(`音声プレーヤー初期化: システムオーディオ使用（低レイテンシモード）`);
-            this.audioPlayer = 'system';
+            // speakerライブラリ使用（ネイティブ音声デバイス直接出力）
+            console.error(`音声プレーヤー初期化: speaker使用（ネイティブ音声再生）`);
+            this.isInitialized = true;
             return true;
         } catch (error) {
             console.error(`音声プレーヤー初期化エラー: ${(error as Error).message}`);
@@ -27,54 +27,127 @@ export class AudioPlayer {
      */
     async playAudioFile(audioFile: string): Promise<void> {
         try {
-            const audioPlayer = this.detectAudioPlayerSync();
-            await this.execCommand(audioPlayer, [audioFile]);
+            if (!this.isInitialized) {
+                throw new Error('AudioPlayer is not initialized');
+            }
+            
+            // WAVファイルを読み込んでPCMデータとして再生
+            const fs = await import('fs/promises');
+            const wavBuffer = await fs.readFile(audioFile);
+            const pcmData = this.extractPCMFromWAV(wavBuffer.buffer as ArrayBuffer);
+            
+            return this.playPCMData(pcmData);
         } catch (error) {
             throw new Error(`音声再生エラー: ${(error as Error).message}`);
         }
     }
 
     /**
-     * 音声ストリームを再生
+     * 音声ストリームを再生（メモリ上で直接再生）
      */
-    async playAudioStream(audioResult: AudioResult): Promise<void> {
+    async playAudioStream(audioResult: AudioResult, bufferSize?: number): Promise<void> {
         try {
-            const tempFile = `/tmp/stream_${Date.now()}_${audioResult.chunk.index}.wav`;
+            if (!this.isInitialized) {
+                throw new Error('AudioPlayer is not initialized');
+            }
             
-            await writeFile(tempFile, Buffer.from(audioResult.audioBuffer));
-
-            const playPromise = this.playAudioFile(tempFile);
+            // PCMデータを抽出
+            const pcmData = this.extractPCMFromWAV(audioResult.audioBuffer);
             
-            // ファイルクリーンアップを遅延実行
-            playPromise.finally(() => {
-                setTimeout(() => {
-                    unlink(tempFile).catch(() => {});
-                }, 1000);
-            });
-
-            return playPromise;
+            // speakerでPCMデータを直接再生（一時ファイル不要）
+            return this.playPCMData(pcmData, bufferSize);
             
         } catch (error) {
-            console.error(`音声再生エラー: ${(error as Error).message}`);
+            throw new Error(`音声再生エラー: ${(error as Error).message}`);
         }
     }
 
     /**
-     * 利用可能な音声プレーヤーを検出
+     * 真のストリーミング音声再生（非同期ジェネレータから直接再生）
      */
-    detectAudioPlayerSync(): string {
-        const players = ['afplay', 'aplay', 'paplay', 'play'];
-        
-        for (const player of players) {
-            try {
-                spawn('which', [player], { stdio: 'ignore' });
-                return player;
-            } catch {
-                continue;
+    async playStreamingAudio(audioStream: AsyncGenerator<AudioResult>, bufferSize?: number): Promise<void> {
+        try {
+            if (!this.isInitialized) {
+                throw new Error('AudioPlayer is not initialized');
             }
+            
+            for await (const audioResult of audioStream) {
+                // PCMデータを抽出して即座に再生
+                const pcmData = this.extractPCMFromWAV(audioResult.audioBuffer);
+                await this.playPCMData(pcmData, bufferSize);
+            }
+        } catch (error) {
+            throw new Error(`ストリーミング音声再生エラー: ${(error as Error).message}`);
         }
-        
-        return 'afplay'; // デフォルト（macOS）
+    }
+
+    /**
+     * 並列ストリーミング再生（最初のチャンクから再生開始、以降は自動継続）
+     */
+    async playStreamingAudioParallel(audioStream: AsyncGenerator<AudioResult>): Promise<void> {
+        try {
+            if (!this.isInitialized) {
+                throw new Error('AudioPlayer is not initialized');
+            }
+            
+            const playQueue: Promise<void>[] = [];
+            
+            for await (const audioResult of audioStream) {
+                // PCMデータを抽出
+                const pcmData = this.extractPCMFromWAV(audioResult.audioBuffer);
+                
+                // 各チャンクを非同期で再生（順序は保たない、低レイテンシ優先）
+                const playPromise = this.playPCMData(pcmData).catch((error: Error) => {
+                    console.warn(`チャンク${audioResult.chunk.index}再生エラー:`, error);
+                });
+                
+                playQueue.push(playPromise);
+                
+                // 最大3チャンクまでの並列再生
+                if (playQueue.length >= 3) {
+                    await Promise.race(playQueue);
+                    // 完了したプロミスを削除
+                    const completedIndex = playQueue.findIndex(p => 
+                        p === Promise.resolve()
+                    );
+                    if (completedIndex !== -1) {
+                        playQueue.splice(completedIndex, 1);
+                    }
+                }
+            }
+            
+            // 残りのチャンクの再生完了を待機
+            await Promise.all(playQueue);
+            
+        } catch (error) {
+            throw new Error(`並列ストリーミング音声再生エラー: ${(error as Error).message}`);
+        }
+    }
+
+    /**
+     * PCMデータを直接スピーカーに再生
+     */
+    private async playPCMData(pcmData: Uint8Array, bufferSize?: number): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const speaker = new Speaker({
+                channels: 1,        // モノラル
+                bitDepth: 16,       // 16bit
+                sampleRate: 24000,  // COEIROINKのサンプリングレート
+                // バッファサイズ制御（デフォルト：1024、範囲：256-8192）
+                highWaterMark: bufferSize || 1024
+            });
+
+            speaker.on('close', () => {
+                resolve();
+            });
+
+            speaker.on('error', (error) => {
+                reject(error);
+            });
+
+            // PCMデータをスピーカーに書き込み
+            speaker.end(Buffer.from(pcmData));
+        });
     }
 
     /**
@@ -137,37 +210,4 @@ export class AudioPlayer {
         return result;
     }
 
-    /**
-     * コマンドを実行
-     */
-    private async execCommand(command: string, args: string[]): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const child: ChildProcess = spawn(command, args, {
-                stdio: ['pipe', 'pipe', 'pipe']
-            });
-
-            let stdout = '';
-            let stderr = '';
-
-            child.stdout?.on('data', (data) => {
-                stdout += data.toString();
-            });
-
-            child.stderr?.on('data', (data) => {
-                stderr += data.toString();
-            });
-
-            child.on('close', (code) => {
-                if (code === 0) {
-                    resolve(stdout.trim());
-                } else {
-                    reject(new Error(`Command failed with code ${code}: ${stderr}`));
-                }
-            });
-
-            child.on('error', (err) => {
-                reject(new Error(`Failed to execute command: ${err.message}`));
-            });
-        });
-    }
 }

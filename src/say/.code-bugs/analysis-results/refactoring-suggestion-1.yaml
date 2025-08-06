@@ -1,98 +1,475 @@
-cli.ts:
+audio-player.ts:
   analysis:
     meta:
       model: vertexai:gemini-2.5-pro
       sources:
-        - path: cli.ts
-          hash: 3c03652e1a1e05b9fa34f47bc71c36a9e0eef2b3104494002458559695d50758
+        - path: audio-player.ts
+          hash: 7a2edc80f410b4e8150dc7671f5579d794ca2bf0f700516c85f06187fc4f62a1
       version: 0.0.1
     result:
       content: |-
-        # コード分析レポート: `say/cli.ts`
+        # 分析レポート: `src/say/audio-player.ts`
 
-        ## 1. 調査概要
+        ## 1. 総評
 
-        `say/cli.ts`のソースコードについて、[Analysis Procedure Guide](analysis-procedure-guide)に基づき分析を行いました。
-        このファイルは、macOSの`say`コマンド互換の機能を提供するコマンドラインインターフェースです。
-        分析はファイル全体（6/6チャンク）に対して完了しています。
+        対象ファイル `src/say/audio-player.ts` は、音声再生とファイル管理を行う `AudioPlayer` クラスを定義しています。
+        全体として、ESM構文の採用やTypeScriptによる型付けが適切に行われており、コードの可読性も高いです。
 
-        ## 2. 分析結果
+        事前分析結果 ([Investigation result: depcruise](investigation-result-depcruise), [Investigation result: import-and-export-details](investigation-result-import-and-export-details)) と照らし合わせても、モジュールの依存関係やエクスポート形式に大きな問題は見られませんでした。
 
-        ### 型定義が曖昧な export
+        ただし、エラーハンドリングの安全性、非同期処理の堅牢性、一部の同期処理の実装において、いくつかの改善点が特定されました。これらの点を修正することで、コードの信頼性と保守性をさらに向上させることができます。
 
-        `export default SayCoeiroinkCLI;` という形でクラスがエクスポートされており、エクスポートインターフェース自体に型定義の曖昧さはありません。
+        ---
 
-        しかし、クラス内部の実装において、`any`型へのキャストが2箇所見られました。これはリファクタリングの対象となり得ます。
+        ## 2. 調査項目に基づく分析結果
 
-        - **該当箇所**:
-            1. `showUsage`メソッド内
-                ```typescript
-                // L.60
-                console.log(`... (default: ${(this.sayCoeiroink as any).config.rate})`);
-                ```
-            2. `parseArguments`メソッド内
-                ```typescript
-                // L.81
-                rate: (this.sayCoeiroink as any).config.rate,
-                ```
+        [Analysis Procedure Guide](analysis-procedure-guide) に基づき、以下の観点で分析を行いました。
 
-        - **分析**:
-            - `this.sayCoeiroink`は`SayCoeiroink`型として定義されていますが、そのプロパティである`config.rate`にアクセスするために`any`への型キャストが行われています。
-            - これは、`SayCoeiroink`クラスの`config`プロパティが`private`であるか、型定義上でアクセス可能になっていない可能性を示唆しています。
+        ### 2.1. 型定義が曖昧な export
 
-        - **改善提案**:
-            - `SayCoeiroink`クラスの設計を見直し、`config`プロパティを外部から安全に読み取れるように変更することが望ましいです。
-            - **提案1**: `config`プロパティを`public`にする。
-                ```typescript
-                // SayCoeiroinkクラス内
-                public config: ConfigType; // ConfigTypeは適切な型に置き換える
-                ```
-            - **提案2**: `rate`を取得するための`public`なgetterメソッドを`SayCoeiroink`クラスに実装する。
-                ```typescript
-                // SayCoeiroinkクラス内
-                public getRate(): number {
-                    return this.config.rate;
+        **評価: 問題なし**
+
+        `export` されている `AudioPlayer` クラスのパブリックメソッドの型シグネチャは、事前分析結果 ([Investigation result: import-and-export-details](investigation-result-import-and-export-details)) の通り明確に定義されています。`any` 型の使用はなく、引数や返り値の型は適切です。
+
+        #### 補足: エラーハンドリングにおける型安全性
+
+        メソッドのインターフェースではありませんが、複数の `catch` ブロックで `(error as Error).message` という型アサーションが使用されています。
+
+        **該当箇所:**
+        - `initialize` メソッド
+        - `playAudioFile` メソッド
+        - `playAudioStream` メソッド
+        - `saveAudio` メソッド
+        - `execCommand` メソッド
+
+        **提案:**
+        `catch` 節の `error` は `unknown` 型です。型アサーションはランタイムエラーを引き起こす可能性があるため、`instanceof Error` を用いた型ガードで安全にエラーオブジェクトを扱うことを推奨します。
+
+        ```typescript
+        // 修正前
+        } catch (error) {
+            throw new Error(`音声再生エラー: ${(error as Error).message}`);
+        }
+
+        // 修正案
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            throw new Error(`音声再生エラー: ${message}`);
+        }
+        ```
+
+        ### 2.2. 定数の as const 付与
+
+        **評価: 該当なし**
+
+        このファイルでは、外部に `export` されている定数（`export const`）は存在しません。したがって、`as const` の付与対象となる箇所はありません。
+
+        ### 2.3. ESM 方式での export
+
+        **評価: 問題なし**
+
+        `export class AudioPlayer` という ESM 方式の構文が正しく使用されています。`module.exports` や `exports` といった CommonJS 方式の記述は見られません。
+        これは、このファイルに依存するモジュールが `es6` 方式でインポートしているという事前分析結果 ([Investigation result: depcruise](investigation-result-depcruise)) とも整合性が取れています。
+
+        ### 2.4. 名前付きインポート
+
+        **評価: 問題なし**
+
+        `child_process` や `fs/promises` などの外部モジュール、およびローカルの型定義 `types.js` は、すべて名前付きインポート (`import { ... } from '...'`) を用いており、`require` は使用されていません。これは推奨されるプラクティスに沿っています。
+
+        ---
+
+        ## 3. その他の改善提案
+
+        調査項目には含まれませんが、コードの堅牢性と正確性を向上させるための追加の提案です。
+
+        ### 3.1. `playAudioStream` の一時ファイル削除処理の改善
+
+        **問題点:**
+        `playAudioStream` メソッドでは、音声再生後に一時ファイルを削除するために `playPromise.finally()` 内で `setTimeout` を1秒使用しています。この固定時間の待機は、音声再生が1秒以上かかる場合に再生が中断されるリスクや、逆にすぐに終了した場合の不要な待機時間となり、処理の確実性に欠けます。
+
+        **該当箇所:**
+        ```typescript
+        // partOf: 6 of 8
+        const playPromise = this.playAudioFile(tempFile);
+
+        // ファイルクリーンアップを遅延実行
+        playPromise.finally(() => {
+            setTimeout(() => {
+                unlink(tempFile).catch(() => {});
+            }, 1000);
+        });
+
+        return playPromise;
+        ```
+
+        **提案:**
+        `playAudioFile` メソッドは内部で `execCommand` を呼び出し、コマンドの完了（プロセスの終了）を `await` しています。そのため、`await this.playAudioFile(tempFile)` が完了した時点で再生は終了しています。`setTimeout` による遅延は不要であり、`try...finally` ブロックで確実にファイルを削除するべきです。
+
+        ```typescript
+        // 修正案
+        async playAudioStream(audioResult: AudioResult): Promise<void> {
+            const tempFile = `/tmp/stream_${Date.now()}_${audioResult.chunk.index}.wav`;
+            try {
+                await writeFile(tempFile, Buffer.from(audioResult.audioBuffer));
+                await this.playAudioFile(tempFile);
+            } catch (error) {
+                const message = error instanceof Error ? error.message : String(error);
+                console.error(`音声再生エラー: ${message}`);
+            } finally {
+                // 成功・失敗に関わらず、再生後に一時ファイルを削除
+                await unlink(tempFile).catch(e => {
+                    // ファイル削除の失敗はログに残すが、メインの処理には影響させない
+                    console.error(`一時ファイルの削除に失敗: ${tempFile}`, e);
+                });
+            }
+        }
+        ```
+
+        ### 3.2. `detectAudioPlayerSync` の実装の修正
+
+        **問題点:**
+        `detectAudioPlayerSync` メソッドは、コマンドの存在をチェックするために非同期の `spawn` を使用しています。しかし、`spawn` はエラーを `throw` せず、`error` イベントを発行するため、現在の `try...catch` ブロックではコマンドの有無を正しく判定できません。メソッド名が `Sync` であることからも、同期的処理が期待されます。
+
+        **該当箇所:**
+        ```typescript
+        // partOf: 7 of 8
+        for (const player of players) {
+            try {
+                spawn('which', [player], { stdio: 'ignore' });
+                return player;
+            } catch {
+                continue;
+            }
+        }
+        ```
+
+        **提案:**
+        同期的にコマンドを実行し、その終了ステータスを確認できる `spawnSync` を使用するように修正します。
+
+        ```typescript
+        // 修正案
+        import { spawn, spawnSync, ChildProcess } from 'child_process'; // spawnSync をインポートに追加
+
+        // ...
+
+        detectAudioPlayerSync(): string {
+            const players = ['afplay', 'aplay', 'paplay', 'play'];
+            
+            for (const player of players) {
+                // spawnSync を使用して同期的にコマンドの存在を確認
+                const result = spawnSync('which', [player], { stdio: 'ignore' });
+                if (result.status === 0) {
+                    return player; // コマンドが見つかった
                 }
-
-                // SayCoeiroinkCLIクラスでの呼び出し
-                rate: this.sayCoeiroink.getRate(),
-                ```
-            提案2の方が、カプセル化の観点からはより望ましい設計です。
-
-        ### 定数の as const 付与
-
-        このファイルでは、`export`される定数定義は存在しないため、この調査項目は該当しません。
-
-        ### ESM 方式での export
-
-        `export default SayCoeiroinkCLI;` というESM方式のデフォルトエクスポートが使用されており、CommonJS方式のエクスポートは見られませんでした。
-        事前分析結果[Investigation result: depcruise](investigation-result-depcruise)によると、このファイルに依存するモジュールはないため、現状の`export`方式で問題ありません。
-
-        ### 名前付きインポート
-
-        `import`文はすべてESMの名前付きインポート (`import { ... } from '...'`) が使用されており、`require`の使用はありませんでした。
-        これは推奨される形式であり、修正の必要はありません。
-      usage: 1047
+            }
+            
+            return 'afplay'; // デフォルト（macOS）
+        }
+        ```
+      usage: 2308
   summary:
     meta:
       model: vertexai:gemini-2.5-pro
       sources:
-        - path: cli.ts
-          hash: 3c03652e1a1e05b9fa34f47bc71c36a9e0eef2b3104494002458559695d50758
+        - path: audio-player.ts
+          hash: 7a2edc80f410b4e8150dc7671f5579d794ca2bf0f700516c85f06187fc4f62a1
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: false
+          name: 型定義が曖昧な export
+        - hasFindings: false
+          name: 定数の as const 付与
+        - hasFindings: false
+          name: ESM 方式での export
+        - hasFindings: false
+          name: 名前付きインポート
+audio-synthesizer.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: audio-synthesizer.ts
+          hash: 95407dada899f15c4a276ff7c0c94f6c8a62057ee7ca1e86a01e491e6cafa8bd
+      version: 0.0.1
+    result:
+      content: |-
+        # コード分析レポート: src/say/audio-synthesizer.ts
+
+        ## 1. 型定義が曖昧な export
+
+        ### 検出事項
+        `listVoices` メソッドおよび `synthesizeChunk` メソッド内で、APIレスポンスや内部変数の型として `any` が使用されています。これにより型の安全性が低下しており、リファクタリングの機会となります。
+
+        ### 該当箇所
+        - `listVoices` メソッド内:
+          ```typescript
+          speakers.forEach((speaker: any) => {
+              console.log(`${speaker.speakerUuid}: ${speaker.speakerName}`);
+              speaker.styles.forEach((style: any) => {
+                  console.log(`  Style ${style.styleId}: ${style.styleName}`);
+              });
+          });
+          ```
+        - `synthesizeChunk` メソッド内:
+          ```typescript
+          let selectedStyle: any;
+          ```
+
+        ### 改善提案
+        APIレスポンスに対応する型を定義し、`any` の使用を避けることを推奨します。例えば、`./types.js` に以下のような型定義を追加し、`listVoices` メソッド内で使用することが考えられます。
+
+        ```typescript
+        // ./types.ts に追加する型の例
+        export interface SpeakerStyle {
+            styleId: number;
+            styleName: string;
+            // その他、APIが返すプロパティ
+        }
+
+        export interface Speaker {
+            speakerUuid: string;
+            speakerName: string;
+            styles: SpeakerStyle[];
+            // その他、APIが返すプロパティ
+        }
+        ```
+
+        これにより、`listVoices` メソッドは以下のように書き換えられ、型の安全性が向上します。
+
+        ```typescript
+        // listVoices メソッドの改善後
+        const speakers: Speaker[] = await response.json();
+        console.log('Available voices:');
+
+        speakers.forEach((speaker: Speaker) => {
+            console.log(`${speaker.speakerUuid}: ${speaker.speakerName}`);
+            speaker.styles.forEach((style: SpeakerStyle) => {
+                console.log(`  Style ${style.styleId}: ${style.styleName}`);
+            });
+        });
+        ```
+        同様に、`synthesizeChunk` 内の `selectedStyle` も、`OperatorVoice` の `character.available_styles` から推論される具体的な型に修正することが望ましいです。
+
+        ## 2. 定数の as const 付与
+
+        ### 検出事項
+        モジュール内で定義されている `STREAM_CONFIG` オブジェクトは、アプリケーションの動作を定義する不変であるべき設定値ですが、`as const` が付与されていません。
+
+        ### 該当箇所
+        ```typescript
+        const STREAM_CONFIG: StreamConfig = {
+            chunkSizeChars: 50,          // 文字単位でのチャンク分割
+            overlapChars: 5,             // チャンク間のオーバーラップ（音切れ防止）
+            bufferSize: 3,               // 音声バッファサイズ（並列処理数）
+            audioBufferMs: 100,          // 音声出力バッファ時間
+            silencePaddingMs: 50,        // 音切れ防止用の無音パディング
+            preloadChunks: 2,            // 先読みチャンク数
+        };
+        ```
+
+        ### 改善提案
+        `as const` を付与することで、このオブジェクトが変更不可能（readonly）であることを型レベルで保証し、意図しない変更を防ぐことができます。また、各プロパティがリテラル型として推論されるため、より厳密な型チェックが可能になります。
+
+        ```typescript
+        const STREAM_CONFIG = {
+            chunkSizeChars: 50,
+            overlapChars: 5,
+            bufferSize: 3,
+            audioBufferMs: 100,
+            silencePaddingMs: 50,
+            preloadChunks: 2,
+        } as const;
+        ```
+        この変更に伴い、`StreamConfig` 型は不要になるか、`typeof STREAM_CONFIG` を利用して生成するように変更することが推奨されます。
+
+        ## 3. ESM 方式での export
+
+        ### 検出事項
+        問題は検出されませんでした。
+        `export class AudioSynthesizer` の形式でESM方式が採用されています。事前分析結果 [Investigation result: depcruise](investigation-result-depcruise) でも、このファイルが `es6` モジュールシステムとして扱われていることが確認できており、モダンな記法に準拠しています。
+
+        ## 4. 名前付きインポート
+
+        ### 検出事項
+        問題は検出されませんでした。
+        `./types.js` からの型インポートは `import type { ... } from './types.js';` の形式で名前付きインポートが適切に使用されています。CommonJS形式の `require` は使用されていません。
+      usage: 1366
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: audio-synthesizer.ts
+          hash: 95407dada899f15c4a276ff7c0c94f6c8a62057ee7ca1e86a01e491e6cafa8bd
       version: 0.0.1
     result:
       results:
         - hasFindings: true
           name: 型定義が曖昧な export
           details:
-            - value: クラス内部の実装で`any`型へのキャストが2箇所見つかりました。
-              reason: "`this.sayCoeiroink`のプロパティ(`config.rate`)にアクセスするために`any`への型キャストが行われています\
-                。これは`SayCoeiroink`クラスの`config`プロパティが`private`であるか、型定義上でアクセス不能であ\
-                る可能性を示唆しています。"
+            - value: "`listVoices` メソッド内で、APIレスポンスの型として `any` が使用されています。"
+              reason: 型の安全性を向上させるため、APIレスポンスに対応する `Speaker` や `SpeakerStyle`
+                のような具体的な型を定義し、`any` の使用を避けるべきです。
               subItems:
-                - "改善提案:
-                  `SayCoeiroink`クラスの`config`プロパティを`public`にするか、`rate`を取得するための`p\
-                  ublic`なgetterメソッドを実装することが推奨されます。後者の方がカプセル化の観点から望ましいです。"
+                - "speakers.forEach((speaker: any) => { ... });"
+                - "speaker.styles.forEach((style: any) => { ... });"
+            - value: "`synthesizeChunk` メソッド内で、変数 `selectedStyle` の型として `any` が使用されています。"
+              reason: "`OperatorVoice` 型から推論される具体的な型に修正することで、型の安全性が向上します。"
+              subItems:
+                - "let selectedStyle: any;"
+        - hasFindings: true
+          name: 定数の as const 付与
+          details:
+            - value: 定数オブジェクト `STREAM_CONFIG` に `as const` が付与されていません。
+              reason: このオブジェクトは不変であるべき設定値のため、`as const`
+                を付与することで変更不可能であることを型レベルで保証し、意図しない変更を防ぎます。これにより、`StreamConfig`
+                型は不要になるか、`typeof STREAM_CONFIG` を利用して生成するように変更することが推奨されます。
+              subItems:
+                - "const STREAM_CONFIG: StreamConfig = { ... };"
+        - hasFindings: false
+          name: ESM 方式での export
+        - hasFindings: false
+          name: 名前付きインポート
+cli.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: cli.ts
+          hash: 3d992ab9f58d052a8b409aa7fc91a0bea3f1da173003b7adb134d07d9a316205
+      version: 0.0.1
+    result:
+      content: >-
+        # Analysis Report for src/say/cli.ts
+
+
+        This report analyzes the provided source code based on the [Analysis
+        Procedure Guide](analysis-procedure-guide). The entire file
+        (`src/say/cli.ts`), provided in multiple chunks, has been processed.
+
+
+        ---
+
+
+        ## 1. 型定義が曖昧な export (Ambiguous Type Definitions in Exports)
+
+
+        The analysis focuses on exported elements, but also considers internal
+        code quality related to type safety.
+
+
+        ### Findings
+
+
+        - **`any` type casting on `this.sayCoeiroink`**:
+          - **Location**: In the `SayCoeiroinkCLI` class, specifically within the `parseArguments` and `showUsage` methods.
+            ```typescript
+            // In parseArguments()
+            const options: ParsedOptions = {
+                // ...
+                rate: (this.sayCoeiroink as any).config.rate,
+                // ...
+            };
+
+            // In showUsage()
+            console.log(`... (default: ${(this.sayCoeiroink as any).config.rate}) ...`);
+            ```
+          - **Reasoning**: The code casts `this.sayCoeiroink` to `any` to access its `config.rate` property. This suggests that the `config` property on the `SayCoeiroink` type (imported from `./index.js`) is not publicly accessible or its type is not properly defined, forcing a workaround that bypasses TypeScript's type checking. This reduces type safety and code maintainability.
+          - **Recommendation**:
+            To avoid the `any` cast, the `SayCoeiroink` class should provide a safe way to access the `rate` value. Consider one of the following improvements in the `SayCoeiroink` class definition (likely in `src/say/index.ts`):
+            1.  **Add a public getter method**: This is the recommended approach as it encapsulates the internal structure.
+                ```typescript
+                // In SayCoeiroink class
+                public getRate(): number {
+                    return this.config.rate;
+                }
+
+                // Usage in SayCoeiroinkCLI
+                options.rate = this.sayCoeiroink.getRate();
+                ```
+            2.  **Make the `config` property public**: If the entire config object is intended to be public, declare it as such, preferably as `readonly`.
+                ```typescript
+                // In SayCoeiroink class
+                public readonly config: ConfigType; // Assuming ConfigType is the type of the config object
+                ```
+
+        ---
+
+
+        ## 2. 定数の as const 付与 (Adding `as const` to Constants)
+
+
+        ### Findings
+
+
+        - No exported constants that would benefit from `as const` were found in
+        this file. The file primarily defines a class and its logic, with no
+        exported constant objects or arrays.
+
+
+        ---
+
+
+        ## 3. ESM 方式での export (ESM-style Exports)
+
+
+        ### Findings
+
+
+        - The file uses `export default SayCoeiroinkCLI;`, which is a standard
+        ESM export.
+
+        - No CommonJS-style exports (e.g., `module.exports` or `exports. ...`)
+        were found.
+
+        - **Conclusion**: The export style is modern and correct. No changes are
+        needed.
+
+
+        ---
+
+
+        ## 4. 名前付きインポート (Named Imports)
+
+
+        ### Findings
+
+
+        - All dependencies are imported using ESM `import` statements with named
+        imports where applicable:
+          ```typescript
+          import { readFile, access } from 'fs/promises';
+          import { constants } from 'fs';
+          import { SayCoeiroink, loadConfig } from './index.js';
+          ```
+        - The `require()` function is not used.
+
+        - **Conclusion**: The import style is modern and correct. No changes are
+        needed.
+      usage: 787
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: cli.ts
+          hash: 3d992ab9f58d052a8b409aa7fc91a0bea3f1da173003b7adb134d07d9a316205
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: true
+          name: 型定義が曖昧な export
+          details:
+            - value: "`this.sayCoeiroink`が`any`にキャストされている"
+              reason: "`SayCoeiroink`クラスの`config.rate`プロパティにアクセスするために`any`へのキャストが行われています。これは`\
+                SayCoeiroink`の型定義で`config`プロパティが公開されていないか、型が不適切であることを示唆しており、型安全\
+                性を損なっています。"
+              subItems:
+                - "改善案:
+                  `SayCoeiroink`クラスに`rate`を取得するためのpublicなgetterメソッドを追加する。例:
+                  `public getRate(): number { return this.config.rate; }`"
+                - "改善案: `config`プロパティをpublicにする（可能であれば`readonly`として）。例: `public
+                  readonly config: ConfigType;`"
         - hasFindings: false
           name: 定数の as const 付与
         - hasFindings: false
@@ -105,207 +482,515 @@ index.ts:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: index.ts
-          hash: 08e33e025cf21d4eaf8affaa03d5267cc8c5dcd2ef463622e7a2b9398e8e36d0
+          hash: 2e201604819c152a64d1fa1ab17bf3e4368551da61c5d3ec1c8afe9220c8f915
       version: 0.0.1
     result:
       content: >-
         # コード分析レポート: src/say/index.ts
 
 
-        ## 概要
+        指定されたコード `src/say/index.ts` の分析が完了しました。
 
-
-        `src/say/index.ts` のソースコードについて、[Analysis Procedure
-        Guide](analysis-procedure-guide) に基づき分析しました。
-
-        全体として、ESMへの移行や型定義は進んでいますが、いくつかの点で改善の余地があります。主な改善点は、`any`
-        型の削減と、モジュールインポートの一貫性向上です。
+        以下に、[Analysis Procedure Guide](analysis-procedure-guide)
+        に基づくリファクタリングの提案をまとめます。
 
 
         ---
 
 
-        ## 調査項目別分析結果
-
-
         ### 1. 型定義が曖昧な export
 
 
-        エクスポートされている関数 `loadConfig` やクラス `SayCoeiroink`
-        のパブリックインターフェースの型定義は明確です。しかし、クラス内部や一部のメソッドで `any`
-        型が使用されており、より厳密な型定義が可能です。
+        `export` されている `SayCoeiroink` クラスの一部のメソッドにおいて、型定義の改善が推奨されます。
+
+
+        #### 指摘事項
+
+        - **`getSpeechQueueStatus` メソッドの返り値の型定義の欠落**
+
+
+        `SayCoeiroink` クラス内の `getSpeechQueueStatus` メソッドには、返り値の型が定義されていません。
+
+        このメソッドは `this.speechQueue.getStatus()` の結果をそのまま返しており、`SpeechQueue`
+        クラスの実装に依存しています。
+
+        外部に公開されるメソッドとして、返り値の型を明記することが望ましいです。
+
+
+        **該当箇所:**
+
+        ```typescript
+
+        // src/say/index.ts
+
+            // ... (SayCoeiroink class)
+            // SpeechQueue のステータスを取得
+            getSpeechQueueStatus() {
+                return this.speechQueue.getStatus();
+            }
+        ```
 
 
         #### 改善提案
 
+        `speechQueue.getStatus()` が返すオブジェクトの型を定義し、メソッドのシグネチャに適用します。
 
-        - **クラス `SayCoeiroink` のプライベートプロパティの型定義**
-          - **根拠**: `partOf: 5 of 10` で定義されているプライベートプロパティ `synthesisQueue` と `activeSynthesis` が `any` 型になっています。
-            ```typescript
-            // partOf: 5 of 10
-            export class SayCoeiroink {
-                // ...
-                private synthesisQueue: any[] = [];
-                private activeSynthesis: Map<any, any> = new Map();
-                // ...
+        例えば、ステータスが `{ count: number, isProcessing: boolean }`
+        のような形状である場合、以下のように型定義を追加します。
+
+
+        ```typescript
+
+        // (例) types.js に型定義を追加
+
+        export type SpeechQueueStatus = {
+          count: number;
+          isProcessing: boolean;
+        };
+
+
+        // src/say/index.ts
+
+        import type { /* ..., */ SpeechQueueStatus } from './types.js';
+
+
+        // ... (SayCoeiroink class)
+            // SpeechQueue のステータスを取得
+            getSpeechQueueStatus(): SpeechQueueStatus {
+                return this.speechQueue.getStatus();
             }
-            ```
-          - **分析**:
-            - `synthesisQueue` は `enqueueSpeech` メソッド (`partOf: 9 of 10`) で `SpeechTask` 型のオブジェクトを扱っているため、`SpeechTask[]` と型付けするのが適切です。
-            - `activeSynthesis` はコード内で使用箇所が見当たらないため、未使用であれば削除すべきです。
-          - **提案**:
-            ```typescript
-            // 修正案
-            import { /* ..., */ SpeechTask } from './interfaces'; // (インターフェースを別ファイルに切り出す場合)
+        ```
 
-            export class SayCoeiroink {
-                // ...
-                private synthesisQueue: SpeechTask[] = []; // any[] -> SpeechTask[]
-                // private activeSynthesis: Map<any, any> = new Map(); // 未使用のため削除
-                // ...
-            }
-            ```
 
-        - **`listVoices` メソッド内のAPIレスポンスの型定義**
-          - **根拠**: `partOf: 8 of 10` の `listVoices` メソッド内で、`fetch` のレスポンスが `any` 型として扱われています。
-            ```typescript
-            // partOf: 8 of 10
-            const speakers = await response.json();
-            // ...
-            speakers.forEach((speaker: any) => {
-                console.log(`${speaker.speakerUuid}: ${speaker.speakerName}`);
-                speaker.styles.forEach((style: any) => {
-                    console.log(`  Style ${style.styleId}: ${style.styleName}`);
-                });
-            });
-            ```
-          - **分析**: APIのレスポンススキーマに基づいた `Speaker` や `Style` のようなインターフェースを定義することで、コードの可読性と堅牢性が向上します。
-          - **提案**:
-            ```typescript
-            // 提案: インターフェース定義を追加
-            interface SpeakerStyle {
-                styleId: number;
-                styleName: string;
-            }
+        ---
 
-            interface Speaker {
-                speakerUuid: string;
-                speakerName: string;
-                styles: SpeakerStyle[];
-            }
-
-            // listVoices メソッド内の修正
-            const speakers: Speaker[] = await response.json();
-            speakers.forEach((speaker) => { // anyを削除
-                // ...
-                speaker.styles.forEach((style) => { // anyを削除
-                    // ...
-                });
-            });
-            ```
 
         ### 2. 定数の as const 付与
 
 
-        `export` されている定数や、`as const` を付与することでメリットがあるグローバルな定数定義は見つかりませんでした。
+        コード内で定義されている定数について、`as const` を付与することで不変性を保証し、より厳密な型として扱えるようになります。
 
 
-        - **根拠**: `partOf: 3 of 10` で定義されている `DEFAULT_CONFIG` と `STREAM_CONFIG`
-        は `export` されておらず、それぞれ `Config` 型と `StreamConfig` 型の型アノテーションが付与されています。
+        #### 指摘事項
 
-        - **分析**: このようなケースで `as const`
-        を使用すると、割り当てられた型と互換性がなくなり型エラーが発生する可能性があるため、現状の実装が適切です。
+        - **`STREAM_CONFIG` への `as const` 付与の検討**
+
+
+        `STREAM_CONFIG` はストリーミング処理に関する設定値を集めた定数であり、コード内で値が変更されることはありません。
+
+        `as const` を付与することで、各プロパティが `readonly`
+        となり、値もリテラル型として推論されるため、意図しない変更を防ぎ、型の安全性を向上させることができます。
+
+
+        **該当箇所:**
+
+        ```typescript
+
+        // src/say/index.ts
+
+
+        const STREAM_CONFIG: StreamConfig = {
+            chunkSizeChars: 50,
+            overlapChars: 5,
+            bufferSize: 3,
+            audioBufferMs: 100,
+            silencePaddingMs: 50,
+            preloadChunks: 2,
+        };
+
+        ```
+
+
+        #### 改善提案
+
+        `as const` をオブジェクトの末尾に追記します。これにより、`StreamConfig`
+        型との互換性を保ちつつ、より厳密な型定義となります。
+
+
+        ```typescript
+
+        // src/say/index.ts
+
+
+        const STREAM_CONFIG = {
+            chunkSizeChars: 50,
+            overlapChars: 5,
+            bufferSize: 3,
+            audioBufferMs: 100,
+            silencePaddingMs: 50,
+            preloadChunks: 2,
+        } as const;
+
+
+        // 型定義ファイル側で typeof から型を生成するとさらに堅牢になります
+
+        // export type StreamConfig = typeof STREAM_CONFIG;
+
+        ```
+
+        *注意: `DEFAULT_CONFIG` については、`loadConfig` 関数内でユーザ設定とマージされるため、`as const`
+        を付与すると型の互換性の問題が生じる可能性があるため、対象外とします。*
+
+
+        ---
 
 
         ### 3. ESM 方式での export
 
 
-        `export` はすべてESM (ECMAScript Modules) 方式で行われており、CommonJS 方式の
-        `module.exports` などは使用されていません。
+        現在のコードは、`import`/`export` 構文を主に使用しており、ESM (ECMAScript Modules)
+        方式に準拠しています。
 
 
-        - **根拠**:
-          - `partOf: 4 of 10`: `export async function loadConfig(...)`
-          - `partOf: 5 of 10`: `export class SayCoeiroink`
-          - `partOf: 10 of 10`: `export default SayCoeiroink`
-        - **分析**: 事前分析結果 [Investigation result:
-        depcruise](investigation-result-depcruise) によると、このファイルは `es6`
-        モジュールとして他のファイルから利用されており、`cjs` (CommonJS) からの利用はないため、現状の `export`
-        構成で問題ありません。
+        #### 分析結果
+
+        - `module.exports` や `exports.xxx` といった CommonJS 形式のエクスポートは使用されていません。
+
+        - `export class SayCoeiroink` や `export async function loadConfig`
+        といった名前付きエクスポートと、`export default SayCoeiroink` というデフォルトエクスポートが使用されています。
+
+        - `const require = createRequire(import.meta.url);` は、ESM環境で `require`
+        を使用するための標準的な記述であり、モジュールシステム自体をCommonJSにしているわけではありません。
+
+
+        `export default` は、このモジュールを `require()`
+        で読み込むCommonJSモジュールとの後方互換性のために維持されている可能性があります。`depcruise`
+        の事前分析結果（今回は提供されていません）で、このファイルに依存するモジュールの `moduleSystem` に `cjs`
+        が含まれていないことが確認できれば、`export default` は削除可能です。現状では、依存関係が不明なため、`export
+        default` は維持するのが安全です。
+
+
+        ---
 
 
         ### 4. 名前付きインポート
 
 
-        モジュールのインポートはおおむね名前付きインポートが使用されていますが、一部で改善の余地があります。
+        コード内のモジュール読み込みは、すべて名前付きインポート (`import { ... } from '...'`)
+        または名前空間インポートの形式になっており、`require()` によるモジュール全体の読み込みは行われていません。
 
 
-        #### 改善提案
+        #### 分析結果
+
+        - `fs/promises` や `path` などの標準モジュール、およびプロジェクト内の他モジュール
+        (`../operator/index.js`, `./speech-queue.js` など)
+        は、すべて名前付きインポートで読み込まれています。
+
+        - 型定義も `import type { ... } from '...'` を用いて適切にインポートされています。
 
 
-        - **未使用の `require` 定義の削除**
-          - **根拠**: `partOf: 1 of 10` で `createRequire` を用いて `require` が定義されていますが、その後のコード全体で `require` の呼び出しが見つかりません。
-            ```typescript
-            // partOf: 1 of 10
-            import { createRequire } from 'module';
+        したがって、この項目に関するリファクタリングの必要はありません。
 
-            // ES Modules環境でrequireを使用
-            const require = createRequire(import.meta.url);
-            ```
-          - **提案**: この `require` 定義は不要である可能性が高いため、削除を検討してください。
 
-        - **`fs/promises` のインポートの統一**
-          - **根拠**: ファイルの先頭 (`partOf: 1 of 10`) で `fs/promises` から一部の関数がインポートされていますが、`playAudioStream` (`partOf: 7 of 10`) や `saveAudio` (`partOf: 8 of 10`) メソッド内では `import('fs')` という形で動的インポートが使用されています。
-            ```typescript
-            // partOf: 1 of 10
-            import { readFile, access, mkdir } from 'fs/promises';
+        ---
 
-            // partOf: 7 of 10 (playAudioStream内)
-            const fs = await import('fs');
-            await fs.promises.writeFile(tempFile, Buffer.from(audioResult.audioBuffer));
-            ```
-          - **分析**: インポートの方法が一貫しておらず、冗長です。必要な関数をすべてファイルの先頭で `fs/promises` からインポートすることで、コードの可読性が向上します。
-          - **提案**: ファイル先頭の `import` 文を修正し、メソッド内の動的インポートを削除します。
-            ```typescript
-            // 修正案: ファイル先頭
-            import { readFile, access, mkdir, writeFile, unlink } from 'fs/promises';
+        **処理状況:**
 
-            // 修正案: playAudioStream メソッド内
-            // const fs = await import('fs'); // 削除
-            await writeFile(tempFile, Buffer.from(audioResult.audioBuffer)); // 直接writeFileを呼び出す
-            // ...
-            // fs.promises.unlink(tempFile).catch(() => {}); // 削除
-            unlink(tempFile).catch(() => {}); // 直接unlinkを呼び出す
-            ```
-      usage: 2209
+        - 入力された `src/say/index.ts` の全チャンク (7/7) の分析が完了しました。
+
+        - これが最終的な分析レポートです。
+      usage: 1872
   summary:
     meta:
       model: vertexai:gemini-2.5-pro
       sources:
         - path: index.ts
-          hash: 08e33e025cf21d4eaf8affaa03d5267cc8c5dcd2ef463622e7a2b9398e8e36d0
+          hash: 2e201604819c152a64d1fa1ab17bf3e4368551da61c5d3ec1c8afe9220c8f915
       version: 0.0.1
     result:
       results:
         - hasFindings: true
           name: 型定義が曖昧な export
           details:
-            - value: クラス `SayCoeiroink` のプライベートプロパティ `synthesisQueue` と `activeSynthesis` が
-                `any` 型で定義されています。
-              reason: "`synthesisQueue` は `SpeechTask` 型のオブジェクトを扱うため `SpeechTask[]`
-                に、`activeSynthesis` は未使用のため削除することが推奨されます。"
-            - value: "`listVoices` メソッド内で、APIレスポンスが `any` 型として扱われています。"
-              reason: APIのレスポンススキーマに基づいた `Speaker` や `Style`
-                といったインターフェースを定義することで、コードの可読性と堅牢性が向上します。
+            - value: "`SayCoeiroink` クラスの `getSpeechQueueStatus` メソッドに返り値の型定義がありません。"
+              reason: 外部に公開されるメソッドのシグネチャは、型の依存関係を明確にするために、具体的な型で定義されていることが望ましいです。
+              subItems:
+                - "改善提案: `speechQueue.getStatus()` が返すオブジェクトの型を `types.js`
+                  などで定義し、`getSpeechQueueStatus(): SpeechQueueStatus`
+                  のようにメソッドに適用します。"
+        - hasFindings: true
+          name: 定数の as const 付与
+          details:
+            - value: "`STREAM_CONFIG` 定数に `as const` を付与することが推奨されます。"
+              reason: この定数はコード内で変更されない設定値であり、`as const`
+                を付与することで不変性を保証し、より厳密な型として扱えるようになり、型の安全性が向上します。
+              subItems:
+                - "改善提案: `const STREAM_CONFIG = { ... } as const;` のように変更します。"
+        - hasFindings: false
+          name: ESM 方式での export
+          details: []
+        - hasFindings: false
+          name: 名前付きインポート
+          details: []
+speech-queue.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: speech-queue.ts
+          hash: 7e2075a45628d42ef1fcb0a54299bbf0be8e9c12b65ad6c942b6df20148e505c
+      version: 0.0.1
+    result:
+      content: |-
+        承知いたしました。提供されたコードと分析結果に基づき、リファクタリングに関する分析レポートを作成します。
+
+        ---
+
+        ### コード分析レポート: `src/say/speech-queue.ts`
+
+        このレポートは、`src/say/speech-queue.ts` ファイルのリファクタリングに関する分析結果をまとめたものです。[Analysis Procedure Guide](analysis-procedure-guide) に基づき、以下の観点で評価と改善提案を行います。
+
+        ---
+
+        ### 1. 型定義が曖昧な export
+
+        #### 分析結果
+
+        `SpeechQueue` クラスの `getStatus` メソッドにおいて、戻り値の型が明示的に定義されておらず、TypeScript の型推論に依存しています。
+
+        ```typescript
+        // src/say/speech-queue.ts L78-L84
+            /**
+             * キューの状態を取得
+             */
+            getStatus() {
+                return {
+                    queueLength: this.speechQueue.length,
+                    isProcessing: this.isProcessing,
+                    nextTaskId: this.speechQueue[0]?.id || null
+                };
+            }
+        ```
+
+        `export` されるクラスの public メソッドは、外部モジュールとのインターフェースです。型を明示的に定義することで、意図しない変更を防ぎ、コードの可読性と保守性を向上させることができます。
+
+        #### 改善提案
+
+        戻り値の型をインターフェースとして定義し、`getStatus` メソッドに適用することを推奨します。
+
+        ```typescript
+        // 改善案
+        interface QueueStatus {
+            queueLength: number;
+            isProcessing: boolean;
+            nextTaskId: number | null;
+        }
+
+        export class SpeechQueue {
+            // ... (既存のコード)
+
+            /**
+             * キューの状態を取得
+             */
+            getStatus(): QueueStatus {
+                return {
+                    queueLength: this.speechQueue.length,
+                    isProcessing: this.isProcessing,
+                    nextTaskId: this.speechQueue[0]?.id || null
+                };
+            }
+
+            // ... (既存のコード)
+        }
+        ```
+
+        ---
+
+        ### 2. 定数の as const 付与
+
+        #### 分析結果
+
+        このファイルでは、`export` される定数は定義されていません。`SpeechQueue` クラスが `export` されているのみです。
+        したがって、この項目に該当するリファクタリング対象はありません。
+
+        ---
+
+        ### 3. ESM 方式での export
+
+        #### 分析結果
+
+        `export class SpeechQueue { ... }` という構文が使用されており、これは ESM (ECMAScript Modules) 方式に準拠しています。CommonJS 方式 (`module.exports` など) のエクスポートは使用されていません。
+
+        また、[Investigation result: depcruise](investigation-result-depcruise) の `dependents` 情報によると、このファイルは `es6` モジュールシステムとして他のファイルからインポートされています。
+
+        したがって、現在のエクスポート方式は適切であり、修正は不要です。
+
+        ---
+
+        ### 4. 名前付きインポート
+
+        #### 分析結果
+
+        ファイル冒頭で、型定義を `./types.js` からインポートしています。
+
+        ```typescript
+        // src/say/speech-queue.ts L5
+        import type { SpeechTask, SynthesizeOptions, SynthesizeResult } from './types.js';
+        ```
+
+        この `import` 文は、名前付きインポート (`{...}`) を使用しており、`type` 修飾子によって型のみをインポートする意図が明確に示されています。これは推奨される記述方法であり、修正は不要です。
+
+        ---
+
+        ### まとめ
+
+        `src/say/speech-queue.ts` は、全体的によく整理されたコードです。リファクタリングの観点からは、**`getStatus` メソッドの戻り値に型を明示的に定義する**ことを推奨します。これにより、モジュールのインターフェースがより堅牢になり、将来のメンテナンス性が向上します。その他の項目については、現在の実装がベストプラクティスに沿っており、修正の必要はありません。
+      usage: 1210
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: speech-queue.ts
+          hash: 7e2075a45628d42ef1fcb0a54299bbf0be8e9c12b65ad6c942b6df20148e505c
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: true
+          name: 型定義が曖昧な export
+          details:
+            - value: "`SpeechQueue` クラスの `getStatus` メソッド"
+              reason: 戻り値の型が明示的に定義されておらず、TypeScript の型推論に依存しています。export されるクラスの public
+                メソッドは外部モジュールとのインターフェースであるため、型を明示的に定義することで、意図しない変更を防ぎ、コードの可読性と保守性を向上させることができます。
+              subItems:
+                - "戻り値の型をインターフェースとして定義し、`getStatus` メソッドに適用することが推奨されます。例:
+                  `interface QueueStatus { ... }`, `getStatus(): QueueStatus`"
         - hasFindings: false
           name: 定数の as const 付与
         - hasFindings: false
           name: ESM 方式での export
-        - hasFindings: true
+        - hasFindings: false
+          name: 名前付きインポート
+types.ts:
+  analysis:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: types.ts
+          hash: 50262a9b7d2db5099c6d5a5bf0e68638530cc1e4b977ae614cebc307c5221383
+      version: 0.0.1
+    result:
+      content: >-
+        承知いたしました。これより、`src/say/types.ts` の分析を開始します。
+
+
+        ---
+
+
+        ### 分析レポート
+
+
+        #### 1. 型定義が曖昧な export
+
+
+        ##### 分析結果
+
+        対象ファイルで `export` されているすべての `interface` を確認しました。
+
+        `any` 型が使用されている箇所はなく、オプショナルなプロパティ（`?`）や `null`
+        を許容する型定義は、システムの仕様として意図されたものと判断されます。
+
+
+        - **該当箇所**:
+          - `Config`: `voice_id`, `style_id`
+          - `OperatorVoice`: `character`, `character.available_styles`, `character.available_styles[key].disabled`
+          - `SynthesizeOptions`: `voice`, `rate`, `outputFile`, `streamMode`, `style`
+          - `SynthesizeResult`: `taskId`, `queueLength`, `outputFile`, `latency`, `mode`
+
+        ##### 結論
+
+        特に修正を推奨する曖昧な型定義は見つかりませんでした。
+
+
+        ---
+
+
+        #### 2. 定数の as const 付与
+
+
+        ##### 分析結果
+
+        対象ファイルには、`export` されている定数（`const` で宣言された変数）は存在しません。ファイルの内容はすべて
+        `interface` の型定義です。
+
+
+        ##### 結論
+
+        この項目に該当する修正点はありません。
+
+
+        ---
+
+
+        #### 3. ESM 方式での export
+
+
+        ##### 分析結果
+
+        ファイル内のすべての `export` は `export interface ...` という ESM (ECMAScript
+        Modules) 形式の構文で記述されています。
+
+        `module.exports` や `exports.` といった CommonJS 形式の `export` は使用されていません。
+
+        これは、事前分析結果 [Investigation result:
+        depcruise](investigation-result-depcruise) で示されている、このファイルへの依存がすべて `es6`
+        であることと整合性が取れています。
+
+
+        ##### 結論
+
+        `export` の記述方法はすでに ESM 方式に準拠しており、修正は不要です。
+
+
+        ---
+
+
+        #### 4. 名前付きインポート
+
+
+        ##### 分析結果
+
+        対象ファイルには `import` 文が存在しないため、この分析項目の対象外です。
+
+
+        ##### 結論
+
+        この項目に該当する修正点はありません。
+
+
+        ---
+
+
+        ### 総括
+
+
+        `src/say/types.ts` は、音声合成システムで利用される型定義をまとめたファイルです。
+
+        分析の結果、型定義は適切であり、`export` の方法もモダンな ESM 方式に準拠しています。
+
+        したがって、本ファイルにおいてリファクタリングを推奨する項目は見つかりませんでした。
+      usage: 824
+  summary:
+    meta:
+      model: vertexai:gemini-2.5-pro
+      sources:
+        - path: types.ts
+          hash: 50262a9b7d2db5099c6d5a5bf0e68638530cc1e4b977ae614cebc307c5221383
+      version: 0.0.1
+    result:
+      results:
+        - hasFindings: false
+          name: 型定義が曖昧な export
+          details:
+            - value: 特に修正を推奨する曖昧な型定義は見つかりませんでした。
+        - hasFindings: false
+          name: 定数の as const 付与
+          details:
+            - value: 対象ファイルには、`export` されている定数は存在しません。
+        - hasFindings: false
+          name: ESM 方式での export
+          details:
+            - value: エクスポートはすべてESM形式に準拠しており、修正は不要です。
+        - hasFindings: false
           name: 名前付きインポート
           details:
-            - value: 未使用の `require` 定義が存在します。
-              reason: "`createRequire` を用いて定義された `require` がコード内で使用されていないため、削除が推奨されます。"
-            - value: "`fs/promises` と `fs` からのインポート方法が一貫していません。"
-              reason: ファイルの先頭での静的インポートとメソッド内での動的インポートが混在しています。必要な関数をすべて `fs/promises`
-                から静的にインポートすることで、コードの可読性が向上します。
+            - value: 対象ファイルには `import` 文が存在しないため、この分析項目の対象外です。
