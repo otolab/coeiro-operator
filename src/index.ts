@@ -52,6 +52,9 @@ try {
   const config = await loadConfig();
   sayCoeiroink = new SayCoeiroink(config);
   
+  await sayCoeiroink.initialize();
+  await sayCoeiroink.buildDynamicConfig();
+  
   operatorManager = new OperatorManager();
   await operatorManager.initialize();
   
@@ -62,6 +65,9 @@ try {
   
   // フォールバック設定で初期化
   sayCoeiroink = new SayCoeiroink();
+  await sayCoeiroink.initialize();
+  await sayCoeiroink.buildDynamicConfig();
+  
   operatorManager = new OperatorManager();
   await operatorManager.initialize();
 }
@@ -321,7 +327,7 @@ server.registerTool("say", {
   
   try {
     // src/say/index.jsを直接呼び出し（enqueue処理で即座に戻る）
-    const result = await sayCoeiroink.synthesizeText(message, {
+    const result = await sayCoeiroink.synthesizeTextAsync(message, {
       voice: voice || null,
       rate: rate || undefined,
       streamMode: streamMode || false,
