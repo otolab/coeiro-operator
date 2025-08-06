@@ -1,30 +1,76 @@
 /**
- * src/operator/config-manager.js: 設定管理システム
+ * src/operator/config-manager.ts: 設定管理システム
  * 動的音声フォント取得、設定マージ、キャッシュ管理を担当
  */
 
 import { readFile, writeFile, access, mkdir } from 'fs/promises';
 import { constants } from 'fs';
 import { join } from 'path';
-import { BUILTIN_CHARACTER_CONFIGS, SPEAKER_NAME_TO_ID_MAP } from './character-defaults.js';
+import { BUILTIN_CHARACTER_CONFIGS, SPEAKER_NAME_TO_ID_MAP } from './character-defaults';
+
+interface VoiceStyle {
+    id: number;
+    name: string;
+    style_id: number;
+}
+
+interface Voice {
+    id: string;
+    name: string;
+    voice_id: string;
+    styles: VoiceStyle[];
+}
+
+export interface CharacterStyle {
+    name: string;
+    style_id: number;
+    personality: string;
+    speaking_style: string;
+    disabled?: boolean;
+}
+
+export interface CharacterConfig {
+    name: string;
+    personality: string;
+    speaking_style: string;
+    greeting: string;
+    farewell: string;
+    default_style: string;
+    style_selection: string;
+    voice_id: string | null;
+    available_styles: Record<string, CharacterStyle>;
+    disabled?: boolean;
+}
+
+interface UserConfig {
+    characters: Record<string, Partial<CharacterConfig>>;
+}
+
+interface MergedConfig {
+    characters: Record<string, CharacterConfig>;
+}
 
 export class ConfigManager {
-    constructor(configDir) {
+    private configDir: string;
+    private operatorConfigFile: string;
+    private coeiroinkConfigFile: string;
+    private availableVoices: Voice[] | null = null; // キャッシュ
+    private mergedConfig: MergedConfig | null = null; // マージ済み設定キャッシュ
+
+    constructor(configDir: string) {
         this.configDir = configDir;
         this.operatorConfigFile = join(configDir, 'operator-config.json');
         this.coeiroinkConfigFile = join(configDir, 'coeiroink-config.json');
-        this.availableVoices = null; // キャッシュ
-        this.mergedConfig = null; // マージ済み設定キャッシュ
     }
 
     /**
      * JSONファイルを安全に読み込み
      */
-    async readJsonFile(filePath, defaultValue = {}) {
+    async readJsonFile<T>(filePath: string, defaultValue: T): Promise<T> {
         try {
             await access(filePath, constants.F_OK);
             const content = await readFile(filePath, 'utf8');
-            return JSON.parse(content);
+            return JSON.parse(content) as T;
         } catch {
             return defaultValue;
         }
@@ -33,7 +79,7 @@ export class ConfigManager {
     /**
      * JSONファイルを安全に書き込み
      */
-    async writeJsonFile(filePath, data) {
+    async writeJsonFile(filePath: string, data: any): Promise<void> {
         const tempFile = `${filePath}.tmp`;
         await writeFile(tempFile, JSON.stringify(data, null, 2), 'utf8');
         
@@ -41,7 +87,7 @@ export class ConfigManager {
             const fs = await import('fs');
             await fs.promises.rename(tempFile, filePath);
         } catch (error) {
-            console.error(`設定ファイル書き込みエラー: ${error.message}`);
+            console.error(`設定ファイル書き込みエラー: ${(error as Error).message}`);
             throw error;
         }
     }
@@ -49,11 +95,11 @@ export class ConfigManager {
     /**
      * COEIROINKサーバーから利用可能な音声フォントを取得
      */
-    async fetchAvailableVoices() {
+    async fetchAvailableVoices(): Promise<void> {
         try {
             const coeiroinkConfig = await this.readJsonFile(this.coeiroinkConfigFile, {});
-            const host = coeiroinkConfig.host || 'localhost';
-            const port = coeiroinkConfig.port || '50032';
+            const host = (coeiroinkConfig as any).host || 'localhost';
+            const port = (coeiroinkConfig as any).port || '50032';
             
             // fetchを使用してHTTPリクエストを実行
             const response = await fetch(`http://${host}:${port}/v1/speakers`);
@@ -61,13 +107,13 @@ export class ConfigManager {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
-            const speakers = await response.json();
+            const speakers = await response.json() as any[];
             
             this.availableVoices = speakers.map(speaker => ({
                 id: this.speakerNameToId(speaker.speakerName),
                 name: speaker.speakerName,
                 voice_id: speaker.speakerUuid,
-                styles: speaker.styles.map(style => ({
+                styles: speaker.styles.map((style: any) => ({
                     id: style.styleId,
                     name: style.styleName,
                     style_id: style.styleId
@@ -75,7 +121,7 @@ export class ConfigManager {
             }));
             
         } catch (error) {
-            console.warn(`音声フォント取得エラー: ${error.message}。内蔵設定のみを使用します。`);
+            console.warn(`音声フォント取得エラー: ${(error as Error).message}。内蔵設定のみを使用します。`);
             this.availableVoices = [];
         }
     }
@@ -83,7 +129,7 @@ export class ConfigManager {
     /**
      * 音声名からIDを生成（英語名への変換）
      */
-    speakerNameToId(speakerName) {
+    speakerNameToId(speakerName: string): string {
         return SPEAKER_NAME_TO_ID_MAP[speakerName] || 
                speakerName.toLowerCase().replace(/[^a-z0-9]/g, '');
     }
@@ -91,7 +137,7 @@ export class ConfigManager {
     /**
      * 再帰的なオブジェクトマージ
      */
-    deepMerge(target, source) {
+    deepMerge(target: any, source: any): any {
         const result = { ...target };
         
         for (const key in source) {
@@ -108,7 +154,7 @@ export class ConfigManager {
     /**
      * 動的設定の構築（内蔵設定 + 動的音声情報 + ユーザー設定）
      */
-    async buildDynamicConfig(forceRefresh = false) {
+    async buildDynamicConfig(forceRefresh: boolean = false): Promise<MergedConfig> {
         // キャッシュがあり、強制リフレッシュでない場合はキャッシュを返す
         if (this.mergedConfig && !forceRefresh) {
             return this.mergedConfig;
@@ -119,8 +165,8 @@ export class ConfigManager {
             await this.fetchAvailableVoices();
         }
 
-        const userConfig = await this.readJsonFile(this.operatorConfigFile, { characters: {} });
-        const dynamicCharacters = {};
+        const userConfig = await this.readJsonFile<UserConfig>(this.operatorConfigFile, { characters: {} });
+        const dynamicCharacters: Record<string, CharacterConfig> = {};
         
         // 利用可能な音声フォントから動的設定を生成
         if (this.availableVoices && this.availableVoices.length > 0) {
@@ -136,7 +182,7 @@ export class ConfigManager {
                 };
                 
                 // 基本設定に音声情報を追加
-                const characterConfig = {
+                const characterConfig: CharacterConfig = {
                     ...builtinConfig,
                     voice_id: voice.voice_id,
                     available_styles: {}
@@ -176,7 +222,7 @@ export class ConfigManager {
         }
         
         // ユーザー設定でオーバーライド（disabledフラグ対応）
-        const mergedCharacters = {};
+        const mergedCharacters: Record<string, CharacterConfig> = {};
         for (const [charId, charConfig] of Object.entries(dynamicCharacters)) {
             const userCharConfig = userConfig.characters[charId] || {};
             
@@ -198,7 +244,7 @@ export class ConfigManager {
     /**
      * 設定をリフレッシュ（キャッシュクリア）
      */
-    refreshConfig() {
+    refreshConfig(): void {
         this.availableVoices = null;
         this.mergedConfig = null;
     }
@@ -206,7 +252,7 @@ export class ConfigManager {
     /**
      * 特定キャラクターの設定を取得
      */
-    async getCharacterConfig(characterId) {
+    async getCharacterConfig(characterId: string): Promise<CharacterConfig> {
         const config = await this.buildDynamicConfig();
         const character = config.characters?.[characterId];
         
@@ -220,7 +266,7 @@ export class ConfigManager {
     /**
      * 利用可能なキャラクターIDリストを取得
      */
-    async getAvailableCharacterIds() {
+    async getAvailableCharacterIds(): Promise<string[]> {
         const config = await this.buildDynamicConfig();
         return Object.keys(config.characters || {});
     }
@@ -228,7 +274,7 @@ export class ConfigManager {
     /**
      * 挨拶パターンリストを取得
      */
-    async getGreetingPatterns() {
+    async getGreetingPatterns(): Promise<string[]> {
         const config = await this.buildDynamicConfig();
         return Object.values(config.characters || {})
             .map(char => char.greeting)
@@ -238,7 +284,7 @@ export class ConfigManager {
     /**
      * デバッグ用：現在の設定状況を出力
      */
-    async debugConfig() {
+    async debugConfig(): Promise<void> {
         console.log('=== ConfigManager Debug Info ===');
         console.log('Available Voices:', this.availableVoices?.length || 0);
         console.log('Merged Config Cache:', this.mergedConfig ? 'Cached' : 'Not Cached');
@@ -247,7 +293,7 @@ export class ConfigManager {
         console.log('Characters:', Object.keys(config.characters || {}));
         
         // ユーザー設定の内容
-        const userConfig = await this.readJsonFile(this.operatorConfigFile, {});
+        const userConfig = await this.readJsonFile<UserConfig>(this.operatorConfigFile, { characters: {} });
         console.log('User Config:', JSON.stringify(userConfig, null, 2));
     }
 }

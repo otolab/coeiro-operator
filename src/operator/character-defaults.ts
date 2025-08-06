@@ -1,9 +1,19 @@
 /**
- * src/operator/character-defaults.js: 内蔵キャラクター設定
+ * src/operator/character-defaults.ts: 内蔵キャラクター設定
  * COEIROINKキャラクターのデフォルト設定を定義
  */
 
-export const BUILTIN_CHARACTER_CONFIGS = {
+interface CharacterConfig {
+    name: string;
+    personality: string;
+    speaking_style: string;
+    greeting: string;
+    farewell: string;
+    default_style: string;
+    style_selection: string;
+}
+
+export const BUILTIN_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     tsukuyomi: {
         name: "つくよみちゃん",
         personality: "冷静で丁寧、報告は簡潔で正確",
@@ -85,15 +95,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         default_style: "normal",
         style_selection: "default"
     },
-    dear: {
-        name: "ディアちゃん", 
-        personality: "好奇心旺盛で活発、エネルギッシュ",
-        speaking_style: "元気で弾むような口調",
-        greeting: "こんにちは！今日も元気にがんばりましょう！",
-        farewell: "今日もお疲れさまでした！",
-        default_style: "normal",
-        style_selection: "default"
-    },
     dia: {
         name: "ディアちゃん",
         personality: "優しく思いやりがある、ユーザに寄り添う、母性的で包容力がある",
@@ -151,7 +152,7 @@ export const BUILTIN_CHARACTER_CONFIGS = {
 };
 
 // 音声名からIDへのマッピング
-export const SPEAKER_NAME_TO_ID_MAP = {
+export const SPEAKER_NAME_TO_ID_MAP: Record<string, string> = {
     'つくよみちゃん': 'tsukuyomi',
     'アンジーさん': 'angie',
     'アルマちゃん': 'alma',
