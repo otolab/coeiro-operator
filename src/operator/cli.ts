@@ -123,29 +123,6 @@ class OperatorManagerCLI {
         }
     }
 
-    private async executeAssignment(operatorId: string | null, style: string | null): Promise<void> {
-        if (operatorId) {
-            // 指定されたオペレータを割り当て
-            const result: AssignResult = await this.manager.assignSpecificOperator(operatorId, style);
-            console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
-            if (result.currentStyle) {
-                console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
-            }
-        } else {
-            // 既にオペレータが割り当てられている場合は現在の状態を表示
-            const currentStatus: StatusResult = await this.manager.showCurrentOperator();
-            if (currentStatus.operatorId) {
-                console.log(currentStatus.message);
-            } else {
-                // ランダム割り当て
-                const result: AssignResult = await this.manager.assignRandomOperator(style);
-                console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
-                if (result.currentStyle) {
-                    console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
-                }
-            }
-        }
-    }
 
     async handleAssign(args: string[]): Promise<void> {
         const { operatorId, style } = this.parseAssignArgs(args);
