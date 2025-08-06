@@ -2,7 +2,7 @@
  * src/operator/config-manager.test.ts: ConfigManager テスト
  */
 
-import { ConfigManager } from './config-manager';
+import { ConfigManager } from './config-manager.js';
 import { readFile, writeFile, access, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
