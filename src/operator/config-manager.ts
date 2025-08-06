@@ -3,7 +3,7 @@
  * 動的音声フォント取得、設定マージ、キャッシュ管理を担当
  */
 
-import { readFile, writeFile, access, mkdir } from 'fs/promises';
+import { readFile, writeFile, mkdir, access } from 'fs/promises';
 import { constants } from 'fs';
 import { join } from 'path';
 import { BUILTIN_CHARACTER_CONFIGS, SPEAKER_NAME_TO_ID_MAP } from './character-defaults.js';
@@ -157,7 +157,18 @@ export class ConfigManager {
     async buildDynamicConfig(forceRefresh: boolean = false): Promise<MergedConfig> {
         // キャッシュがあり、強制リフレッシュでない場合はキャッシュを返す
         if (this.mergedConfig && !forceRefresh) {
-            return this.mergedConfig;
+            // 安全なコピーを作成
+            const safeConfig: MergedConfig = {
+                characters: {}
+            };
+            
+            if (this.mergedConfig.characters) {
+                for (const [key, value] of Object.entries(this.mergedConfig.characters)) {
+                    safeConfig.characters[key] = JSON.parse(JSON.stringify(value));
+                }
+            }
+            
+            return safeConfig;
         }
 
         // 音声フォントを取得（キャッシュがない場合のみ）

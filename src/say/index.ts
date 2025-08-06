@@ -8,6 +8,7 @@ import { constants } from 'fs';
 import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
 import { createRequire } from 'module';
+import { OperatorManager } from '../operator/index.js';
 
 // ES Modules環境でrequireを使用
 const require = createRequire(import.meta.url);
@@ -17,6 +18,8 @@ interface Config {
     host: string;
     port: string;
     rate: number;
+    voice_id?: string;
+    style_id?: number;
 }
 
 interface StreamConfig {
@@ -164,9 +167,27 @@ export class SayCoeiroink {
     private activeSynthesis: Map<any, any> = new Map();
     private speechQueue: SpeechTask[] = [];
     private isProcessing: boolean = false;
+    private operatorManager: OperatorManager;
 
     constructor(config: Config | null = null) {
         this.config = config || DEFAULT_CONFIG;
+        this.operatorManager = new OperatorManager();
+    }
+
+    async initialize(): Promise<void> {
+        try {
+            await this.operatorManager.initialize();
+        } catch (err) {
+            throw new Error(`SayCoeiroink initialization failed: ${(err as Error).message}`);
+        }
+    }
+
+    async buildDynamicConfig(): Promise<void> {
+        try {
+            await this.operatorManager.buildDynamicConfig();
+        } catch (err) {
+            throw new Error(`buildDynamicConfig failed: ${(err as Error).message}`);
+        }
     }
 
     async initializeAudioPlayer(): Promise<boolean> {
@@ -238,41 +259,26 @@ export class SayCoeiroink {
 
     async getCurrentOperatorVoice(): Promise<OperatorVoice | null> {
         try {
-            const operatorStatus = await this.execCommand('operator-manager', ['status']);
-
-            if (operatorStatus === 'オペレータは割り当てられていません') {
-                console.error('エラー: オペレータが割り当てられていません。');
+            const currentStatus = await this.operatorManager.showCurrentOperator();
+            
+            if (!currentStatus.operatorId) {
                 return null;
             }
 
-            // オペレータIDを抽出
-            const operatorMatch = operatorStatus.match(/([a-z]+)/);
-            if (operatorMatch) {
-                const operatorId = operatorMatch[1];
-                
-                // operator-config.jsonから音声情報を取得
-                const operatorConfigPath = await getConfigPath('operator-config.json');
-                try {
-                    const operatorConfigData = await readFile(operatorConfigPath, 'utf8');
-                    const operatorConfig = JSON.parse(operatorConfigData);
-                    
-                    const character = operatorConfig.characters?.[operatorId];
-                    
-                    if (character) {
-                        return {
-                            voice_id: character.voice_id,
-                            character: character
-                        };
-                    }
-                } catch (configError) {
-                    console.error(`オペレータ設定読み込みエラー: ${(configError as Error).message}`);
-                }
+            const character = await this.operatorManager.getCharacterInfo(currentStatus.operatorId);
+            
+            if (character && character.voice_id) {
+                return {
+                    voice_id: character.voice_id,
+                    character: character
+                };
             }
+
+            return null;
         } catch (error) {
             console.error(`オペレータ音声取得エラー: ${(error as Error).message}`);
+            return null;
         }
-
-        return null;
     }
 
     async synthesizeChunk(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<AudioResult> {
@@ -306,6 +312,11 @@ export class SayCoeiroink {
                             selectedStyle = availableStyles[0];
                     }
                     
+                    // フォールバック: default_styleが見つからない場合は最初のスタイルを使用
+                    if (!selectedStyle) {
+                        selectedStyle = availableStyles[0];
+                    }
+                    
                     styleId = selectedStyle?.style_id || 0;
                 }
             }
@@ -331,6 +342,7 @@ export class SayCoeiroink {
             outputSamplingRate: 24000
         };
 
+
         const startTime = Date.now();
         
         try {
@@ -349,7 +361,6 @@ export class SayCoeiroink {
             const audioBuffer = await response.arrayBuffer();
             const latency = Date.now() - startTime;
             
-            console.error(`チャンク${chunk.index}合成完了: ${latency}ms, ${chunk.text.slice(0, 20)}...`);
             
             return {
                 chunk,
@@ -389,13 +400,11 @@ export class SayCoeiroink {
 
     async playAudioStream(audioResult: AudioResult): Promise<void> {
         try {
-            // 一時ファイルに保存して即座に再生（低レイテンシ）
             const tempFile = `/tmp/stream_${Date.now()}_${audioResult.chunk.index}.wav`;
             
             const fs = await import('fs');
             await fs.promises.writeFile(tempFile, Buffer.from(audioResult.audioBuffer));
 
-            // 非同期再生（レイテンシ重視）
             const playPromise = this.playAudioFile(tempFile);
             
             // ファイルクリーンアップを遅延実行
@@ -464,23 +473,13 @@ export class SayCoeiroink {
 
     async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number): Promise<void> {
         const chunks = this.splitTextIntoChunks(text);
-        console.error(`ストリーミング開始: ${chunks.length}チャンク, 文字数${text.length}`);
-        
-        const overallStartTime = Date.now();
-        let totalLatency = 0;
 
         // 順次処理でシンプルに実装
         for (let i = 0; i < chunks.length; i++) {
             const chunk = chunks[i];
             const result = await this.synthesizeChunk(chunk, voiceId, speed);
             await this.playAudioStream(result);
-            totalLatency += result.latency;
         }
-
-        const overallTime = Date.now() - overallStartTime;
-        const avgLatency = totalLatency / chunks.length;
-        
-        console.error(`ストリーミング完了: 総時間${overallTime}ms, 平均レイテンシ${avgLatency.toFixed(1)}ms/チャンク`);
     }
 
     async listVoices(): Promise<void> {
@@ -535,6 +534,7 @@ export class SayCoeiroink {
 
     // 音声キューに追加（非同期処理用）
     enqueueSpeech(text: string, options: SynthesizeOptions = {}): SynthesizeResult {
+        console.log(`DEBUG: enqueueSpeech called with text: "${text}"`);
         const speechTask: SpeechTask = {
             id: Date.now() + Math.random(),
             text,
@@ -543,6 +543,7 @@ export class SayCoeiroink {
         };
         
         this.speechQueue.push(speechTask);
+        console.log(`DEBUG: Task enqueued, queue length: ${this.speechQueue.length}`);
         this.processSpeechQueue();
         
         return {
@@ -554,16 +555,20 @@ export class SayCoeiroink {
 
     // 音声キューの処理
     async processSpeechQueue(): Promise<void> {
+        console.log(`DEBUG: processSpeechQueue called, isProcessing: ${this.isProcessing}, queueLength: ${this.speechQueue.length}`);
         if (this.isProcessing || this.speechQueue.length === 0) {
+            console.log(`DEBUG: Skipping queue processing - already processing or empty queue`);
             return;
         }
         
         this.isProcessing = true;
+        console.log(`DEBUG: Starting queue processing`);
         
         while (this.speechQueue.length > 0) {
             const task = this.speechQueue.shift();
             if (!task) break;
             
+            console.log(`DEBUG: Processing task ${task.id} with text: "${task.text}"`);
             try {
                 await this.synthesizeTextInternal(task.text, task.options);
                 console.error(`音声タスク完了: ${task.id}`);
@@ -575,8 +580,13 @@ export class SayCoeiroink {
         this.isProcessing = false;
     }
 
-    // MCPサーバから呼び出される主要メソッド（即座に戻る）
+    // CLIからの直接呼び出し用メソッド
     async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+        return await this.synthesizeTextInternal(text, options);
+    }
+
+    // MCPサーバから呼び出される非同期キューイング版メソッド
+    async synthesizeTextAsync(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         return this.enqueueSpeech(text, options);
     }
 
@@ -598,9 +608,14 @@ export class SayCoeiroink {
             if (operatorVoice) {
                 selectedVoice = operatorVoice;
             } else {
-                // 2. フォールバック: デフォルト値なし（エラーとして扱う）
-                throw new Error('音声が指定されておらず、オペレータも割り当てられていません');
+                // 2. フォールバック: 設定ファイルのデフォルト音声を使用
+                selectedVoice = this.config.voice_id || 'b28bb401-bc43-c9c7-77e4-77a2bbb4b283';
             }
+        }
+
+        // 音声が取得できない場合は最後のフォールバック
+        if (!selectedVoice) {
+            throw new Error('音声が指定されておらず、オペレータも割り当てられていません');
         }
 
         // スタイル明示的指定の処理
