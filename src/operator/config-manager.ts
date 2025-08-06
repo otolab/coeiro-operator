@@ -157,18 +157,7 @@ export class ConfigManager {
     async buildDynamicConfig(forceRefresh: boolean = false): Promise<MergedConfig> {
         // キャッシュがあり、強制リフレッシュでない場合はキャッシュを返す
         if (this.mergedConfig && !forceRefresh) {
-            // 安全なコピーを作成
-            const safeConfig: MergedConfig = {
-                characters: {}
-            };
-            
-            if (this.mergedConfig.characters) {
-                for (const [key, value] of Object.entries(this.mergedConfig.characters)) {
-                    safeConfig.characters[key] = JSON.parse(JSON.stringify(value));
-                }
-            }
-            
-            return safeConfig;
+            return this.mergedConfig;
         }
 
         // 音声フォントを取得（キャッシュがない場合のみ）
