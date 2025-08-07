@@ -303,21 +303,6 @@ export class ConfigManager {
             .filter(greeting => greeting && greeting.trim());
     }
 
-    /**
-     * デバッグ用：現在の設定状況を出力
-     */
-    async debugConfig(): Promise<void> {
-        console.log('=== ConfigManager Debug Info ===');
-        console.log('Available Voices:', this.availableVoices?.length || 0);
-        console.log('Merged Config Cache:', this.mergedConfig ? 'Cached' : 'Not Cached');
-        
-        const config = await this.buildDynamicConfig();
-        console.log('Characters:', Object.keys(config.characters || {}));
-        
-        // ユーザー設定の内容
-        const userConfig = await this.readJsonFile<UserConfig>(this.operatorConfigFile, { characters: {} });
-        console.log('User Config:', JSON.stringify(userConfig, null, 2));
-    }
 }
 
 export default ConfigManager;
