@@ -137,6 +137,23 @@ export class SayCoeiroink {
     }
 
     async initializeAudioPlayer(): Promise<boolean> {
+        // 設定から音声生成時サンプルレートを適用
+        const synthesisRate = this.config.synthesisRate || 24000;
+        this.audioPlayer.setSynthesisRate(synthesisRate);
+        
+        // 設定から再生時サンプルレートを適用
+        const playbackRate = this.config.playbackRate || 48000;
+        this.audioPlayer.setPlaybackRate(playbackRate);
+        
+        // 設定からノイズ除去機能を適用
+        const noiseReduction = this.config.noiseReduction || false;
+        this.audioPlayer.setNoiseReduction(noiseReduction);
+        
+        // 設定からローパスフィルターを適用
+        const lowpassFilter = this.config.lowpassFilter || false;
+        const lowpassCutoff = this.config.lowpassCutoff || 24000;
+        this.audioPlayer.setLowpassFilter(lowpassFilter, lowpassCutoff);
+        
         return await this.audioPlayer.initialize();
     }
 
@@ -193,6 +210,27 @@ export class SayCoeiroink {
     // AudioSynthesizer の convertRateToSpeed メソッドを使用
     convertRateToSpeed(rate: number): number {
         return this.audioSynthesizer.convertRateToSpeed(rate);
+    }
+
+    /**
+     * 設定に基づいてストリーミングモードを使用するかを判定
+     */
+    private shouldUseStreaming(text: string): boolean {
+        const chunkMode = this.config.defaultChunkMode || 'auto';
+        
+        switch (chunkMode) {
+            case 'none':
+                return false; // チャンク化無効
+            case 'small':
+                return text.length > 30;
+            case 'medium':
+                return text.length > 50;
+            case 'large':
+                return text.length > 100;
+            case 'auto':
+            default:
+                return text.length > STREAM_CONFIG.chunkSizeChars;
+        }
     }
 
     async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number): Promise<void> {
@@ -304,7 +342,7 @@ export class SayCoeiroink {
             const result = await this.audioSynthesizer.synthesize(text, selectedVoice, speed);
             await this.saveAudio(result.audioBuffer, outputFile);
             return { success: true, outputFile, latency: result.latency };
-        } else if (streamMode || text.length > STREAM_CONFIG.chunkSizeChars) {
+        } else if (streamMode || this.shouldUseStreaming(text)) {
             // ストリーミング再生
             if (!(await this.initializeAudioPlayer())) {
                 throw new Error('音声プレーヤーの初期化に失敗しました');

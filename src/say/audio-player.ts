@@ -5,13 +5,67 @@
 
 import Speaker from 'speaker';
 import { writeFile } from 'fs/promises';
+import * as Echogarden from 'echogarden';
+// @ts-ignore - dsp.jsには型定義がない
+import DSP from 'dsp.js';
+// @ts-ignore - node-libsamplerateには型定義がない
+import SampleRate from 'node-libsamplerate';
+import { Transform } from 'stream';
 import type { AudioResult, Chunk } from './types.js';
 
 export class AudioPlayer {
     private speaker: Speaker | null = null;
-    private sampleRate: number = 24000;
+    private synthesisRate: number = 24000;  // 音声生成時のサンプルレート
+    private playbackRate: number = 48000;   // 再生時のサンプルレート
     private channels: number = 1;
     private bitDepth: number = 16;
+    private echogardenInitialized: boolean = false;
+    private noiseReductionEnabled: boolean = false;
+    private lowpassFilterEnabled: boolean = false;
+    private lowpassCutoff: number = 24000; // デフォルト24kHz
+
+    /**
+     * 音声生成時のサンプルレートを設定
+     */
+    setSynthesisRate(synthesisRate: number): void {
+        this.synthesisRate = synthesisRate;
+    }
+
+    /**
+     * 再生時のサンプルレートを設定
+     */
+    setPlaybackRate(playbackRate: number): void {
+        this.playbackRate = playbackRate;
+    }
+
+    /**
+     * ノイズ除去機能を有効/無効に設定
+     */
+    setNoiseReduction(enabled: boolean): void {
+        this.noiseReductionEnabled = enabled;
+    }
+
+    /**
+     * ローパスフィルターを有効/無効に設定
+     */
+    setLowpassFilter(enabled: boolean, cutoffFreq: number = 8000): void {
+        this.lowpassFilterEnabled = enabled;
+        this.lowpassCutoff = cutoffFreq;
+    }
+
+    /**
+     * Echogardenの初期化
+     */
+    private async initializeEchogarden(): Promise<void> {
+        try {
+            this.echogardenInitialized = true;
+            console.log('Echogarden初期化完了');
+        } catch (error) {
+            console.warn(`Echogarden初期化エラー: ${(error as Error).message}`);
+            this.noiseReductionEnabled = false;
+            this.echogardenInitialized = false;
+        }
+    }
 
     async initialize(): Promise<boolean> {
         try {
@@ -19,10 +73,15 @@ export class AudioPlayer {
             this.speaker = new Speaker({
                 channels: this.channels,
                 bitDepth: this.bitDepth,
-                sampleRate: this.sampleRate
+                sampleRate: this.playbackRate
             });
             
-            console.error(`音声プレーヤー初期化: speakerライブラリ使用（ネイティブ出力）`);
+            // ノイズ除去が有効な場合はEchogardenを初期化
+            if (this.noiseReductionEnabled) {
+                await this.initializeEchogarden();
+            }
+            
+            console.error(`音声プレーヤー初期化: speakerライブラリ使用（ネイティブ出力）${this.noiseReductionEnabled ? ' + Echogarden' : ''}`);
             return true;
         } catch (error) {
             console.error(`音声プレーヤー初期化エラー: ${(error as Error).message}`);
@@ -31,7 +90,7 @@ export class AudioPlayer {
     }
 
     /**
-     * 音声ストリームを再生（speakerライブラリを使用）
+     * 音声ストリームを再生（ストリーミング処理パイプライン）
      */
     async playAudioStream(audioResult: AudioResult): Promise<void> {
         if (!this.speaker) {
@@ -42,33 +101,144 @@ export class AudioPlayer {
             // WAVデータからPCMデータを抽出
             const pcmData = this.extractPCMFromWAV(audioResult.audioBuffer);
             
-            // PCMデータを直接speakerに送信
-            return new Promise((resolve, reject) => {
-                // 新しいSpeakerインスタンスを作成（ストリーミング用）
-                const streamSpeaker = new Speaker({
-                    channels: this.channels,
-                    bitDepth: this.bitDepth,
-                    sampleRate: this.sampleRate
-                });
+            // PCMデータのサイズ確認・調整
+            if (pcmData.length === 0) {
+                console.warn('PCMデータが空です');
+                return;
+            }
 
-                streamSpeaker.on('close', () => {
-                    resolve();
-                });
-
-                streamSpeaker.on('error', (error) => {
-                    reject(new Error(`音声再生エラー: ${error.message}`));
-                });
-
-                // PCMデータを書き込み
-                streamSpeaker.write(Buffer.from(pcmData));
-                streamSpeaker.end();
-            });
+            // ストリーミング処理パイプラインで音声処理
+            return await this.processAudioStreamPipeline(pcmData);
             
         } catch (error) {
             throw new Error(`音声再生エラー: ${(error as Error).message}`);
         }
     }
 
+    /**
+     * ストリーミング音声処理パイプライン
+     * 処理順序: 1) リサンプリング 2) ローパスフィルター 3) ノイズリダクション 4) Speaker出力
+     */
+    private async processAudioStreamPipeline(pcmData: Uint8Array): Promise<void> {
+        return new Promise((resolve, reject) => {
+            const streamSpeaker = new Speaker({
+                channels: this.channels,
+                bitDepth: this.bitDepth,
+                sampleRate: this.playbackRate
+            });
+
+            streamSpeaker.on('close', () => {
+                resolve();
+            });
+
+            streamSpeaker.on('error', (error) => {
+                reject(new Error(`音声再生エラー: ${error.message}`));
+            });
+
+            try {
+                // 1. リサンプリング（Transform stream）
+                const resampleTransform = this.createResampleTransform();
+                
+                // 2. ローパスフィルター（Transform stream）
+                const lowpassTransform = this.createLowpassTransform();
+                
+                // 3. ノイズリダクション（Transform stream）
+                const noiseReductionTransform = this.createNoiseReductionTransform();
+
+                // パイプライン構築: リサンプリング → ローパス → ノイズ除去 → Speaker
+                let pipeline = resampleTransform;
+                
+                if (this.lowpassFilterEnabled) {
+                    pipeline = pipeline.pipe(lowpassTransform);
+                }
+                
+                if (this.noiseReductionEnabled) {
+                    pipeline = pipeline.pipe(noiseReductionTransform);
+                }
+                
+                pipeline.pipe(streamSpeaker);
+
+                // PCMデータをパイプラインに送信
+                resampleTransform.write(Buffer.from(pcmData));
+                resampleTransform.end();
+
+            } catch (error) {
+                reject(new Error(`パイプライン構築エラー: ${(error as Error).message}`));
+            }
+        });
+    }
+
+
+    /**
+     * リサンプリング用Transform streamを作成
+     */
+    private createResampleTransform(): Transform {
+        if (this.synthesisRate === this.playbackRate) {
+            // サンプルレートが同じ場合はパススルー
+            return new Transform({
+                transform(chunk, encoding, callback) {
+                    callback(null, chunk);
+                }
+            });
+        }
+
+        const resampleStream = new SampleRate({
+            type: SampleRate.SRC_SINC_MEDIUM_QUALITY,
+            channels: this.channels,
+            fromRate: this.synthesisRate,
+            fromDepth: this.bitDepth,
+            toRate: this.playbackRate,
+            toDepth: this.bitDepth
+        });
+
+        console.log(`リサンプリングストリーム: ${this.synthesisRate}Hz → ${this.playbackRate}Hz (SRC_SINC_MEDIUM_QUALITY)`);
+        return resampleStream;
+    }
+
+    /**
+     * ローパスフィルター用Transform streamを作成
+     */
+    private createLowpassTransform(): Transform {
+        return new Transform({
+            transform: (chunk, encoding, callback) => {
+                try {
+                    if (!this.lowpassFilterEnabled) {
+                        callback(null, chunk);
+                        return;
+                    }
+
+                    const pcmData = new Uint8Array(chunk);
+                    const filteredData = this.applyLowpassFilterToChunk(pcmData);
+                    callback(null, Buffer.from(filteredData));
+                } catch (error) {
+                    callback(error instanceof Error ? error : new Error(String(error)));
+                }
+            }
+        });
+    }
+
+    /**
+     * ノイズリダクション用Transform streamを作成
+     */
+    private createNoiseReductionTransform(): Transform {
+        return new Transform({
+            transform: async (chunk, encoding, callback) => {
+                try {
+                    if (!this.noiseReductionEnabled || !this.echogardenInitialized) {
+                        callback(null, chunk);
+                        return;
+                    }
+
+                    const pcmData = new Uint8Array(chunk);
+                    const denoisedData = await this.applyNoiseReductionToChunk(pcmData);
+                    callback(null, Buffer.from(denoisedData));
+                } catch (error) {
+                    console.warn(`ノイズリダクション処理エラー: ${(error as Error).message}`);
+                    callback(null, chunk); // エラー時は元データを返す
+                }
+            }
+        });
+    }
 
     /**
      * 音声ファイルを保存
@@ -80,6 +250,82 @@ export class AudioPlayer {
             throw new Error(`音声ファイル保存エラー: ${(error as Error).message}`);
         }
     }
+
+    /**
+     * チャンク単位のローパスフィルター処理
+     */
+    private applyLowpassFilterToChunk(pcmData: Uint8Array): Uint8Array {
+        try {
+            const samplesCount = pcmData.length / 2;
+            const audioSamples = new Float32Array(samplesCount);
+            
+            for (let i = 0; i < samplesCount; i++) {
+                const sampleIndex = i * 2;
+                const sample = pcmData[sampleIndex] | (pcmData[sampleIndex + 1] << 8);
+                audioSamples[i] = (sample < 32768 ? sample : sample - 65536) / 32768.0;
+            }
+
+            // ローパスフィルターを適用
+            const lowpassFilter = new DSP.IIRFilter(DSP.LOWPASS, this.lowpassCutoff, this.playbackRate, 1);
+            lowpassFilter.process(audioSamples);
+
+            // Float32ArrayをPCMデータに戻す
+            const processedData = new Uint8Array(pcmData.length);
+            for (let i = 0; i < samplesCount; i++) {
+                const sample = Math.max(-1.0, Math.min(1.0, audioSamples[i]));
+                const intSample = Math.floor(sample * 32767);
+                const outputIndex = i * 2;
+                processedData[outputIndex] = intSample & 0xFF;
+                processedData[outputIndex + 1] = (intSample >> 8) & 0xFF;
+            }
+
+            return processedData;
+        } catch (error) {
+            console.warn(`ローパスフィルター処理エラー: ${(error as Error).message}`);
+            return pcmData;
+        }
+    }
+
+    /**
+     * チャンク単位のノイズリダクション処理
+     */
+    private async applyNoiseReductionToChunk(pcmData: Uint8Array): Promise<Uint8Array> {
+        try {
+            const samplesCount = pcmData.length / 2;
+            const audioSamples = new Float32Array(samplesCount);
+            
+            for (let i = 0; i < samplesCount; i++) {
+                const sampleIndex = i * 2;
+                const sample = pcmData[sampleIndex] | (pcmData[sampleIndex + 1] << 8);
+                audioSamples[i] = (sample < 32768 ? sample : sample - 65536) / 32768.0;
+            }
+
+            const rawAudio = {
+                audioChannels: [audioSamples],
+                sampleRate: this.playbackRate
+            };
+            
+            const result = await Echogarden.denoise(rawAudio, {
+                engine: 'rnnoise'
+            });
+
+            const processedData = new Uint8Array(pcmData.length);
+            const denoisedSamples = result.denoisedAudio.audioChannels[0];
+            for (let i = 0; i < samplesCount; i++) {
+                const sample = Math.max(-1.0, Math.min(1.0, denoisedSamples[i]));
+                const intSample = Math.floor(sample * 32767);
+                const outputIndex = i * 2;
+                processedData[outputIndex] = intSample & 0xFF;
+                processedData[outputIndex + 1] = (intSample >> 8) & 0xFF;
+            }
+
+            return processedData;
+        } catch (error) {
+            console.warn(`ノイズリダクション処理エラー: ${(error as Error).message}`);
+            return pcmData;
+        }
+    }
+
 
     /**
      * WAVヘッダーを除去してPCMデータを抽出

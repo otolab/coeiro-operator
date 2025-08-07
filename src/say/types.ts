@@ -8,6 +8,13 @@ export interface Config {
     rate: number;
     voice_id?: string;
     style_id?: number;
+    defaultChunkMode?: 'none' | 'small' | 'medium' | 'large' | 'auto';
+    defaultBufferSize?: number;
+    synthesisRate?: number;  // 音声生成時のサンプルレート（COEIROINK側）
+    playbackRate?: number;   // 再生時のサンプルレート（Speaker側）
+    noiseReduction?: boolean;
+    lowpassFilter?: boolean;
+    lowpassCutoff?: number;
 }
 
 export interface StreamConfig {
