@@ -20,17 +20,18 @@ COEIRO OperatorはCOEIROINKと連携して動作する高品質音声オペレ�
 - **動的設定管理**: COEIROINKサーバーから音声フォントを自動検出
 - **セッション管理**: 複数セッション間でのオペレータ重複防止
 
-## ✨ 新機能ハイライト (v1.1.0)
+## ✨ 新機能ハイライト (v2.1.0)
 
-### 🎵 音声システム大幅刷新
-- **ストリーミング処理パイプライン**: リサンプリング → フィルタリング → ノイズ除去
-- **高品質リサンプリング**: node-libsamplerate (SRC_SINC_MEDIUM_QUALITY)
-- **デジタルフィルタリング**: 24kHz ローパスフィルター搭載
-- **分離サンプルレート**: 生成24kHz/再生48kHz で効率と品質を両立
+### 🔧 設定構造の大幅改善
+- **機能別設定構造**: connection, voice, audio による整理
+- **レイテンシモード**: ultra-low / balanced / quality の3段階プリセット
+- **音声head途切れ対策**: 詳細なパディング・クロスフェード制御
+- **分割モード統一**: 用語を`chunkMode`から`splitMode`に変更
 
-### 🌍 クロスプラットフォーム対応
-- Windows / macOS / Linux ネイティブ音声出力
-- 外部コマンド依存からの脱却
+### 🎵 音声品質の最適化
+- **動的バッファ調整**: 音声長とチャンク位置に応じた最適化
+- **先頭チャンク保護**: 最初のチャンクで途切れ防止処理をスキップ
+- **設定プリセット**: 用途別の最適化済み設定を提供
 
 ## インストール
 
@@ -94,9 +95,9 @@ operator-manager status
 say-coeiroink "こんにちは"
 say-coeiroink -r 150 "ゆっくり話します"
 
-# 新機能: 分割モード制御（v2.0.0+）
-say-coeiroink --chunk-mode none "長文を分割せずにスムーズに読み上げ"
-say-coeiroink --chunk-mode small "短いレスポンス"  # 低レイテンシ
+# 新機能: 分割モード制御（v2.1.0+）
+say-coeiroink --split-mode none "長文を分割せずにスムーズに読み上げ"
+say-coeiroink --split-mode small "短いレスポンス"  # 低レイテンシ
 say-coeiroink --buffer-size 2048 "高品質再生"      # バッファ制御
 
 # オペレータ管理
@@ -113,7 +114,7 @@ COEIRO Operatorは以下のMCPツールを提供します：
 - `operator_release` - オペレータ解放  
 - `operator_status` - 状況確認
 - `operator_available` - 利用可能一覧
-- `say` - 音声出力（ストリーミング再生・分割モード・バッファ制御対応）
+- `say` - 音声出力（ストリーミング再生・splitMode・バッファ制御対応）
 
 ## 📚 ドキュメント
 
