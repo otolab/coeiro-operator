@@ -159,7 +159,7 @@ export class AudioPlayer {
      */
     async playAudioStream(audioResult: AudioResult, bufferSize?: number): Promise<void> {
         if (!this.isInitialized) {
-            throw new Error('AudioPlayer is not initialized');
+            throw new Error('音声プレーヤーが初期化されていません');
         }
 
         try {
