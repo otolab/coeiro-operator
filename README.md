@@ -64,7 +64,7 @@ npm link
 Claude Codeで以下のコマンドを実行：
 
 ```bash
-claude mcp add coeiro-operator coeiro-operator
+claude mcp add coeiro-operator --command "node dist/index.js"
 ```
 
 ## クイックスタート
