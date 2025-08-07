@@ -5,11 +5,12 @@
  * キャラクター:スタイル単位での管理とMCP情報提供に対応
  */
 
-import { readFile, writeFile, stat, mkdir, unlink, rename, access } from 'fs/promises';
+import { mkdir, stat, unlink, access } from 'fs/promises';
 import { constants } from 'fs';
 import { join } from 'path';
 import { spawn } from 'child_process';
 import ConfigManager, { CharacterConfig, CharacterStyle } from './config-manager.js';
+import FileOperationManager, { ActiveOperators, SessionData } from './file-operation-manager.js';
 
 // インターフェース定義
 interface Style {
@@ -34,16 +35,6 @@ interface Character {
     speaking_style: string;
 }
 
-interface ActiveOperators {
-    active: Record<string, string>;
-    last_updated: string;
-}
-
-interface SessionData {
-    operator_id: string;
-    session_id: string;
-    reserved_at: string;
-}
 
 // CharacterConfigからCharacterに変換するヘルパー関数
 function convertCharacterConfigToCharacter(config: CharacterConfig): Character {
@@ -169,9 +160,11 @@ export class OperatorManager {
     private sessionOperatorFile: string | null = null;
     private coeiroinkConfigFile: string | null = null;
     private configManager: ConfigManager | null = null;
+    private fileOperationManager: FileOperationManager;
 
     constructor() {
         this.sessionId = getSessionId();
+        this.fileOperationManager = new FileOperationManager();
     }
 
     async initialize(): Promise<void> {
@@ -214,29 +207,14 @@ export class OperatorManager {
      * JSONファイルを安全に読み込み
      */
     async readJsonFile<T>(filePath: string, defaultValue: T = {} as T): Promise<T> {
-        try {
-            await access(filePath, constants.F_OK);
-            const content = await readFile(filePath, 'utf8');
-            return JSON.parse(content);
-        } catch (error) {
-            console.error(`ファイル読み込みエラー: ${filePath}, ${(error as Error).message}`);
-            return defaultValue;
-        }
+        return await this.fileOperationManager.readJsonFile(filePath, defaultValue);
     }
 
     /**
      * JSONファイルを安全に書き込み
      */
     async writeJsonFile(filePath: string, data: unknown): Promise<void> {
-        const tempFile = `${filePath}.tmp`;
-        await writeFile(tempFile, JSON.stringify(data, null, 2), 'utf8');
-        
-        // アトミックに置き換え（rename相当）
-        try {
-            await unlink(filePath);
-        } catch {}
-        
-        await rename(tempFile, filePath);
+        return await this.fileOperationManager.writeJsonFile(filePath, data);
     }
 
     /**
@@ -247,15 +225,7 @@ export class OperatorManager {
             throw new Error('activeOperatorsFile is not initialized');
         }
 
-        try {
-            await stat(this.activeOperatorsFile);
-        } catch {
-            const initialData: ActiveOperators = {
-                active: {},
-                last_updated: new Date().toISOString()
-            };
-            await this.writeJsonFile(this.activeOperatorsFile, initialData);
-        }
+        return await this.fileOperationManager.initActiveOperators(this.activeOperatorsFile);
     }
 
     /**
@@ -558,14 +528,11 @@ export class OperatorManager {
             throw new Error('coeiroinkConfigFile is not initialized');
         }
 
-        try {
-            const config = await this.readJsonFile(this.coeiroinkConfigFile, {}) as Record<string, unknown>;
-            config.voice_id = voiceId;
-            config.style_id = styleId;
-            await this.writeJsonFile(this.coeiroinkConfigFile, config);
-        } catch (error) {
-            console.error(`音声設定更新エラー: ${(error as Error).message}`);
-        }
+        return await this.fileOperationManager.updateVoiceSetting(
+            this.coeiroinkConfigFile, 
+            voiceId, 
+            styleId
+        );
     }
 
     /**
