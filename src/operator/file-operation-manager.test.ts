@@ -12,8 +12,8 @@ describe('FileOperationManager', () => {
     let tempDir: string;
 
     beforeEach(async () => {
-        // 一時ディレクトリを作成
-        tempDir = join(tmpdir(), `coeiro-test-${Date.now()}`);
+        // 一時ディレクトリを作成（ランダムな要素を追加してユニーク性を保証）
+        tempDir = join(tmpdir(), `coeiro-test-${Date.now()}-${Math.random().toString(36).substring(7)}`);
         await mkdir(tempDir, { recursive: true });
         
         fileManager = new FileOperationManager();

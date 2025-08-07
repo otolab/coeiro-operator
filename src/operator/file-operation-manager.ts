@@ -39,10 +39,13 @@ export class FileOperationManager {
         const tempFile = `${filePath}.tmp`;
         await writeFile(tempFile, JSON.stringify(data, null, 2), 'utf8');
         
-        // アトミックに置き換え（rename相当）
+        // ファイルが存在する場合のみ削除を試行
         try {
+            await access(filePath, constants.F_OK);
             await unlink(filePath);
-        } catch {}
+        } catch {
+            // ファイルが存在しない場合は何もしない
+        }
         
         await rename(tempFile, filePath);
     }
