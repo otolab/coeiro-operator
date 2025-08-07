@@ -25,7 +25,6 @@ export class SpeechQueue {
         };
 
         this.speechQueue.push(task);
-        console.log(`DEBUG: Task enqueued, queue length: ${this.speechQueue.length}`);
 
         // キュー処理を開始（非同期）
         this.processQueue();
@@ -45,20 +44,16 @@ export class SpeechQueue {
             return;
         }
 
-        console.log(`DEBUG: processSpeechQueue called, isProcessing: ${this.isProcessing}, queueLength: ${this.speechQueue.length}`);
-
         if (this.speechQueue.length === 0) {
             return;
         }
 
         this.isProcessing = true;
-        console.log('DEBUG: Starting queue processing');
 
         while (this.speechQueue.length > 0) {
             const task = this.speechQueue.shift();
             if (!task) break;
             
-            console.log(`DEBUG: Processing task ${task.id} with text: "${task.text}"`);
             try {
                 await this.processCallback(task);
                 console.error(`音声タスク完了: ${task.id}`);

@@ -1,0 +1,37 @@
+# code-bugsプロファイル（新形式）
+# coeiro-operatorプロジェクトの解析設定
+
+metadata:
+  description: "coeiro-operatorプロジェクトのデフォルト解析設定"
+
+# グローバル設定
+global:
+  logLevel: 3  # デバッグログレベル（全コマンド共通）
+  baseDir: "."
+
+# サブコマンド設定
+commands:
+  analysis:
+    # recipes:  # デフォルトのpackages/cli/recipes/が自動的に含まれるため、カスタムレシピがない場合は指定不要
+    #   - ./custom-recipes  # カスタムレシピディレクトリがある場合のみ指定
+    softTimeout:
+      - 18000 # 5 hours
+    applies:
+      - targets:
+          - ./src/
+        patterns:
+          - "**/*.ts"
+        analysis:
+          - file-overview
+          - import-and-export-details
+          - refactoring-suggestion-1
+          - refactoring-suggestion-2
+          - refactoring-suggestion-3
+
+  depcruise-analysis:
+    applies:
+      - rootDir: ./src
+        entries:
+          - index.ts
+          - say/cli.ts
+          - operator/cli.ts
