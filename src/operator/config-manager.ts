@@ -135,12 +135,25 @@ export class ConfigManager {
     }
 
     /**
-     * 再帰的なオブジェクトマージ
+     * 再帰的なオブジェクトマージ（プロトタイプ汚染対策済み）
      */
     deepMerge(target: any, source: any): any {
         const result = { ...target };
         
+        // プロトタイプ汚染防止のための危険なキーリスト
+        const dangerousKeys = ['__proto__', 'constructor', 'prototype'];
+        
         for (const key in source) {
+            // 危険なキーをスキップ
+            if (dangerousKeys.includes(key)) {
+                continue;
+            }
+            
+            // hasOwnPropertyチェックで継承されたプロパティを除外
+            if (!Object.prototype.hasOwnProperty.call(source, key)) {
+                continue;
+            }
+            
             if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
                 result[key] = this.deepMerge(result[key] || {}, source[key]);
             } else {

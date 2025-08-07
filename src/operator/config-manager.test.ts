@@ -121,6 +121,55 @@ describe('ConfigManager', () => {
 
             expect(result.arr).toEqual([4, 5]);
         });
+
+        test('プロトタイプ汚染攻撃を防ぐ - __proto__', () => {
+            const target = {};
+            const maliciousSource = {
+                "__proto__": { "isAdmin": true }
+            };
+
+            configManager.deepMerge(target, maliciousSource);
+
+            // Object.prototypeが汚染されていないことを確認
+            expect(({} as any).isAdmin).toBeUndefined();
+        });
+
+        test('プロトタイプ汚染攻撃を防ぐ - constructor', () => {
+            const target = {};
+            const maliciousSource = {
+                "constructor": { "prototype": { "isAdmin": true } }
+            };
+
+            configManager.deepMerge(target, maliciousSource);
+
+            // constructorプロパティが無視されることを確認
+            expect(({} as any).isAdmin).toBeUndefined();
+        });
+
+        test('プロトタイプ汚染攻撃を防ぐ - prototype', () => {
+            const target = {};
+            const maliciousSource = {
+                "prototype": { "isAdmin": true }
+            };
+
+            configManager.deepMerge(target, maliciousSource);
+
+            // prototypeプロパティが無視されることを確認
+            expect(({} as any).isAdmin).toBeUndefined();
+        });
+
+        test('継承されたプロパティは無視される', () => {
+            const parent = { inheritedProp: 'inherited' };
+            const child = Object.create(parent);
+            child.ownProp = 'own';
+
+            const target = {};
+            const result = configManager.deepMerge(target, child);
+
+            // 自身のプロパティのみがマージされることを確認
+            expect(result.ownProp).toBe('own');
+            expect(result.inheritedProp).toBeUndefined();
+        });
     });
 
     describe('fetchAvailableVoices', () => {
