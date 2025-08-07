@@ -32,6 +32,31 @@ export class AudioSynthesizer {
     }
 
     /**
+     * 設定ファイルに基づいてチャンクモード設定を生成
+     */
+    private getChunkModeConfig() {
+        return {
+            none: { chunkSize: Infinity, overlap: 0 },
+            small: { 
+                chunkSize: this.config.chunkSizeSmall || 30, 
+                overlap: Math.round((this.config.chunkSizeSmall || 30) * (this.config.overlapRatio || 0.1))
+            },
+            medium: { 
+                chunkSize: this.config.chunkSizeMedium || 50, 
+                overlap: Math.round((this.config.chunkSizeMedium || 50) * (this.config.overlapRatio || 0.1))
+            },
+            large: { 
+                chunkSize: this.config.chunkSizeLarge || 100, 
+                overlap: Math.round((this.config.chunkSizeLarge || 100) * (this.config.overlapRatio || 0.1))
+            },
+            auto: { 
+                chunkSize: this.config.chunkSizeMedium || 50, 
+                overlap: Math.round((this.config.chunkSizeMedium || 50) * (this.config.overlapRatio || 0.1))
+            }
+        } as const;
+    }
+
+    /**
      * サーバー接続確認
      */
     async checkServerConnection(): Promise<boolean> {
@@ -81,10 +106,11 @@ export class AudioSynthesizer {
     /**
      * テキストを音切れ防止のためのオーバーラップ付きチャンクに分割
      */
-    splitTextIntoChunks(text: string): Chunk[] {
+    splitTextIntoChunks(text: string, chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' = 'auto'): Chunk[] {
         const chunks: Chunk[] = [];
-        const chunkSize = STREAM_CONFIG.chunkSizeChars;
-        const overlap = STREAM_CONFIG.overlapChars;
+        const config = this.getChunkModeConfig()[chunkMode];
+        const chunkSize = config.chunkSize;
+        const overlap = config.overlap;
         
         for (let i = 0; i < text.length; i += chunkSize - overlap) {
             const end = Math.min(i + chunkSize, text.length);
@@ -210,8 +236,8 @@ export class AudioSynthesizer {
     /**
      * ストリーミング音声合成
      */
-    async* synthesizeStream(text: string, voiceId: string | OperatorVoice, speed: number): AsyncGenerator<AudioResult> {
-        const chunks = this.splitTextIntoChunks(text);
+    async* synthesizeStream(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' = 'auto'): AsyncGenerator<AudioResult> {
+        const chunks = this.splitTextIntoChunks(text, chunkMode);
 
         for (const chunk of chunks) {
             const result = await this.synthesizeChunk(chunk, voiceId, speed);

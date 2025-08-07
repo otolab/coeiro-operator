@@ -8,8 +8,15 @@ export interface Config {
     rate: number;
     voice_id?: string;
     style_id?: number;
-    defaultChunkMode?: 'none' | 'small' | 'medium' | 'large' | 'auto';
-    defaultBufferSize?: number;
+    // 音声品質・パフォーマンス制御（v2.0.0+）
+    defaultChunkMode?: 'auto' | 'none' | 'small' | 'medium' | 'large';
+    defaultBufferSize?: number;  // スピーカーバッファサイズ（256-8192バイト）
+    // ストリーミング制御
+    chunkSizeSmall?: number;     // smallモード時の分割サイズ
+    chunkSizeMedium?: number;    // mediumモード時の分割サイズ
+    chunkSizeLarge?: number;     // largeモード時の分割サイズ
+    overlapRatio?: number;       // オーバーラップ比率（0.0-1.0）
+    // 高品質音声処理（v1.1.0+）
     synthesisRate?: number;  // 音声生成時のサンプルレート（COEIROINK側）
     playbackRate?: number;   // 再生時のサンプルレート（Speaker側）
     noiseReduction?: boolean;
@@ -66,6 +73,8 @@ export interface SynthesizeOptions {
     outputFile?: string | null;
     streamMode?: boolean;
     style?: string;
+    chunkMode?: 'auto' | 'none' | 'small' | 'medium' | 'large';  // テキスト分割モード
+    bufferSize?: number;  // スピーカーバッファサイズ制御（バイト単位）
 }
 
 export interface SynthesizeResult {

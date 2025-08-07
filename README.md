@@ -11,6 +11,9 @@ COEIRO OperatorはCOEIROINKと連携して動作する高品質音声オペレ�
 - **高品質ストリーミング音声処理**: 24kHz→48kHz高品質リサンプリング + デジタルフィルタリング
 - **音声オペレータシステム**: 13種類のキャラクターによる音声通知
 - **クロスプラットフォーム対応**: Windows / macOS / Linux ネイティブ音声出力
+- **🆕 ネイティブ音声ストリーミング**: speakerライブラリによる高品質再生
+- **🆕 分割モード制御**: テキスト分割なし〜細分化まで5段階選択
+- **🆕 バッファリング制御**: レイテンシと安定性の最適化
 - **MCPサーバー**: Claude Codeとの完全統合
 - **非同期音声合成**: 低レイテンシストリーミング対応
 - **AIノイズリダクション**: RNNoise搭載（オプション）
@@ -36,9 +39,9 @@ COEIRO OperatorはCOEIROINKと連携して動作する高品質音声オペレ�
 - **Node.js 18以上** (推奨: LTS版)
 - **COEIROINK** - 音声合成エンジン（localhost:50032で動作）
 - **ビルドツール** - ネイティブモジュール構築用
-  - Windows: Visual Studio Build Tools
-  - macOS: Xcode Command Line Tools
-  - Linux: build-essential + ALSA開発ライブラリ
+  - Windows: Visual Studio Build Tools + WASAPI
+  - macOS: Xcode Command Line Tools + Core Audio
+  - Linux: build-essential + ALSA開発ライブラリ/PulseAudio
 
 ### NPMからのインストール
 
@@ -91,6 +94,11 @@ operator-manager status
 say-coeiroink "こんにちは"
 say-coeiroink -r 150 "ゆっくり話します"
 
+# 新機能: 分割モード制御（v2.0.0+）
+say-coeiroink --chunk-mode none "長文を分割せずにスムーズに読み上げ"
+say-coeiroink --chunk-mode small "短いレスポンス"  # 低レイテンシ
+say-coeiroink --buffer-size 2048 "高品質再生"      # バッファ制御
+
 # オペレータ管理
 operator-manager assign      # ランダム割り当て
 operator-manager status      # 現在のステータス
@@ -105,15 +113,17 @@ COEIRO Operatorは以下のMCPツールを提供します：
 - `operator_release` - オペレータ解放  
 - `operator_status` - 状況確認
 - `operator_available` - 利用可能一覧
-- `say` - 音声出力（非同期キュー処理）
+- `say` - 音声出力（ストリーミング再生・分割モード・バッファ制御対応）
 
 ## 📚 ドキュメント
 
 ### 技術仕様
+- **🆕 [docs/audio-streaming-guide.md](docs/audio-streaming-guide.md)** - 音声ストリーミング機能ガイド
 - **[docs/audio-system.md](docs/audio-system.md)** - 音声システム詳細仕様
 - **[docs/api-reference.md](docs/api-reference.md)** - 完全APIリファレンス
 
 ### ユーザーガイド  
+- **[INSTALLATION.md](INSTALLATION.md)** - 詳細設定・カスタマイズガイド
 - **[docs/installation.md](docs/installation.md)** - 詳細インストール・セットアップガイド
 - **[docs/configuration-guide.md](docs/configuration-guide.md)** - 設定・カスタマイズガイド
 - **[docs/troubleshooting.md](docs/troubleshooting.md)** - トラブルシューティング
