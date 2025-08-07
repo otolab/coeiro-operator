@@ -80,7 +80,7 @@ COEIROINK音声合成サーバーへの接続を設定します。
 
 音声合成と再生の詳細な制御を行います。
 
-### レイテンシモード（🧪実験的機能）
+### レイテンシモード
 
 ```json
 {
@@ -90,13 +90,11 @@ COEIROINK音声合成サーバーへの接続を設定します。
 }
 ```
 
-> **⚠️ 注意**: `latencyMode`は実験的機能です。現在は型定義のみで、プリセット適用機能は開発中です。個別設定項目を直接指定してください。
-
-| モード | 用途 | 特徴 | 実装状況 |
-|--------|------|------|----------|
-| `ultra-low` | リアルタイム対話 | 最低レイテンシ、音声head途切れ対策を最優先 | 🚧 開発中 |
-| `balanced` | 一般用途 | レイテンシと音質のバランス | 🚧 開発中 |
-| `quality` | 高音質録音 | 最高音質、レイテンシは二の次 | 🚧 開発中 |
+| モード | 用途 | 特徴 |
+|--------|------|------|
+| `ultra-low` | リアルタイム対話 | 最低レイテンシ、音声head途切れ対策を最優先 |
+| `balanced` | 一般用途 | レイテンシと音質のバランス |
+| `quality` | 高音質録音 | 最高音質、レイテンシは二の次 |
 
 ### 分割モード
 
@@ -234,35 +232,41 @@ COEIROINK音声合成サーバーへの接続を設定します。
 | `skipFirstChunk` | boolean | `true` | 最初のチャンクでクロスフェードをスキップ |
 | `overlapSamples` | number | `24` | フェード処理を適用するサンプル数 |
 
-## レイテンシモード別プリセット（🧪実験的機能）
+## レイテンシモード別プリセット
 
-> **⚠️ 注意**: 以下は将来実装予定の自動プリセット機能です。現在は個別に設定項目を指定する必要があります。
+`latencyMode`を指定することで、以下のプリセットが自動適用されます。個別設定で上書きも可能です。
 
 ### Ultra-Low レイテンシモード
 
 ```json
 {
   "audio": {
-    "latencyMode": "ultra-low",
-    "bufferSettings": {
-      "highWaterMark": 64,
-      "lowWaterMark": 32,
-      "dynamicAdjustment": true
-    },
-    "paddingSettings": {
-      "enabled": false,
-      "prePhonemeLength": 0,
-      "postPhonemeLength": 0,
-      "firstChunkOnly": true
-    },
-    "crossfadeSettings": {
-      "enabled": false,
-      "skipFirstChunk": true,
-      "overlapSamples": 0
-    }
+    "latencyMode": "ultra-low"
   }
 }
 ```
+
+上記の設定は以下のプリセットを自動適用します：
+
+```json
+{
+  "bufferSettings": {
+    "highWaterMark": 64,
+    "lowWaterMark": 32,
+    "dynamicAdjustment": true
+  },
+  "paddingSettings": {
+    "enabled": false,
+    "prePhonemeLength": 0,
+    "postPhonemeLength": 0,
+    "firstChunkOnly": true
+  },
+  "crossfadeSettings": {
+    "enabled": false,
+    "skipFirstChunk": true,
+    "overlapSamples": 0
+  }
+}
 
 **特徴**: 音声head途切れ対策を最優先、最小レイテンシを実現
 
@@ -271,26 +275,32 @@ COEIROINK音声合成サーバーへの接続を設定します。
 ```json
 {
   "audio": {
-    "latencyMode": "balanced",
-    "bufferSettings": {
-      "highWaterMark": 256,
-      "lowWaterMark": 128,
-      "dynamicAdjustment": true
-    },
-    "paddingSettings": {
-      "enabled": true,
-      "prePhonemeLength": 0.01,
-      "postPhonemeLength": 0.01,
-      "firstChunkOnly": true
-    },
-    "crossfadeSettings": {
-      "enabled": true,
-      "skipFirstChunk": true,
-      "overlapSamples": 24
-    }
+    "latencyMode": "balanced"
   }
 }
 ```
+
+上記の設定は以下のプリセットを自動適用します：
+
+```json
+{
+  "bufferSettings": {
+    "highWaterMark": 256,
+    "lowWaterMark": 128,
+    "dynamicAdjustment": true
+  },
+  "paddingSettings": {
+    "enabled": true,
+    "prePhonemeLength": 0.01,
+    "postPhonemeLength": 0.01,
+    "firstChunkOnly": true
+  },
+  "crossfadeSettings": {
+    "enabled": true,
+    "skipFirstChunk": true,
+    "overlapSamples": 24
+  }
+}
 
 **特徴**: レイテンシと音質のバランス、一般的な用途に最適
 
@@ -299,26 +309,32 @@ COEIROINK音声合成サーバーへの接続を設定します。
 ```json
 {
   "audio": {
-    "latencyMode": "quality",
-    "bufferSettings": {
-      "highWaterMark": 512,
-      "lowWaterMark": 256,
-      "dynamicAdjustment": false
-    },
-    "paddingSettings": {
-      "enabled": true,
-      "prePhonemeLength": 0.02,
-      "postPhonemeLength": 0.02,
-      "firstChunkOnly": false
-    },
-    "crossfadeSettings": {
-      "enabled": true,
-      "skipFirstChunk": false,
-      "overlapSamples": 48
-    }
+    "latencyMode": "quality"
   }
 }
 ```
+
+上記の設定は以下のプリセットを自動適用します：
+
+```json
+{
+  "bufferSettings": {
+    "highWaterMark": 512,
+    "lowWaterMark": 256,
+    "dynamicAdjustment": false
+  },
+  "paddingSettings": {
+    "enabled": true,
+    "prePhonemeLength": 0.02,
+    "postPhonemeLength": 0.02,
+    "firstChunkOnly": false
+  },
+  "crossfadeSettings": {
+    "enabled": true,
+    "skipFirstChunk": false,
+    "overlapSamples": 48
+  }
+}
 
 **特徴**: 最高音質、録音や高品質再生に最適
 
