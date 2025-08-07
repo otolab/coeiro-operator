@@ -27,3 +27,6 @@ Thumbs.db
 # ビルド成果物
 build/
 dist/
+
+# code-bugs分析ファイル
+.code-bugs/

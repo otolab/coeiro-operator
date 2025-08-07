@@ -1,0 +1,520 @@
+/**
+ * src/say/index.test.ts: SayCoeiroinkクラステスト
+ */
+
+import { SayCoeiroink, loadConfig } from './index.js';
+import type { Config, SynthesizeOptions, SynthesizeResult } from './types.js';
+import { readFile, access, mkdir } from 'fs/promises';
+import { join } from 'path';
+import { tmpdir } from 'os';
+
+// モックの設定
+jest.mock('fs/promises');
+jest.mock('../operator/index.js');
+jest.mock('./speech-queue.js');
+jest.mock('./audio-player.js');
+jest.mock('./audio-synthesizer.js');
+
+const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
+const mockAccess = access as jest.MockedFunction<typeof access>;
+const mockMkdir = mkdir as jest.MockedFunction<typeof mkdir>;
+
+// fetchのモック
+global.fetch = jest.fn();
+
+describe('loadConfig', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+    });
+
+    test('設定ファイルが存在する場合、正しく読み込むこと', async () => {
+        const mockConfig = {
+            host: 'custom-host',
+            port: '9999',
+            rate: 300,
+            voice_id: 'custom-voice'
+        };
+
+        mockAccess.mockResolvedValueOnce(undefined);
+        mockReadFile.mockResolvedValueOnce(JSON.stringify(mockConfig));
+
+        const config = await loadConfig();
+
+        expect(config).toEqual({
+            host: 'custom-host',
+            port: '9999',
+            rate: 300,
+            voice_id: 'custom-voice'
+        });
+    });
+
+    test('設定ファイルが存在しない場合、デフォルト設定を返すこと', async () => {
+        mockAccess.mockRejectedValueOnce(new Error('File not found'));
+
+        const config = await loadConfig();
+
+        expect(config).toEqual({
+            host: 'localhost',
+            port: '50032',
+            rate: 200
+        });
+    });
+
+    test('設定ファイルが無効なJSONの場合、デフォルト設定を返すこと', async () => {
+        mockAccess.mockResolvedValueOnce(undefined);
+        mockReadFile.mockResolvedValueOnce('invalid json');
+
+        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+        
+        const config = await loadConfig();
+
+        expect(config).toEqual({
+            host: 'localhost',
+            port: '50032',
+            rate: 200
+        });
+
+        expect(consoleErrorSpy).toHaveBeenCalledWith(
+            expect.stringContaining('設定ファイル読み込みエラー')
+        );
+
+        consoleErrorSpy.mockRestore();
+    });
+
+    test('カスタム設定ファイルパスを指定できること', async () => {
+        const customPath = '/custom/path/config.json';
+        const mockConfig = { host: 'test', port: '8080', rate: 150 };
+
+        mockAccess.mockResolvedValueOnce(undefined);
+        mockReadFile.mockResolvedValueOnce(JSON.stringify(mockConfig));
+
+        const config = await loadConfig(customPath);
+
+        expect(mockAccess).toHaveBeenCalledWith(customPath, expect.any(Number));
+        expect(mockReadFile).toHaveBeenCalledWith(customPath, 'utf8');
+        expect(config).toEqual(expect.objectContaining(mockConfig));
+    });
+
+    test('部分的な設定ファイルでもデフォルト値とマージされること', async () => {
+        const partialConfig = { host: 'partial-host' };
+
+        mockAccess.mockResolvedValueOnce(undefined);
+        mockReadFile.mockResolvedValueOnce(JSON.stringify(partialConfig));
+
+        const config = await loadConfig();
+
+        expect(config).toEqual({
+            host: 'partial-host',
+            port: '50032',
+            rate: 200
+        });
+    });
+});
+
+describe('SayCoeiroink', () => {
+    let sayCoeiroink: SayCoeiroink;
+    let mockConfig: Config;
+
+    beforeEach(() => {
+        mockConfig = {
+            host: 'localhost',
+            port: '50032',
+            rate: 200
+        };
+
+        // モッククラスの初期化
+        const MockOperatorManager = require('../operator/index.js').OperatorManager;
+        const MockSpeechQueue = require('./speech-queue.js').SpeechQueue;
+        const MockAudioPlayer = require('./audio-player.js').AudioPlayer;
+        const MockAudioSynthesizer = require('./audio-synthesizer.js').AudioSynthesizer;
+
+        MockOperatorManager.mockClear();
+        MockSpeechQueue.mockClear();
+        MockAudioPlayer.mockClear();
+        MockAudioSynthesizer.mockClear();
+
+        sayCoeiroink = new SayCoeiroink(mockConfig);
+        
+        jest.clearAllMocks();
+    });
+
+    describe('コンストラクタ', () => {
+        test('設定が正しく保存されること', () => {
+            expect(sayCoeiroink['config']).toEqual(mockConfig);
+        });
+
+        test('設定なしでデフォルト設定が使用されること', () => {
+            const defaultInstance = new SayCoeiroink();
+            expect(defaultInstance['config']).toEqual({
+                host: 'localhost',
+                port: '50032',
+                rate: 200
+            });
+        });
+
+        test('依存関係のクラスが正しく初期化されること', () => {
+            const MockOperatorManager = require('../operator/index.js').OperatorManager;
+            const MockSpeechQueue = require('./speech-queue.js').SpeechQueue;
+            const MockAudioPlayer = require('./audio-player.js').AudioPlayer;
+            const MockAudioSynthesizer = require('./audio-synthesizer.js').AudioSynthesizer;
+
+            expect(MockOperatorManager).toHaveBeenCalledTimes(1);
+            expect(MockSpeechQueue).toHaveBeenCalledWith(expect.any(Function));
+            expect(MockAudioPlayer).toHaveBeenCalledTimes(1);
+            expect(MockAudioSynthesizer).toHaveBeenCalledWith(mockConfig);
+        });
+    });
+
+    describe('initialize', () => {
+        test('正常に初期化できること', async () => {
+            const mockOperatorManager = sayCoeiroink['operatorManager'];
+            mockOperatorManager.initialize = jest.fn().mockResolvedValue(undefined);
+
+            await expect(sayCoeiroink.initialize()).resolves.not.toThrow();
+            expect(mockOperatorManager.initialize).toHaveBeenCalledTimes(1);
+        });
+
+        test('初期化エラー時に適切なエラーを投げること', async () => {
+            const mockOperatorManager = sayCoeiroink['operatorManager'];
+            mockOperatorManager.initialize = jest.fn().mockRejectedValue(new Error('Init failed'));
+
+            await expect(sayCoeiroink.initialize()).rejects.toThrow(
+                'SayCoeiroink initialization failed: Init failed'
+            );
+        });
+    });
+
+    describe('buildDynamicConfig', () => {
+        test('動的設定を正常に構築できること', async () => {
+            const mockOperatorManager = sayCoeiroink['operatorManager'];
+            mockOperatorManager.buildDynamicConfig = jest.fn().mockResolvedValue(undefined);
+
+            await expect(sayCoeiroink.buildDynamicConfig()).resolves.not.toThrow();
+            expect(mockOperatorManager.buildDynamicConfig).toHaveBeenCalledTimes(1);
+        });
+
+        test('設定構築エラー時に適切なエラーを投げること', async () => {
+            const mockOperatorManager = sayCoeiroink['operatorManager'];
+            mockOperatorManager.buildDynamicConfig = jest.fn().mockRejectedValue(new Error('Config failed'));
+
+            await expect(sayCoeiroink.buildDynamicConfig()).rejects.toThrow(
+                'buildDynamicConfig failed: Config failed'
+            );
+        });
+    });
+
+    describe('getCurrentOperatorVoice', () => {
+        test('オペレータが割り当てられている場合、音声情報を取得できること', async () => {
+            const mockOperatorManager = sayCoeiroink['operatorManager'];
+            const mockCharacter = {
+                voice_id: 'test-voice-id',
+                name: 'テストキャラクター',
+                available_styles: {}
+            };
+
+            mockOperatorManager.showCurrentOperator = jest.fn().mockResolvedValue({
+                operatorId: 'test-operator',
+                message: 'Current operator: test-operator'
+            });
+            mockOperatorManager.getCharacterInfo = jest.fn().mockResolvedValue(mockCharacter);
+
+            const result = await sayCoeiroink.getCurrentOperatorVoice();
+
+            expect(result).toEqual({
+                voice_id: 'test-voice-id',
+                character: mockCharacter
+            });
+        });
+
+        test('オペレータが割り当てられていない場合、nullを返すこと', async () => {
+            const mockOperatorManager = sayCoeiroink['operatorManager'];
+            mockOperatorManager.showCurrentOperator = jest.fn().mockResolvedValue({
+                operatorId: null,
+                message: 'No operator assigned'
+            });
+
+            const result = await sayCoeiroink.getCurrentOperatorVoice();
+
+            expect(result).toBeNull();
+        });
+
+        test('キャラクター情報が取得できない場合、nullを返すこと', async () => {
+            const mockOperatorManager = sayCoeiroink['operatorManager'];
+            mockOperatorManager.showCurrentOperator = jest.fn().mockResolvedValue({
+                operatorId: 'test-operator',
+                message: 'Current operator: test-operator'
+            });
+            mockOperatorManager.getCharacterInfo = jest.fn().mockResolvedValue(null);
+
+            const result = await sayCoeiroink.getCurrentOperatorVoice();
+
+            expect(result).toBeNull();
+        });
+
+        test('エラー時にnullを返すこと', async () => {
+            const mockOperatorManager = sayCoeiroink['operatorManager'];
+            mockOperatorManager.showCurrentOperator = jest.fn().mockRejectedValue(new Error('Connection failed'));
+
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+            const result = await sayCoeiroink.getCurrentOperatorVoice();
+
+            expect(result).toBeNull();
+            expect(consoleErrorSpy).toHaveBeenCalledWith(
+                expect.stringContaining('オペレータ音声取得エラー')
+            );
+
+            consoleErrorSpy.mockRestore();
+        });
+    });
+
+    describe('enqueueSpeech', () => {
+        test('音声タスクを正常にキューに追加できること', async () => {
+            const mockSpeechQueue = sayCoeiroink['speechQueue'];
+            const mockResult: SynthesizeResult = {
+                success: true,
+                taskId: 12345,
+                queueLength: 1
+            };
+
+            mockSpeechQueue.enqueue = jest.fn().mockResolvedValue(mockResult);
+
+            const result = await sayCoeiroink.enqueueSpeech('テストテキスト', { rate: 150 });
+
+            expect(result).toEqual(mockResult);
+            expect(mockSpeechQueue.enqueue).toHaveBeenCalledWith('テストテキスト', { rate: 150 });
+        });
+    });
+
+    describe('synthesizeTextAsync', () => {
+        test('非同期音声合成が正常に動作すること', async () => {
+            const mockResult: SynthesizeResult = {
+                success: true,
+                taskId: 67890,
+                queueLength: 2
+            };
+
+            sayCoeiroink.enqueueSpeech = jest.fn().mockResolvedValue(mockResult);
+
+            const result = await sayCoeiroink.synthesizeTextAsync('非同期テキスト');
+
+            expect(result).toEqual(mockResult);
+            expect(sayCoeiroink.enqueueSpeech).toHaveBeenCalledWith('非同期テキスト', {});
+        });
+    });
+
+    describe('synthesizeText', () => {
+        test('同期音声合成が正常に動作すること', async () => {
+            const mockResult: SynthesizeResult = {
+                success: true,
+                mode: 'normal',
+                latency: 100
+            };
+
+            sayCoeiroink.synthesizeTextInternal = jest.fn().mockResolvedValue(mockResult);
+
+            const result = await sayCoeiroink.synthesizeText('同期テキスト', { rate: 180 });
+
+            expect(result).toEqual(mockResult);
+            expect(sayCoeiroink.synthesizeTextInternal).toHaveBeenCalledWith('同期テキスト', { rate: 180 });
+        });
+    });
+
+    describe('synthesizeTextInternal', () => {
+        beforeEach(() => {
+            // 依存メソッドをモック
+            sayCoeiroink.getCurrentOperatorVoice = jest.fn().mockResolvedValue({
+                voice_id: 'default-voice',
+                character: {}
+            });
+            sayCoeiroink['audioSynthesizer'].checkServerConnection = jest.fn().mockResolvedValue(true);
+            sayCoeiroink.initializeAudioPlayer = jest.fn().mockResolvedValue(true);
+            sayCoeiroink['audioSynthesizer'].convertRateToSpeed = jest.fn().mockReturnValue(1.0);
+        });
+
+        test('オペレータ音声で正常に合成できること', async () => {
+            const mockResult = {
+                chunk: { text: 'テスト', index: 0, isFirst: true, isLast: true, overlap: 0 },
+                audioBuffer: new ArrayBuffer(1000),
+                latency: 50
+            };
+
+            sayCoeiroink['audioSynthesizer'].synthesize = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
+
+            const result = await sayCoeiroink.synthesizeTextInternal('テスト');
+
+            expect(result).toEqual({
+                success: true,
+                mode: 'normal',
+                latency: 50
+            });
+        });
+
+        test('指定音声で正常に合成できること', async () => {
+            const options: SynthesizeOptions = {
+                voice: 'custom-voice-id'
+            };
+
+            const mockResult = {
+                chunk: { text: 'テスト', index: 0, isFirst: true, isLast: true, overlap: 0 },
+                audioBuffer: new ArrayBuffer(1000),
+                latency: 75
+            };
+
+            sayCoeiroink['audioSynthesizer'].synthesize = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
+
+            const result = await sayCoeiroink.synthesizeTextInternal('テスト', options);
+
+            expect(result.success).toBe(true);
+            expect(sayCoeiroink['audioSynthesizer'].synthesize).toHaveBeenCalledWith(
+                'テスト',
+                'custom-voice-id',
+                1.0
+            );
+        });
+
+        test('ファイル出力モードで正常に動作すること', async () => {
+            const options: SynthesizeOptions = {
+                outputFile: '/tmp/test.wav'
+            };
+
+            const mockResult = {
+                chunk: { text: 'テスト', index: 0, isFirst: true, isLast: true, overlap: 0 },
+                audioBuffer: new ArrayBuffer(1000),
+                latency: 100
+            };
+
+            sayCoeiroink['audioSynthesizer'].synthesize = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink.saveAudio = jest.fn().mockResolvedValue(undefined);
+
+            const result = await sayCoeiroink.synthesizeTextInternal('テスト', options);
+
+            expect(result).toEqual({
+                success: true,
+                outputFile: '/tmp/test.wav',
+                latency: 100
+            });
+
+            expect(sayCoeiroink.saveAudio).toHaveBeenCalledWith(
+                mockResult.audioBuffer,
+                '/tmp/test.wav'
+            );
+        });
+
+        test('ストリーミングモードで正常に動作すること', async () => {
+            const longText = 'a'.repeat(100); // ストリーミング対象となる長文
+            const options: SynthesizeOptions = {
+                streamMode: true
+            };
+
+            sayCoeiroink.streamSynthesizeAndPlay = jest.fn().mockResolvedValue(undefined);
+
+            const result = await sayCoeiroink.synthesizeTextInternal(longText, options);
+
+            expect(result).toEqual({
+                success: true,
+                mode: 'streaming'
+            });
+
+            expect(sayCoeiroink.streamSynthesizeAndPlay).toHaveBeenCalledWith(
+                longText,
+                expect.any(Object), // voice
+                1.0
+            );
+        });
+
+        test('サーバー接続失敗時にエラーを投げること', async () => {
+            sayCoeiroink['audioSynthesizer'].checkServerConnection = jest.fn().mockResolvedValue(false);
+
+            await expect(
+                sayCoeiroink.synthesizeTextInternal('テスト')
+            ).rejects.toThrow('Cannot connect to COEIROINK server');
+        });
+
+        test('音声が指定されておらずオペレータもない場合エラーを投げること', async () => {
+            sayCoeiroink.getCurrentOperatorVoice = jest.fn().mockResolvedValue(null);
+
+            await expect(
+                sayCoeiroink.synthesizeTextInternal('テスト')
+            ).rejects.toThrow('音声が指定されておらず、オペレータも割り当てられていません');
+        });
+
+        test('音声プレーヤー初期化失敗時にエラーを投げること', async () => {
+            sayCoeiroink.initializeAudioPlayer = jest.fn().mockResolvedValue(false);
+
+            await expect(
+                sayCoeiroink.synthesizeTextInternal('テスト')
+            ).rejects.toThrow('音声プレーヤーの初期化に失敗しました');
+        });
+    });
+
+    describe('ヘルパーメソッド', () => {
+        test('splitTextIntoChunks が AudioSynthesizer を委譲すること', () => {
+            const mockChunks = [
+                { text: 'テスト', index: 0, isFirst: true, isLast: true, overlap: 0 }
+            ];
+
+            sayCoeiroink['audioSynthesizer'].splitTextIntoChunks = jest.fn().mockReturnValue(mockChunks);
+
+            const result = sayCoeiroink.splitTextIntoChunks('テスト');
+
+            expect(result).toEqual(mockChunks);
+            expect(sayCoeiroink['audioSynthesizer'].splitTextIntoChunks).toHaveBeenCalledWith('テスト');
+        });
+
+        test('convertRateToSpeed が AudioSynthesizer を委譲すること', () => {
+            sayCoeiroink['audioSynthesizer'].convertRateToSpeed = jest.fn().mockReturnValue(1.5);
+
+            const result = sayCoeiroink.convertRateToSpeed(300);
+
+            expect(result).toBe(1.5);
+            expect(sayCoeiroink['audioSynthesizer'].convertRateToSpeed).toHaveBeenCalledWith(300);
+        });
+
+        test('initializeAudioPlayer が AudioPlayer を委譲すること', async () => {
+            sayCoeiroink['audioPlayer'].initialize = jest.fn().mockResolvedValue(true);
+
+            const result = await sayCoeiroink.initializeAudioPlayer();
+
+            expect(result).toBe(true);
+            expect(sayCoeiroink['audioPlayer'].initialize).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('キュー管理', () => {
+        test('getSpeechQueueStatus が正しくステータスを返すこと', () => {
+            const mockStatus = { queueLength: 3, isProcessing: true };
+            sayCoeiroink['speechQueue'].getStatus = jest.fn().mockReturnValue(mockStatus);
+
+            const result = sayCoeiroink.getSpeechQueueStatus();
+
+            expect(result).toEqual(mockStatus);
+            expect(sayCoeiroink['speechQueue'].getStatus).toHaveBeenCalledTimes(1);
+        });
+
+        test('clearSpeechQueue が正しくキューをクリアすること', () => {
+            sayCoeiroink['speechQueue'].clear = jest.fn();
+
+            sayCoeiroink.clearSpeechQueue();
+
+            expect(sayCoeiroink['speechQueue'].clear).toHaveBeenCalledTimes(1);
+        });
+    });
+
+    describe('エラーハンドリング', () => {
+        test('予期しないエラーが適切に処理されること', async () => {
+            sayCoeiroink.getCurrentOperatorVoice = jest.fn().mockRejectedValue(new Error('Unexpected error'));
+
+            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+
+            const result = await sayCoeiroink.getCurrentOperatorVoice();
+
+            expect(result).toBeNull();
+            expect(consoleErrorSpy).toHaveBeenCalled();
+
+            consoleErrorSpy.mockRestore();
+        });
+    });
+});

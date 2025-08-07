@@ -16,6 +16,12 @@ export interface Config {
     chunkSizeMedium?: number;    // mediumモード時の分割サイズ
     chunkSizeLarge?: number;     // largeモード時の分割サイズ
     overlapRatio?: number;       // オーバーラップ比率（0.0-1.0）
+    // 高品質音声処理（v1.1.0+）
+    synthesisRate?: number;  // 音声生成時のサンプルレート（COEIROINK側）
+    playbackRate?: number;   // 再生時のサンプルレート（Speaker側）
+    noiseReduction?: boolean;
+    lowpassFilter?: boolean;
+    lowpassCutoff?: number;
 }
 
 export interface StreamConfig {

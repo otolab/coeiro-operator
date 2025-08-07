@@ -25,6 +25,13 @@ export class AudioSynthesizer {
     constructor(private config: Config) {}
 
     /**
+     * 設定から音声生成時のサンプルレートを取得
+     */
+    private getSynthesisRate(): number {
+        return this.config.synthesisRate || 24000;
+    }
+
+    /**
      * 設定ファイルに基づいてチャンクモード設定を生成
      */
     private getChunkModeConfig() {
@@ -184,7 +191,7 @@ export class AudioSynthesizer {
             intonationScale: 1.0,
             prePhonemeLength: paddingMs / 1000,
             postPhonemeLength: postPaddingMs / 1000,
-            outputSamplingRate: 24000
+            outputSamplingRate: this.getSynthesisRate()
         };
 
         const startTime = Date.now();

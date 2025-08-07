@@ -38,6 +38,22 @@ npm run build
 - `prompts/`: システムプロンプトとガイド
 - `docs/`: プロジェクトドキュメント
   - `development-tips.md`: 開発テクニック・Tips集
+  - `audio-streaming-guide.md`: 音声ストリーミング再生システムガイド
+
+## 音声設定
+
+### 設定ファイル
+
+音声システムの設定は `~/.coeiro-operator/coeiroink-config.json` で管理されます。
+
+#### 主要設定項目
+
+- `defaultChunkMode`: テキスト分割モード (`'none'`, `'small'`, `'medium'`, `'large'`, `'auto'`)
+- `defaultBufferSize`: スピーカーバッファサイズ（256-8192バイト）
+- `chunkSizeSmall/Medium/Large`: 各モードでの分割サイズ（文字数）
+- `overlapRatio`: オーバーラップ比率（0.0-1.0）
+
+詳細は [`docs/audio-streaming-guide.md`](./docs/audio-streaming-guide.md) を参照してください。
 
 ## 開発時の重要なテクニック
 
