@@ -93,14 +93,23 @@ async function assignOperator(
   }
 }
 
-function extractStyleInfo(character: any): StyleInfo[] {
+interface CharacterForStyleExtraction {
+  available_styles?: Record<string, {
+    enabled: boolean;
+    name: string;
+    personality: string;
+    speaking_style: string;
+  }>;
+}
+
+function extractStyleInfo(character: CharacterForStyleExtraction): StyleInfo[] {
   return Object.entries(character.available_styles || {})
-    .filter(([_, style]) => (style as any).enabled)
+    .filter(([_, style]) => style.enabled)
     .map(([styleId, style]) => ({
       id: styleId,
-      name: (style as any).name,
-      personality: (style as any).personality,
-      speakingStyle: (style as any).speaking_style
+      name: style.name,
+      personality: style.personality,
+      speakingStyle: style.speaking_style
     }));
 }
 
@@ -140,7 +149,7 @@ function formatAssignmentResult(
 async function getTargetCharacter(
   manager: OperatorManager, 
   characterId?: string
-): Promise<{ character: any; characterId: string }> {
+): Promise<{ character: CharacterForFormatting; characterId: string }> {
   if (characterId) {
     try {
       const character = await manager.getCharacterInfo(characterId);
@@ -163,7 +172,15 @@ async function getTargetCharacter(
   }
 }
 
-function formatStylesResult(character: any, availableStyles: StyleInfo[]): string {
+interface CharacterForFormatting extends CharacterForStyleExtraction {
+  name: string;
+  personality: string;
+  speaking_style: string;
+  style_selection: string;
+  default_style: string;
+}
+
+function formatStylesResult(character: CharacterForFormatting, availableStyles: StyleInfo[]): string {
   let resultText = `🎭 ${character.name} のスタイル情報\n\n`;
   
   resultText += `📋 基本情報:\n`;
@@ -355,7 +372,7 @@ server.registerTool("operator_styles", {
   const { character } = args || {};
   
   try {
-    let targetCharacter: any;
+    let targetCharacter: CharacterForFormatting;
     let targetCharacterId: string;
     
     if (character) {
@@ -382,43 +399,10 @@ server.registerTool("operator_styles", {
     }
     
     // スタイル情報を取得
-    const availableStyles: StyleInfo[] = Object.entries(targetCharacter.available_styles || {})
-      .filter(([_, style]) => (style as any).enabled)
-      .map(([styleId, style]) => ({
-        id: styleId,
-        name: (style as any).name,
-        personality: (style as any).personality,
-        speakingStyle: (style as any).speaking_style
-      }));
+    const availableStyles: StyleInfo[] = extractStyleInfo(targetCharacter);
     
     // 結果を整形
-    let resultText = `🎭 ${targetCharacter.name} のスタイル情報\n\n`;
-    
-    // キャラクターの基本情報
-    resultText += `📋 基本情報:\n`;
-    resultText += `   性格: ${targetCharacter.personality}\n`;
-    resultText += `   話し方: ${targetCharacter.speaking_style}\n`;
-    resultText += `   スタイル選択方法: ${targetCharacter.style_selection}\n`;
-    resultText += `   デフォルトスタイル: ${targetCharacter.default_style}\n\n`;
-    
-    // 利用可能なスタイル一覧
-    if (availableStyles.length > 0) {
-      resultText += `🎨 利用可能なスタイル (${availableStyles.length}種類):\n`;
-      availableStyles.forEach((style, index) => {
-        const isDefault = style.id === targetCharacter.default_style;
-        const marker = isDefault ? '★ ' : `${index + 1}. `;
-        resultText += `${marker}${style.id}: ${style.name}\n`;
-        resultText += `   性格: ${style.personality}\n`;
-        resultText += `   話し方: ${style.speakingStyle}\n`;
-        if (isDefault) {
-          resultText += `   (デフォルトスタイル)\n`;
-        }
-        resultText += `\n`;
-      });
-      
-    } else {
-      resultText += `⚠️  利用可能なスタイルがありません。\n`;
-    }
+    const resultText = formatStylesResult(targetCharacter, availableStyles);
     
     return {
       content: [{

@@ -13,7 +13,7 @@ interface CharacterConfig {
     style_selection: string;
 }
 
-export const BUILTIN_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
+export const BUILTIN_CHARACTER_CONFIGS = {
     tsukuyomi: {
         name: "つくよみちゃん",
         personality: "冷静で丁寧、報告は簡潔で正確",
@@ -131,10 +131,10 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
         default_style: "normal",
         style_selection: "default"
     }
-};
+} as const;
 
 // 音声名からIDへのマッピング
-export const SPEAKER_NAME_TO_ID_MAP: Record<string, string> = {
+export const SPEAKER_NAME_TO_ID_MAP = {
     'つくよみちゃん': 'tsukuyomi',
     'アンジーさん': 'angie',
     'アルマちゃん': 'alma',
@@ -149,4 +149,4 @@ export const SPEAKER_NAME_TO_ID_MAP: Record<string, string> = {
     'クロワちゃん': 'kurowa',
     'AI声優-青葉': 'aoba',
     'AI声優-銀芽': 'ginga'
-};
+} as const;

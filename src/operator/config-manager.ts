@@ -79,7 +79,7 @@ export class ConfigManager {
     /**
      * JSONファイルを安全に書き込み
      */
-    async writeJsonFile(filePath: string, data: any): Promise<void> {
+    async writeJsonFile(filePath: string, data: unknown): Promise<void> {
         const tempFile = `${filePath}.tmp`;
         await writeFile(tempFile, JSON.stringify(data, null, 2), 'utf8');
         
@@ -97,9 +97,9 @@ export class ConfigManager {
      */
     async fetchAvailableVoices(): Promise<void> {
         try {
-            const coeiroinkConfig = await this.readJsonFile(this.coeiroinkConfigFile, {});
-            const host = (coeiroinkConfig as any).host || 'localhost';
-            const port = (coeiroinkConfig as any).port || '50032';
+            const coeiroinkConfig = await this.readJsonFile(this.coeiroinkConfigFile, {}) as Record<string, unknown>;
+            const host = (coeiroinkConfig.host as string) || 'localhost';
+            const port = (coeiroinkConfig.port as string) || '50032';
             
             // fetchを使用してHTTPリクエストを実行
             const response = await fetch(`http://${host}:${port}/v1/speakers`);
@@ -107,13 +107,22 @@ export class ConfigManager {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
-            const speakers = await response.json() as any[];
+            interface SpeakerData {
+                speakerName: string;
+                speakerUuid: string;
+                styles: Array<{
+                    styleId: number;
+                    styleName: string;
+                }>;
+            }
+            
+            const speakers = await response.json() as SpeakerData[];
             
             this.availableVoices = speakers.map(speaker => ({
                 id: this.speakerNameToId(speaker.speakerName),
                 name: speaker.speakerName,
                 voice_id: speaker.speakerUuid,
-                styles: speaker.styles.map((style: any) => ({
+                styles: speaker.styles.map(style => ({
                     id: style.styleId,
                     name: style.styleName,
                     style_id: style.styleId
@@ -130,7 +139,7 @@ export class ConfigManager {
      * 音声名からIDを生成（英語名への変換）
      */
     speakerNameToId(speakerName: string): string {
-        return SPEAKER_NAME_TO_ID_MAP[speakerName] || 
+        return SPEAKER_NAME_TO_ID_MAP[speakerName as keyof typeof SPEAKER_NAME_TO_ID_MAP] || 
                speakerName.toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
@@ -184,7 +193,7 @@ export class ConfigManager {
         // 利用可能な音声フォントから動的設定を生成
         if (this.availableVoices && this.availableVoices.length > 0) {
             for (const voice of this.availableVoices) {
-                const builtinConfig = BUILTIN_CHARACTER_CONFIGS[voice.id] || {
+                const builtinConfig = BUILTIN_CHARACTER_CONFIGS[voice.id as keyof typeof BUILTIN_CHARACTER_CONFIGS] || {
                     name: voice.name,
                     personality: "丁寧で親しみやすい",
                     speaking_style: "標準的な口調",
