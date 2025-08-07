@@ -227,7 +227,7 @@ export class OperatorManager {
     /**
      * JSONファイルを安全に書き込み
      */
-    async writeJsonFile(filePath: string, data: any): Promise<void> {
+    async writeJsonFile(filePath: string, data: unknown): Promise<void> {
         const tempFile = `${filePath}.tmp`;
         await writeFile(tempFile, JSON.stringify(data, null, 2), 'utf8');
         
@@ -318,7 +318,7 @@ export class OperatorManager {
     /**
      * 挨拶パターンを自動抽出
      */
-    async extractGreetingPatterns(): Promise<any> {
+    async extractGreetingPatterns(): Promise<string[]> {
         if (!this.configManager) {
             throw new Error('ConfigManager is not initialized');
         }
@@ -559,7 +559,7 @@ export class OperatorManager {
         }
 
         try {
-            const config = await this.readJsonFile(this.coeiroinkConfigFile, {}) as any;
+            const config = await this.readJsonFile(this.coeiroinkConfigFile, {}) as Record<string, unknown>;
             config.voice_id = voiceId;
             config.style_id = styleId;
             await this.writeJsonFile(this.coeiroinkConfigFile, config);

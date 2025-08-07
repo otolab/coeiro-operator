@@ -8,6 +8,7 @@
 import { readFile, access } from 'fs/promises';
 import { constants } from 'fs';
 import { SayCoeiroink, loadConfig } from './index.js';
+import type { Config } from './types.js';
 
 interface ParsedOptions {
     voice: string;
@@ -22,9 +23,11 @@ interface ParsedOptions {
 
 class SayCoeiroinkCLI {
     private sayCoeiroink: SayCoeiroink;
+    private config: Config;
 
-    constructor(sayCoeiroink: SayCoeiroink) {
+    constructor(sayCoeiroink: SayCoeiroink, config: Config) {
         this.sayCoeiroink = sayCoeiroink;
+        this.config = config;
     }
 
     async showUsage(): Promise<void> {
@@ -34,7 +37,7 @@ class SayCoeiroinkCLI {
 
 Options:
     -v voice           Specify voice (voice ID or name, use '?' to list available voices)
-    -r rate            Speech rate in words per minute (default: ${(this.sayCoeiroink as any).config.rate})
+    -r rate            Speech rate in words per minute (default: ${this.config.voice.rate})
     -o outfile         Write audio to file instead of playing (WAV format)
     -f file            Read text from file (use '-' for stdin)
     -s                 Force stream mode (auto-enabled for long text)
@@ -76,7 +79,7 @@ Examples:
     private async parseArguments(args: string[]): Promise<ParsedOptions> {
         const options: ParsedOptions = {
             voice: process.env.COEIROINK_VOICE || '',
-            rate: (this.sayCoeiroink as any).config.rate,
+            rate: this.config.voice.rate,
             inputFile: '',
             outputFile: '',
             streamMode: false,
@@ -228,7 +231,7 @@ async function main(): Promise<void> {
     await sayCoeiroink.initialize();
     await sayCoeiroink.buildDynamicConfig();
     
-    const cli = new SayCoeiroinkCLI(sayCoeiroink);
+    const cli = new SayCoeiroinkCLI(sayCoeiroink, config);
     await cli.run(process.argv.slice(2));
 }
 
