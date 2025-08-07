@@ -13,17 +13,17 @@
 ### [ultra-low-latency.json](./ultra-low-latency.json)
 - **用途**: リアルタイム対話、チャットボット
 - **特徴**: 最低レイテンシ、音声head途切れ対策最優先
-- **設定**: `latencyMode: "ultra-low"`, `splitMode: "small"`
+- **設定**: `splitMode: "small"`, クロスフェード無効、最小バッファ
 
 ### [balanced.json](./balanced.json)
 - **用途**: 一般的な用途、Webアプリケーション
 - **特徴**: レイテンシと音質のバランス
-- **設定**: `latencyMode: "balanced"`, `splitMode: "auto"`
+- **設定**: `splitMode: "auto"`, 適度なクロスフェード、バランス型バッファ
 
 ### [high-quality.json](./high-quality.json)
 - **用途**: 高品質録音、プレゼンテーション
 - **特徴**: 最高音質、ノイズ除去有効
-- **設定**: `latencyMode: "quality"`, `splitMode: "large"`
+- **設定**: `splitMode: "large"`, 高品質処理、大きなバッファ
 
 ## 設定のカスタマイズ
 

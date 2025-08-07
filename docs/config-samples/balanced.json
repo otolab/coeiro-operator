@@ -8,7 +8,6 @@
     "rate": 200
   },
   "audio": {
-    "latencyMode": "balanced",
     "splitMode": "auto",
     "processing": {
       "synthesisRate": 24000,
@@ -19,6 +18,22 @@
     "splitSettings": {
       "mediumSize": 50,
       "overlapRatio": 0.1
+    },
+    "bufferSettings": {
+      "highWaterMark": 256,
+      "lowWaterMark": 128,
+      "dynamicAdjustment": true
+    },
+    "paddingSettings": {
+      "enabled": true,
+      "prePhonemeLength": 0.01,
+      "postPhonemeLength": 0.01,
+      "firstChunkOnly": true
+    },
+    "crossfadeSettings": {
+      "enabled": true,
+      "skipFirstChunk": true,
+      "overlapSamples": 24
     }
   }
 }

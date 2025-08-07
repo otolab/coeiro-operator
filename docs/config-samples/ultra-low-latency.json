@@ -8,13 +8,28 @@
     "rate": 220
   },
   "audio": {
-    "latencyMode": "ultra-low",
     "splitMode": "small",
     "processing": {
       "synthesisRate": 24000,
       "playbackRate": 48000,
       "noiseReduction": false,
       "lowpassFilter": false
+    },
+    "bufferSettings": {
+      "highWaterMark": 64,
+      "lowWaterMark": 32,
+      "dynamicAdjustment": true
+    },
+    "paddingSettings": {
+      "enabled": false,
+      "prePhonemeLength": 0,
+      "postPhonemeLength": 0,
+      "firstChunkOnly": true
+    },
+    "crossfadeSettings": {
+      "enabled": false,
+      "skipFirstChunk": true,
+      "overlapSamples": 0
     }
   }
 }
