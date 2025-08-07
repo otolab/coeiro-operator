@@ -5,10 +5,12 @@
 
 import type {
     Config,
+    ConnectionConfig,
     StreamConfig,
     Chunk,
     AudioResult,
-    OperatorVoice
+    OperatorVoice,
+    AudioConfig
 } from './types.js';
 
 // ストリーミング設定
@@ -22,36 +24,77 @@ const STREAM_CONFIG: StreamConfig = {
 };
 
 export class AudioSynthesizer {
-    constructor(private config: Config) {}
+    private audioConfig: AudioConfig;
+    
+    constructor(private config: Config) {
+        this.audioConfig = this.getAudioConfig();
+    }
+
+    /**
+     * オーディオ設定を取得
+     */
+    private getAudioConfig(): AudioConfig {
+        const latencyMode = this.config.audio?.latencyMode || 'balanced';
+        
+        const presets = {
+            'ultra-low': {
+                splitSettings: { smallSize: 20, mediumSize: 30, largeSize: 50, overlapRatio: 0.05 },
+                paddingSettings: { enabled: false, prePhonemeLength: 0, postPhonemeLength: 0, firstChunkOnly: true }
+            },
+            'balanced': {
+                splitSettings: { smallSize: 30, mediumSize: 50, largeSize: 100, overlapRatio: 0.1 },
+                paddingSettings: { enabled: true, prePhonemeLength: 0.01, postPhonemeLength: 0.01, firstChunkOnly: true }
+            },
+            'quality': {
+                splitSettings: { smallSize: 40, mediumSize: 70, largeSize: 150, overlapRatio: 0.15 },
+                paddingSettings: { enabled: true, prePhonemeLength: 0.02, postPhonemeLength: 0.02, firstChunkOnly: false }
+            }
+        };
+
+        const preset = presets[latencyMode];
+        return {
+            latencyMode,
+            splitSettings: { ...preset.splitSettings, ...this.config.audio?.splitSettings },
+            paddingSettings: { ...preset.paddingSettings, ...this.config.audio?.paddingSettings }
+        };
+    }
 
     /**
      * 設定から音声生成時のサンプルレートを取得
      */
     private getSynthesisRate(): number {
-        return this.config.synthesisRate || 24000;
+        return this.config.audio.processing?.synthesisRate || 24000;
     }
 
     /**
-     * 設定ファイルに基づいてチャンクモード設定を生成
+     * 設定ファイルに基づいて分割モード設定を生成
      */
-    private getChunkModeConfig() {
+    private getSplitModeConfig() {
+        // latencyModeプリセットの値を優先し、個別設定で上書き
+        const splitSettings = {
+            smallSize: this.audioConfig.splitSettings?.smallSize || 30,
+            mediumSize: this.audioConfig.splitSettings?.mediumSize || 50,
+            largeSize: this.audioConfig.splitSettings?.largeSize || 100,
+            overlapRatio: this.audioConfig.splitSettings?.overlapRatio || 0.1
+        };
+        
         return {
             none: { chunkSize: Infinity, overlap: 0 },
             small: { 
-                chunkSize: this.config.chunkSizeSmall || 30, 
-                overlap: Math.round((this.config.chunkSizeSmall || 30) * (this.config.overlapRatio || 0.1))
+                chunkSize: splitSettings.smallSize || 30, 
+                overlap: Math.round((splitSettings.smallSize || 30) * (splitSettings.overlapRatio || 0.1))
             },
             medium: { 
-                chunkSize: this.config.chunkSizeMedium || 50, 
-                overlap: Math.round((this.config.chunkSizeMedium || 50) * (this.config.overlapRatio || 0.1))
+                chunkSize: splitSettings.mediumSize || 50, 
+                overlap: Math.round((splitSettings.mediumSize || 50) * (splitSettings.overlapRatio || 0.1))
             },
             large: { 
-                chunkSize: this.config.chunkSizeLarge || 100, 
-                overlap: Math.round((this.config.chunkSizeLarge || 100) * (this.config.overlapRatio || 0.1))
+                chunkSize: splitSettings.largeSize || 100, 
+                overlap: Math.round((splitSettings.largeSize || 100) * (splitSettings.overlapRatio || 0.1))
             },
             auto: { 
-                chunkSize: this.config.chunkSizeMedium || 50, 
-                overlap: Math.round((this.config.chunkSizeMedium || 50) * (this.config.overlapRatio || 0.1))
+                chunkSize: splitSettings.mediumSize || 50, 
+                overlap: Math.round((splitSettings.mediumSize || 50) * (splitSettings.overlapRatio || 0.1))
             }
         } as const;
     }
@@ -60,7 +103,7 @@ export class AudioSynthesizer {
      * サーバー接続確認
      */
     async checkServerConnection(): Promise<boolean> {
-        const url = `http://${this.config.host}:${this.config.port}/v1/speakers`;
+        const url = `http://${this.config.connection.host}:${this.config.connection.port}/v1/speakers`;
         
         try {
             const response = await fetch(url, { 
@@ -76,7 +119,7 @@ export class AudioSynthesizer {
      * 利用可能な音声一覧を取得
      */
     async listVoices(): Promise<void> {
-        const url = `http://${this.config.host}:${this.config.port}/v1/speakers`;
+        const url = `http://${this.config.connection.host}:${this.config.connection.port}/v1/speakers`;
         
         try {
             const response = await fetch(url, { 
@@ -97,7 +140,7 @@ export class AudioSynthesizer {
                 });
             });
         } catch (error) {
-            console.error(`Error: Cannot connect to COEIROINK server at http://${this.config.host}:${this.config.port}`);
+            console.error(`Error: Cannot connect to COEIROINK server at http://${this.config.connection.host}:${this.config.connection.port}`);
             console.error('Make sure the server is running.');
             throw error;
         }
@@ -106,9 +149,9 @@ export class AudioSynthesizer {
     /**
      * テキストを音切れ防止のためのオーバーラップ付きチャンクに分割
      */
-    splitTextIntoChunks(text: string, chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' = 'auto'): Chunk[] {
+    splitTextIntoChunks(text: string, splitMode: 'auto' | 'none' | 'small' | 'medium' | 'large' = 'auto'): Chunk[] {
         const chunks: Chunk[] = [];
-        const config = this.getChunkModeConfig()[chunkMode];
+        const config = this.getSplitModeConfig()[splitMode];
         const chunkSize = config.chunkSize;
         const overlap = config.overlap;
         
@@ -134,7 +177,7 @@ export class AudioSynthesizer {
      * 単一チャンクの音声合成
      */
     async synthesizeChunk(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<AudioResult> {
-        const url = `http://${this.config.host}:${this.config.port}/v1/synthesis`;
+        const url = `http://${this.config.connection.host}:${this.config.connection.port}/v1/synthesis`;
         
         // voiceInfoから音声IDとスタイルIDを取得
         let voiceId: string;
@@ -177,9 +220,20 @@ export class AudioSynthesizer {
             voiceId = voiceInfo as string;
         }
 
-        // 音切れ防止: 前後に無音パディングを追加
-        const paddingMs = chunk.isFirst ? STREAM_CONFIG.silencePaddingMs : STREAM_CONFIG.silencePaddingMs / 2;
-        const postPaddingMs = chunk.isLast ? STREAM_CONFIG.silencePaddingMs : STREAM_CONFIG.silencePaddingMs / 2;
+        // 音切れ防止: 前後に無音パディングを追加（設定に基づく）
+        let paddingMs = 0;
+        let postPaddingMs = 0;
+        
+        if (this.audioConfig.paddingSettings?.enabled) {
+            const basePrePadding = this.audioConfig.paddingSettings.prePhonemeLength || 0.01;
+            const basePostPadding = this.audioConfig.paddingSettings.postPhonemeLength || 0.01;
+            const firstChunkOnly = this.audioConfig.paddingSettings.firstChunkOnly;
+            
+            if (!firstChunkOnly || chunk.isFirst) {
+                paddingMs = (chunk.isFirst ? basePrePadding : basePrePadding / 2) * 1000;
+                postPaddingMs = (chunk.isLast ? basePostPadding : basePostPadding / 2) * 1000;
+            }
+        }
 
         const synthesisParam = {
             text: chunk.text,

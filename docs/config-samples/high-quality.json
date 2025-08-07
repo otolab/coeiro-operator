@@ -8,6 +8,7 @@
     "rate": 180
   },
   "audio": {
+    "latencyMode": "quality",
     "splitMode": "large",
     "processing": {
       "synthesisRate": 44100,

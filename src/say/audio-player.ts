@@ -11,7 +11,7 @@ import DSP from 'dsp.js';
 // @ts-ignore - node-libsamplerateには型定義がない
 import SampleRate from 'node-libsamplerate';
 import { Transform } from 'stream';
-import type { AudioResult, Chunk } from './types.js';
+import type { AudioResult, Chunk, Config, AudioConfig } from './types.js';
 
 export class AudioPlayer {
     private speaker: Speaker | null = null;
@@ -24,6 +24,67 @@ export class AudioPlayer {
     private lowpassFilterEnabled: boolean = false;
     private lowpassCutoff: number = 24000; // デフォルト24kHz
     private isInitialized = false;
+    private audioConfig: AudioConfig;
+    private config: Config;
+
+    /**
+     * AudioPlayerの初期化
+     */
+    constructor(config: Config) {
+        this.config = config;
+        this.audioConfig = this.getDefaultAudioConfig();
+    }
+
+    /**
+     * デフォルトのaudio設定を取得
+     */
+    private getDefaultAudioConfig(): AudioConfig {
+        const latencyMode = this.config.audio?.latencyMode || 'balanced';
+        
+        const presets = {
+            'ultra-low': {
+                bufferSettings: { highWaterMark: 64, lowWaterMark: 32, dynamicAdjustment: true },
+                paddingSettings: { enabled: false, prePhonemeLength: 0, postPhonemeLength: 0, firstChunkOnly: true },
+                crossfadeSettings: { enabled: false, skipFirstChunk: true, overlapSamples: 0 }
+            },
+            'balanced': {
+                bufferSettings: { highWaterMark: 256, lowWaterMark: 128, dynamicAdjustment: true },
+                paddingSettings: { enabled: true, prePhonemeLength: 0.01, postPhonemeLength: 0.01, firstChunkOnly: true },
+                crossfadeSettings: { enabled: true, skipFirstChunk: true, overlapSamples: 24 }
+            },
+            'quality': {
+                bufferSettings: { highWaterMark: 512, lowWaterMark: 256, dynamicAdjustment: false },
+                paddingSettings: { enabled: true, prePhonemeLength: 0.02, postPhonemeLength: 0.02, firstChunkOnly: false },
+                crossfadeSettings: { enabled: true, skipFirstChunk: false, overlapSamples: 48 }
+            }
+        };
+
+        const preset = presets[latencyMode];
+        return {
+            latencyMode,
+            bufferSettings: { ...preset.bufferSettings, ...this.config.audio?.bufferSettings },
+            paddingSettings: { ...preset.paddingSettings, ...this.config.audio?.paddingSettings },
+            crossfadeSettings: { ...preset.crossfadeSettings, ...this.config.audio?.crossfadeSettings }
+        };
+    }
+
+    /**
+     * 動的バッファサイズの計算
+     */
+    private calculateOptimalBufferSize(audioLength: number, chunkIndex: number = 0): number {
+        if (!this.audioConfig.bufferSettings?.dynamicAdjustment) {
+            return this.audioConfig.bufferSettings?.highWaterMark || 256;
+        }
+
+        // 音声長とチャンク位置に基づく動的調整
+        if (chunkIndex === 0 && audioLength < 1000) {
+            return Math.min(this.audioConfig.bufferSettings?.highWaterMark || 256, 64);
+        }
+        
+        if (audioLength < 1000) return this.audioConfig.bufferSettings?.highWaterMark || 256;
+        if (audioLength < 5000) return Math.max(this.audioConfig.bufferSettings?.highWaterMark || 256, 128);
+        return Math.max(this.audioConfig.bufferSettings?.highWaterMark || 256, 256);
+    }
 
     /**
      * 音声生成時のサンプルレートを設定
@@ -71,10 +132,12 @@ export class AudioPlayer {
     async initialize(): Promise<boolean> {
         try {
             // speakerライブラリを使用（ネイティブ音声出力）
+            const bufferSize = this.audioConfig.bufferSettings?.highWaterMark || 256;
             this.speaker = new Speaker({
                 channels: this.channels,
                 bitDepth: this.bitDepth,
-                sampleRate: this.playbackRate
+                sampleRate: this.playbackRate,
+                highWaterMark: bufferSize
             });
             
             // ノイズ除去が有効な場合はEchogardenを初期化
@@ -96,7 +159,7 @@ export class AudioPlayer {
      */
     async playAudioStream(audioResult: AudioResult, bufferSize?: number): Promise<void> {
         if (!this.isInitialized) {
-            throw new Error('AudioPlayer is not initialized');
+            throw new Error('音声プレーヤーが初期化されていません');
         }
 
         try {
@@ -307,7 +370,7 @@ export class AudioPlayer {
     /**
      * PCMデータを直接スピーカーに再生
      */
-    private async playPCMData(pcmData: Uint8Array, bufferSize?: number): Promise<void> {
+    private async playPCMData(pcmData: Uint8Array, bufferSize?: number, chunk?: Chunk): Promise<void> {
         return new Promise((resolve, reject) => {
             const speaker = new Speaker({
                 channels: 1,        // モノラル
@@ -325,8 +388,18 @@ export class AudioPlayer {
                 reject(error);
             });
 
+            // クロスフェード処理を適用（設定に基づく）
+            let processedData = pcmData;
+            if (this.audioConfig.crossfadeSettings?.enabled && chunk) {
+                const skipFirst = this.audioConfig.crossfadeSettings.skipFirstChunk && chunk.isFirst;
+                if (!skipFirst) {
+                    const overlapSamples = this.audioConfig.crossfadeSettings.overlapSamples || 24;
+                    processedData = this.applyCrossfade(pcmData, overlapSamples, chunk.isFirst);
+                }
+            }
+
             // PCMデータをスピーカーに書き込み
-            speaker.end(Buffer.from(pcmData));
+            speaker.end(Buffer.from(processedData));
         });
     }
 
@@ -445,23 +518,42 @@ export class AudioPlayer {
     }
 
     /**
-     * クロスフェード処理を適用
+     * クロスフェード処理を適用（改良版）
      */
-    applyCrossfade(pcmData: Uint8Array, overlapSamples: number): Uint8Array {
-        // 簡単なクロスフェード実装（音切れ軽減）
+    applyCrossfade(pcmData: Uint8Array, overlapSamples: number, isFirstChunk: boolean = false): Uint8Array {
         // 副作用を避けるため、新しい配列を作成して返す
         const result = new Uint8Array(pcmData);
         
-        if (overlapSamples > 0 && overlapSamples < pcmData.length / 2) {
+        // 先頭チャンクで音声途切れを防ぐため、条件を厳格化
+        if (overlapSamples > 0 && overlapSamples < pcmData.length / 2 && !isFirstChunk) {
             for (let i = 0; i < overlapSamples * 2; i += 2) {
-                const factor = i / (overlapSamples * 2);
+                // より自然なフェード曲線（smoothstep）を使用
+                const t = i / (overlapSamples * 2);
+                const factor = this.smoothstep(t);
+                
                 const sample = (pcmData[i] | (pcmData[i + 1] << 8));
-                const fadedSample = Math.floor(sample * factor);
-                result[i] = fadedSample & 0xFF;
-                result[i + 1] = (fadedSample >> 8) & 0xFF;
+                // 符号付き16bit整数として扱う
+                const signedSample = sample < 32768 ? sample : sample - 65536;
+                const fadedSample = Math.floor(signedSample * factor);
+                
+                // 16bit範囲でクランプして無符号に戻す
+                const clampedSample = Math.max(-32768, Math.min(32767, fadedSample));
+                const unsignedSample = clampedSample < 0 ? clampedSample + 65536 : clampedSample;
+                
+                result[i] = unsignedSample & 0xFF;
+                result[i + 1] = (unsignedSample >> 8) & 0xFF;
             }
         }
         
         return result;
+    }
+
+    /**
+     * より自然なフェード曲線（smoothstep関数）
+     */
+    private smoothstep(t: number): number {
+        // t * t * (3 - 2 * t) でイーズイン・イーズアウト
+        const clamped = Math.max(0, Math.min(1, t));
+        return clamped * clamped * (3 - 2 * clamped);
     }
 }

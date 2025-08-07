@@ -8,15 +8,20 @@ import type { Config, Chunk, OperatorVoice, AudioResult } from './types.js';
 // fetchのモック
 global.fetch = jest.fn();
 
+// 他のモックの設定
+jest.mock('echogarden', () => ({}));
+jest.mock('dsp.js', () => ({}));
+jest.mock('node-libsamplerate', () => ({}));
+
 describe('AudioSynthesizer', () => {
     let audioSynthesizer: AudioSynthesizer;
     let config: Config;
 
     beforeEach(() => {
         config = {
-            host: 'localhost',
-            port: '50032',
-            rate: 200
+            connection: { host: 'localhost', port: '50032' },
+            voice: { rate: 200 },
+            audio: { latencyMode: 'balanced' }
         };
         audioSynthesizer = new AudioSynthesizer(config);
         jest.clearAllMocks();

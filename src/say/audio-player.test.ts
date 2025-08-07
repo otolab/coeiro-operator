@@ -3,7 +3,7 @@
  */
 
 import { AudioPlayer } from './audio-player.js';
-import type { AudioResult, Chunk } from './types.js';
+import type { AudioResult, Chunk, Config } from './types.js';
 import Speaker from 'speaker';
 import { readFile, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
@@ -12,6 +12,9 @@ import { join } from 'path';
 // モックの設定
 jest.mock('speaker');
 jest.mock('fs/promises');
+jest.mock('echogarden', () => ({}));
+jest.mock('dsp.js', () => ({}));
+jest.mock('node-libsamplerate', () => ({}));
 
 const MockSpeaker = Speaker as jest.MockedClass<typeof Speaker>;
 const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
@@ -19,9 +22,15 @@ const mockWriteFile = writeFile as jest.MockedFunction<typeof writeFile>;
 
 describe('AudioPlayer', () => {
     let audioPlayer: AudioPlayer;
+    let defaultConfig: Config;
 
     beforeEach(() => {
-        audioPlayer = new AudioPlayer();
+        defaultConfig = {
+            connection: { host: 'localhost', port: '50032' },
+            voice: { rate: 200 },
+            audio: { latencyMode: 'balanced' }
+        };
+        audioPlayer = new AudioPlayer(defaultConfig);
         jest.clearAllMocks();
     });
 
@@ -39,7 +48,8 @@ describe('AudioPlayer', () => {
             expect(MockSpeaker).toHaveBeenCalledWith({
                 channels: 1,
                 bitDepth: 16,
-                sampleRate: 24000
+                sampleRate: 48000,
+                highWaterMark: 256
             });
         });
 
@@ -190,15 +200,15 @@ describe('AudioPlayer', () => {
     describe('applyCrossfade', () => {
         test('オーバーラップなしの場合、元のデータがそのまま返されること', () => {
             const originalData = new Uint8Array([100, 150, 200, 250]);
-            const result = audioPlayer.applyCrossfade(originalData, 0);
+            const result = audioPlayer.applyCrossfade(originalData, 0, false);
             
             expect(result).toEqual(originalData);
             expect(result).not.toBe(originalData); // 新しい配列であることを確認
         });
 
-        test('オーバーラップありの場合、フェードが適用されること', () => {
+        test('オーバーラップありの場合（非先頭チャンク）、フェードが適用されること', () => {
             const originalData = new Uint8Array([100, 150, 200, 250, 100, 150]);
-            const result = audioPlayer.applyCrossfade(originalData, 1);
+            const result = audioPlayer.applyCrossfade(originalData, 1, false);
             
             expect(result).toBeInstanceOf(Uint8Array);
             expect(result.length).toBe(originalData.length);
@@ -206,9 +216,16 @@ describe('AudioPlayer', () => {
             expect(result[0]).toBeLessThan(originalData[0]);
         });
 
+        test('先頭チャンクの場合、フェードがスキップされること', () => {
+            const originalData = new Uint8Array([100, 150, 200, 250]);
+            const result = audioPlayer.applyCrossfade(originalData, 1, true);
+            
+            expect(result).toEqual(originalData);
+        });
+
         test('オーバーラップが大きすぎる場合、処理がスキップされること', () => {
             const originalData = new Uint8Array([100, 150]);
-            const result = audioPlayer.applyCrossfade(originalData, 10); // データサイズより大きい
+            const result = audioPlayer.applyCrossfade(originalData, 10, false); // データサイズより大きい
             
             expect(result).toEqual(originalData);
         });

@@ -12,6 +12,9 @@ import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
 import type {
     Config,
+    ConnectionConfig,
+    VoiceConfig, 
+    AudioConfig,
     StreamConfig,
     Chunk,
     AudioResult,
@@ -24,17 +27,18 @@ import type {
 
 // デフォルト設定
 const DEFAULT_CONFIG: Config = {
-    host: 'localhost',
-    port: '50032',
-    rate: 200,
-    // 音声品質・パフォーマンス制御のデフォルト値
-    defaultChunkMode: 'auto',
-    defaultBufferSize: 1024,
-    // ストリーミング制御のデフォルト値
-    chunkSizeSmall: 30,
-    chunkSizeMedium: 50,
-    chunkSizeLarge: 100,
-    overlapRatio: 0.1  // 10%のオーバーラップ
+    connection: {
+        host: 'localhost',
+        port: '50032'
+    },
+    voice: {
+        rate: 200
+    },
+    audio: {
+        latencyMode: 'balanced',
+        splitMode: 'auto',
+        bufferSize: 1024
+    }
 };
 
 // ストリーミング設定
@@ -82,6 +86,7 @@ async function getConfigPath(filename: string): Promise<string> {
     return join(configDir, filename);
 }
 
+
 /**
  * 設定ファイルを読み込み
  */
@@ -98,8 +103,8 @@ export async function loadConfig(configFile: string | null = null): Promise<Conf
     
     try {
         const configData = await readFile(configFile, 'utf8');
-        const config = JSON.parse(configData);
-        return { ...DEFAULT_CONFIG, ...config };
+        const rawConfig = JSON.parse(configData);
+        return { ...DEFAULT_CONFIG, ...rawConfig };
     } catch (error) {
         console.error(`設定ファイル読み込みエラー: ${(error as Error).message}`);
         return DEFAULT_CONFIG;
@@ -116,7 +121,7 @@ export class SayCoeiroink {
     constructor(config: Config | null = null) {
         this.config = config || DEFAULT_CONFIG;
         this.operatorManager = new OperatorManager();
-        this.audioPlayer = new AudioPlayer();
+        this.audioPlayer = new AudioPlayer(this.config);
         this.audioSynthesizer = new AudioSynthesizer(this.config);
         
         // SpeechQueueを初期化（処理コールバックを渡す）
@@ -142,22 +147,26 @@ export class SayCoeiroink {
     }
 
     async initializeAudioPlayer(): Promise<boolean> {
-        // 設定から音声生成時サンプルレートを適用
-        const synthesisRate = this.config.synthesisRate || 24000;
-        this.audioPlayer.setSynthesisRate(synthesisRate);
+        // プリセットベースの設定がaudio-player.ts内で適用されるため、
+        // 個別設定の上書きのみここで行う
+        const audioConfig = this.config.audio;
         
-        // 設定から再生時サンプルレートを適用
-        const playbackRate = this.config.playbackRate || 48000;
-        this.audioPlayer.setPlaybackRate(playbackRate);
+        if (audioConfig?.processing?.synthesisRate) {
+            this.audioPlayer.setSynthesisRate(audioConfig.processing.synthesisRate);
+        }
         
-        // 設定からノイズ除去機能を適用
-        const noiseReduction = this.config.noiseReduction || false;
-        this.audioPlayer.setNoiseReduction(noiseReduction);
+        if (audioConfig?.processing?.playbackRate) {
+            this.audioPlayer.setPlaybackRate(audioConfig.processing.playbackRate);
+        }
         
-        // 設定からローパスフィルターを適用
-        const lowpassFilter = this.config.lowpassFilter || false;
-        const lowpassCutoff = this.config.lowpassCutoff || 24000;
-        this.audioPlayer.setLowpassFilter(lowpassFilter, lowpassCutoff);
+        if (audioConfig?.processing?.noiseReduction !== undefined) {
+            this.audioPlayer.setNoiseReduction(audioConfig.processing.noiseReduction);
+        }
+        
+        if (audioConfig?.processing?.lowpassFilter !== undefined) {
+            const cutoff = audioConfig.processing.lowpassCutoff || 24000;
+            this.audioPlayer.setLowpassFilter(audioConfig.processing.lowpassFilter, cutoff);
+        }
         
         return await this.audioPlayer.initialize();
     }
@@ -204,7 +213,7 @@ export class SayCoeiroink {
      * 設定に基づいてストリーミングモードを使用するかを判定
      */
     private shouldUseStreaming(text: string): boolean {
-        const chunkMode = this.config.defaultChunkMode || 'auto';
+        const chunkMode = this.config.audio?.splitMode || 'auto';
         
         switch (chunkMode) {
             case 'none':
@@ -273,12 +282,12 @@ export class SayCoeiroink {
     async synthesizeTextInternal(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         const {
             voice = null,
-            rate = this.config.rate,
+            rate = this.config.voice?.rate || 200,
             outputFile = null,
             streamMode = false,
             style = null,
-            chunkMode = this.config.defaultChunkMode || 'auto',
-            bufferSize = this.config.defaultBufferSize || 1024
+            chunkMode = this.config.audio?.splitMode || 'auto',
+            bufferSize = this.config.audio?.bufferSize || 1024
         } = options;
 
         // 音声選択の優先順位処理
@@ -290,7 +299,7 @@ export class SayCoeiroink {
                 selectedVoice = operatorVoice;
             } else {
                 // 2. フォールバック: 設定ファイルのデフォルト音声を使用
-                selectedVoice = this.config.voice_id || 'b28bb401-bc43-c9c7-77e4-77a2bbb4b283';
+                selectedVoice = this.config.voice?.default_voice_id || 'b28bb401-bc43-c9c7-77e4-77a2bbb4b283';
             }
         }
 
@@ -323,7 +332,9 @@ export class SayCoeiroink {
 
         // サーバー接続確認
         if (!(await this.checkServerConnection())) {
-            throw new Error(`Cannot connect to COEIROINK server (http://${this.config.host}:${this.config.port})`);
+            const host = this.config.connection?.host || 'localhost';
+            const port = this.config.connection?.port || '50032';
+            throw new Error(`Cannot connect to COEIROINK server (http://${host}:${port})`);
         }
 
         const speed = this.convertRateToSpeed(rate);
