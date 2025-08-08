@@ -154,6 +154,7 @@ export class AudioPlayer {
         try {
             // speakerライブラリを使用（ネイティブ音声出力）
             const bufferSize = this.audioConfig.bufferSettings?.highWaterMark || BUFFER_SIZES.PRESETS.BALANCED.HIGH_WATER_MARK;
+            
             this.speaker = new Speaker({
                 channels: this.channels,
                 bitDepth: this.bitDepth,
@@ -184,6 +185,8 @@ export class AudioPlayer {
         }
 
         try {
+            logger.log(`音声再生: チャンク${audioResult.chunk.index}`);
+            
             // WAVデータからPCMデータを抽出
             const pcmData = this.extractPCMFromWAV(audioResult.audioBuffer);
             
@@ -211,6 +214,8 @@ export class AudioPlayer {
      * 処理順序: 1) リサンプリング 2) ローパスフィルター 3) ノイズリダクション 4) Speaker出力
      */
     private async processAudioStreamPipeline(pcmData: Uint8Array): Promise<void> {
+        logger.log('高品質音声処理パイプライン開始');
+        
         return new Promise((resolve, reject) => {
             const streamSpeaker = new Speaker({
                 channels: this.channels,
@@ -223,6 +228,7 @@ export class AudioPlayer {
             });
 
             streamSpeaker.on('error', (error) => {
+                logger.error(`ストリームスピーカーエラー: ${error.message}`);
                 reject(new Error(`音声再生エラー: ${error.message}`));
             });
 
@@ -254,6 +260,7 @@ export class AudioPlayer {
                 resampleTransform.end();
 
             } catch (error) {
+                logger.error(`パイプライン構築エラー: ${(error as Error).message}`);
                 reject(new Error(`パイプライン構築エラー: ${(error as Error).message}`));
             }
         });
@@ -411,16 +418,19 @@ export class AudioPlayer {
             });
 
             speaker.on('error', (error) => {
+                logger.error(`Speaker再生エラー: ${error.message}`);
                 reject(error);
             });
 
             // クロスフェード処理を適用（設定に基づく）
             let processedData = pcmData;
-            if (this.audioConfig.crossfadeSettings?.enabled && chunk) {
-                const skipFirst = this.audioConfig.crossfadeSettings.skipFirstChunk && chunk.isFirst;
+            const crossfadeEnabled = this.audioConfig.crossfadeSettings?.enabled && chunk;
+            
+            if (crossfadeEnabled) {
+                const skipFirst = this.audioConfig.crossfadeSettings?.skipFirstChunk && chunk?.isFirst;
                 if (!skipFirst) {
-                    const overlapSamples = this.audioConfig.crossfadeSettings.overlapSamples || 24;
-                    processedData = this.applyCrossfade(pcmData, overlapSamples, chunk.isFirst);
+                    const overlapSamples = this.audioConfig.crossfadeSettings?.overlapSamples || 24;
+                    processedData = this.applyCrossfade(pcmData, overlapSamples, chunk?.isFirst || false);
                 }
             }
 

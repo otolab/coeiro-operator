@@ -106,10 +106,6 @@ export class AudioSynthesizer {
                 chunkSize: splitSettings.largeSize, 
                 overlap: Math.round(splitSettings.largeSize * splitSettings.overlapRatio)
             },
-            auto: { 
-                chunkSize: splitSettings.mediumSize, 
-                overlap: Math.round(splitSettings.mediumSize * splitSettings.overlapRatio)
-            },
             punctuation: { 
                 chunkSize: SPLIT_SETTINGS.PUNCTUATION.MAX_CHUNK_SIZE, 
                 overlap: SPLIT_SETTINGS.PUNCTUATION.OVERLAP_CHARS
@@ -152,6 +148,31 @@ export class AudioSynthesizer {
                     sentences.push(sentence);
                 }
             }
+        }
+        
+        // 短いテキストの場合は全体を1つのチャンクとして扱う
+        if (text.trim().length > 0 && sentences.length === 0) {
+            chunks.push({
+                text: text.trim(),
+                index: 0,
+                isFirst: true,
+                isLast: true,
+                overlap: 0
+            });
+            return chunks;
+        }
+        
+        // 短いテキスト全体を結合して処理
+        if (sentences.length > 0 && sentences.every(s => s.length < config.MIN_CHUNK_SIZE)) {
+            const combinedText = sentences.join('');
+            chunks.push({
+                text: combinedText,
+                index: 0,
+                isFirst: true,
+                isLast: true,
+                overlap: 0
+            });
+            return chunks;
         }
         
         for (let i = 0; i < sentences.length; i++) {
@@ -201,6 +222,15 @@ export class AudioSynthesizer {
         // 最後のチャンクのisLastフラグを設定
         if (chunks.length > 0) {
             chunks[chunks.length - 1].isLast = true;
+        } else {
+            // 全てのチャンクが最小サイズ未満の場合、元のテキストを1つのチャンクとして作成
+            chunks.push({
+                text: text.trim(),
+                index: 0,
+                isFirst: true,
+                isLast: true,
+                overlap: 0
+            });
         }
         
         return chunks;
@@ -251,7 +281,7 @@ export class AudioSynthesizer {
     /**
      * テキストを音切れ防止のためのオーバーラップ付きチャンクに分割
      */
-    splitTextIntoChunks(text: string, splitMode: 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): Chunk[] {
+    splitTextIntoChunks(text: string, splitMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): Chunk[] {
         // 句読点分割の場合は専用処理
         if (splitMode === 'punctuation') {
             return this.splitByPunctuation(text);
@@ -284,6 +314,8 @@ export class AudioSynthesizer {
      * 単一チャンクの音声合成
      */
     async synthesizeChunk(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<AudioResult> {
+        logger.log(`音声合成: チャンク${chunk.index} "${chunk.text.substring(0, 30)}${chunk.text.length > 30 ? '...' : ''}"`);
+        
         const url = `http://${this.config.connection.host}:${this.config.connection.port}/v1/synthesis`;
         
         // voiceInfoから音声IDとスタイルIDを取得
@@ -317,6 +349,7 @@ export class AudioSynthesizer {
                     // フォールバック: default_styleが見つからない場合は最初のスタイルを使用
                     if (!selectedStyle) {
                         selectedStyle = availableStyles[0];
+                        logger.warn(`指定スタイルが見つからず最初のスタイルを使用: ${selectedStyle?.styleId}`);
                     }
                     
                     styleId = selectedStyle?.style_id || 0;
@@ -331,7 +364,7 @@ export class AudioSynthesizer {
                 styleId = await this.voiceProvider.getFirstStyleId(voiceId);
             } catch (error) {
                 // API呼び出しが失敗した場合は0を使用（従来の動作）
-                console.warn('Failed to fetch speaker styles, using styleId=0:', error);
+                logger.warn(`スタイルID取得失敗、styleId=0を使用: ${(error as Error).message}`);
                 styleId = 0;
             }
         }
@@ -376,6 +409,8 @@ export class AudioSynthesizer {
             });
 
             if (!response.ok) {
+                const errorText = await response.text().catch(() => 'レスポンス読み取り失敗');
+                logger.error(`COEIROINK APIエラー: ${response.status} ${response.statusText}, body: ${errorText}`);
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
 
@@ -388,6 +423,7 @@ export class AudioSynthesizer {
                 latency
             };
         } catch (error) {
+            logger.error(`チャンク${chunk.index}合成エラー詳細:`, error);
             throw new Error(`チャンク${chunk.index}合成エラー: ${(error as Error).message}`);
         }
     }
@@ -406,9 +442,9 @@ export class AudioSynthesizer {
     /**
      * ストリーミング音声合成
      */
-    async* synthesizeStream(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): AsyncGenerator<AudioResult> {
+    async* synthesizeStream(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): AsyncGenerator<AudioResult> {
         const chunks = this.splitTextIntoChunks(text, chunkMode);
-
+        
         for (const chunk of chunks) {
             const result = await this.synthesizeChunk(chunk, voiceId, speed);
             yield result;

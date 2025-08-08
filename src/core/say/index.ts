@@ -237,13 +237,12 @@ export class SayCoeiroink {
                 return text.length > 100;
             case 'punctuation':
                 return text.includes('。') || text.length > 150; // 句点があるか長いテキスト
-            case 'auto':
             default:
-                return text.length > STREAM_CONFIG.chunkSizeChars;
+                return text.includes('。') || text.length > 150; // デフォルトは句読点モード
         }
     }
 
-    async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation', bufferSize?: number): Promise<void> {
+    async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation', bufferSize?: number): Promise<void> {
         // 真のストリーミング再生：ジェネレータを直接AudioPlayerに渡す
         await this.audioPlayer.playStreamingAudio(
             this.audioSynthesizer.synthesizeStream(text, voiceId, speed, chunkMode),
@@ -293,6 +292,8 @@ export class SayCoeiroink {
 
     // 内部用の実際の音声合成処理
     async synthesizeTextInternal(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+        logger.info(`音声合成開始: テキスト="${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+        
         const {
             voice = null,
             rate = this.config.voice?.rate || 200,
@@ -303,25 +304,30 @@ export class SayCoeiroink {
             bufferSize = this.config.audio?.bufferSize || BUFFER_SIZES.DEFAULT,
             allowFallback = true  // デフォルトフォールバックを許可するかどうか
         } = options;
-
+        
         // 音声選択の優先順位処理
         let selectedVoice: string | OperatorVoice | null = voice;
         if (!selectedVoice) {
             // 1. operator-manager から現在のオペレータの音声を取得
             const operatorVoice = await this.getCurrentOperatorVoice();
             if (operatorVoice) {
+                logger.info(`オペレータ音声を使用: ${operatorVoice.character?.name || 'Unknown'} (voice_id: ${operatorVoice.voice_id})`);
                 selectedVoice = operatorVoice;
             } else if (allowFallback) {
                 // 2. フォールバック: 設定ファイルのデフォルト音声を使用（CLIのみ）
-                selectedVoice = this.config.voice?.default_voice_id || DEFAULT_VOICE.ID;
+                const fallbackVoiceId = this.config.voice?.default_voice_id || DEFAULT_VOICE.ID;
+                logger.info(`フォールバック音声を使用: ${fallbackVoiceId}`);
+                selectedVoice = fallbackVoiceId;
             } else {
                 // MCPの場合はオペレータが必要
+                logger.error('オペレータが割り当てられておらず、フォールバックも無効です');
                 throw new Error('オペレータが割り当てられていません。まず operator_assign を実行してください。');
             }
         }
 
         // 音声が取得できない場合は最後のフォールバック
         if (!selectedVoice) {
+            logger.error('音声が選択できませんでした');
             throw new Error('音声が指定されておらず、オペレータも割り当てられていません');
         }
 
@@ -351,12 +357,14 @@ export class SayCoeiroink {
         if (!(await this.checkServerConnection())) {
             const host = this.config.connection?.host || 'localhost';
             const port = this.config.connection?.port || '50032';
+            logger.error(`COEIROINKサーバーに接続できません: http://${host}:${port}`);
             throw new Error(`Cannot connect to COEIROINK server (http://${host}:${port})`);
         }
 
         const speed = this.convertRateToSpeed(rate);
         
         if (outputFile) {
+            logger.info(`ファイル出力モード: ${outputFile}`);
             // ファイル出力モード：ストリーミング合成してファイルに保存
             const audioChunks: ArrayBuffer[] = [];
             for await (const audioResult of this.audioSynthesizer.synthesizeStream(text, selectedVoice, speed, chunkMode)) {
@@ -377,12 +385,16 @@ export class SayCoeiroink {
             await this.saveAudio(combinedBuffer, outputFile);
             return { success: true, outputFile, mode: 'file' };
         } else {
+            logger.info('ストリーミング再生モード');
             // 統一されたストリーミング再生
             if (!(await this.initializeAudioPlayer())) {
+                logger.error('音声プレーヤーの初期化に失敗');
                 throw new Error('音声プレーヤーの初期化に失敗しました');
             }
             
+            logger.info('音声ストリーミング再生開始...');
             await this.streamSynthesizeAndPlay(text, selectedVoice, speed, chunkMode, bufferSize);
+            logger.info('音声ストリーミング再生完了');
             return { success: true, mode: 'streaming' };
         }
     }

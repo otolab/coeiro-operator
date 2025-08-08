@@ -114,7 +114,7 @@ describe('latencyModeプリセット機能', () => {
             const config: Config = {
                 connection: { host: 'localhost', port: '50032' },
                 voice: { rate: 200 },
-                audio: { splitMode: 'auto' }
+                audio: { splitMode: 'punctuation' }
             };
 
             const audioPlayer = new AudioPlayer(config);

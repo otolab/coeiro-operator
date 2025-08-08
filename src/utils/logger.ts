@@ -114,6 +114,11 @@ class Logger {
     this.writeLog('debug', message, ...args);
   }
 
+  // verboseのエイリアスとしてlogメソッドを追加
+  log(message: string, ...args: unknown[]): void {
+    this.writeLog('verbose', message, ...args);
+  }
+
   // 設定取得・変更
   getLevel(): LogLevel {
     return this.config.level;

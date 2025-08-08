@@ -10,6 +10,7 @@ import { constants } from 'fs';
 import { SayCoeiroink, loadConfig } from '../core/say/index.js';
 import type { Config } from '../core/say/types.js';
 import { BUFFER_SIZES } from '../core/say/constants.js';
+import { LoggerPresets } from '../utils/logger.js';
 
 interface ParsedOptions {
     voice: string;
@@ -18,7 +19,7 @@ interface ParsedOptions {
     outputFile: string;
     streamMode: boolean;
     text: string;
-    chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation';
+    chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
     bufferSize: number;
 }
 
@@ -42,16 +43,16 @@ Options:
     -o outfile         Write audio to file instead of playing (WAV format)
     -f file            Read text from file (use '-' for stdin)
     -s                 Force stream mode (auto-enabled for long text)
-    --chunk-mode mode  Text splitting mode: auto|none|small|medium|large (default: auto)
+    --chunk-mode mode  Text splitting mode: punctuation|none|small|medium|large (default: punctuation)
     --buffer-size size Audio buffer size in bytes: ${BUFFER_SIZES.MIN}-${BUFFER_SIZES.MAX} (default: ${BUFFER_SIZES.DEFAULT})
     -h                 Show this help
 
 Chunk Modes:
     none    No text splitting (best for long text, natural speech)
     small   30 chars (low latency, interactive use)
-    medium  50 chars (balanced, default for auto)
+    medium  50 chars (balanced)
     large   100 chars (stability focused)
-    auto    Automatic selection based on text length
+    punctuation  Sentence-based splitting (default, natural Japanese)
 
 Buffer Sizes:
     256     Lowest latency, higher CPU usage
@@ -132,10 +133,10 @@ Examples:
                 
                 case '--chunk-mode':
                     const chunkMode = args[i + 1];
-                    if (!['auto', 'none', 'small', 'medium', 'large', 'punctuation'].includes(chunkMode)) {
-                        throw new Error(`Invalid chunk mode: ${chunkMode}. Must be one of: auto, none, small, medium, large, punctuation`);
+                    if (!['none', 'small', 'medium', 'large', 'punctuation'].includes(chunkMode)) {
+                        throw new Error(`Invalid chunk mode: ${chunkMode}. Must be one of: none, small, medium, large, punctuation`);
                     }
-                    options.chunkMode = chunkMode as 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation';
+                    options.chunkMode = chunkMode as 'none' | 'small' | 'medium' | 'large' | 'punctuation';
                     i++;
                     break;
                 
@@ -226,6 +227,9 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // メイン実行関数
 async function main(): Promise<void> {
+    // CLIモードでは通常ログレベル（info）を使用
+    LoggerPresets.cli();
+    
     const config = await loadConfig();
     const sayCoeiroink = new SayCoeiroink(config);
     

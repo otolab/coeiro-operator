@@ -245,4 +245,4 @@ export const STREAM_SETTINGS = {
 // ヘルパー型定義
 // ================================
 export type LatencyMode = 'ultra-low' | 'balanced' | 'quality';
-export type SplitMode = 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation';
+export type SplitMode = 'none' | 'small' | 'medium' | 'large' | 'punctuation';

@@ -34,13 +34,13 @@ describe('AudioSynthesizer', () => {
     });
 
     describe('splitTextIntoChunks', () => {
-        test('短いテキストが単一チャンクに分割されること', () => {
-            const text = 'こんにちは';
+        test('短いテキストが単一チャンクに分割されること（句読点モード）', () => {
+            const text = 'こんにちは、世界の皆さん。'; // 最小文字数以上で句点あり
             const chunks = audioSynthesizer.splitTextIntoChunks(text);
 
             expect(chunks).toHaveLength(1);
             expect(chunks[0]).toEqual({
-                text: 'こんにちは',
+                text: 'こんにちは、世界の皆さん。',
                 index: 0,
                 isFirst: true,
                 isLast: true,
@@ -48,9 +48,9 @@ describe('AudioSynthesizer', () => {
             });
         });
 
-        test('長いテキストが複数チャンクに分割されること', () => {
+        test('長いテキストが複数チャンクに分割されること（mediumモード）', () => {
             const text = 'a'.repeat(120); // 50文字のデフォルトチャンクサイズを超える
-            const chunks = audioSynthesizer.splitTextIntoChunks(text);
+            const chunks = audioSynthesizer.splitTextIntoChunks(text, 'medium'); // mediumモードを明示的に指定
 
             expect(chunks.length).toBeGreaterThan(1);
             expect(chunks[0].isFirst).toBe(true);
@@ -59,9 +59,9 @@ describe('AudioSynthesizer', () => {
             expect(chunks[chunks.length - 1].isLast).toBe(true);
         });
 
-        test('チャンク間のオーバーラップが正しく設定されること', () => {
+        test('チャンク間のオーバーラップが正しく設定されること（mediumモード）', () => {
             const text = 'a'.repeat(100);
-            const chunks = audioSynthesizer.splitTextIntoChunks(text);
+            const chunks = audioSynthesizer.splitTextIntoChunks(text, 'medium');
 
             // 2番目以降のチャンクにはオーバーラップがある
             for (let i = 1; i < chunks.length; i++) {
