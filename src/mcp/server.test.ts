@@ -2,12 +2,12 @@
  * src/index.test.ts: MCPサーバーテスト（allowFallback動作確認）
  */
 
-import { SayCoeiroink } from './say/index.js';
-import type { SynthesizeResult } from './say/types.js';
+import { SayCoeiroink } from '../core/say/index.js';
+import type { SynthesizeResult } from '../core/say/types.js';
 
 // モックの設定
-jest.mock('./say/index.js');
-jest.mock('./operator/index.js');
+jest.mock('../core/say/index.js');
+jest.mock('../core/operator/index.js');
 
 const MockSayCoeiroink = SayCoeiroink as jest.MockedClass<typeof SayCoeiroink>;
 

@@ -5,7 +5,7 @@
  * operator-managerスクリプトのJavaScript版
  */
 
-import OperatorManager from './index.js';
+import OperatorManager from '../core/operator/index.js';
 
 interface AssignResult {
     operatorId: string;

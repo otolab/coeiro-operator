@@ -2,14 +2,14 @@
   "name": "coeiro-operator",
   "version": "1.0.0",
   "description": "MCP server for COEIROINK voice synthesis and operator management",
-  "main": "dist/index.js",
+  "main": "dist/mcp/server.js",
   "bin": {
-    "coeiro-operator": "./dist/index.js",
+    "coeiro-operator": "./dist/mcp/server.js",
     "operator-manager": "./scripts/operator-manager",
     "say-coeiroink": "./scripts/say-coeiroink"
   },
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node dist/mcp/server.js",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "test": "jest",

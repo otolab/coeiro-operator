@@ -12,13 +12,14 @@ import DSP from 'dsp.js';
 import SampleRate from 'node-libsamplerate';
 import { Transform } from 'stream';
 import type { AudioResult, Chunk, Config, AudioConfig } from './types.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../../utils/logger.js';
 import {
     SAMPLE_RATES,
     AUDIO_FORMAT,
     BUFFER_SIZES,
     FILTER_SETTINGS,
-    CROSSFADE_SETTINGS
+    CROSSFADE_SETTINGS,
+    PADDING_SETTINGS
 } from './constants.js';
 
 export class AudioPlayer {

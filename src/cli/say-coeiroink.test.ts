@@ -2,14 +2,14 @@
  * src/say/cli.test.ts: CLIクラステスト
  */
 
-import SayCoeiroinkCLI from './cli.js';
+import SayCoeiroinkCLI from './say-coeiroink.js';
 import { readFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
 // モックの設定
 jest.mock('fs/promises');
-jest.mock('./index.js');
+jest.mock('../core/say/index.js');
 
 const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
 

@@ -12,7 +12,7 @@ import type {
     OperatorVoice,
     AudioConfig
 } from './types.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../../utils/logger.js';
 import {
     SAMPLE_RATES,
     SPLIT_SETTINGS,

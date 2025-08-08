@@ -4,7 +4,7 @@
  */
 
 import type { SpeechTask, SynthesizeOptions, SynthesizeResult } from './types.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../../utils/logger.js';
 
 export class SpeechQueue {
     private speechQueue: SpeechTask[] = [];

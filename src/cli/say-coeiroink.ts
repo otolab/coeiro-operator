@@ -7,9 +7,9 @@
 
 import { readFile, access } from 'fs/promises';
 import { constants } from 'fs';
-import { SayCoeiroink, loadConfig } from './index.js';
-import type { Config } from './types.js';
-import { BUFFER_SIZES } from './constants.js';
+import { SayCoeiroink, loadConfig } from '../core/say/index.js';
+import type { Config } from '../core/say/types.js';
+import { BUFFER_SIZES } from '../core/say/constants.js';
 
 interface ParsedOptions {
     voice: string;

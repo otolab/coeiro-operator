@@ -10,7 +10,7 @@ import { OperatorManager } from '../operator/index.js';
 import { SpeechQueue } from './speech-queue.js';
 import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
-import { logger } from '../utils/logger.js';
+import { logger } from '../../utils/logger.js';
 import {
     SAMPLE_RATES,
     BUFFER_SIZES,

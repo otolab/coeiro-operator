@@ -3,9 +3,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { spawn, ChildProcess } from "child_process";
 import { z } from "zod";
-import { SayCoeiroink, loadConfig } from "./say/index.js";
-import { OperatorManager } from "./operator/index.js";
-import { logger, LoggerPresets } from "./utils/logger.js";
+import { SayCoeiroink, loadConfig } from "../core/say/index.js";
+import { OperatorManager } from "../core/operator/index.js";
+import { logger, LoggerPresets } from "../utils/logger.js";
 
 interface StyleInfo {
   id: string;
