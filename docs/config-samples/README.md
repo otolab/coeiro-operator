@@ -23,7 +23,7 @@
 ### [balanced.json](./balanced.json)
 - **用途**: 一般的な用途、Webアプリケーション
 - **特徴**: レイテンシと音質のバランス（デフォルト）
-- **設定**: `latencyMode: "balanced"`, `splitMode: "auto"`, 標準バッファ（1024）
+- **設定**: `latencyMode: "balanced"`, `splitMode: "punctuation"`, 標準バッファ（1024）
 - **自動適用**: 適度なエフェクト、バランス型処理、標準バッファ設定
 
 ### [high-quality.json](./high-quality.json)
@@ -48,7 +48,7 @@
 {
   "audio": {
     "latencyMode": "balanced",
-    "splitMode": "auto",
+    "splitMode": "punctuation",
     "processing": {
       "noiseReduction": true  // プリセット値を上書き
     }

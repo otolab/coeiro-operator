@@ -116,6 +116,13 @@ export const SPLIT_SETTINGS = {
         LARGE_SIZE: 100,
         OVERLAP_RATIO: 0.1
     },
+    PUNCTUATION: {
+        MAX_CHUNK_SIZE: 150,           // 句読点分割時の最大文字数（フォールバック）
+        PREFER_SENTENCE: true,         // 句点（。）を優先
+        ALLOW_COMMA_SPLIT: true,       // 読点（、）での分割を許可
+        MIN_CHUNK_SIZE: 10,            // 最小チャンクサイズ
+        OVERLAP_CHARS: 0               // 句読点分割ではオーバーラップなし
+    },
     PRESETS: {
         ULTRA_LOW: {
             SMALL_SIZE: 20,
@@ -238,4 +245,4 @@ export const STREAM_SETTINGS = {
 // ヘルパー型定義
 // ================================
 export type LatencyMode = 'ultra-low' | 'balanced' | 'quality';
-export type SplitMode = 'auto' | 'none' | 'small' | 'medium' | 'large';
+export type SplitMode = 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation';

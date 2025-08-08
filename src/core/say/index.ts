@@ -47,7 +47,7 @@ const DEFAULT_CONFIG: Config = {
     },
     audio: {
         latencyMode: 'balanced',
-        splitMode: 'auto',
+        splitMode: 'punctuation',
         bufferSize: BUFFER_SIZES.DEFAULT
     }
 };
@@ -224,7 +224,7 @@ export class SayCoeiroink {
      * 設定に基づいてストリーミングモードを使用するかを判定
      */
     private shouldUseStreaming(text: string): boolean {
-        const chunkMode = this.config.audio?.splitMode || 'auto';
+        const chunkMode = this.config.audio?.splitMode || 'punctuation';
         
         switch (chunkMode) {
             case 'none':
@@ -235,13 +235,15 @@ export class SayCoeiroink {
                 return text.length > 50;
             case 'large':
                 return text.length > 100;
+            case 'punctuation':
+                return text.includes('。') || text.length > 150; // 句点があるか長いテキスト
             case 'auto':
             default:
                 return text.length > STREAM_CONFIG.chunkSizeChars;
         }
     }
 
-    async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' = 'auto', bufferSize?: number): Promise<void> {
+    async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation', bufferSize?: number): Promise<void> {
         // 真のストリーミング再生：ジェネレータを直接AudioPlayerに渡す
         await this.audioPlayer.playStreamingAudio(
             this.audioSynthesizer.synthesizeStream(text, voiceId, speed, chunkMode),
@@ -297,7 +299,7 @@ export class SayCoeiroink {
             outputFile = null,
             streamMode = false,
             style = null,
-            chunkMode = this.config.audio?.splitMode || 'auto',
+            chunkMode = this.config.audio?.splitMode || 'punctuation',
             bufferSize = this.config.audio?.bufferSize || BUFFER_SIZES.DEFAULT,
             allowFallback = true  // デフォルトフォールバックを許可するかどうか
         } = options;
