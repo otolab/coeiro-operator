@@ -5,11 +5,11 @@ COEIRO Operatorでは、コードとドキュメント間の設定値の整合�
 ## 📋 同期が必要なファイル一覧
 
 ### コード（実装）
-- **`src/say/constants.ts`** - マスター定数定義（**最優先**）
-- `src/say/index.ts` - デフォルト設定
-- `src/say/audio-player.ts` - 音声再生設定
-- `src/say/audio-synthesizer.ts` - 音声合成設定
-- `src/say/cli.ts` - CLI設定
+- **`src/core/say/constants.ts`** - マスター定数定義（**最優先**）
+- `src/core/say/index.ts` - デフォルト設定
+- `src/core/say/audio-player.ts` - 音声再生設定
+- `src/core/say/audio-synthesizer.ts` - 音声合成設定
+- `src/cli/say-coeiroink.ts` - CLI設定
 
 ### ドキュメント
 - **`docs/configuration-options.md`** - 設定オプション詳細
@@ -26,13 +26,13 @@ COEIRO Operatorでは、コードとドキュメント間の設定値の整合�
 
 ### 1. 変更の優先順位
 ```
-src/say/constants.ts → その他のコード → ドキュメント → 設定サンプル
+src/core/say/constants.ts → その他のコード → ドキュメント → 設定サンプル
 ```
 
 ### 2. 変更手順
 
 #### ステップ1: コード更新
-1. **`src/say/constants.ts`** の該当定数を更新
+1. **`src/core/say/constants.ts`** の該当定数を更新
 2. 関連するコードファイルで定数参照を確認
 3. 型定義やバリデーション範囲の更新
 
@@ -71,7 +71,7 @@ src/say/constants.ts → その他のコード → ドキュメント → 設定
 変更後は以下を確認してください：
 
 ### コード整合性
-- [ ] `src/say/constants.ts` の値がコード全体で参照されている
+- [ ] `src/core/say/constants.ts` の値がコード全体で参照されている
 - [ ] テストが新しい値に対応している
 - [ ] 型定義が適切である
 
@@ -105,7 +105,7 @@ src/say/constants.ts → その他のコード → ドキュメント → 設定
 
 設定値の変更で不明な点がある場合：
 
-1. まず `src/say/constants.ts` のコメントを確認
+1. まず `src/core/say/constants.ts` のコメントを確認
 2. 関連ドキュメントの相互参照コメントを確認
 3. git履歴で過去の変更パターンを参照
 4. テストファイルで期待される値を確認

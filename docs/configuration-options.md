@@ -2,7 +2,7 @@
 
 COEIRO Operatorの音声合成システムは、詳細な設定によりパフォーマンスと音質を調整できます。設定は機能別に整理されており、用途に応じた最適化が可能です。
 
-> 🔗 **コード参照**: この設定の実装については `src/say/constants.ts` を参照してください  
+> 🔗 **コード参照**: この設定の実装については `src/core/say/constants.ts` を参照してください  
 > 📝 **設定例**: `docs/config-samples/` で実際の設定ファイル例を確認できます  
 > ⚠️  **重要**: 設定値を変更する際は、コードとドキュメント両方の同期更新が必要です
 
@@ -143,7 +143,7 @@ COEIROINK音声合成サーバーへの接続を設定します。
 | `lowpassFilter` | boolean | プリセット依存 | ローパスフィルターの有効化 |
 | `lowpassCutoff` | number | `24000` | ローパスフィルターのカットオフ周波数（Hz） |
 
-> 📍 **コード実装**: `SAMPLE_RATES.SYNTHESIS`, `SAMPLE_RATES.PLAYBACK`, `FILTER_SETTINGS.*` (`src/say/constants.ts`)
+> 📍 **コード実装**: `SAMPLE_RATES.SYNTHESIS`, `SAMPLE_RATES.PLAYBACK`, `FILTER_SETTINGS.*` (`src/core/say/constants.ts`)
 
 **注意**: これらの設定は`latencyMode`により自動最適化されます。個別設定は特別な要件がある場合のみ推奨します。
 
@@ -169,7 +169,7 @@ COEIROINK音声合成サーバーへの接続を設定します。
 | `largeSize` | number | `100` | largeモード時の分割サイズ（文字数） |
 | `overlapRatio` | number | `0.1` | チャンク間のオーバーラップ比率（0.0-1.0） |
 
-> 📍 **コード実装**: `SPLIT_SETTINGS.DEFAULTS.*`, `SPLIT_SETTINGS.PRESETS.*` (`src/say/constants.ts`)
+> 📍 **コード実装**: `SPLIT_SETTINGS.DEFAULTS.*`, `SPLIT_SETTINGS.PRESETS.*` (`src/core/say/constants.ts`)
 
 **注意**: これらの設定は`splitMode`により自動設定されます。個別設定は特別な要件がある場合のみ推奨します。
 
@@ -194,7 +194,7 @@ COEIROINK音声合成サーバーへの接続を設定します。
 | `lowWaterMark` | number | プリセット依存 | スピーカーバッファの下限（バイト） |
 | `dynamicAdjustment` | boolean | プリセット依存 | 音声長に応じた動的バッファサイズ調整 |
 
-> 📍 **コード実装**: `BUFFER_SIZES.DEFAULT`, `BUFFER_SIZES.PRESETS.*` (`src/say/constants.ts`)
+> 📍 **コード実装**: `BUFFER_SIZES.DEFAULT`, `BUFFER_SIZES.PRESETS.*` (`src/core/say/constants.ts`)
 
 **注意**: これらの設定は`latencyMode`により自動最適化されます。個別設定は特別な要件がある場合のみ推奨します。
 

@@ -12,12 +12,13 @@ import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
 import { logger } from '../../utils/logger.js';
 import {
+    DEFAULT_VOICE,
+    CONNECTION_SETTINGS,
     SAMPLE_RATES,
     BUFFER_SIZES,
     FILTER_SETTINGS,
     SYNTHESIS_SETTINGS,
-    STREAM_SETTINGS,
-    CONNECTION_SETTINGS
+    STREAM_SETTINGS
 } from './constants.js';
 import type {
     Config,
@@ -41,7 +42,8 @@ const DEFAULT_CONFIG: Config = {
         port: CONNECTION_SETTINGS.DEFAULT_PORT
     },
     voice: {
-        rate: SYNTHESIS_SETTINGS.DEFAULT_RATE
+        rate: SYNTHESIS_SETTINGS.DEFAULT_RATE,
+        default_voice_id: DEFAULT_VOICE.ID  // つくよみちゃん「れいせい」（COEIROINKデフォルト）
     },
     audio: {
         latencyMode: 'balanced',
@@ -309,7 +311,7 @@ export class SayCoeiroink {
                 selectedVoice = operatorVoice;
             } else if (allowFallback) {
                 // 2. フォールバック: 設定ファイルのデフォルト音声を使用（CLIのみ）
-                selectedVoice = this.config.voice?.default_voice_id || 'b28bb401-bc43-c9c7-77e4-77a2bbb4b283';
+                selectedVoice = this.config.voice?.default_voice_id || DEFAULT_VOICE.ID;
             } else {
                 // MCPの場合はオペレータが必要
                 throw new Error('オペレータが割り当てられていません。まず operator_assign を実行してください。');
