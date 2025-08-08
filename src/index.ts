@@ -5,6 +5,7 @@ import { spawn, ChildProcess } from "child_process";
 import { z } from "zod";
 import { SayCoeiroink, loadConfig } from "./say/index.js";
 import { OperatorManager } from "./operator/index.js";
+import { logger, LoggerPresets } from "./utils/logger.js";
 
 interface StyleInfo {
   id: string;
@@ -33,6 +34,9 @@ interface ToolResponse {
   [key: string]: unknown;
 }
 
+// MCPサーバーモードでlogger設定
+LoggerPresets.mcpServer();
+
 const server = new McpServer({
   name: "coeiro-operator",
   version: "1.0.0",
@@ -43,7 +47,7 @@ const server = new McpServer({
 });
 
 // top-level awaitを使用した同期的初期化
-console.error("Initializing COEIRO Operator services...");
+logger.info("Initializing COEIRO Operator services...");
 
 let sayCoeiroink: SayCoeiroink;
 let operatorManager: OperatorManager;
@@ -58,10 +62,10 @@ try {
   operatorManager = new OperatorManager();
   await operatorManager.initialize();
   
-  console.error("SayCoeiroink and OperatorManager initialized successfully");
+  logger.info("SayCoeiroink and OperatorManager initialized successfully");
 } catch (error) {
-  console.error("Failed to initialize services:", (error as Error).message);
-  console.error("Using fallback configuration...");
+  logger.error("Failed to initialize services:", (error as Error).message);
+  logger.warn("Using fallback configuration...");
   
   // フォールバック設定で初期化
   sayCoeiroink = new SayCoeiroink();
@@ -421,10 +425,10 @@ server.registerTool("operator_styles", {
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("Say COEIROINK MCP Server started");
+  logger.info("Say COEIROINK MCP Server started");
 }
 
 main().catch((error) => {
-  console.error("Server error:", error);
+  logger.error("Server error:", error);
   process.exit(1);
 });

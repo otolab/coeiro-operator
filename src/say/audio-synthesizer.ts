@@ -12,6 +12,7 @@ import type {
     OperatorVoice,
     AudioConfig
 } from './types.js';
+import { logger } from '../utils/logger.js';
 
 // ストリーミング設定
 const STREAM_CONFIG: StreamConfig = {
@@ -131,17 +132,17 @@ export class AudioSynthesizer {
             }
             
             const speakers = await response.json();
-            console.log('Available voices:');
+            logger.info('Available voices:');
             
             speakers.forEach((speaker: any) => {
-                console.log(`${speaker.speakerUuid}: ${speaker.speakerName}`);
+                logger.info(`${speaker.speakerUuid}: ${speaker.speakerName}`);
                 speaker.styles.forEach((style: any) => {
-                    console.log(`  Style ${style.styleId}: ${style.styleName}`);
+                    logger.info(`  Style ${style.styleId}: ${style.styleName}`);
                 });
             });
         } catch (error) {
-            console.error(`Error: Cannot connect to COEIROINK server at http://${this.config.connection.host}:${this.config.connection.port}`);
-            console.error('Make sure the server is running.');
+            logger.error(`Error: Cannot connect to COEIROINK server at http://${this.config.connection.host}:${this.config.connection.port}`);
+            logger.error('Make sure the server is running.');
             throw error;
         }
     }

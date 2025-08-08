@@ -10,6 +10,7 @@ import { OperatorManager } from '../operator/index.js';
 import { SpeechQueue } from './speech-queue.js';
 import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
+import { logger } from '../utils/logger.js';
 import type {
     Config,
     ConnectionConfig,
@@ -106,7 +107,7 @@ export async function loadConfig(configFile: string | null = null): Promise<Conf
         const rawConfig = JSON.parse(configData);
         return { ...DEFAULT_CONFIG, ...rawConfig };
     } catch (error) {
-        console.error(`設定ファイル読み込みエラー: ${(error as Error).message}`);
+        logger.error(`設定ファイル読み込みエラー: ${(error as Error).message}`);
         return DEFAULT_CONFIG;
     }
 }
@@ -191,7 +192,7 @@ export class SayCoeiroink {
 
             return null;
         } catch (error) {
-            console.error(`オペレータ音声取得エラー: ${(error as Error).message}`);
+            logger.error(`オペレータ音声取得エラー: ${(error as Error).message}`);
             return null;
         }
     }
@@ -330,7 +331,7 @@ export class SayCoeiroink {
                     character: modifiedCharacter
                 };
             } else {
-                console.warn(`指定されたスタイル '${style}' は利用できません。デフォルトスタイルを使用します。`);
+                logger.warn(`指定されたスタイル '${style}' は利用できません。デフォルトスタイルを使用します。`);
             }
         }
 
