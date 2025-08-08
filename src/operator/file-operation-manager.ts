@@ -66,7 +66,7 @@ export class FileOperationManager {
     }
 
     /**
-     * 音声設定を更新
+     * 音声設定を更新（新しい構造に対応）
      */
     async updateVoiceSetting(
         coeiroinkConfigFile: string, 
@@ -75,8 +75,24 @@ export class FileOperationManager {
     ): Promise<void> {
         try {
             const config = await this.readJsonFile(coeiroinkConfigFile, {}) as Record<string, unknown>;
-            config.voice_id = voiceId;
-            config.style_id = styleId;
+            
+            // 新しい構造で設定を更新
+            if (!config.voice) {
+                config.voice = {};
+            }
+            const voiceConfig = config.voice as Record<string, unknown>;
+            
+            if (voiceId) {
+                voiceConfig.default_voice_id = voiceId;
+            }
+            if (styleId !== undefined) {
+                voiceConfig.default_style_id = styleId;
+            }
+            
+            // 古い設定値が残っている場合は削除
+            delete config.voice_id;
+            delete config.style_id;
+            
             await this.writeJsonFile(coeiroinkConfigFile, config);
         } catch (error) {
             console.error(`音声設定更新エラー: ${(error as Error).message}`);

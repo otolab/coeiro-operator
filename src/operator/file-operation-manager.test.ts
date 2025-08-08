@@ -126,9 +126,13 @@ describe('FileOperationManager', () => {
             const content = await readFile(configFile, 'utf8');
             const parsed = JSON.parse(content);
             
-            expect(parsed.voice_id).toBe('voice123');
-            expect(parsed.style_id).toBe(42);
+            expect(parsed.voice?.default_voice_id).toBe('voice123');
+            expect(parsed.voice?.default_style_id).toBe(42);
             expect(parsed.other_setting).toBe('value');
+            
+            // 古い設定値が削除されていることを確認
+            expect(parsed.voice_id).toBeUndefined();
+            expect(parsed.style_id).toBeUndefined();
         });
 
         test('設定ファイルが存在しない場合は新規作成', async () => {
@@ -139,8 +143,12 @@ describe('FileOperationManager', () => {
             const content = await readFile(configFile, 'utf8');
             const parsed = JSON.parse(content);
             
-            expect(parsed.voice_id).toBe('voice456');
-            expect(parsed.style_id).toBe(7);
+            expect(parsed.voice?.default_voice_id).toBe('voice456');
+            expect(parsed.voice?.default_style_id).toBe(7);
+            
+            // 古い設定値が存在しないことを確認
+            expect(parsed.voice_id).toBeUndefined();
+            expect(parsed.style_id).toBeUndefined();
         });
     });
 

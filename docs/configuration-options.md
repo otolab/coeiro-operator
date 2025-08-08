@@ -2,6 +2,10 @@
 
 COEIRO Operatorの音声合成システムは、詳細な設定によりパフォーマンスと音質を調整できます。設定は機能別に整理されており、用途に応じた最適化が可能です。
 
+> 🔗 **コード参照**: この設定の実装については `src/say/constants.ts` を参照してください  
+> 📝 **設定例**: `docs/config-samples/` で実際の設定ファイル例を確認できます  
+> ⚠️  **重要**: 設定値を変更する際は、コードとドキュメント両方の同期更新が必要です
+
 ## 設定ファイルの場所
 
 設定ファイルは以下の優先順位で読み込まれます：
@@ -116,17 +120,16 @@ COEIROINK音声合成サーバーへの接続を設定します。
 | `large` | 100文字 | 高品質重視 |
 | `auto` | 自動判定 | テキスト長に応じて最適化 |
 
-### 音声処理設定
+### 音声処理設定（高度な設定）
+
+音声処理の詳細設定は、`latencyMode`プリセットにより自動最適化されます。基本的には手動設定は不要です。
 
 ```json
 {
   "audio": {
+    "latencyMode": "balanced",  // 推奨: プリセット使用
     "processing": {
-      "synthesisRate": 24000,
-      "playbackRate": 48000,
-      "noiseReduction": false,
-      "lowpassFilter": false,
-      "lowpassCutoff": 24000
+      "noiseReduction": true    // 必要に応じてプリセット値を上書き
     }
   }
 }
@@ -136,22 +139,24 @@ COEIROINK音声合成サーバーへの接続を設定します。
 |----------|----|-----------|----- |
 | `synthesisRate` | number | `24000` | 音声合成時のサンプルレート（Hz） |
 | `playbackRate` | number | `48000` | 再生時のサンプルレート（Hz） |
-| `noiseReduction` | boolean | `false` | Echogardenによるノイズ除去 |
-| `lowpassFilter` | boolean | `false` | ローパスフィルターの有効化 |
+| `noiseReduction` | boolean | プリセット依存 | Echogardenによるノイズ除去 |
+| `lowpassFilter` | boolean | プリセット依存 | ローパスフィルターの有効化 |
 | `lowpassCutoff` | number | `24000` | ローパスフィルターのカットオフ周波数（Hz） |
 
-### 分割設定
+> 📍 **コード実装**: `SAMPLE_RATES.SYNTHESIS`, `SAMPLE_RATES.PLAYBACK`, `FILTER_SETTINGS.*` (`src/say/constants.ts`)
 
-テキスト分割の詳細なパラメータを制御します。
+**注意**: これらの設定は`latencyMode`により自動最適化されます。個別設定は特別な要件がある場合のみ推奨します。
+
+### 分割設定（高度な設定）
+
+テキスト分割の詳細設定は、`splitMode`により自動最適化されます。基本的には手動設定は不要です。
 
 ```json
 {
   "audio": {
+    "splitMode": "auto",        // 推奨: プリセット使用
     "splitSettings": {
-      "smallSize": 30,
-      "mediumSize": 50,
-      "largeSize": 100,
-      "overlapRatio": 0.1
+      "mediumSize": 60          // 必要に応じてプリセット値を上書き
     }
   }
 }
@@ -164,17 +169,20 @@ COEIROINK音声合成サーバーへの接続を設定します。
 | `largeSize` | number | `100` | largeモード時の分割サイズ（文字数） |
 | `overlapRatio` | number | `0.1` | チャンク間のオーバーラップ比率（0.0-1.0） |
 
-### バッファ設定
+> 📍 **コード実装**: `SPLIT_SETTINGS.DEFAULTS.*`, `SPLIT_SETTINGS.PRESETS.*` (`src/say/constants.ts`)
 
-音声ストリーミングのバッファ制御を行います。
+**注意**: これらの設定は`splitMode`により自動設定されます。個別設定は特別な要件がある場合のみ推奨します。
+
+### バッファ設定（高度な設定）
+
+バッファ設定は、`latencyMode`プリセットにより自動最適化されます。基本的には手動設定は不要です。
 
 ```json
 {
   "audio": {
+    "latencyMode": "ultra-low",     // 推奨: プリセット使用
     "bufferSettings": {
-      "highWaterMark": 256,
-      "lowWaterMark": 128,
-      "dynamicAdjustment": true
+      "dynamicAdjustment": false    // 必要に応じてプリセット値を上書き
     }
   }
 }
@@ -182,22 +190,24 @@ COEIROINK音声合成サーバーへの接続を設定します。
 
 | 設定項目 | 型 | デフォルト | 説明 |
 |----------|----|-----------|----- |
-| `highWaterMark` | number | `256` | スピーカーバッファの上限（バイト） |
-| `lowWaterMark` | number | `128` | スピーカーバッファの下限（バイト） |
-| `dynamicAdjustment` | boolean | `true` | 音声長に応じた動的バッファサイズ調整 |
+| `highWaterMark` | number | プリセット依存 | スピーカーバッファの上限（バイト） |
+| `lowWaterMark` | number | プリセット依存 | スピーカーバッファの下限（バイト） |
+| `dynamicAdjustment` | boolean | プリセット依存 | 音声長に応じた動的バッファサイズ調整 |
 
-### パディング設定
+> 📍 **コード実装**: `BUFFER_SIZES.DEFAULT`, `BUFFER_SIZES.PRESETS.*` (`src/say/constants.ts`)
 
-音声の前後に無音を挿入し、途切れを防止します。
+**注意**: これらの設定は`latencyMode`により自動最適化されます。個別設定は特別な要件がある場合のみ推奨します。
+
+### パディング設定（高度な設定）
+
+パディング設定は、`latencyMode`プリセットにより自動最適化されます。基本的には手動設定は不要です。
 
 ```json
 {
   "audio": {
+    "latencyMode": "quality",       // 推奨: プリセット使用
     "paddingSettings": {
-      "enabled": true,
-      "prePhonemeLength": 0.01,
-      "postPhonemeLength": 0.01,
-      "firstChunkOnly": true
+      "prePhonemeLength": 0.02      // 必要に応じてプリセット値を上書き
     }
   }
 }
@@ -205,22 +215,23 @@ COEIROINK音声合成サーバーへの接続を設定します。
 
 | 設定項目 | 型 | デフォルト | 説明 |
 |----------|----|-----------|----- |
-| `enabled` | boolean | `true` | パディングの有効化 |
-| `prePhonemeLength` | number | `0.01` | 音声前の無音時間（秒） |
-| `postPhonemeLength` | number | `0.01` | 音声後の無音時間（秒） |
-| `firstChunkOnly` | boolean | `true` | 最初のチャンクのみパディングを適用 |
+| `enabled` | boolean | プリセット依存 | パディングの有効化 |
+| `prePhonemeLength` | number | プリセット依存 | 音声前の無音時間（秒） |
+| `postPhonemeLength` | number | プリセット依存 | 音声後の無音時間（秒） |
+| `firstChunkOnly` | boolean | プリセット依存 | 最初のチャンクのみパディングを適用 |
 
-### クロスフェード設定
+**注意**: これらの設定は`latencyMode`により自動最適化されます。個別設定は特別な要件がある場合のみ推奨します。
 
-チャンク間の滑らかな接続を実現します。
+### クロスフェード設定（高度な設定）
+
+クロスフェード設定は、`latencyMode`プリセットにより自動最適化されます。基本的には手動設定は不要です。
 
 ```json
 {
   "audio": {
+    "latencyMode": "balanced",      // 推奨: プリセット使用
     "crossfadeSettings": {
-      "enabled": true,
-      "skipFirstChunk": true,
-      "overlapSamples": 24
+      "overlapSamples": 32          // 必要に応じてプリセット値を上書き
     }
   }
 }
@@ -228,9 +239,11 @@ COEIROINK音声合成サーバーへの接続を設定します。
 
 | 設定項目 | 型 | デフォルト | 説明 |
 |----------|----|-----------|----- |
-| `enabled` | boolean | `true` | クロスフェードの有効化 |
-| `skipFirstChunk` | boolean | `true` | 最初のチャンクでクロスフェードをスキップ |
-| `overlapSamples` | number | `24` | フェード処理を適用するサンプル数 |
+| `enabled` | boolean | プリセット依存 | クロスフェードの有効化 |
+| `skipFirstChunk` | boolean | プリセット依存 | 最初のチャンクでクロスフェードをスキップ |
+| `overlapSamples` | number | プリセット依存 | フェード処理を適用するサンプル数 |
+
+**注意**: これらの設定は`latencyMode`により自動最適化されます。個別設定は特別な要件がある場合のみ推奨します。
 
 ## レイテンシモード別プリセット
 
@@ -250,6 +263,10 @@ COEIROINK音声合成サーバーへの接続を設定します。
 
 ```json
 {
+  "processing": {
+    "noiseReduction": false,
+    "lowpassFilter": false
+  },
   "bufferSettings": {
     "highWaterMark": 64,
     "lowWaterMark": 32,
@@ -267,8 +284,9 @@ COEIROINK音声合成サーバーへの接続を設定します。
     "overlapSamples": 0
   }
 }
+```
 
-**特徴**: 音声head途切れ対策を最優先、最小レイテンシを実現
+**特徴**: 音声head途切れ対策を最優先、最小レイテンシを実現、フィルタ無効
 
 ### Balanced モード
 
@@ -284,6 +302,10 @@ COEIROINK音声合成サーバーへの接続を設定します。
 
 ```json
 {
+  "processing": {
+    "noiseReduction": false,
+    "lowpassFilter": true
+  },
   "bufferSettings": {
     "highWaterMark": 256,
     "lowWaterMark": 128,
@@ -301,8 +323,9 @@ COEIROINK音声合成サーバーへの接続を設定します。
     "overlapSamples": 24
   }
 }
+```
 
-**特徴**: レイテンシと音質のバランス、一般的な用途に最適
+**特徴**: レイテンシと音質のバランス、一般的な用途に最適、ローパスフィルタ有効
 
 ### Quality モード
 
@@ -318,6 +341,10 @@ COEIROINK音声合成サーバーへの接続を設定します。
 
 ```json
 {
+  "processing": {
+    "noiseReduction": true,
+    "lowpassFilter": true
+  },
   "bufferSettings": {
     "highWaterMark": 512,
     "lowWaterMark": 256,
@@ -335,8 +362,9 @@ COEIROINK音声合成サーバーへの接続を設定します。
     "overlapSamples": 48
   }
 }
+```
 
-**特徴**: 最高音質、録音や高品質再生に最適
+**特徴**: 最高音質、録音や高品質再生に最適、全フィルタ有効
 
 ## 後方互換性
 
