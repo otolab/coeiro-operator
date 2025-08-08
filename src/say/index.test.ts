@@ -433,12 +433,58 @@ describe('SayCoeiroink', () => {
             ).rejects.toThrow('Cannot connect to COEIROINK server');
         });
 
-        test('音声が指定されておらずオペレータもない場合エラーを投げること', async () => {
+        test('音声が指定されておらずオペレータもない場合、allowFallback=trueでデフォルト音声を使用すること', async () => {
+            sayCoeiroink.getCurrentOperatorVoice = jest.fn().mockResolvedValue(null);
+            
+            const mockResult = {
+                chunk: { text: 'テスト', index: 0, isFirst: true, isLast: true, overlap: 0 },
+                audioBuffer: new ArrayBuffer(1000),
+                latency: 50
+            };
+
+            sayCoeiroink['audioSynthesizer'].synthesize = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
+
+            const result = await sayCoeiroink.synthesizeTextInternal('テスト', { allowFallback: true });
+
+            expect(result.success).toBe(true);
+            // デフォルト音声が使用されることを確認
+            expect(sayCoeiroink['audioSynthesizer'].synthesize).toHaveBeenCalledWith(
+                'テスト',
+                'b28bb401-bc43-c9c7-77e4-77a2bbb4b283', // デフォルトのvoice_id
+                1.0
+            );
+        });
+
+        test('音声が指定されておらずオペレータもない場合、allowFallback=falseでエラーを投げること', async () => {
             sayCoeiroink.getCurrentOperatorVoice = jest.fn().mockResolvedValue(null);
 
             await expect(
-                sayCoeiroink.synthesizeTextInternal('テスト')
-            ).rejects.toThrow('音声が指定されておらず、オペレータも割り当てられていません');
+                sayCoeiroink.synthesizeTextInternal('テスト', { allowFallback: false })
+            ).rejects.toThrow('オペレータが割り当てられていません。まず operator_assign を実行してください。');
+        });
+
+        test('音声が指定されておらずオペレータもない場合、allowFallbackデフォルト（true）でデフォルト音声を使用すること', async () => {
+            sayCoeiroink.getCurrentOperatorVoice = jest.fn().mockResolvedValue(null);
+            
+            const mockResult = {
+                chunk: { text: 'テスト', index: 0, isFirst: true, isLast: true, overlap: 0 },
+                audioBuffer: new ArrayBuffer(1000),
+                latency: 50
+            };
+
+            sayCoeiroink['audioSynthesizer'].synthesize = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
+
+            const result = await sayCoeiroink.synthesizeTextInternal('テスト'); // allowFallback未指定
+
+            expect(result.success).toBe(true);
+            // デフォルト音声が使用されることを確認
+            expect(sayCoeiroink['audioSynthesizer'].synthesize).toHaveBeenCalledWith(
+                'テスト',
+                'b28bb401-bc43-c9c7-77e4-77a2bbb4b283', // デフォルトのvoice_id
+                1.0
+            );
         });
 
         test('音声プレーヤー初期化失敗時にエラーを投げること', async () => {

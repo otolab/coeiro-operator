@@ -175,7 +175,7 @@ export const SPEAKER_NAME_TO_ID_MAP = {
 ## 関連ファイル
 
 - **[docs/CHARACTERS.md](../docs/CHARACTERS.md)** - 内蔵キャラクター詳細情報
-- **[../INSTALLATION.md](../INSTALLATION.md)** - インストール・セットアップガイド
+- **[../README.md](../README.md)** - インストール・基本使用方法ガイド
 - **[../docs/CONFIGURATION.md](../docs/CONFIGURATION.md)** - 設定ファイル仕様詳細
 - **[OPERATOR_SYSTEM.md](OPERATOR_SYSTEM.md)** - システム仕様
 

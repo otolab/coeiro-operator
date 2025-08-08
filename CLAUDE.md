@@ -4,8 +4,8 @@
 
 code-bugs MCPツールの詳細な使用方法については、以下のファイルを参照してください：
 
-- [MCP Tools 使用ガイド](./prompts/mcp-tools-usage-guide.md)
-  - @prompts/mcp-tools-usage-guide.md
+- [MCP Tools 使用ガイド](./prompts/MCP_TOOLS_USAGE_GUIDE.md)
+  - @prompts/MCP_TOOLS_USAGE_GUIDE.md
 
 このファイルには以下の情報が含まれています：
 - 利用可能なMCPサーバーの概要

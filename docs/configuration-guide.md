@@ -314,7 +314,7 @@ EOF
 
 - **キャラクター詳細情報**: [CHARACTERS.md](CHARACTERS.md)
 - **音声ID更新手順**: [../prompts/UPDATE_CHARACTER_SETTINGS.md](../prompts/UPDATE_CHARACTER_SETTINGS.md)
-- **インストールガイド**: [../INSTALLATION.md](../INSTALLATION.md)
+- **インストールガイド**: [../README.md](../README.md)
 
 ---
 **作成日**: 2025年8月5日  
