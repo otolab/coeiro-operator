@@ -97,12 +97,17 @@ describe('OperatorManager Integration Test', () => {
             // エラーが発生しないことを確認
             await operatorManager.updateVoiceSetting('test-voice', 1);
             
-            // 設定ファイルが更新されることを確認
+            // 設定ファイルが更新されることを確認（新しい構造）
             const configFile = join(tempDir, '.coeiro-operator', 'coeiroink-config.json');
             const config = await operatorManager.readJsonFile(configFile, {}) as Record<string, unknown>;
             
-            expect(config.voice_id).toBe('test-voice');
-            expect(config.style_id).toBe(1);
+            const voiceConfig = config.voice as Record<string, unknown>;
+            expect(voiceConfig?.default_voice_id).toBe('test-voice');
+            expect(voiceConfig?.default_style_id).toBe(1);
+            
+            // 古い設定値が削除されていることを確認
+            expect(config.voice_id).toBeUndefined();
+            expect(config.style_id).toBeUndefined();
         });
 
         test('挨拶パターン抽出が動作する', async () => {
@@ -163,8 +168,13 @@ describe('OperatorManager Integration Test', () => {
             const configFile = join(tempDir, '.coeiro-operator', 'coeiroink-config.json');
             const config = await operatorManager.readJsonFile(configFile, {}) as Record<string, unknown>;
             
-            expect(config.voice_id).toBe('test-voice');
-            expect(config.style_id).toBe(5);
+            const voiceConfig = config.voice as Record<string, unknown>;
+            expect(voiceConfig?.default_voice_id).toBe('test-voice');
+            expect(voiceConfig?.default_style_id).toBe(5);
+            
+            // 古い設定値が削除されていることを確認
+            expect(config.voice_id).toBeUndefined();
+            expect(config.style_id).toBeUndefined();
         });
     });
 });

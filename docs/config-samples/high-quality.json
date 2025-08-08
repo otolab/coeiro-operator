@@ -1,4 +1,5 @@
 {
+  "_comment": "📖 設定値の詳細: docs/configuration-options.md | 🔗 実装: src/say/constants.ts",
   "connection": {
     "host": "localhost",
     "port": "50032"
@@ -10,32 +11,6 @@
   "audio": {
     "latencyMode": "quality",
     "splitMode": "large",
-    "processing": {
-      "synthesisRate": 44100,
-      "playbackRate": 44100,
-      "noiseReduction": true,
-      "lowpassFilter": true,
-      "lowpassCutoff": 20000
-    },
-    "splitSettings": {
-      "largeSize": 100,
-      "overlapRatio": 0.15
-    },
-    "bufferSettings": {
-      "highWaterMark": 512,
-      "lowWaterMark": 256,
-      "dynamicAdjustment": false
-    },
-    "paddingSettings": {
-      "enabled": true,
-      "prePhonemeLength": 0.02,
-      "postPhonemeLength": 0.02,
-      "firstChunkOnly": false
-    },
-    "crossfadeSettings": {
-      "enabled": true,
-      "skipFirstChunk": false,
-      "overlapSamples": 48
-    }
+    "bufferSize": 2048
   }
 }

@@ -13,6 +13,12 @@ import type {
     AudioConfig
 } from './types.js';
 import { logger } from '../utils/logger.js';
+import {
+    SAMPLE_RATES,
+    SPLIT_SETTINGS,
+    PADDING_SETTINGS,
+    SYNTHESIS_SETTINGS
+} from './constants.js';
 
 // ストリーミング設定
 const STREAM_CONFIG: StreamConfig = {
@@ -39,16 +45,16 @@ export class AudioSynthesizer {
         
         const presets = {
             'ultra-low': {
-                splitSettings: { smallSize: 20, mediumSize: 30, largeSize: 50, overlapRatio: 0.05 },
-                paddingSettings: { enabled: false, prePhonemeLength: 0, postPhonemeLength: 0, firstChunkOnly: true }
+                splitSettings: SPLIT_SETTINGS.PRESETS.ULTRA_LOW,
+                paddingSettings: PADDING_SETTINGS.PRESETS.ULTRA_LOW
             },
             'balanced': {
-                splitSettings: { smallSize: 30, mediumSize: 50, largeSize: 100, overlapRatio: 0.1 },
-                paddingSettings: { enabled: true, prePhonemeLength: 0.01, postPhonemeLength: 0.01, firstChunkOnly: true }
+                splitSettings: SPLIT_SETTINGS.PRESETS.BALANCED,
+                paddingSettings: PADDING_SETTINGS.PRESETS.BALANCED
             },
             'quality': {
-                splitSettings: { smallSize: 40, mediumSize: 70, largeSize: 150, overlapRatio: 0.15 },
-                paddingSettings: { enabled: true, prePhonemeLength: 0.02, postPhonemeLength: 0.02, firstChunkOnly: false }
+                splitSettings: SPLIT_SETTINGS.PRESETS.QUALITY,
+                paddingSettings: PADDING_SETTINGS.PRESETS.QUALITY
             }
         };
 
@@ -64,7 +70,7 @@ export class AudioSynthesizer {
      * 設定から音声生成時のサンプルレートを取得
      */
     private getSynthesisRate(): number {
-        return this.config.audio.processing?.synthesisRate || 24000;
+        return this.config.audio.processing?.synthesisRate || SAMPLE_RATES.SYNTHESIS;
     }
 
     /**
@@ -73,29 +79,29 @@ export class AudioSynthesizer {
     private getSplitModeConfig() {
         // latencyModeプリセットの値を優先し、個別設定で上書き
         const splitSettings = {
-            smallSize: this.audioConfig.splitSettings?.smallSize || 30,
-            mediumSize: this.audioConfig.splitSettings?.mediumSize || 50,
-            largeSize: this.audioConfig.splitSettings?.largeSize || 100,
-            overlapRatio: this.audioConfig.splitSettings?.overlapRatio || 0.1
+            smallSize: this.audioConfig.splitSettings?.smallSize || SPLIT_SETTINGS.DEFAULTS.SMALL_SIZE,
+            mediumSize: this.audioConfig.splitSettings?.mediumSize || SPLIT_SETTINGS.DEFAULTS.MEDIUM_SIZE,
+            largeSize: this.audioConfig.splitSettings?.largeSize || SPLIT_SETTINGS.DEFAULTS.LARGE_SIZE,
+            overlapRatio: this.audioConfig.splitSettings?.overlapRatio || SPLIT_SETTINGS.DEFAULTS.OVERLAP_RATIO
         };
         
         return {
             none: { chunkSize: Infinity, overlap: 0 },
             small: { 
-                chunkSize: splitSettings.smallSize || 30, 
-                overlap: Math.round((splitSettings.smallSize || 30) * (splitSettings.overlapRatio || 0.1))
+                chunkSize: splitSettings.smallSize, 
+                overlap: Math.round(splitSettings.smallSize * splitSettings.overlapRatio)
             },
             medium: { 
-                chunkSize: splitSettings.mediumSize || 50, 
-                overlap: Math.round((splitSettings.mediumSize || 50) * (splitSettings.overlapRatio || 0.1))
+                chunkSize: splitSettings.mediumSize, 
+                overlap: Math.round(splitSettings.mediumSize * splitSettings.overlapRatio)
             },
             large: { 
-                chunkSize: splitSettings.largeSize || 100, 
-                overlap: Math.round((splitSettings.largeSize || 100) * (splitSettings.overlapRatio || 0.1))
+                chunkSize: splitSettings.largeSize, 
+                overlap: Math.round(splitSettings.largeSize * splitSettings.overlapRatio)
             },
             auto: { 
-                chunkSize: splitSettings.mediumSize || 50, 
-                overlap: Math.round((splitSettings.mediumSize || 50) * (splitSettings.overlapRatio || 0.1))
+                chunkSize: splitSettings.mediumSize, 
+                overlap: Math.round(splitSettings.mediumSize * splitSettings.overlapRatio)
             }
         } as const;
     }
@@ -226,8 +232,8 @@ export class AudioSynthesizer {
         let postPaddingMs = 0;
         
         if (this.audioConfig.paddingSettings?.enabled) {
-            const basePrePadding = this.audioConfig.paddingSettings.prePhonemeLength || 0.01;
-            const basePostPadding = this.audioConfig.paddingSettings.postPhonemeLength || 0.01;
+            const basePrePadding = this.audioConfig.paddingSettings.prePhonemeLength || PADDING_SETTINGS.DEFAULTS.PRE_PHONEME_LENGTH;
+            const basePostPadding = this.audioConfig.paddingSettings.postPhonemeLength || PADDING_SETTINGS.DEFAULTS.POST_PHONEME_LENGTH;
             const firstChunkOnly = this.audioConfig.paddingSettings.firstChunkOnly;
             
             if (!firstChunkOnly || chunk.isFirst) {
@@ -241,9 +247,9 @@ export class AudioSynthesizer {
             speakerUuid: voiceId,
             styleId: styleId,
             speedScale: speed,
-            volumeScale: 1.0,
-            pitchScale: 0.0,
-            intonationScale: 1.0,
+            volumeScale: SYNTHESIS_SETTINGS.DEFAULT_VOLUME,
+            pitchScale: SYNTHESIS_SETTINGS.DEFAULT_PITCH,
+            intonationScale: SYNTHESIS_SETTINGS.DEFAULT_INTONATION,
             prePhonemeLength: paddingMs / 1000,
             postPhonemeLength: postPaddingMs / 1000,
             outputSamplingRate: this.getSynthesisRate()

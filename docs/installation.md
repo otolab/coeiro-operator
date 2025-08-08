@@ -166,16 +166,19 @@ claude mcp test coeiro-operator
 **coeiroink-config.json**:
 ```json
 {
-  "host": "localhost",
-  "port": "50032",
-  "rate": 200,
-  "synthesisRate": 24000,
-  "playbackRate": 48000,
-  "defaultChunkMode": "none",
-  "defaultBufferSize": 1024,
-  "lowpassFilter": true,
-  "lowpassCutoff": 24000,
-  "noiseReduction": false
+  "connection": {
+    "host": "localhost",
+    "port": "50032"
+  },
+  "voice": {
+    "rate": 200,
+    "default_voice_id": "voice-uuid-here"
+  },
+  "audio": {
+    "latencyMode": "balanced",
+    "splitMode": "auto",
+    "bufferSize": 1024
+  }
 }
 ```
 
@@ -186,7 +189,7 @@ claude mcp test coeiro-operator
   "maxOperators": 13,
   "assignmentStrategy": "random",
   "characterSettings": {
-    "styleSelection": "default"
+    "styleSelection": "random"
   }
 }
 ```
@@ -311,41 +314,85 @@ operator-manager --reset-config
 
 ## パフォーマンス最適化
 
+### 音声設定の詳細
+
+#### latencyMode（レイテンシモード）
+
+音声処理の品質とレイテンシのバランスを調整する、3つのプリセットが利用可能：
+
+- **`ultra-low`**: 最低レイテンシ（リアルタイム用途）
+  - バッファサイズ: 64-32
+  - 分割設定: 小さめ（20-30文字）
+  - エフェクト: 最小限
+  
+- **`balanced`**: バランス重視（デフォルト）
+  - バッファサイズ: 256-128
+  - 分割設定: 標準（30-50文字）
+  - エフェクト: 適度
+
+- **`quality`**: 高品質重視
+  - バッファサイズ: 512-256
+  - 分割設定: 大きめ（40-70文字）
+  - エフェクト: フル
+
+#### splitMode（分割モード）
+
+テキストの分割方法を指定：
+
+- **`none`**: 分割なし（一括処理）
+- **`auto`**: 自動調整（デフォルト）
+- **`small`**: 短い分割（20-30文字）
+- **`medium`**: 中程度の分割（30-50文字）
+- **`large`**: 長い分割（50-100文字）
+
 ### システム設定
 
 1. **音声レイテンシ削減**:
-   - オーディオバッファサイズ調整
-   - 不要なオーディオエフェクト無効化
+   - `latencyMode: "ultra-low"`の使用
+   - `splitMode: "none"`で分割処理を無効化
 
 2. **メモリ使用量最適化**:
-   - チャンクサイズ調整
-   - ノイズリダクション無効化
+   - 小さなバッファサイズ設定
+   - `splitMode`の調整
 
-3. **CPU使用率調整**:
-   - 並列処理数制限
-   - 音声品質レベル調整
+3. **音質とのバランス**:
+   - 用途に応じた`latencyMode`選択
+   - 必要に応じた個別設定の上書き
 
 ### 設定例
 
-高パフォーマンス設定:
+高パフォーマンス設定（低レイテンシ重視）:
 ```json
 {
-  "synthesisRate": 22050,
-  "playbackRate": 44100,
-  "lowpassFilter": false,
-  "noiseReduction": false,
-  "defaultBufferSize": 512
+  "connection": {
+    "host": "localhost",
+    "port": "50032"
+  },
+  "voice": {
+    "rate": 200
+  },
+  "audio": {
+    "latencyMode": "ultra-low",
+    "splitMode": "none",
+    "bufferSize": 512
+  }
 }
 ```
 
-高品質設定:
+高品質設定（音質重視）:
 ```json
 {
-  "synthesisRate": 24000,
-  "playbackRate": 48000,
-  "lowpassFilter": true,
-  "lowpassCutoff": 24000,
-  "noiseReduction": true,
-  "defaultBufferSize": 2048
+  "connection": {
+    "host": "localhost",
+    "port": "50032"
+  },
+  "voice": {
+    "rate": 200
+  },
+  "audio": {
+    "latencyMode": "quality",
+    "splitMode": "auto",
+    "bufferSize": 2048
+  }
 }
 ```

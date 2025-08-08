@@ -9,6 +9,7 @@ import { readFile, access } from 'fs/promises';
 import { constants } from 'fs';
 import { SayCoeiroink, loadConfig } from './index.js';
 import type { Config } from './types.js';
+import { BUFFER_SIZES } from './constants.js';
 
 interface ParsedOptions {
     voice: string;
@@ -42,7 +43,7 @@ Options:
     -f file            Read text from file (use '-' for stdin)
     -s                 Force stream mode (auto-enabled for long text)
     --chunk-mode mode  Text splitting mode: auto|none|small|medium|large (default: auto)
-    --buffer-size size Audio buffer size in bytes: 256-8192 (default: 1024)
+    --buffer-size size Audio buffer size in bytes: ${BUFFER_SIZES.MIN}-${BUFFER_SIZES.MAX} (default: ${BUFFER_SIZES.DEFAULT})
     -h                 Show this help
 
 Chunk Modes:
@@ -85,7 +86,7 @@ Examples:
             streamMode: false,
             text: '',
             chunkMode: 'auto',
-            bufferSize: 1024
+            bufferSize: BUFFER_SIZES.DEFAULT
         };
 
         for (let i = 0; i < args.length; i++) {
@@ -140,8 +141,8 @@ Examples:
                 
                 case '--buffer-size':
                     const bufferSize = parseInt(args[i + 1]);
-                    if (isNaN(bufferSize) || bufferSize < 256 || bufferSize > 8192) {
-                        throw new Error(`Invalid buffer size: ${args[i + 1]}. Must be a number between 256 and 8192`);
+                    if (isNaN(bufferSize) || bufferSize < BUFFER_SIZES.MIN || bufferSize > BUFFER_SIZES.MAX) {
+                        throw new Error(`Invalid buffer size: ${args[i + 1]}. Must be a number between ${BUFFER_SIZES.MIN} and ${BUFFER_SIZES.MAX}`);
                     }
                     options.bufferSize = bufferSize;
                     i++;

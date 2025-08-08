@@ -186,8 +186,13 @@ describe('VoiceSelectionService', () => {
             await voiceSelectionService.updateVoiceSetting('voice-123', 42);
             
             const config = await fileManager.readJsonFile(coeiroinkConfigFile, {}) as Record<string, unknown>;
-            expect(config.voice_id).toBe('voice-123');
-            expect(config.style_id).toBe(42);
+            const voiceConfig = config.voice as Record<string, unknown>;
+            expect(voiceConfig?.default_voice_id).toBe('voice-123');
+            expect(voiceConfig?.default_style_id).toBe(42);
+            
+            // 古い設定値が削除されていることを確認
+            expect(config.voice_id).toBeUndefined();
+            expect(config.style_id).toBeUndefined();
         });
 
         test('初期化されていない場合はエラー', async () => {

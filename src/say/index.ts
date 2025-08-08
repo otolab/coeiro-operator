@@ -11,6 +11,14 @@ import { SpeechQueue } from './speech-queue.js';
 import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
 import { logger } from '../utils/logger.js';
+import {
+    SAMPLE_RATES,
+    BUFFER_SIZES,
+    FILTER_SETTINGS,
+    SYNTHESIS_SETTINGS,
+    STREAM_SETTINGS,
+    CONNECTION_SETTINGS
+} from './constants.js';
 import type {
     Config,
     ConnectionConfig,
@@ -29,27 +37,27 @@ import type {
 // デフォルト設定
 const DEFAULT_CONFIG: Config = {
     connection: {
-        host: 'localhost',
-        port: '50032'
+        host: CONNECTION_SETTINGS.DEFAULT_HOST,
+        port: CONNECTION_SETTINGS.DEFAULT_PORT
     },
     voice: {
-        rate: 200
+        rate: SYNTHESIS_SETTINGS.DEFAULT_RATE
     },
     audio: {
         latencyMode: 'balanced',
         splitMode: 'auto',
-        bufferSize: 1024
+        bufferSize: BUFFER_SIZES.DEFAULT
     }
 };
 
 // ストリーミング設定
 const STREAM_CONFIG: StreamConfig = {
-    chunkSizeChars: 50,          // 文字単位でのチャンク分割
-    overlapChars: 5,             // チャンク間のオーバーラップ（音切れ防止）
-    bufferSize: 3,               // 音声バッファサイズ（並列処理数）
-    audioBufferMs: 100,          // 音声出力バッファ時間
-    silencePaddingMs: 50,        // 音切れ防止用の無音パディング
-    preloadChunks: 2,            // 先読みチャンク数
+    chunkSizeChars: STREAM_SETTINGS.CHUNK_SIZE_CHARS,
+    overlapChars: STREAM_SETTINGS.OVERLAP_CHARS,
+    bufferSize: STREAM_SETTINGS.BUFFER_SIZE,
+    audioBufferMs: STREAM_SETTINGS.AUDIO_BUFFER_MS,
+    silencePaddingMs: STREAM_SETTINGS.SILENCE_PADDING_MS,
+    preloadChunks: STREAM_SETTINGS.PRELOAD_CHUNKS
 };
 
 /**
@@ -165,7 +173,7 @@ export class SayCoeiroink {
         }
         
         if (audioConfig?.processing?.lowpassFilter !== undefined) {
-            const cutoff = audioConfig.processing.lowpassCutoff || 24000;
+            const cutoff = audioConfig.processing.lowpassCutoff || FILTER_SETTINGS.LOWPASS_CUTOFF;
             this.audioPlayer.setLowpassFilter(audioConfig.processing.lowpassFilter, cutoff);
         }
         
@@ -288,7 +296,7 @@ export class SayCoeiroink {
             streamMode = false,
             style = null,
             chunkMode = this.config.audio?.splitMode || 'auto',
-            bufferSize = this.config.audio?.bufferSize || 1024,
+            bufferSize = this.config.audio?.bufferSize || BUFFER_SIZES.DEFAULT,
             allowFallback = true  // デフォルトフォールバックを許可するかどうか
         } = options;
 

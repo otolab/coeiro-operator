@@ -13,17 +13,24 @@ import SampleRate from 'node-libsamplerate';
 import { Transform } from 'stream';
 import type { AudioResult, Chunk, Config, AudioConfig } from './types.js';
 import { logger } from '../utils/logger.js';
+import {
+    SAMPLE_RATES,
+    AUDIO_FORMAT,
+    BUFFER_SIZES,
+    FILTER_SETTINGS,
+    CROSSFADE_SETTINGS
+} from './constants.js';
 
 export class AudioPlayer {
     private speaker: Speaker | null = null;
-    private synthesisRate: number = 24000;  // 音声生成時のサンプルレート
-    private playbackRate: number = 48000;   // 再生時のサンプルレート
-    private channels: number = 1;
-    private bitDepth: number = 16;
+    private synthesisRate: number = SAMPLE_RATES.SYNTHESIS;
+    private playbackRate: number = SAMPLE_RATES.PLAYBACK;
+    private channels: number = AUDIO_FORMAT.CHANNELS;
+    private bitDepth: number = AUDIO_FORMAT.BIT_DEPTH;
     private echogardenInitialized: boolean = false;
-    private noiseReductionEnabled: boolean = false;
-    private lowpassFilterEnabled: boolean = false;
-    private lowpassCutoff: number = 24000; // デフォルト24kHz
+    private noiseReductionEnabled: boolean = FILTER_SETTINGS.NOISE_REDUCTION_DEFAULT;
+    private lowpassFilterEnabled: boolean = FILTER_SETTINGS.LOWPASS_FILTER_DEFAULT;
+    private lowpassCutoff: number = FILTER_SETTINGS.LOWPASS_CUTOFF;
     private isInitialized = false;
     private audioConfig: AudioConfig;
     private config: Config;
@@ -44,19 +51,31 @@ export class AudioPlayer {
         
         const presets = {
             'ultra-low': {
-                bufferSettings: { highWaterMark: 64, lowWaterMark: 32, dynamicAdjustment: true },
-                paddingSettings: { enabled: false, prePhonemeLength: 0, postPhonemeLength: 0, firstChunkOnly: true },
-                crossfadeSettings: { enabled: false, skipFirstChunk: true, overlapSamples: 0 }
+                bufferSettings: { 
+                    highWaterMark: BUFFER_SIZES.PRESETS.ULTRA_LOW.HIGH_WATER_MARK, 
+                    lowWaterMark: BUFFER_SIZES.PRESETS.ULTRA_LOW.LOW_WATER_MARK, 
+                    dynamicAdjustment: true 
+                },
+                paddingSettings: PADDING_SETTINGS.PRESETS.ULTRA_LOW,
+                crossfadeSettings: CROSSFADE_SETTINGS.PRESETS.ULTRA_LOW
             },
             'balanced': {
-                bufferSettings: { highWaterMark: 256, lowWaterMark: 128, dynamicAdjustment: true },
-                paddingSettings: { enabled: true, prePhonemeLength: 0.01, postPhonemeLength: 0.01, firstChunkOnly: true },
-                crossfadeSettings: { enabled: true, skipFirstChunk: true, overlapSamples: 24 }
+                bufferSettings: { 
+                    highWaterMark: BUFFER_SIZES.PRESETS.BALANCED.HIGH_WATER_MARK, 
+                    lowWaterMark: BUFFER_SIZES.PRESETS.BALANCED.LOW_WATER_MARK, 
+                    dynamicAdjustment: true 
+                },
+                paddingSettings: PADDING_SETTINGS.PRESETS.BALANCED,
+                crossfadeSettings: CROSSFADE_SETTINGS.PRESETS.BALANCED
             },
             'quality': {
-                bufferSettings: { highWaterMark: 512, lowWaterMark: 256, dynamicAdjustment: false },
-                paddingSettings: { enabled: true, prePhonemeLength: 0.02, postPhonemeLength: 0.02, firstChunkOnly: false },
-                crossfadeSettings: { enabled: true, skipFirstChunk: false, overlapSamples: 48 }
+                bufferSettings: { 
+                    highWaterMark: BUFFER_SIZES.PRESETS.QUALITY.HIGH_WATER_MARK, 
+                    lowWaterMark: BUFFER_SIZES.PRESETS.QUALITY.LOW_WATER_MARK, 
+                    dynamicAdjustment: false 
+                },
+                paddingSettings: PADDING_SETTINGS.PRESETS.QUALITY,
+                crossfadeSettings: CROSSFADE_SETTINGS.PRESETS.QUALITY
             }
         };
 
@@ -111,7 +130,7 @@ export class AudioPlayer {
     /**
      * ローパスフィルターを有効/無効に設定
      */
-    setLowpassFilter(enabled: boolean, cutoffFreq: number = 8000): void {
+    setLowpassFilter(enabled: boolean, cutoffFreq: number = FILTER_SETTINGS.LOWPASS_CUTOFF): void {
         this.lowpassFilterEnabled = enabled;
         this.lowpassCutoff = cutoffFreq;
     }
@@ -133,7 +152,7 @@ export class AudioPlayer {
     async initialize(): Promise<boolean> {
         try {
             // speakerライブラリを使用（ネイティブ音声出力）
-            const bufferSize = this.audioConfig.bufferSettings?.highWaterMark || 256;
+            const bufferSize = this.audioConfig.bufferSettings?.highWaterMark || BUFFER_SIZES.PRESETS.BALANCED.HIGH_WATER_MARK;
             this.speaker = new Speaker({
                 channels: this.channels,
                 bitDepth: this.bitDepth,
@@ -370,15 +389,20 @@ export class AudioPlayer {
 
     /**
      * PCMデータを直接スピーカーに再生
+     * synthesis/playbackレートが異なる場合は適切なSpeaker設定を使用
      */
     private async playPCMData(pcmData: Uint8Array, bufferSize?: number, chunk?: Chunk): Promise<void> {
         return new Promise((resolve, reject) => {
+            // synthesisRateとplaybackRateが異なる場合は、実際の生成レートを使用
+            const actualSampleRate = this.synthesisRate === this.playbackRate ? 
+                this.playbackRate : this.synthesisRate;
+                
             const speaker = new Speaker({
-                channels: 1,        // モノラル
-                bitDepth: 16,       // 16bit
-                sampleRate: this.synthesisRate,  // 音声生成時のサンプルレート
+                channels: AUDIO_FORMAT.CHANNELS,
+                bitDepth: AUDIO_FORMAT.BIT_DEPTH,
+                sampleRate: actualSampleRate,  // 実際のデータのサンプルレート
                 // バッファサイズ制御（デフォルト：1024、範囲：256-8192）
-                highWaterMark: bufferSize || 1024
+                highWaterMark: bufferSize || BUFFER_SIZES.DEFAULT
             });
 
             speaker.on('close', () => {
