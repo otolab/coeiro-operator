@@ -87,7 +87,7 @@ export class FileOperationManager {
                 },
                 audio: {
                     latencyMode: 'balanced',
-                    splitMode: 'auto',
+                    splitMode: 'punctuation',
                     bufferSize: 1024
                 }
             };

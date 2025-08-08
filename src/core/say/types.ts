@@ -21,7 +21,7 @@ export interface VoiceConfig {
 
 export interface AudioConfig {
     latencyMode?: 'ultra-low' | 'balanced' | 'quality';
-    splitMode?: 'auto' | 'none' | 'small' | 'medium' | 'large';
+    splitMode?: 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation';
     bufferSize?: number;
     processing?: {
         synthesisRate?: number;
@@ -103,7 +103,7 @@ export interface SynthesizeOptions {
     outputFile?: string | null;
     streamMode?: boolean;
     style?: string;
-    chunkMode?: 'auto' | 'none' | 'small' | 'medium' | 'large';  // テキスト分割モード
+    chunkMode?: 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation';  // テキスト分割モード
     bufferSize?: number;  // スピーカーバッファサイズ制御（バイト単位）
     allowFallback?: boolean;  // デフォルトフォールバックを許可するかどうか
 }

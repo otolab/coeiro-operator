@@ -109,6 +109,10 @@ export class AudioSynthesizer {
             auto: { 
                 chunkSize: splitSettings.mediumSize, 
                 overlap: Math.round(splitSettings.mediumSize * splitSettings.overlapRatio)
+            },
+            punctuation: { 
+                chunkSize: SPLIT_SETTINGS.PUNCTUATION.MAX_CHUNK_SIZE, 
+                overlap: SPLIT_SETTINGS.PUNCTUATION.OVERLAP_CHARS
             }
         } as const;
     }
@@ -128,9 +132,131 @@ export class AudioSynthesizer {
     }
 
     /**
+     * 句読点に基づくテキスト分割
+     */
+    private splitByPunctuation(text: string): Chunk[] {
+        const chunks: Chunk[] = [];
+        const config = SPLIT_SETTINGS.PUNCTUATION;
+        
+        // 句点（。）で最初に分割
+        const rawSentences = text.split('。');
+        const sentences: string[] = [];
+        
+        for (let i = 0; i < rawSentences.length; i++) {
+            const sentence = rawSentences[i].trim();
+            if (sentence.length > 0) {
+                // 最後の要素以外、または元のテキストが句点で終わっている場合は句点を復元
+                if (i < rawSentences.length - 1 || text.endsWith('。')) {
+                    sentences.push(sentence + '。');
+                } else {
+                    sentences.push(sentence);
+                }
+            }
+        }
+        
+        for (let i = 0; i < sentences.length; i++) {
+            const sentence = sentences[i];
+            
+            // 文が最大文字数を超える場合は読点で分割、それでも長い場合は文字数で強制分割
+            if (sentence.length > config.MAX_CHUNK_SIZE) {
+                if (config.ALLOW_COMMA_SPLIT && sentence.includes('、')) {
+                    const subChunks = this.splitLongSentenceByComma(sentence, config.MAX_CHUNK_SIZE);
+                    subChunks.forEach(subChunk => {
+                        if (subChunk.trim().length >= config.MIN_CHUNK_SIZE) {
+                            chunks.push({
+                                text: subChunk,
+                                index: chunks.length,
+                                isFirst: chunks.length === 0,
+                                isLast: false, // 後で更新
+                                overlap: 0
+                            });
+                        }
+                    });
+                } else {
+                    // 読点もない場合は文字数で強制分割
+                    const forcedChunks = this.forceSplitByLength(sentence, config.MAX_CHUNK_SIZE);
+                    forcedChunks.forEach(chunk => {
+                        if (chunk.trim().length >= config.MIN_CHUNK_SIZE) {
+                            chunks.push({
+                                text: chunk,
+                                index: chunks.length,
+                                isFirst: chunks.length === 0,
+                                isLast: false, // 後で更新
+                                overlap: 0
+                            });
+                        }
+                    });
+                }
+            } else if (sentence.length >= config.MIN_CHUNK_SIZE) {
+                chunks.push({
+                    text: sentence,
+                    index: chunks.length,
+                    isFirst: chunks.length === 0,
+                    isLast: false, // 後で更新
+                    overlap: 0
+                });
+            }
+        }
+        
+        // 最後のチャンクのisLastフラグを設定
+        if (chunks.length > 0) {
+            chunks[chunks.length - 1].isLast = true;
+        }
+        
+        return chunks;
+    }
+
+    /**
+     * 文字数で強制分割
+     */
+    private forceSplitByLength(text: string, maxSize: number): string[] {
+        const chunks: string[] = [];
+        for (let i = 0; i < text.length; i += maxSize) {
+            chunks.push(text.slice(i, i + maxSize));
+        }
+        return chunks;
+    }
+
+    /**
+     * 長い文を読点で分割
+     */
+    private splitLongSentenceByComma(sentence: string, maxSize: number): string[] {
+        const parts: string[] = [];
+        const commaParts = sentence.split('、');
+        
+        let currentChunk = '';
+        for (let i = 0; i < commaParts.length; i++) {
+            const part = commaParts[i] + (i < commaParts.length - 1 ? '、' : '');
+            
+            if (currentChunk.length + part.length <= maxSize) {
+                currentChunk += part;
+            } else {
+                if (currentChunk.length > 0) {
+                    parts.push(currentChunk);
+                    currentChunk = part;
+                } else {
+                    // 単一パートが最大サイズを超える場合は強制的に文字数分割
+                    parts.push(part);
+                }
+            }
+        }
+        
+        if (currentChunk.length > 0) {
+            parts.push(currentChunk);
+        }
+        
+        return parts;
+    }
+
+    /**
      * テキストを音切れ防止のためのオーバーラップ付きチャンクに分割
      */
-    splitTextIntoChunks(text: string, splitMode: 'auto' | 'none' | 'small' | 'medium' | 'large' = 'auto'): Chunk[] {
+    splitTextIntoChunks(text: string, splitMode: 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): Chunk[] {
+        // 句読点分割の場合は専用処理
+        if (splitMode === 'punctuation') {
+            return this.splitByPunctuation(text);
+        }
+        
         const chunks: Chunk[] = [];
         const config = this.getSplitModeConfig()[splitMode];
         const chunkSize = config.chunkSize;
@@ -280,7 +406,7 @@ export class AudioSynthesizer {
     /**
      * ストリーミング音声合成
      */
-    async* synthesizeStream(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' = 'auto'): AsyncGenerator<AudioResult> {
+    async* synthesizeStream(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): AsyncGenerator<AudioResult> {
         const chunks = this.splitTextIntoChunks(text, chunkMode);
 
         for (const chunk of chunks) {

@@ -78,6 +78,83 @@ describe('AudioSynthesizer', () => {
             const chunks = audioSynthesizer.splitTextIntoChunks('   \n\t  ');
             expect(chunks).toHaveLength(0);
         });
+
+        describe('句読点分割モード', () => {
+            test('句点で分割されること', () => {
+                const text = 'これは最初の文です。これは二番目の文です。これは最後の文です。';
+                const chunks = audioSynthesizer.splitTextIntoChunks(text, 'punctuation');
+
+                expect(chunks).toHaveLength(3);
+                expect(chunks[0].text).toBe('これは最初の文です。');
+                expect(chunks[1].text).toBe('これは二番目の文です。');
+                expect(chunks[2].text).toBe('これは最後の文です。');
+                
+                expect(chunks[0].isFirst).toBe(true);
+                expect(chunks[0].isLast).toBe(false);
+                expect(chunks[2].isFirst).toBe(false);
+                expect(chunks[2].isLast).toBe(true);
+            });
+
+            test('句読点なしの長い文字列が最大文字数でフォールバック分割されること', () => {
+                const text = 'あ'.repeat(200); // 句読点なし、最大文字数超過
+                const chunks = audioSynthesizer.splitTextIntoChunks(text, 'punctuation');
+
+                expect(chunks.length).toBeGreaterThan(1);
+                chunks.forEach(chunk => {
+                    expect(chunk.text.length).toBeLessThanOrEqual(150); // MAX_CHUNK_SIZE
+                });
+            });
+
+            test('読点で長い文が分割されること', () => {
+                const longSentence = 'あ'.repeat(80) + '、' + 'い'.repeat(80) + '、' + 'う'.repeat(80);
+                const chunks = audioSynthesizer.splitTextIntoChunks(longSentence, 'punctuation');
+
+                expect(chunks.length).toBeGreaterThan(1);
+                chunks.forEach(chunk => {
+                    expect(chunk.text.length).toBeLessThanOrEqual(150);
+                });
+            });
+
+            test('短い文は最小文字数チェックでフィルタリングされること', () => {
+                const text = 'あ。い。う。え。お。'; // 各文は1文字（MIN_CHUNK_SIZE = 10未満）
+                const chunks = audioSynthesizer.splitTextIntoChunks(text, 'punctuation');
+
+                expect(chunks).toHaveLength(0); // すべて最小文字数未満でフィルタリング
+            });
+
+            test('最小文字数を超える文のみ含まれること', () => {
+                const text = 'これは十分な長さの文章です。短い。これも十分な長さがある文章です。';
+                const chunks = audioSynthesizer.splitTextIntoChunks(text, 'punctuation');
+
+                expect(chunks).toHaveLength(2); // 「短い。」は除外される
+                expect(chunks[0].text).toBe('これは十分な長さの文章です。');
+                expect(chunks[1].text).toBe('これも十分な長さがある文章です。');
+            });
+
+            test('句読点分割ではオーバーラップが0であること', () => {
+                const text = 'これは最初の文です。これは二番目の文です。';
+                const chunks = audioSynthesizer.splitTextIntoChunks(text, 'punctuation');
+
+                chunks.forEach(chunk => {
+                    expect(chunk.overlap).toBe(0);
+                });
+            });
+
+            test('空テキストの場合空配列が返されること', () => {
+                const chunks = audioSynthesizer.splitTextIntoChunks('', 'punctuation');
+                expect(chunks).toHaveLength(0);
+            });
+
+            test('句点なしのテキストが単一チャンクになること', () => {
+                const text = 'これは句点のない短いテキストです';
+                const chunks = audioSynthesizer.splitTextIntoChunks(text, 'punctuation');
+
+                expect(chunks).toHaveLength(1);
+                expect(chunks[0].text).toBe(text);
+                expect(chunks[0].isFirst).toBe(true);
+                expect(chunks[0].isLast).toBe(true);
+            });
+        });
     });
 
     describe('convertRateToSpeed', () => {

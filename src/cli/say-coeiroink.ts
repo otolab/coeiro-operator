@@ -18,7 +18,7 @@ interface ParsedOptions {
     outputFile: string;
     streamMode: boolean;
     text: string;
-    chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large';
+    chunkMode: 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation';
     bufferSize: number;
 }
 
@@ -85,7 +85,7 @@ Examples:
             outputFile: '',
             streamMode: false,
             text: '',
-            chunkMode: 'auto',
+            chunkMode: 'punctuation',
             bufferSize: BUFFER_SIZES.DEFAULT
         };
 
@@ -132,10 +132,10 @@ Examples:
                 
                 case '--chunk-mode':
                     const chunkMode = args[i + 1];
-                    if (!['auto', 'none', 'small', 'medium', 'large'].includes(chunkMode)) {
-                        throw new Error(`Invalid chunk mode: ${chunkMode}. Must be one of: auto, none, small, medium, large`);
+                    if (!['auto', 'none', 'small', 'medium', 'large', 'punctuation'].includes(chunkMode)) {
+                        throw new Error(`Invalid chunk mode: ${chunkMode}. Must be one of: auto, none, small, medium, large, punctuation`);
                     }
-                    options.chunkMode = chunkMode as 'auto' | 'none' | 'small' | 'medium' | 'large';
+                    options.chunkMode = chunkMode as 'auto' | 'none' | 'small' | 'medium' | 'large' | 'punctuation';
                     i++;
                     break;
                 
