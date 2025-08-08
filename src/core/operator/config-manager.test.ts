@@ -172,8 +172,8 @@ describe('ConfigManager', () => {
         });
     });
 
-    describe('fetchAvailableVoices', () => {
-        test('COEIROINKサーバーからの正常なレスポンスを処理', async () => {
+    describe('VoiceProvider integration', () => {
+        test('COEIROINKサーバーからの正常なレスポンスでconfig構築', async () => {
             const mockResponse = [
                 {
                     speakerName: 'つくよみちゃん',
@@ -190,21 +190,24 @@ describe('ConfigManager', () => {
                 json: async () => mockResponse
             });
 
-            await configManager.fetchAvailableVoices();
-
-            expect(global.fetch).toHaveBeenCalledWith('http://localhost:50032/v1/speakers');
+            const config = await configManager.buildDynamicConfig();
+            expect(config.characters).toBeDefined();
+            expect(global.fetch).toHaveBeenCalledWith('http://localhost:50032/v1/speakers', expect.any(Object));
         });
 
-        test('COEIROINKサーバーエラー時は空配列を設定', async () => {
+        test('COEIROINKサーバーエラー時もconfig構築成功', async () => {
             (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Connection failed'));
 
             // エラーが投げられないことを確認
-            await expect(configManager.fetchAvailableVoices()).resolves.not.toThrow();
+            const config = await configManager.buildDynamicConfig();
+            expect(config.characters).toBeDefined();
         });
 
-        test('カスタムホスト・ポートを使用', async () => {
+        test('カスタム接続設定を適用', async () => {
             // カスタム設定ファイルを作成
-            const customConfig = { host: 'custom-host', port: '9999' };
+            const customConfig = { 
+                connection: { host: 'custom-host', port: '9999' }
+            };
             const configFile = join(tempDir, 'coeiroink-config.json');
             await writeFile(configFile, JSON.stringify(customConfig), 'utf8');
 
@@ -213,15 +216,15 @@ describe('ConfigManager', () => {
                 json: async () => []
             });
 
-            await configManager.fetchAvailableVoices();
-
-            expect(global.fetch).toHaveBeenCalledWith('http://custom-host:9999/v1/speakers');
+            const config = await configManager.buildDynamicConfig();
+            expect(config.characters).toBeDefined();
+            expect(global.fetch).toHaveBeenCalledWith('http://custom-host:9999/v1/speakers', expect.any(Object));
         });
     });
 
     describe('buildDynamicConfig', () => {
         test('音声フォントが利用できない場合は内蔵設定を使用', async () => {
-            // fetchAvailableVoicesが空配列を返すようにモック
+            // VoiceProviderが空配列を返すようにモック
             (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('No server'));
 
             const config = await configManager.buildDynamicConfig();

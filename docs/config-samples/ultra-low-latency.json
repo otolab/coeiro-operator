@@ -1,5 +1,5 @@
 {
-  "_comment": "📖 設定値の詳細: docs/configuration-options.md | 🔗 実装: src/say/constants.ts",
+  "_comment": "📖 設定値の詳細: docs/configuration-options.md | 🔗 実装: src/core/say/constants.ts",
   "connection": {
     "host": "localhost",
     "port": "50032"

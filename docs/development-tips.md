@@ -58,7 +58,7 @@ console.error('デバッグ情報:', data);
 ### プロセス確認
 ```bash
 # MCPサーバープロセスの確認
-ps aux | grep "node dist/index.js"
+ps aux | grep "node dist/mcp/server.js"
 ```
 
 ## コマンド実行時の注意事項
@@ -71,7 +71,7 @@ ps aux | grep "node dist/index.js"
 
 ```bash
 # 例：存在しないスタイルを指定
-node dist/operator/cli.js assign alma --style=存在しないスタイル
+node dist/cli/operator-manager.js assign alma --style=存在しないスタイル
 
 # 出力例：
 # オペレータ決定: アルマちゃん (alma)
@@ -88,7 +88,7 @@ node dist/operator/cli.js assign alma --style=存在しないスタイル
 **有効なスタイル名の確認方法：**
 ```bash
 # 利用可能なオペレータとスタイルを確認
-node dist/operator/cli.js available
+node dist/cli/operator-manager.js available
 ```
 
 ### 音声合成 (say-coeiroink)
@@ -99,7 +99,7 @@ node dist/operator/cli.js available
 
 ```bash
 # 例：サーバー未起動時の実行
-echo "テキスト" | node dist/say/cli.js -f - -o output.wav
+echo "テキスト" | node dist/cli/say-coeiroink.js -f - -o output.wav
 
 # エラー例：
 # Error: チャンク0合成エラー: HTTP 500: Internal Server Error

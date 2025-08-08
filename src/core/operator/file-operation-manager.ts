@@ -5,6 +5,7 @@
 
 import { readFile, writeFile, stat, unlink, rename, access } from 'fs/promises';
 import { constants } from 'fs';
+import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
 
 export interface ActiveOperators {
     active: Record<string, string>;
@@ -74,7 +75,24 @@ export class FileOperationManager {
         styleId: number = 0
     ): Promise<void> {
         try {
-            const config = await this.readJsonFile(coeiroinkConfigFile, {}) as Record<string, unknown>;
+            // デフォルト設定を生成
+            const defaultConfig = {
+                connection: {
+                    host: CONNECTION_SETTINGS.DEFAULT_HOST,
+                    port: CONNECTION_SETTINGS.DEFAULT_PORT
+                },
+                voice: {
+                    rate: 200,
+                    default_voice_id: DEFAULT_VOICE.ID  // つくよみちゃん「れいせい」（COEIROINKデフォルト）
+                },
+                audio: {
+                    latencyMode: 'balanced',
+                    splitMode: 'auto',
+                    bufferSize: 1024
+                }
+            };
+            
+            const config = await this.readJsonFile(coeiroinkConfigFile, defaultConfig) as Record<string, unknown>;
             
             // 新しい構造で設定を更新
             if (!config.voice) {

@@ -7,19 +7,10 @@ import { readFile, writeFile, mkdir, access } from 'fs/promises';
 import { constants } from 'fs';
 import { join } from 'path';
 import { BUILTIN_CHARACTER_CONFIGS, SPEAKER_NAME_TO_ID_MAP } from './character-defaults.js';
+import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
+import { getVoiceProvider, type VoiceInfo } from '../environment/voice-provider.js';
 
-interface VoiceStyle {
-    id: number;
-    name: string;
-    style_id: number;
-}
-
-interface Voice {
-    id: string;
-    name: string;
-    voice_id: string;
-    styles: VoiceStyle[];
-}
+// VoiceInfo型は voice-provider.ts から import済み
 
 export interface CharacterStyle {
     name: string;
@@ -54,8 +45,8 @@ export class ConfigManager {
     private configDir: string;
     private operatorConfigFile: string;
     private coeiroinkConfigFile: string;
-    private availableVoices: Voice[] | null = null; // キャッシュ
     private mergedConfig: MergedConfig | null = null; // マージ済み設定キャッシュ
+    private voiceProvider = getVoiceProvider(); // 音声プロバイダ
 
     constructor(configDir: string) {
         this.configDir = configDir;
@@ -93,45 +84,29 @@ export class ConfigManager {
     }
 
     /**
-     * COEIROINKサーバーから利用可能な音声フォントを取得
+     * 接続設定を更新して音声プロバイダを再設定
      */
-    async fetchAvailableVoices(): Promise<void> {
+    private async updateVoiceProviderConnection(): Promise<void> {
         try {
-            const coeiroinkConfig = await this.readJsonFile(this.coeiroinkConfigFile, {}) as Record<string, unknown>;
-            const host = (coeiroinkConfig.host as string) || 'localhost';
-            const port = (coeiroinkConfig.port as string) || '50032';
+            // デフォルト接続設定を生成
+            const defaultCoeiroinkConfig = {
+                connection: {
+                    host: CONNECTION_SETTINGS.DEFAULT_HOST,
+                    port: CONNECTION_SETTINGS.DEFAULT_PORT
+                }
+            };
             
-            // fetchを使用してHTTPリクエストを実行
-            const response = await fetch(`http://${host}:${port}/v1/speakers`);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
+            const coeiroinkConfig = await this.readJsonFile(this.coeiroinkConfigFile, defaultCoeiroinkConfig) as Record<string, unknown>;
             
-            interface SpeakerData {
-                speakerName: string;
-                speakerUuid: string;
-                styles: Array<{
-                    styleId: number;
-                    styleName: string;
-                }>;
-            }
+            // 接続設定の取得（階層構造に対応）
+            const connectionConfig = coeiroinkConfig.connection as Record<string, unknown> || {};
+            const host = (connectionConfig.host as string) || (coeiroinkConfig.host as string) || CONNECTION_SETTINGS.DEFAULT_HOST;
+            const port = (connectionConfig.port as string) || (coeiroinkConfig.port as string) || CONNECTION_SETTINGS.DEFAULT_PORT;
             
-            const speakers = await response.json() as SpeakerData[];
-            
-            this.availableVoices = speakers.map(speaker => ({
-                id: this.speakerNameToId(speaker.speakerName),
-                name: speaker.speakerName,
-                voice_id: speaker.speakerUuid,
-                styles: speaker.styles.map(style => ({
-                    id: style.styleId,
-                    name: style.styleName,
-                    style_id: style.styleId
-                }))
-            }));
-            
+            // 音声プロバイダの接続設定を更新
+            this.voiceProvider.updateConnection({ host, port });
         } catch (error) {
-            console.warn(`音声フォント取得エラー: ${(error as Error).message}。内蔵設定のみを使用します。`);
-            this.availableVoices = [];
+            console.warn(`接続設定更新エラー: ${(error as Error).message}`);
         }
     }
 
@@ -182,17 +157,22 @@ export class ConfigManager {
             return this.mergedConfig;
         }
 
-        // 音声フォントを取得（キャッシュがない場合のみ）
-        if (!this.availableVoices || forceRefresh) {
-            await this.fetchAvailableVoices();
+        // 接続設定を更新
+        await this.updateVoiceProviderConnection();
+
+        // 強制リフレッシュの場合はキャッシュをクリア
+        if (forceRefresh) {
+            this.voiceProvider.clearCache();
         }
 
         const userConfig = await this.readJsonFile<UserConfig>(this.operatorConfigFile, { characters: {} });
         const dynamicCharacters: Record<string, CharacterConfig> = {};
         
         // 利用可能な音声フォントから動的設定を生成
-        if (this.availableVoices && this.availableVoices.length > 0) {
-            for (const voice of this.availableVoices) {
+        const availableVoices = await this.voiceProvider.getVoicesForConfig();
+        
+        if (availableVoices.length > 0) {
+            for (const voice of availableVoices) {
                 const builtinConfig = BUILTIN_CHARACTER_CONFIGS[voice.id as keyof typeof BUILTIN_CHARACTER_CONFIGS] || {
                     name: voice.name,
                     personality: "丁寧で親しみやすい",
@@ -267,7 +247,7 @@ export class ConfigManager {
      * 設定をリフレッシュ（キャッシュクリア）
      */
     refreshConfig(): void {
-        this.availableVoices = null;
+        this.voiceProvider.clearCache();
         this.mergedConfig = null;
     }
 

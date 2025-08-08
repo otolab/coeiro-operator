@@ -18,6 +18,27 @@
  */
 
 // ================================
+// デフォルト音声設定（COEIROINKデフォルト）
+// つくよみちゃん「れいせい」がCOEIROINKの標準音声
+// ================================
+export const DEFAULT_VOICE = {
+    /** デフォルト音声ID - つくよみちゃん */
+    ID: '3c37646f-3881-5374-2a83-149267990abc',
+    /** デフォルトスタイルID - れいせい */
+    STYLE_ID: 0
+} as const;
+
+// ================================
+// 接続設定
+// ================================
+export const CONNECTION_SETTINGS = {
+    /** デフォルトホスト */
+    DEFAULT_HOST: 'localhost',
+    /** デフォルトポート */
+    DEFAULT_PORT: '50032'
+} as const;
+
+// ================================
 // サンプルレート設定
 // 📄 docs/configuration-options.md: `synthesisRate`, `playbackRate`
 // 📄 docs/audio-system.md: サンプルレート分離の説明
@@ -211,17 +232,7 @@ export const STREAM_SETTINGS = {
     PRELOAD_CHUNKS: 2
 } as const;
 
-// ================================
-// 接続設定
-// 📄 docs/configuration-options.md: `connection`セクション
-// 📄 docs/installation.md: COEIROINK設定、基本設定例
-// ================================
-export const CONNECTION_SETTINGS = {
-    /** デフォルトホスト */
-    DEFAULT_HOST: 'localhost',
-    /** デフォルトポート */
-    DEFAULT_PORT: '50032'
-} as const;
+// 重複した定義は上部で既に定義されているため削除
 
 // ================================
 // ヘルパー型定義

@@ -19,6 +19,7 @@ import {
     PADDING_SETTINGS,
     SYNTHESIS_SETTINGS
 } from './constants.js';
+import { getVoiceProvider } from '../environment/voice-provider.js';
 
 // ストリーミング設定
 const STREAM_CONFIG: StreamConfig = {
@@ -32,9 +33,15 @@ const STREAM_CONFIG: StreamConfig = {
 
 export class AudioSynthesizer {
     private audioConfig: AudioConfig;
+    private voiceProvider = getVoiceProvider();
     
     constructor(private config: Config) {
         this.audioConfig = this.getAudioConfig();
+        // 接続設定を更新
+        this.voiceProvider.updateConnection({
+            host: this.config.connection.host,
+            port: this.config.connection.port
+        });
     }
 
     /**
@@ -110,47 +117,14 @@ export class AudioSynthesizer {
      * サーバー接続確認
      */
     async checkServerConnection(): Promise<boolean> {
-        const url = `http://${this.config.connection.host}:${this.config.connection.port}/v1/speakers`;
-        
-        try {
-            const response = await fetch(url, { 
-                signal: AbortSignal.timeout(3000) 
-            });
-            return response.ok;
-        } catch (error) {
-            return false;
-        }
+        return await this.voiceProvider.checkConnection();
     }
 
     /**
      * 利用可能な音声一覧を取得
      */
     async listVoices(): Promise<void> {
-        const url = `http://${this.config.connection.host}:${this.config.connection.port}/v1/speakers`;
-        
-        try {
-            const response = await fetch(url, { 
-                signal: AbortSignal.timeout(3000) 
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
-            }
-            
-            const speakers = await response.json();
-            logger.info('Available voices:');
-            
-            speakers.forEach((speaker: any) => {
-                logger.info(`${speaker.speakerUuid}: ${speaker.speakerName}`);
-                speaker.styles.forEach((style: any) => {
-                    logger.info(`  Style ${style.styleId}: ${style.styleName}`);
-                });
-            });
-        } catch (error) {
-            logger.error(`Error: Cannot connect to COEIROINK server at http://${this.config.connection.host}:${this.config.connection.port}`);
-            logger.error('Make sure the server is running.');
-            throw error;
-        }
+        await this.voiceProvider.logAvailableVoices();
     }
 
     /**
@@ -223,8 +197,17 @@ export class AudioSynthesizer {
                 }
             }
         } else {
-            // 従来の形式: 音声IDのみ
+            // 従来の形式: 音声IDのみ - 正しいstyleIDを取得する必要がある
             voiceId = voiceInfo as string;
+            
+            // VoiceProviderから正しいstyleIDを取得
+            try {
+                styleId = await this.voiceProvider.getFirstStyleId(voiceId);
+            } catch (error) {
+                // API呼び出しが失敗した場合は0を使用（従来の動作）
+                console.warn('Failed to fetch speaker styles, using styleId=0:', error);
+                styleId = 0;
+            }
         }
 
         // 音切れ防止: 前後に無音パディングを追加（設定に基づく）
