@@ -51,8 +51,8 @@ npm run build
 
 #### 主要設定項目
 
-- `defaultChunkMode`: テキスト分割モード (`'none'`, `'small'`, `'medium'`, `'large'`, `'auto'`)
-- `defaultBufferSize`: スピーカーバッファサイズ（256-8192バイト）
+- `splitMode`: テキスト分割モード (`'punctuation'`, `'none'`, `'small'`, `'medium'`, `'large'`, `'auto'`)
+- `bufferSize`: スピーカーバッファサイズ（256-8192バイト）
 - `chunkSizeSmall/Medium/Large`: 各モードでの分割サイズ（文字数）
 - `overlapRatio`: オーバーラップ比率（0.0-1.0）
 

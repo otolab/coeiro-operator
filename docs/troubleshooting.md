@@ -131,8 +131,7 @@ cat ~/.coeiro-operator/coeiroink-config.json
   "playbackRate": 44100,
   "defaultBufferSize": 256,
   "lowpassFilter": false,
-  "noiseReduction": false,
-  "defaultChunkMode": "none"
+  "noiseReduction": false
 }
 ```
 
@@ -351,8 +350,7 @@ node --max-old-space-size=1024 say/cli.js "テスト"
 {
   "defaultBufferSize": 512,
   "maxQueueSize": 5,
-  "noiseReduction": false,
-  "defaultChunkMode": "small"
+  "noiseReduction": false
 }
 ```
 

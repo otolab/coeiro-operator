@@ -398,7 +398,6 @@ v2.1.0以前の設定形式も引き続きサポートされます。新形式�
   "voice_id": "voice-uuid-here",
   "style_id": 0,
   "rate": 200,
-  "defaultChunkMode": "auto",
   "defaultBufferSize": 1024,
   "chunkSizeSmall": 30,
   "chunkSizeMedium": 50,

@@ -362,7 +362,6 @@ interface Config {
   style_id?: number;
   synthesisRate?: number;      // 音声生成時サンプルレート
   playbackRate?: number;       // 再生時サンプルレート
-  defaultChunkMode?: ChunkMode;
   defaultBufferSize?: number;
   noiseReduction?: boolean;
   lowpassFilter?: boolean;

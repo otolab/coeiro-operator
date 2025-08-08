@@ -130,7 +130,6 @@ MCPツールの`say`でスタイルを一時的に指定可能：
 ```json
 {
   "rate": 200,
-  "defaultChunkMode": "auto",
   "defaultBufferSize": 1024
 }
 ```
