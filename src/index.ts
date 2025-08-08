@@ -348,7 +348,8 @@ server.registerTool("say", {
       voice: voice || null,
       rate: rate || undefined,
       streamMode: streamMode || false,
-      style: style || undefined
+      style: style || undefined,
+      allowFallback: false  // MCPツールではフォールバックを無効化
     });
     
     return {

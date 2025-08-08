@@ -268,7 +268,7 @@ curl -X GET "http://localhost:50032/v1/downloadable_speakers" | jq -r '.[].speak
 ### 設定の詳細
 
 具体的な設定方法については以下を参照してください：
-- **技術的な設定**: [INSTALLATION.md](../INSTALLATION.md) の設定ファイル仕様
+- **技術的な設定**: [configuration-guide.md](configuration-guide.md) の設定ファイル仕様
 - **音声ID更新**: [UPDATE_CHARACTER_SETTINGS.md](UPDATE_CHARACTER_SETTINGS.md)
 
 ---

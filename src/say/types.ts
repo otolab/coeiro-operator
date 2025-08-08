@@ -105,6 +105,7 @@ export interface SynthesizeOptions {
     style?: string;
     chunkMode?: 'auto' | 'none' | 'small' | 'medium' | 'large';  // テキスト分割モード
     bufferSize?: number;  // スピーカーバッファサイズ制御（バイト単位）
+    allowFallback?: boolean;  // デフォルトフォールバックを許可するかどうか
 }
 
 export interface SynthesizeResult {

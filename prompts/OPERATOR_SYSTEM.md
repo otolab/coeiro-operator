@@ -80,7 +80,7 @@ macOS `say`コマンド互換の音声合成CLI
 **関連ファイル**: 
 - **[CHARACTERS.md](../docs/CHARACTERS.md)** - オペレータキャラクター詳細
 - **[UPDATE_CHARACTER_SETTINGS.md](UPDATE_CHARACTER_SETTINGS.md)** - キャラクター設定更新手順
-- **[../INSTALLATION.md](../INSTALLATION.md)** - インストールガイド
+- **[../README.md](../README.md)** - インストール・基本使用方法ガイド
 - **[../README.md](../README.md)** - プロジェクト概要
 - `~/.coeiro-operator/operator-config.json` - オペレータ設定
 - `~/.coeiro-operator/coeiroink-config.json` - 音声合成設定

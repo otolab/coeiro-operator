@@ -287,7 +287,8 @@ export class SayCoeiroink {
             streamMode = false,
             style = null,
             chunkMode = this.config.audio?.splitMode || 'auto',
-            bufferSize = this.config.audio?.bufferSize || 1024
+            bufferSize = this.config.audio?.bufferSize || 1024,
+            allowFallback = true  // デフォルトフォールバックを許可するかどうか
         } = options;
 
         // 音声選択の優先順位処理
@@ -297,9 +298,12 @@ export class SayCoeiroink {
             const operatorVoice = await this.getCurrentOperatorVoice();
             if (operatorVoice) {
                 selectedVoice = operatorVoice;
-            } else {
-                // 2. フォールバック: 設定ファイルのデフォルト音声を使用
+            } else if (allowFallback) {
+                // 2. フォールバック: 設定ファイルのデフォルト音声を使用（CLIのみ）
                 selectedVoice = this.config.voice?.default_voice_id || 'b28bb401-bc43-c9c7-77e4-77a2bbb4b283';
+            } else {
+                // MCPの場合はオペレータが必要
+                throw new Error('オペレータが割り当てられていません。まず operator_assign を実行してください。');
             }
         }
 
