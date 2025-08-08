@@ -4,6 +4,7 @@
  */
 
 import type { SpeechTask, SynthesizeOptions, SynthesizeResult } from './types.js';
+import { logger } from '../utils/logger.js';
 
 export class SpeechQueue {
     private speechQueue: SpeechTask[] = [];
@@ -56,9 +57,9 @@ export class SpeechQueue {
             
             try {
                 await this.processCallback(task);
-                console.error(`音声タスク完了: ${task.id}`);
+                logger.verbose(`音声タスク完了: ${task.id}`);
             } catch (error) {
-                console.error(`音声タスクエラー: ${task.id}, ${(error as Error).message}`);
+                logger.error(`音声タスクエラー: ${task.id}, ${(error as Error).message}`);
             }
         }
         

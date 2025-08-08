@@ -12,6 +12,7 @@ import DSP from 'dsp.js';
 import SampleRate from 'node-libsamplerate';
 import { Transform } from 'stream';
 import type { AudioResult, Chunk, Config, AudioConfig } from './types.js';
+import { logger } from '../utils/logger.js';
 
 export class AudioPlayer {
     private speaker: Speaker | null = null;
@@ -121,9 +122,9 @@ export class AudioPlayer {
     private async initializeEchogarden(): Promise<void> {
         try {
             this.echogardenInitialized = true;
-            console.log('Echogarden初期化完了');
+            logger.debug('Echogarden初期化完了');
         } catch (error) {
-            console.warn(`Echogarden初期化エラー: ${(error as Error).message}`);
+            logger.warn(`Echogarden初期化エラー: ${(error as Error).message}`);
             this.noiseReductionEnabled = false;
             this.echogardenInitialized = false;
         }
@@ -145,11 +146,11 @@ export class AudioPlayer {
                 await this.initializeEchogarden();
             }
             
-            console.error(`音声プレーヤー初期化: speakerライブラリ使用（ネイティブ出力）${this.noiseReductionEnabled ? ' + Echogarden' : ''}`);
+            logger.info(`音声プレーヤー初期化: speakerライブラリ使用（ネイティブ出力）${this.noiseReductionEnabled ? ' + Echogarden' : ''}`);
             this.isInitialized = true;
             return true;
         } catch (error) {
-            console.error(`音声プレーヤー初期化エラー: ${(error as Error).message}`);
+            logger.error(`音声プレーヤー初期化エラー: ${(error as Error).message}`);
             return false;
         }
     }
@@ -168,7 +169,7 @@ export class AudioPlayer {
             
             // PCMデータのサイズ確認・調整
             if (pcmData.length === 0) {
-                console.warn('PCMデータが空です');
+                logger.warn('PCMデータが空です');
                 return;
             }
 
@@ -260,7 +261,7 @@ export class AudioPlayer {
             toDepth: this.bitDepth
         });
 
-        console.log(`リサンプリングストリーム: ${this.synthesisRate}Hz → ${this.playbackRate}Hz (SRC_SINC_MEDIUM_QUALITY)`);
+        logger.debug(`リサンプリングストリーム: ${this.synthesisRate}Hz → ${this.playbackRate}Hz (SRC_SINC_MEDIUM_QUALITY)`);
         return resampleStream;
     }
 
@@ -302,7 +303,7 @@ export class AudioPlayer {
                     const denoisedData = await this.applyNoiseReductionToChunk(pcmData);
                     callback(null, Buffer.from(denoisedData));
                 } catch (error) {
-                    console.warn(`ノイズリダクション処理エラー: ${(error as Error).message}`);
+                    logger.warn(`ノイズリダクション処理エラー: ${(error as Error).message}`);
                     callback(null, chunk); // エラー時は元データを返す
                 }
             }
@@ -341,7 +342,7 @@ export class AudioPlayer {
             for await (const audioResult of audioStream) {
                 // 各チャンクを非同期で再生（順序は保たない、低レイテンシ優先）
                 const playPromise = this.playAudioStream(audioResult).catch((error: Error) => {
-                    console.warn(`チャンク${audioResult.chunk.index}再生エラー:`, error);
+                    logger.warn(`チャンク${audioResult.chunk.index}再生エラー:`, error);
                 });
                 
                 playQueue.push(playPromise);
@@ -444,7 +445,7 @@ export class AudioPlayer {
 
             return processedData;
         } catch (error) {
-            console.warn(`ローパスフィルター処理エラー: ${(error as Error).message}`);
+            logger.warn(`ローパスフィルター処理エラー: ${(error as Error).message}`);
             return pcmData;
         }
     }
