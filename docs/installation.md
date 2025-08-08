@@ -176,7 +176,7 @@ claude mcp test coeiro-operator
   },
   "audio": {
     "latencyMode": "balanced",
-    "splitMode": "auto",
+    "splitMode": "punctuation",
     "bufferSize": 1024
   }
 }
@@ -339,11 +339,14 @@ operator-manager --reset-config
 
 テキストの分割方法を指定：
 
+- **`punctuation`**: 句読点ベース分割（デフォルト、推奨）
 - **`none`**: 分割なし（一括処理）
-- **`auto`**: 自動調整（デフォルト）
+- **`auto`**: 自動調整（50文字）
 - **`small`**: 短い分割（20-30文字）
 - **`medium`**: 中程度の分割（30-50文字）
 - **`large`**: 長い分割（50-100文字）
+
+**推奨**: `punctuation`モードは日本語テキストを句点（。）と読点（、）で自然に分割し、音切れのない自然な音声を実現します。
 
 ### システム設定
 
@@ -391,7 +394,7 @@ operator-manager --reset-config
   },
   "audio": {
     "latencyMode": "quality",
-    "splitMode": "auto",
+    "splitMode": "punctuation",
     "bufferSize": 2048
   }
 }

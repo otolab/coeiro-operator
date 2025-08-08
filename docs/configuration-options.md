@@ -31,7 +31,7 @@ COEIRO Operatorの音声合成システムは、詳細な設定によりパフ�
   },
   "audio": {
     "latencyMode": "balanced",
-    "splitMode": "auto",
+    "splitMode": "punctuation",
     "bufferSize": 1024,
     "processing": { ... },
     "splitSettings": { ... },
@@ -107,18 +107,37 @@ COEIROINK音声合成サーバーへの接続を設定します。
 ```json
 {
   "audio": {
-    "splitMode": "auto"
+    "splitMode": "punctuation"
   }
 }
 ```
 
-| モード | 分割サイズ | 用途 |
-|--------|------------|------|
+| モード | 分割方法 | 用途 |
+|--------|----------|------|
+| `punctuation` | 句読点ベース | **デフォルト**: 日本語の自然な分割 |
 | `none` | 分割なし | 短いテキスト、一括処理 |
 | `small` | 30文字 | 低レイテンシ重視 |
 | `medium` | 50文字 | バランス型 |
 | `large` | 100文字 | 高品質重視 |
-| `auto` | 自動判定 | テキスト長に応じて最適化 |
+| `auto` | 自動判定（50文字） | テキスト長に応じて最適化 |
+
+#### 句読点分割モード（推奨）
+
+`punctuation` モードは日本語テキストの自然な分割を実現します：
+
+- **句点（。）優先**: 文の終わりで自然に分割
+- **読点（、）補助**: 長い文は読点で適切に分割
+- **フォールバック**: 句読点がない場合は最大150文字で分割
+- **品質保証**: 最小10文字以上のチャンクのみ生成
+
+```json
+{
+  "audio": {
+    "splitMode": "punctuation",
+    "latencyMode": "balanced"
+  }
+}
+```
 
 ### 音声処理設定（高度な設定）
 
@@ -154,7 +173,7 @@ COEIROINK音声合成サーバーへの接続を設定します。
 ```json
 {
   "audio": {
-    "splitMode": "auto",        // 推奨: プリセット使用
+    "splitMode": "punctuation",        // 推奨: 句読点ベース分割
     "splitSettings": {
       "mediumSize": 60          // 必要に応じてプリセット値を上書き
     }
