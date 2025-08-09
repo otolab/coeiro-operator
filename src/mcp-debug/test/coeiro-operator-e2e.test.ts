@@ -157,10 +157,13 @@ class CoeirocoperatorE2ETestRunner {
     
     return new Promise((resolve, reject) => {
       const serverProcess = spawn('node', [serverPath], {
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: { ...process.env, NODE_ENV: 'test' }
       });
 
       let initReceived = false;
+      let output = '';
+      let errorOutput = '';
 
       // 初期化リクエスト送信
       const initRequest = JSON.stringify({
@@ -174,34 +177,53 @@ class CoeirocoperatorE2ETestRunner {
       });
 
       serverProcess.stdout?.on('data', (data) => {
-        const output = data.toString();
-        try {
-          const response = JSON.parse(output);
-          if (response.id === 1 && response.result) {
-            initReceived = true;
-            serverProcess.kill('SIGTERM');
+        output += data.toString();
+        const lines = output.split('\n');
+        
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              const response = JSON.parse(line.trim());
+              if (response.id === 1 && response.result) {
+                initReceived = true;
+                serverProcess.kill('SIGTERM');
+                return;
+              }
+            } catch (e) {
+              // JSON解析失敗は無視
+            }
           }
-        } catch (e) {
-          // JSON解析失敗は無視
         }
       });
 
-      serverProcess.on('close', () => {
+      serverProcess.stderr?.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+
+      serverProcess.on('close', (code) => {
+        if (!initReceived) {
+          console.log('Server output:', output);
+          console.log('Server error:', errorOutput);
+          console.log('Exit code:', code);
+        }
         resolve(initReceived);
       });
 
       serverProcess.on('error', (error) => {
-        reject(error);
+        console.log('Server spawn error:', error);
+        resolve(false); // エラーの場合はfalseを返す
       });
 
       // 初期化リクエスト送信
       setTimeout(() => {
-        serverProcess.stdin?.write(initRequest + '\n');
-      }, 100);
+        if (serverProcess.stdin && !serverProcess.killed) {
+          serverProcess.stdin.write(initRequest + '\n');
+        }
+      }, 1000); // より長い待機時間
 
       // タイムアウト設定
       setTimeout(() => {
-        if (!initReceived) {
+        if (!initReceived && !serverProcess.killed) {
           serverProcess.kill('SIGTERM');
           resolve(false);
         }

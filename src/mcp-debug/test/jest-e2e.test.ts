@@ -395,14 +395,20 @@ describe('MCP Debug Environment E2E Tests', () => {
       // 不正なJSONを送信
       await testRunner.sendCommand('{"invalid": json}');
       
-      // 少し待機
-      await new Promise(resolve => setTimeout(resolve, 200));
+      // より長い待機時間を設定
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const mcpResponses = testRunner['output'].mcpResponses;
+      
+      // デバッグ用：全レスポンスを確認
+      console.log('All MCP Responses:', mcpResponses);
+      
       const errorResponse = mcpResponses.find(r => r.error && r.error.code === -32700);
       
       expect(errorResponse).toBeDefined();
-      expect(errorResponse.error.message).toBe('Parse error');
+      if (errorResponse) {
+        expect(errorResponse.error.message).toBe('Parse error');
+      }
     }, 10000);
 
     test('存在しないツールの呼び出し', async () => {

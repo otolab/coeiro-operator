@@ -57,14 +57,53 @@ npm run build
 
 音声システムの設定は `~/.coeiro-operator/coeiroink-config.json` で管理されます。
 
+#### 設定ファイル形式（JSON）
+
+```json
+{
+  "connection": {
+    "host": "localhost",
+    "port": "50032"
+  },
+  "voice": {
+    "default_voice_id": "3c37646f-3881-5374-2a83-149267990abc",
+    "default_style_id": 0,
+    "rate": 200
+  },
+  "audio": {
+    "latencyMode": "balanced",
+    "splitMode": "punctuation",
+    "bufferSize": 1024,
+    "processing": {
+      "synthesisRate": 24000,
+      "playbackRate": 48000
+    },
+    "splitSettings": {
+      "smallSize": 30,
+      "mediumSize": 50,
+      "largeSize": 100,
+      "overlapRatio": 0.1
+    }
+  }
+}
+```
+
 #### 主要設定項目
 
-- `splitMode`: テキスト分割モード (`'punctuation'`, `'none'`, `'small'`, `'medium'`, `'large'`, `'auto'`)
-- `bufferSize`: スピーカーバッファサイズ（256-8192バイト）
-- `chunkSizeSmall/Medium/Large`: 各モードでの分割サイズ（文字数）
-- `overlapRatio`: オーバーラップ比率（0.0-1.0）
+- `audio.splitMode`: テキスト分割モード（デフォルト: `'punctuation'`）
+  - `'punctuation'`: 句読点で分割（推奨・デフォルト）
+  - `'none'`, `'small'`, `'medium'`, `'large'`: 固定文字数分割
+  - `'auto'`: 自動判定
+- `audio.bufferSize`: スピーカーバッファサイズ（256-8192バイト）
+- `audio.latencyMode`: レイテンシモード（`'ultra-low'`, `'balanced'`, `'quality'`）
+- `audio.splitSettings`: 分割設定（各モードでの分割サイズと重複比率）
+- `voice.rate`: 話速（WPM: Words Per Minute）
 
-詳細は [`docs/audio-streaming-guide.md`](./docs/audio-streaming-guide.md) を参照してください。
+#### splitModeデフォルト動作
+
+**重要**: `splitMode`が未指定の場合、自動的に`'punctuation'`モードが適用されます。これにより、設定ファイルで明示的に指定しなくても、日本語の自然な分割が行われます。
+
+詳細は [`docs/configuration-options.md`](./docs/configuration-options.md) を参照してください。
 
 ## 開発時の重要なテクニック
 

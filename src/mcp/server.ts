@@ -33,8 +33,29 @@ interface ToolResponse {
   [key: string]: unknown;
 }
 
-// コマンドライン引数からデバッグモードを判定
-const isDebugMode = process.argv.includes('--debug') || process.argv.includes('-d');
+// コマンドライン引数の解析
+const parseArguments = () => {
+  const args = process.argv.slice(2);
+  let isDebugMode = false;
+  let configPath: string | undefined;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg === '--debug' || arg === '-d') {
+      isDebugMode = true;
+    } else if (arg === '--config' || arg === '-c') {
+      configPath = args[i + 1];
+      i++; // 次の引数をスキップ
+    } else if (arg.startsWith('--config=')) {
+      configPath = arg.split('=')[1];
+    }
+  }
+
+  return { isDebugMode, configPath };
+};
+
+const { isDebugMode, configPath } = parseArguments();
 
 // デバッグモードの場合は詳細ログ、そうでなければMCPサーバーモード
 if (isDebugMode) {
@@ -42,6 +63,10 @@ if (isDebugMode) {
   logger.info("DEBUG MODE: Verbose logging enabled (--debug flag detected)");
 } else {
   LoggerPresets.mcpServerWithAccumulation(); // MCP準拠のログ設定（蓄積あり）
+}
+
+if (configPath) {
+  logger.info(`Using config file: ${configPath}`);
 }
 
 const server = new McpServer({
@@ -60,7 +85,7 @@ let sayCoeiroink: SayCoeiroink;
 let operatorManager: OperatorManager;
 
 try {
-  const config = await loadConfig();
+  const config = await loadConfig(configPath);
   sayCoeiroink = new SayCoeiroink(config);
   
   await sayCoeiroink.initialize();

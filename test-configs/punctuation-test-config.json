@@ -1,0 +1,34 @@
+{
+  "connection": {
+    "host": "localhost",
+    "port": "50032"
+  },
+  "voice": {
+    "default_voice_id": "3c37646f-3881-5374-2a83-149267990abc",
+    "default_style_id": 0,
+    "rate": 200
+  },
+  "audio": {
+    "latencyMode": "balanced",
+    "splitMode": "punctuation",
+    "bufferSize": 1024,
+    "processing": {
+      "synthesisRate": 24000,
+      "playbackRate": 48000,
+      "noiseReduction": false,
+      "lowpassFilter": false,
+      "lowpassCutoff": 24000
+    },
+    "splitSettings": {
+      "smallSize": 30,
+      "mediumSize": 50,
+      "largeSize": 100,
+      "overlapRatio": 0.1
+    },
+    "bufferSettings": {
+      "highWaterMark": 256,
+      "lowWaterMark": 128,
+      "dynamicAdjustment": false
+    }
+  }
+}
