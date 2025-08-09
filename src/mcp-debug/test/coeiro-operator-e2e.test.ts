@@ -171,7 +171,11 @@ class CoeirocoperatorE2ETestRunner {
         method: 'initialize',
         params: {
           protocolVersion: '2024-11-05',
-          capabilities: { tools: {} }
+          capabilities: { tools: {} },
+          clientInfo: {
+            name: 'coeiro-operator-e2e-test',
+            version: '1.0.0'
+          }
         },
         id: 1
       });
