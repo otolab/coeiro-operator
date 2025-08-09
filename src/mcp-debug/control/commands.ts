@@ -60,8 +60,9 @@ export class ControlCommands {
       },
       logStats: {
         totalEntries: logStats.totalEntries,
-        isAccumulating: this.logManager.getLogger().isAccumulating(),
-        maxEntries: this.logManager.getLogger().getAccumulator().getMaxEntries()
+        entriesByLevel: logStats.entriesByLevel,
+        oldestEntry: logStats.oldestEntry || null,
+        newestEntry: logStats.newestEntry || null
       }
     };
 
@@ -229,7 +230,8 @@ export class ControlCommands {
       const healthCheck: HealthCheck = {
         status: overallStatus,
         checks,
-        timestamp: new Date().toISOString()
+        uptime: Date.now() - this.startTime.getTime(),
+        lastCheck: new Date().toISOString()
       };
 
       logger.info('Health check completed', { status: overallStatus });

@@ -263,21 +263,26 @@ export class ModuleReloader {
     }
 
     try {
-      const watcher = (await import('chokidar')).watch(filePath, {
-        ignoreInitial: true,
-        persistent: true
-      });
+      const chokidar = await import('chokidar' as any).catch(() => null);
+      if (chokidar) {
+        const watcher = chokidar.watch(filePath, {
+          ignoreInitial: true,
+          persistent: true
+        });
 
-      watcher.on('change', (path: string) => {
-        this.handleFileChange(path);
-      });
+        watcher.on('change', (path: string) => {
+          this.handleFileChange(path);
+        });
 
-      watcher.on('error', (error: Error) => {
-        logger.error('File watcher error', { filePath, error });
-      });
+        watcher.on('error', (error: Error) => {
+          logger.error('File watcher error', { filePath, error });
+        });
 
-      this.watchers.set(filePath, watcher);
-      logger.debug('Started watching file', { filePath });
+        this.watchers.set(filePath, watcher);
+        logger.debug('Started watching file', { filePath });
+      } else {
+        throw new Error('chokidar not available');
+      }
 
     } catch (error) {
       // chokidar が利用できない場合は fs.watchFile を使用
@@ -298,24 +303,29 @@ export class ModuleReloader {
     const logger = this.logManager.getLogger('reloader');
     
     try {
-      const watcher = (await import('chokidar')).watch(dirPath, {
-        ignored: this.options.excludeDirs.map(dir => `**/${dir}/**`),
-        ignoreInitial: true,
-        persistent: true
-      });
+      const chokidar = await import('chokidar' as any).catch(() => null);
+      if (chokidar) {
+        const watcher = chokidar.watch(dirPath, {
+          ignored: this.options.excludeDirs.map(dir => `**/${dir}/**`),
+          ignoreInitial: true,
+          persistent: true
+        });
 
-      watcher.on('change', (path: string) => {
-        if (this.shouldWatchFile(path)) {
-          this.handleFileChange(path);
-        }
-      });
+        watcher.on('change', (path: string) => {
+          if (this.shouldWatchFile(path)) {
+            this.handleFileChange(path);
+          }
+        });
 
-      watcher.on('error', (error: Error) => {
-        logger.error('Directory watcher error', { dirPath, error });
-      });
+        watcher.on('error', (error: Error) => {
+          logger.error('Directory watcher error', { dirPath, error });
+        });
 
-      this.watchers.set(dirPath, watcher);
-      logger.debug('Started watching directory', { dirPath });
+        this.watchers.set(dirPath, watcher);
+        logger.debug('Started watching directory', { dirPath });
+      } else {
+        logger.warn('chokidar not available, directory watching disabled', { dirPath });
+      }
 
     } catch (error) {
       logger.error('Failed to watch directory', { dirPath, error });

@@ -61,7 +61,9 @@ export class TargetServerCommands {
       const targetStatus: TargetServerStatus = {
         mode: 'debug', // デバッグモード固定
         uptime: Date.now() - this.startTime.getTime(),
+        startTime: this.startTime.toISOString(),
         processId: process.pid,
+        memoryUsage: process.memoryUsage(),
         mcpStats: {
           totalRequests: 0, // ラッパー経由では計測困難
           errorCount: wrapperState.errorCount,
@@ -70,8 +72,8 @@ export class TargetServerCommands {
         logStats: {
           totalEntries: logStats.totalEntries,
           entriesByLevel: logStats.entriesByLevel,
-          oldestEntry: logStats.oldestEntry,
-          newestEntry: logStats.newestEntry
+          oldestEntry: logStats.oldestEntry || null,
+          newestEntry: logStats.newestEntry || null
         },
         targetServer: {
           path: (this.wrapper as any).options?.serverPath || 'unknown',
@@ -316,9 +318,18 @@ export class TargetServerCommands {
       const healthData: HealthCheck = {
         status: isHealthy ? 'healthy' : 'unhealthy',
         checks: {
-          serverRunning: state.isRunning,
-          lowErrorCount: state.errorCount < 5,
-          recentStart: state.lastRestart ? (Date.now() - state.lastRestart.getTime()) < 300000 : false
+          serverRunning: {
+            status: state.isRunning ? 'pass' : 'fail',
+            message: state.isRunning ? 'Server is running' : 'Server is not running'
+          },
+          lowErrorCount: {
+            status: state.errorCount < 5 ? 'pass' : 'warn',
+            message: `Error count: ${state.errorCount}`
+          },
+          recentStart: {
+            status: state.lastRestart ? (Date.now() - state.lastRestart.getTime()) < 300000 ? 'pass' : 'warn' : 'warn',
+            message: state.lastRestart ? `Started: ${state.lastRestart.toISOString()}` : 'No start time recorded'
+          }
         },
         uptime: state.uptime,
         lastCheck: new Date().toISOString()

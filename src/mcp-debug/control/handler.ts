@@ -123,7 +123,7 @@ export class ControlHandler {
   private async executeCommand(command: ControlCommand): Promise<ControlResponse> {
     // ターゲットサーバー関連コマンドのチェック
     if (command.command === 'target' && this.targetCommands) {
-      return await this.handleTargetCommand(command.args);
+      return await this.handleTargetCommand(command.args || []);
     }
 
     switch (command.command) {

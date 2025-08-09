@@ -250,9 +250,9 @@ export class TargetServerWrapper {
       }
 
       if (this.state.serverInstance) {
-        // サーバーに shutdown メソッドがあれば呼び出し
-        if (typeof this.state.serverInstance.shutdown === 'function') {
-          await this.state.serverInstance.shutdown();
+        // サーバーのクリーンアップ（可能であれば）
+        if (this.state.serverInstance && typeof (this.state.serverInstance as any).shutdown === 'function') {
+          await (this.state.serverInstance as any).shutdown();
         }
         this.state.serverInstance = null;
       }
@@ -339,7 +339,8 @@ export class TargetServerWrapper {
       default:
         // その他のコマンドは制御ハンドラーに委譲
         if (this.controlHandler) {
-          return await this.controlHandler.handleCommand(command);
+          const controlCommand = { command, args: [], rawInput: command };
+          return await this.controlHandler.handleCommand(controlCommand);
         }
         throw new Error(`Unknown control command: ${command}`);
     }
