@@ -9,10 +9,15 @@ export default {
     '!src/**/*.test.ts',
     '!src/**/*.d.ts'
   ],
+  extensionsToTreatAsEsm: ['.ts'],
+  moduleNameMapper: {
+    '^(\\.{1,2}/.*)\\.js$': '$1'
+  },
   transform: {
     '^.+\\.ts$': ['ts-jest', {
+      useESM: true,
       tsconfig: {
-        module: 'commonjs',
+        module: 'esnext',
         target: 'es2020'
       }
     }]

@@ -54,9 +54,19 @@ describe('loadConfig', () => {
         const config = await loadConfig();
 
         expect(config).toEqual({
-            host: 'localhost',
-            port: '50032',
-            rate: 200
+            connection: {
+                host: 'localhost',
+                port: '50032'
+            },
+            voice: {
+                rate: 200,
+                default_voice_id: '3c37646f-3881-5374-2a83-149267990abc'
+            },
+            audio: {
+                latencyMode: 'balanced',
+                splitMode: 'punctuation',
+                bufferSize: 1024
+            }
         });
     });
 
@@ -69,9 +79,19 @@ describe('loadConfig', () => {
         const config = await loadConfig();
 
         expect(config).toEqual({
-            host: 'localhost',
-            port: '50032',
-            rate: 200
+            connection: {
+                host: 'localhost',
+                port: '50032'
+            },
+            voice: {
+                rate: 200,
+                default_voice_id: '3c37646f-3881-5374-2a83-149267990abc'
+            },
+            audio: {
+                latencyMode: 'balanced',
+                splitMode: 'punctuation',
+                bufferSize: 1024
+            }
         });
 
         expect(consoleErrorSpy).toHaveBeenCalledWith(
@@ -117,9 +137,19 @@ describe('SayCoeiroink', () => {
 
     beforeEach(() => {
         mockConfig = {
-            host: 'localhost',
-            port: '50032',
-            rate: 200
+            connection: {
+                host: 'localhost',
+                port: '50032'
+            },
+            voice: {
+                rate: 200,
+                default_voice_id: '3c37646f-3881-5374-2a83-149267990abc'
+            },
+            audio: {
+                latencyMode: 'balanced',
+                splitMode: 'punctuation',
+                bufferSize: 1024
+            }
         };
 
         // モッククラスの初期化
@@ -146,9 +176,19 @@ describe('SayCoeiroink', () => {
         test('設定なしでデフォルト設定が使用されること', () => {
             const defaultInstance = new SayCoeiroink();
             expect(defaultInstance['config']).toEqual({
-                host: 'localhost',
-                port: '50032',
-                rate: 200
+                connection: {
+                    host: 'localhost',
+                    port: '50032'
+                },
+                voice: {
+                    rate: 200,
+                    default_voice_id: '3c37646f-3881-5374-2a83-149267990abc'
+                },
+                audio: {
+                    latencyMode: 'balanced',
+                    splitMode: 'punctuation',
+                    bufferSize: 1024
+                }
             });
         });
 
@@ -339,7 +379,9 @@ describe('SayCoeiroink', () => {
                 latency: 50
             };
 
-            sayCoeiroink['audioSynthesizer'].synthesize = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink['audioSynthesizer'].synthesizeStream = jest.fn().mockImplementation(async function* () {
+                yield mockResult;
+            });
             sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
 
             const result = await sayCoeiroink.synthesizeTextInternal('テスト');
@@ -362,13 +404,15 @@ describe('SayCoeiroink', () => {
                 latency: 75
             };
 
-            sayCoeiroink['audioSynthesizer'].synthesize = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink['audioSynthesizer'].synthesizeStream = jest.fn().mockImplementation(async function* () {
+                yield mockResult;
+            });
             sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
 
             const result = await sayCoeiroink.synthesizeTextInternal('テスト', options);
 
             expect(result.success).toBe(true);
-            expect(sayCoeiroink['audioSynthesizer'].synthesize).toHaveBeenCalledWith(
+            expect(sayCoeiroink['audioSynthesizer'].synthesizeStream).toHaveBeenCalledWith(
                 'テスト',
                 'custom-voice-id',
                 1.0
@@ -386,7 +430,9 @@ describe('SayCoeiroink', () => {
                 latency: 100
             };
 
-            sayCoeiroink['audioSynthesizer'].synthesize = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink['audioSynthesizer'].synthesizeStream = jest.fn().mockImplementation(async function* () {
+                yield mockResult;
+            });
             sayCoeiroink.saveAudio = jest.fn().mockResolvedValue(undefined);
 
             const result = await sayCoeiroink.synthesizeTextInternal('テスト', options);
@@ -442,14 +488,16 @@ describe('SayCoeiroink', () => {
                 latency: 50
             };
 
-            sayCoeiroink['audioSynthesizer'].synthesize = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink['audioSynthesizer'].synthesizeStream = jest.fn().mockImplementation(async function* () {
+                yield mockResult;
+            });
             sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
 
             const result = await sayCoeiroink.synthesizeTextInternal('テスト', { allowFallback: true });
 
             expect(result.success).toBe(true);
             // デフォルト音声が使用されることを確認
-            expect(sayCoeiroink['audioSynthesizer'].synthesize).toHaveBeenCalledWith(
+            expect(sayCoeiroink['audioSynthesizer'].synthesizeStream).toHaveBeenCalledWith(
                 'テスト',
                 'b28bb401-bc43-c9c7-77e4-77a2bbb4b283', // デフォルトのvoice_id
                 1.0
@@ -473,14 +521,16 @@ describe('SayCoeiroink', () => {
                 latency: 50
             };
 
-            sayCoeiroink['audioSynthesizer'].synthesize = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink['audioSynthesizer'].synthesizeStream = jest.fn().mockImplementation(async function* () {
+                yield mockResult;
+            });
             sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
 
             const result = await sayCoeiroink.synthesizeTextInternal('テスト'); // allowFallback未指定
 
             expect(result.success).toBe(true);
             // デフォルト音声が使用されることを確認
-            expect(sayCoeiroink['audioSynthesizer'].synthesize).toHaveBeenCalledWith(
+            expect(sayCoeiroink['audioSynthesizer'].synthesizeStream).toHaveBeenCalledWith(
                 'テスト',
                 'b28bb401-bc43-c9c7-77e4-77a2bbb4b283', // デフォルトのvoice_id
                 1.0
