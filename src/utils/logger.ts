@@ -5,15 +5,27 @@
 
 export type LogLevel = 'quiet' | 'error' | 'warn' | 'info' | 'verbose' | 'debug';
 
+interface LogEntry {
+  timestamp: string;
+  level: LogLevel;
+  message: string;
+  args?: unknown[];
+  formatted: string;
+}
+
 interface LoggerConfig {
   level: LogLevel;
+  accumulateLevel: LogLevel; // 蓄積するログレベル（独立制御）
   isMcpMode: boolean;  // MCPサーバーモード時はstdout出力を制限
   prefix?: string;     // ログプレフィックス
+  accumulate: boolean; // ログ蓄積モード
+  maxEntries: number;  // 蓄積する最大ログエントリ数
 }
 
 class Logger {
   private config: LoggerConfig;
   private static instance: Logger;
+  private logEntries: LogEntry[] = []; // ログエントリの蓄積配列
 
   // ログレベルの数値マッピング（小さいほど重要）
   private readonly LOG_LEVELS: Record<LogLevel, number> = {
@@ -28,8 +40,11 @@ class Logger {
   constructor(config: Partial<LoggerConfig> = {}) {
     this.config = {
       level: 'info',
+      accumulateLevel: 'debug', // デフォルトで全レベル蓄積
       isMcpMode: false,
       prefix: '',
+      accumulate: false,
+      maxEntries: 1000,
       ...config
     };
   }
@@ -50,6 +65,10 @@ class Logger {
     return this.LOG_LEVELS[level] <= this.LOG_LEVELS[this.config.level];
   }
 
+  private shouldLogAtLevel(level: LogLevel, targetLevel: LogLevel): boolean {
+    return this.LOG_LEVELS[level] <= this.LOG_LEVELS[targetLevel];
+  }
+
   private formatMessage(level: LogLevel, message: string, ...args: unknown[]): string {
     const timestamp = new Date().toISOString();
     const prefix = this.config.prefix ? `[${this.config.prefix}] ` : '';
@@ -61,35 +80,60 @@ class Logger {
   }
 
   private writeLog(level: LogLevel, message: string, ...args: unknown[]): void {
-    if (!this.shouldLog(level)) {
+    const shouldOutput = this.shouldLog(level);
+    const shouldAccumulate = this.config.accumulate && this.shouldLogAtLevel(level, this.config.accumulateLevel);
+
+    // 出力もせず蓄積もしない場合は早期リターン
+    if (!shouldOutput && !shouldAccumulate) {
       return;
     }
 
     const formattedMessage = this.formatMessage(level, message, ...args);
-
-    // MCPモード時は重要なエラーのみstderrに出力、その他は抑制
-    if (this.config.isMcpMode) {
-      if (level === 'error') {
-        console.error(formattedMessage);
+    
+    // ログエントリを蓄積モードで保存（蓄積レベルで独立判定）
+    if (shouldAccumulate) {
+      const logEntry: LogEntry = {
+        timestamp: new Date().toISOString(),
+        level,
+        message,
+        args: args.length > 0 ? args : undefined,
+        formatted: formattedMessage
+      };
+      
+      this.logEntries.push(logEntry);
+      
+      // 最大エントリ数を超えた場合、古いものを削除
+      if (this.logEntries.length > this.config.maxEntries) {
+        this.logEntries.shift();
       }
-      // MCPモード時はerror以外は出力しない（stdout汚染防止）
-      return;
     }
 
-    // 通常モード時の出力先振り分け
-    switch (level) {
-      case 'error':
-        console.error(formattedMessage);
-        break;
-      case 'warn':
-        console.warn(formattedMessage);
-        break;
-      case 'debug':
-      case 'verbose':
-      case 'info':
-      default:
-        console.error(formattedMessage); // stderrに統一してstdout汚染を防止
-        break;
+    // 出力判定に基づいて実際の出力を行う
+    if (shouldOutput) {
+      // MCPモード時は重要なエラーのみstderrに出力、その他は抑制
+      if (this.config.isMcpMode) {
+        if (level === 'error') {
+          console.error(formattedMessage);
+        }
+        // MCPモード時はerror以外は出力しない（stdout汚染防止）
+        return;
+      }
+
+      // 通常モード時の出力先振り分け
+      switch (level) {
+        case 'error':
+          console.error(formattedMessage);
+          break;
+        case 'warn':
+          console.warn(formattedMessage);
+          break;
+        case 'debug':
+        case 'verbose':
+        case 'info':
+        default:
+          console.error(formattedMessage); // stderrに統一してstdout汚染を防止
+          break;
+      }
     }
   }
 
@@ -135,6 +179,91 @@ class Logger {
   setPrefix(prefix: string): void {
     this.config.prefix = prefix;
   }
+
+  // 蓄積モード関連メソッド
+  enableAccumulation(maxEntries: number = 1000): void {
+    this.config.accumulate = true;
+    this.config.maxEntries = maxEntries;
+  }
+
+  disableAccumulation(): void {
+    this.config.accumulate = false;
+  }
+
+  isAccumulating(): boolean {
+    return this.config.accumulate;
+  }
+
+  // ログエントリ取得メソッド
+  getLogEntries(options: {
+    level?: LogLevel | LogLevel[];
+    since?: Date;
+    limit?: number;
+    search?: string;
+  } = {}): LogEntry[] {
+    let filtered = [...this.logEntries];
+
+    // レベルフィルタ
+    if (options.level) {
+      const levels = Array.isArray(options.level) ? options.level : [options.level];
+      filtered = filtered.filter(entry => levels.includes(entry.level));
+    }
+
+    // 時刻フィルタ
+    if (options.since) {
+      const sinceTime = options.since.getTime();
+      filtered = filtered.filter(entry => new Date(entry.timestamp).getTime() >= sinceTime);
+    }
+
+    // 検索フィルタ
+    if (options.search) {
+      const searchLower = options.search.toLowerCase();
+      filtered = filtered.filter(entry => 
+        entry.message.toLowerCase().includes(searchLower) ||
+        entry.formatted.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // 制限
+    if (options.limit && options.limit > 0) {
+      filtered = filtered.slice(-options.limit);
+    }
+
+    return filtered;
+  }
+
+  // ログエントリクリア
+  clearLogEntries(): void {
+    this.logEntries = [];
+  }
+
+  // ログ統計情報
+  getLogStats(): {
+    totalEntries: number;
+    entriesByLevel: Record<LogLevel, number>;
+    oldestEntry?: string;
+    newestEntry?: string;
+  } {
+    const stats = {
+      totalEntries: this.logEntries.length,
+      entriesByLevel: {
+        quiet: 0,
+        error: 0,
+        warn: 0,
+        info: 0,
+        verbose: 0,
+        debug: 0
+      } as Record<LogLevel, number>,
+      oldestEntry: this.logEntries[0]?.timestamp,
+      newestEntry: this.logEntries[this.logEntries.length - 1]?.timestamp
+    };
+
+    this.logEntries.forEach(entry => {
+      stats.entriesByLevel[entry.level]++;
+    });
+
+    return stats;
+  }
 }
 
 // シングルトンインスタンスをエクスポート
@@ -149,8 +278,22 @@ export const LoggerPresets = {
   mcpServer: (): void => {
     configureLogger({
       level: 'error',
+      accumulateLevel: 'error',
       isMcpMode: true,
-      prefix: 'MCP'
+      prefix: 'MCP',
+      accumulate: false
+    });
+  },
+
+  // MCPサーバーモード（蓄積あり）：エラーのみstderrに出力、全ログ蓄積
+  mcpServerWithAccumulation: (): void => {
+    configureLogger({
+      level: 'error',           // 出力はエラーのみ
+      accumulateLevel: 'debug', // 蓄積は全レベル
+      isMcpMode: true,
+      prefix: 'MCP',
+      accumulate: true,
+      maxEntries: 2000
     });
   },
 
@@ -158,8 +301,10 @@ export const LoggerPresets = {
   cli: (): void => {
     configureLogger({
       level: 'info',
+      accumulateLevel: 'info',
       isMcpMode: false,
-      prefix: 'CLI'
+      prefix: 'CLI',
+      accumulate: false
     });
   },
 
@@ -167,8 +312,11 @@ export const LoggerPresets = {
   debug: (): void => {
     configureLogger({
       level: 'debug',
+      accumulateLevel: 'debug',
       isMcpMode: false,
-      prefix: 'DEBUG'
+      prefix: 'DEBUG',
+      accumulate: true,
+      maxEntries: 3000
     });
   },
 
@@ -176,7 +324,9 @@ export const LoggerPresets = {
   quiet: (): void => {
     configureLogger({
       level: 'quiet',
-      isMcpMode: true
+      accumulateLevel: 'quiet',
+      isMcpMode: true,
+      accumulate: false
     });
   }
 };

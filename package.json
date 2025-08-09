@@ -35,11 +35,13 @@
     "echogarden": "^2.9.0",
     "node-libsamplerate": "^1.0.0",
     "node-wav": "^0.0.2",
-    "speaker": "^0.5.5"
+    "speaker": "^0.5.5",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
     "@types/node": "^24.2.0",
+    "@types/uuid": "^10.0.0",
     "jest": "^30.0.5",
     "ts-jest": "^29.4.1",
     "typescript": "^5.9.2"
