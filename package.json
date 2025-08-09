@@ -15,6 +15,11 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
+    "test:e2e": "jest --testPathPattern=e2e.test.ts",
+    "test:e2e:watch": "jest --testPathPattern=e2e.test.ts --watch",
+    "test:mcp-debug": "jest src/mcp-debug/test/jest-e2e.test.ts",
+    "test:coeiro-e2e": "jest src/mcp-debug/test/coeiro-operator-e2e.test.ts",
+    "test:all": "npm run test && npm run test:e2e",
     "type-check": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
