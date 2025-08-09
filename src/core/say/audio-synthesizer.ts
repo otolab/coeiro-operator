@@ -20,6 +20,7 @@ import {
     SYNTHESIS_SETTINGS
 } from './constants.js';
 import { getVoiceProvider } from '../environment/voice-provider.js';
+import { AudioStreamController, StreamControllerOptions } from './audio-stream-controller.js';
 
 // ストリーミング設定
 const STREAM_CONFIG: StreamConfig = {
@@ -34,6 +35,7 @@ const STREAM_CONFIG: StreamConfig = {
 export class AudioSynthesizer {
     private audioConfig: AudioConfig;
     private voiceProvider = getVoiceProvider();
+    private streamController: AudioStreamController;
     
     constructor(private config: Config) {
         this.audioConfig = this.getAudioConfig();
@@ -42,6 +44,18 @@ export class AudioSynthesizer {
             host: this.config.connection.host,
             port: this.config.connection.port
         });
+
+        // AudioStreamControllerを初期化（設定ファイルベース）
+        const parallelConfig = this.config.audio?.parallelGeneration || {};
+        this.streamController = new AudioStreamController(
+            this.synthesizeChunk.bind(this),
+            {
+                enableParallelGeneration: parallelConfig.enabled || false,
+                maxConcurrency: parallelConfig.maxConcurrency || 2,
+                delayBetweenRequests: parallelConfig.delayBetweenRequests || 50,
+                bufferAheadCount: parallelConfig.bufferAheadCount || 1
+            }
+        );
     }
 
     /**
@@ -482,7 +496,7 @@ export class AudioSynthesizer {
     }
 
     /**
-     * ストリーミング音声合成
+     * ストリーミング音声合成（リファクタリング版）
      */
     async* synthesizeStream(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): AsyncGenerator<AudioResult> {
         logger.debug("=== SYNTHESIZE_STREAM DEBUG ===");
@@ -492,13 +506,38 @@ export class AudioSynthesizer {
         const chunks = this.splitTextIntoChunks(text, chunkMode);
         logger.debug(`Total chunks generated: ${chunks.length}`);
         
-        for (const chunk of chunks) {
-            logger.debug(`Processing chunk ${chunk.index}: "${chunk.text.substring(0, 30)}${chunk.text.length > 30 ? '...' : ''}"`);
-            const result = await this.synthesizeChunk(chunk, voiceId, speed);
-            yield result;
-        }
+        // AudioStreamControllerを使用してストリーミング生成
+        yield* this.streamController.synthesizeStream(chunks, voiceId, speed);
         
         logger.debug("=== SYNTHESIZE_STREAM COMPLETE ===");
+    }
+
+    /**
+     * 並行生成モードの切り替え
+     */
+    setParallelGenerationEnabled(enabled: boolean): void {
+        this.streamController.setParallelGenerationEnabled(enabled);
+    }
+
+    /**
+     * ストリーム制御オプションの更新
+     */
+    updateStreamControllerOptions(options: Partial<StreamControllerOptions>): void {
+        this.streamController.updateOptions(options);
+    }
+
+    /**
+     * 現在のストリーム制御設定を取得
+     */
+    getStreamControllerOptions(): StreamControllerOptions {
+        return this.streamController.getOptions();
+    }
+
+    /**
+     * 生成統計情報を取得
+     */
+    getGenerationStats() {
+        return this.streamController.getGenerationStats();
     }
 
 }

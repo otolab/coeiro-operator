@@ -52,6 +52,12 @@ export interface AudioConfig {
         skipFirstChunk?: boolean;
         overlapSamples?: number;
     };
+    parallelGeneration?: {
+        enabled?: boolean;          // 並行生成の有効/無効
+        maxConcurrency?: number;    // 最大並行生成数
+        delayBetweenRequests?: number; // リクエスト間隔（ms）
+        bufferAheadCount?: number;  // 先読みチャンク数
+    };
 }
 
 export interface StreamConfig {

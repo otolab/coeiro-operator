@@ -2,6 +2,20 @@
 
 ## MCP サーバー開発
 
+### ⚠️ 重要：開発中のコードテストについて
+
+**Claude Code起動中のMCPツール（sayツール等）は開発テストに使用できません**
+
+- Claude Code起動時からMCPサーバーインスタンスが起動したままのため
+- コードの更新（npm run build後）が反映されない
+- 開発中の新機能や修正は確認できない
+
+**正しい開発テスト方法：**
+1. **mcp-testユーティリティの使用**（推奨）
+2. **Jest E2Eテスト**の実行
+3. **Echo Back MCPサーバー**での動作確認
+4. **手動でのMCPサーバー起動・テスト**
+
 ### MCPサーバーの再起動方法
 
 開発中にMCPサーバーの変更を反映させるには、Claude Codeで以下のコマンドを使用：
@@ -24,6 +38,10 @@ claude mcp add coeiro-operator
 - 設定ファイル（.mcp.json等）を変更した後
 - MCPツールの動作に問題がある場合
 - モジュールの依存関係を変更した後
+
+**⚠️ 注意：**
+- 再起動後も起動時の設定ファイルが読み込まれる
+- 完全に最新のコードを反映するには、Claude Codeの完全再起動が確実
 
 ### MCPデバッグ環境の活用
 
@@ -89,24 +107,57 @@ npm run test:all
 - **統合テスト**: 既存システムとMCPデバッグ環境の互換性確認
 - **エラーハンドリング**: 異常系処理の確認
 
-### 開発フロー例
+### 推奨開発フロー
+
+#### 🚀 開発・テストフロー（推奨）
 
 ```bash
 # 1. コード修正
 npm run build
 
-# 2. Jest E2Eテスト（推奨）
+# 2. 開発テスト（以下のいずれかを使用）
+
+# 【推奨】手動テスト - MCPサーバーを直接起動
+node dist/mcp/server.js --debug
+
+# 【推奨】Echo Backサーバーでの基本動作確認
+node dist/mcp-debug/test/echo-server.js --debug
+
+# 【自動化】Jest E2Eテスト
 npm run test:e2e
 
-# 3. シェルベースのテスト（オプション）
+# 【詳細確認】シェルベースのテスト
 ./scripts/test-mcp-debug.sh
 
-# 4. MCPサーバー再起動
+# 3. 音声再生確認（デバッグモード）
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト音声です。"}},"id":1}' | node dist/mcp/server.js --debug
+
+# 4. 最終確認：MCPサーバー再起動してClaude Codeでテスト
 claude mcp remove coeiro-operator
 claude mcp add coeiro-operator
+```
 
-# 5. 動作確認
-# Claude Codeでoperator_assignやsayツールをテスト
+#### ⚠️ 非推奨：Claude Code起動中のMCPツール
+
+```bash
+# ❌ これは開発テストに使用しない
+# Claude Code起動中のMCPツール（sayツール等）では最新コードが反映されない
+```
+
+#### 🎯 効率的なデバッグ手順
+
+```bash
+# 音声再生の問題をデバッグする場合
+# 1. デバッグモードで詳細ログを確認
+node dist/mcp/server.js --debug
+
+# 2. JSON-RPCで音声合成をテスト
+echo '{"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{"tools":{}}},"id":1}' | node dist/mcp/server.js --debug
+echo '{"jsonrpc":"2.0","method":"initialized","params":{}}' | node dist/mcp/server.js --debug  
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"リファクタリング後のテスト音声です。チャンク生成管理システムが正常に動作していることを確認します。"}},"id":2}' | node dist/mcp/server.js --debug
+
+# 3. ログで分割処理や並行生成の動作を確認
+# デバッグログで"SYNTHESIZE_STREAM DEBUG"や"ChunkGenerationManager"の出力を確認
 ```
 
 Jest E2Eテストにより、開発効率が大幅に向上し、自動化されたテストで品質を保証できます。

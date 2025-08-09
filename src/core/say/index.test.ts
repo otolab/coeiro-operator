@@ -452,7 +452,7 @@ describe('SayCoeiroink', () => {
         test('ストリーミングモードで正常に動作すること', async () => {
             const longText = 'a'.repeat(100); // ストリーミング対象となる長文
             const options: SynthesizeOptions = {
-                streamMode: true
+                chunkMode: 'punctuation'
             };
 
             sayCoeiroink.streamSynthesizeAndPlay = jest.fn().mockResolvedValue(undefined);

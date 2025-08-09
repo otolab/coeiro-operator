@@ -33,6 +33,7 @@ import type {
     SynthesizeOptions,
     SynthesizeResult
 } from './types.js';
+import type { StreamControllerOptions } from './audio-stream-controller.js';
 
 
 // デフォルト設定
@@ -272,6 +273,32 @@ export class SayCoeiroink {
     // デバッグ用：キュー処理完了を待つ版メソッド
     async synthesizeTextAsyncAndWait(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         return await this.speechQueue.enqueueAndWait(text, options);
+    }
+
+    /**
+     * 並行生成モードの制御API
+     */
+    
+    // 並行生成の有効/無効を切り替え
+    setParallelGenerationEnabled(enabled: boolean): void {
+        this.audioSynthesizer.setParallelGenerationEnabled(enabled);
+        logger.info(`並行チャンク生成: ${enabled ? '有効' : '無効'}`);
+    }
+
+    // ストリーム制御オプションの更新
+    updateStreamControllerOptions(options: Partial<StreamControllerOptions>): void {
+        this.audioSynthesizer.updateStreamControllerOptions(options);
+        logger.debug('ストリーム制御オプション更新', options);
+    }
+
+    // 現在のストリーム制御設定を取得
+    getStreamControllerOptions(): StreamControllerOptions {
+        return this.audioSynthesizer.getStreamControllerOptions();
+    }
+
+    // 生成統計情報を取得
+    getGenerationStats() {
+        return this.audioSynthesizer.getGenerationStats();
     }
 
     // 内部用の実際の音声合成処理
