@@ -220,27 +220,6 @@ export class SayCoeiroink {
         return this.audioSynthesizer.convertRateToSpeed(rate);
     }
 
-    /**
-     * 設定に基づいてストリーミングモードを使用するかを判定
-     */
-    private shouldUseStreaming(text: string): boolean {
-        const chunkMode = this.config.audio?.splitMode || 'punctuation';
-        
-        switch (chunkMode) {
-            case 'none':
-                return false; // チャンク化無効
-            case 'small':
-                return text.length > 30;
-            case 'medium':
-                return text.length > 50;
-            case 'large':
-                return text.length > 100;
-            case 'punctuation':
-                return text.includes('。') || text.length > 150; // 句点があるか長いテキスト
-            default:
-                return text.includes('。') || text.length > 150; // デフォルトは句読点モード
-        }
-    }
 
     async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation', bufferSize?: number): Promise<void> {
         // 真のストリーミング再生：ジェネレータを直接AudioPlayerに渡す
@@ -290,6 +269,11 @@ export class SayCoeiroink {
         return await this.enqueueSpeech(text, options);
     }
 
+    // デバッグ用：キュー処理完了を待つ版メソッド
+    async synthesizeTextAsyncAndWait(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+        return await this.speechQueue.enqueueAndWait(text, options);
+    }
+
     // 内部用の実際の音声合成処理
     async synthesizeTextInternal(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         logger.info(`音声合成開始: テキスト="${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
@@ -298,12 +282,18 @@ export class SayCoeiroink {
             voice = null,
             rate = this.config.voice?.rate || 200,
             outputFile = null,
-            streamMode = false,
             style = null,
             chunkMode = this.config.audio?.splitMode || 'punctuation',
             bufferSize = this.config.audio?.bufferSize || BUFFER_SIZES.DEFAULT,
             allowFallback = true  // デフォルトフォールバックを許可するかどうか
         } = options;
+        
+        logger.debug("=== SYNTHESIZE_TEXT_INTERNAL DEBUG ===");
+        logger.debug(`Resolved options:`);
+        logger.debug(`  chunkMode: ${chunkMode} (from: ${options.chunkMode ? 'options' : 'config.audio.splitMode fallback'})`);
+        logger.debug(`  config.audio.splitMode: ${this.config.audio?.splitMode || 'undefined'}`);
+        logger.debug(`  bufferSize: ${bufferSize}`);
+        logger.debug(`  allowFallback: ${allowFallback}`);
         
         // 音声選択の優先順位処理
         let selectedVoice: string | OperatorVoice | null = voice;
@@ -393,6 +383,7 @@ export class SayCoeiroink {
             }
             
             logger.info('音声ストリーミング再生開始...');
+            logger.debug(`About to call streamSynthesizeAndPlay with chunkMode: ${chunkMode}`);
             await this.streamSynthesizeAndPlay(text, selectedVoice, speed, chunkMode, bufferSize);
             logger.info('音声ストリーミング再生完了');
             return { success: true, mode: 'streaming' };

@@ -118,88 +118,125 @@ MCPツールの`say`でスタイルを一時的に指定可能：
 
 ### coeiroink-config.json
 
-#### 基本接続設定
-```json
-{
-  "host": "localhost",
-  "port": "50032"
-}
-```
+#### 設定ファイル構造（v2.1.0+）
 
-#### 音声合成設定
-```json
-{
-  "rate": 200,
-  "defaultBufferSize": 1024
-}
-```
+最新の設定は以下の構造を使用します：
 
-#### 音声処理設定
 ```json
 {
-  "latencyMode": "balanced",
-  "splitMode": "auto",
-  "bufferSize": 1024,
-  "processing": {
-    "synthesisRate": 24000,
-    "playbackRate": 48000,
-    "lowpassFilter": true,
-    "lowpassCutoff": 24000,
-    "noiseReduction": false
+  "connection": {
+    "host": "localhost",
+    "port": "50032"
   },
-  "splitSettings": {
-    "smallSize": 50,
-    "mediumSize": 150,
-    "largeSize": 300,
-    "overlapRatio": 0.1
+  "voice": {
+    "default_voice_id": "3c37646f-3881-5374-2a83-149267990abc",
+    "default_style_id": 0,
+    "rate": 200
+  },
+  "audio": {
+    "latencyMode": "balanced",
+    "splitMode": "punctuation",
+    "bufferSize": 1024,
+    "processing": {
+      "synthesisRate": 24000,
+      "playbackRate": 48000,
+      "lowpassFilter": true,
+      "lowpassCutoff": 24000,
+      "noiseReduction": false
+    },
+    "splitSettings": {
+      "smallSize": 30,
+      "mediumSize": 50,
+      "largeSize": 100,
+      "overlapRatio": 0.1
+    }
   }
 }
 ```
+
+#### 分割モード（splitMode）
+
+- **punctuation** (デフォルト): 句読点ベースの自然分割
+- **none**: 分割なし
+- **small/medium/large**: 文字数ベース分割
+- **auto**: 自動判定
 
 ### 音質プリセット
 
 #### 高品質設定
 ```json
 {
-  "latencyMode": "quality",
-  "processing": {
-    "synthesisRate": 24000,
-    "playbackRate": 48000,
-    "lowpassFilter": true,
-    "lowpassCutoff": 24000,
-    "noiseReduction": true
+  "connection": {
+    "host": "localhost",
+    "port": "50032"
   },
-  "bufferSize": 2048
+  "voice": {
+    "default_voice_id": "your-voice-id",
+    "rate": 200
+  },
+  "audio": {
+    "latencyMode": "quality",
+    "splitMode": "large",
+    "bufferSize": 2048,
+    "processing": {
+      "synthesisRate": 24000,
+      "playbackRate": 48000,
+      "lowpassFilter": true,
+      "lowpassCutoff": 24000,
+      "noiseReduction": true
+    }
+  }
 }
 ```
 
 #### 超低遅延設定
 ```json
 {
-  "latencyMode": "ultra-low",
-  "splitMode": "small",
-  "processing": {
-    "synthesisRate": 22050,
-    "playbackRate": 44100,
-    "lowpassFilter": false,
-    "noiseReduction": false
+  "connection": {
+    "host": "localhost",
+    "port": "50032"
   },
-  "bufferSize": 512
+  "voice": {
+    "default_voice_id": "your-voice-id",
+    "rate": 180
+  },
+  "audio": {
+    "latencyMode": "ultra-low",
+    "splitMode": "small",
+    "bufferSize": 512,
+    "processing": {
+      "synthesisRate": 22050,
+      "playbackRate": 44100,
+      "lowpassFilter": false,
+      "noiseReduction": false
+    }
+  }
 }
 ```
 
 #### バランス設定（推奨）
 ```json
 {
-  "latencyMode": "balanced",
-  "processing": {
-    "synthesisRate": 24000,
-    "playbackRate": 48000,
-    "lowpassFilter": true,
-    "lowpassCutoff": 24000,
-    "noiseReduction": false
+  "connection": {
+    "host": "localhost",
+    "port": "50032"
   },
-  "bufferSize": 1024
+  "voice": {
+    "default_voice_id": "your-voice-id",
+    "rate": 200
+  },
+  "audio": {
+    "latencyMode": "balanced",
+    "splitMode": "punctuation",
+    "bufferSize": 1024,
+    "processing": {
+      "synthesisRate": 24000,
+      "playbackRate": 48000,
+      "lowpassFilter": true,
+      "lowpassCutoff": 24000,
+      "noiseReduction": false
+    }
+  }
 }
 ```
 

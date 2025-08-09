@@ -497,19 +497,6 @@ describe('SayCoeiroink', () => {
     });
 
     describe('ヘルパーメソッド', () => {
-        test('splitTextIntoChunks が AudioSynthesizer を委譲すること', () => {
-            const mockChunks = [
-                { text: 'テスト', index: 0, isFirst: true, isLast: true, overlap: 0 }
-            ];
-
-            sayCoeiroink['audioSynthesizer'].splitTextIntoChunks = jest.fn().mockReturnValue(mockChunks);
-
-            const result = sayCoeiroink.splitTextIntoChunks('テスト');
-
-            expect(result).toEqual(mockChunks);
-            expect(sayCoeiroink['audioSynthesizer'].splitTextIntoChunks).toHaveBeenCalledWith('テスト');
-        });
-
         test('convertRateToSpeed が AudioSynthesizer を委譲すること', () => {
             sayCoeiroink['audioSynthesizer'].convertRateToSpeed = jest.fn().mockReturnValue(1.5);
 

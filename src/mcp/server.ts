@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { spawn, ChildProcess } from "child_process";
 import { z } from "zod";
 import { SayCoeiroink, loadConfig } from "../core/say/index.js";
 import { OperatorManager } from "../core/operator/index.js";
@@ -34,8 +33,41 @@ interface ToolResponse {
   [key: string]: unknown;
 }
 
-// MCPサーバーモードでlogger設定
-LoggerPresets.mcpServer();
+// コマンドライン引数の解析
+const parseArguments = () => {
+  const args = process.argv.slice(2);
+  let isDebugMode = false;
+  let configPath: string | undefined;
+
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+    
+    if (arg === '--debug' || arg === '-d') {
+      isDebugMode = true;
+    } else if (arg === '--config' || arg === '-c') {
+      configPath = args[i + 1];
+      i++; // 次の引数をスキップ
+    } else if (arg.startsWith('--config=')) {
+      configPath = arg.split('=')[1];
+    }
+  }
+
+  return { isDebugMode, configPath };
+};
+
+const { isDebugMode, configPath } = parseArguments();
+
+// デバッグモードの場合は詳細ログ、そうでなければMCPサーバーモード
+if (isDebugMode) {
+  LoggerPresets.debug(); // デバッグレベルのログ出力（蓄積あり）
+  logger.info("DEBUG MODE: Verbose logging enabled (--debug flag detected)");
+} else {
+  LoggerPresets.mcpServerWithAccumulation(); // MCP準拠のログ設定（蓄積あり）
+}
+
+if (configPath) {
+  logger.info(`Using config file: ${configPath}`);
+}
 
 const server = new McpServer({
   name: "coeiro-operator",
@@ -53,7 +85,7 @@ let sayCoeiroink: SayCoeiroink;
 let operatorManager: OperatorManager;
 
 try {
-  const config = await loadConfig();
+  const config = await loadConfig(configPath);
   sayCoeiroink = new SayCoeiroink(config);
   
   await sayCoeiroink.initialize();
@@ -213,38 +245,6 @@ function formatStylesResult(character: CharacterForFormatting, availableStyles: 
   return resultText;
 }
 
-// Promiseを返すspawn wrapper
-function spawnAsync(command: string, args: string[], env?: NodeJS.ProcessEnv): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child: ChildProcess = spawn(command, args, {
-      stdio: ["pipe", "pipe", "pipe"],
-      env: env || process.env
-    });
-    
-    let stdout = "";
-    let stderr = "";
-    
-    child.stdout?.on("data", (data) => {
-      stdout += data.toString();
-    });
-    
-    child.stderr?.on("data", (data) => {
-      stderr += data.toString();
-    });
-    
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve(stdout.trim());
-      } else {
-        reject(new Error(`Command failed with code ${code}: ${stderr}`));
-      }
-    });
-    
-    child.on("error", (err) => {
-      reject(new Error(`Failed to execute command: ${err.message}`));
-    });
-  });
-}
 
 
 // operator-manager操作ツール
@@ -257,10 +257,15 @@ server.registerTool("operator_assign", {
 }, async (args): Promise<ToolResponse> => {
   const { operator, style } = args || {};
   
+  logger.info("オペレータアサイン開始", { operator, style });
   validateOperatorInput(operator);
   
   try {
     const assignResult = await assignOperator(operatorManager, operator, style);
+    logger.info("オペレータアサイン成功", { 
+      operatorId: assignResult.operatorId, 
+      characterName: assignResult.characterName 
+    });
     const character = await operatorManager.getCharacterInfo(assignResult.operatorId);
     
     if (!character) {
@@ -287,11 +292,11 @@ server.registerTool("operator_release", {
   inputSchema: {}
 }, async (): Promise<ToolResponse> => {
   try {
-    const result = await spawnAsync("operator-manager", ["release"]);
+    await operatorManager.releaseOperator();
     return {
       content: [{
         type: "text",
-        text: result
+        text: "オペレータを解放しました"
       }]
     };
   } catch (error) {
@@ -304,11 +309,12 @@ server.registerTool("operator_status", {
   inputSchema: {}
 }, async (): Promise<ToolResponse> => {
   try {
-    const result = await spawnAsync("operator-manager", ["status"]);
+    const status = await operatorManager.showCurrentOperator();
+    
     return {
       content: [{
         type: "text",
-        text: result
+        text: status.message
       }]
     };
   } catch (error) {
@@ -321,11 +327,15 @@ server.registerTool("operator_available", {
   inputSchema: {}
 }, async (): Promise<ToolResponse> => {
   try {
-    const result = await spawnAsync("operator-manager", ["available"]);
+    const availableOperators = await operatorManager.getAvailableOperators();
+    const text = availableOperators.length > 0
+      ? `利用可能なオペレータ: ${availableOperators.join(', ')}`
+      : "利用可能なオペレータがありません";
+    
     return {
       content: [{
         type: "text",
-        text: result
+        text: text
       }]
     };
   } catch (error) {
@@ -340,30 +350,190 @@ server.registerTool("say", {
     message: z.string().describe("発話させるメッセージ（日本語）"),
     voice: z.string().optional().describe("音声ID（省略時はオペレータ設定を使用）"),
     rate: z.number().optional().describe("話速（WPM、デフォルト200）"),
-    streamMode: z.boolean().optional().describe("ストリーミングモード強制（デフォルト自動）"),
     style: z.string().optional().describe("スタイルID（オペレータのスタイル選択を上書き）")
   }
 }, async (args): Promise<ToolResponse> => {
-  const { message, voice, rate, streamMode, style } = args;
+  const { message, voice, rate, style } = args;
   
   try {
-    // src/say/index.jsを直接呼び出し（enqueue処理で即座に戻る）
-    const result = await sayCoeiroink.synthesizeTextAsync(message, {
-      voice: voice || null,
-      rate: rate || undefined,
-      streamMode: streamMode || false,
-      style: style || undefined,
-      allowFallback: false  // MCPツールではフォールバックを無効化
-    });
+    if (isDebugMode) {
+      logger.debug("=== SAY TOOL DEBUG START ===");
+      logger.debug(`Input parameters:`);
+      logger.debug(`  message: "${message}"`);
+      logger.debug(`  voice: ${voice || 'null (will use operator voice)'}`);
+      logger.debug(`  rate: ${rate || 'undefined (will use config default)'}`);
+      logger.debug(`  style: ${style || 'undefined (will use operator default)'}`);
+      
+      // 設定情報をログ出力
+      const config = await loadConfig();
+      logger.debug(`Current audio config:`);
+      logger.debug(`  splitMode: ${config.audio?.splitMode || 'undefined (will fallback to punctuation)'}`);
+      logger.debug(`  latencyMode: ${config.audio?.latencyMode || 'undefined'}`);
+      logger.debug(`  bufferSize: ${config.audio?.bufferSize || 'undefined'}`);
+      logger.debug("==============================");
+    }
+    
+    // デバッグモード時：同期実行、通常モード時：非同期実行
+    const result = isDebugMode 
+      ? await sayCoeiroink.synthesizeTextInternal(message, {
+          voice: voice || null,
+          rate: rate || undefined,
+          style: style || undefined,
+          allowFallback: false  // MCPツールではフォールバックを無効化
+        })
+      : await sayCoeiroink.synthesizeTextAsync(message, {
+          voice: voice || null,
+          rate: rate || undefined,
+          style: style || undefined
+        });
+    
+    if (isDebugMode) {
+      logger.debug(`Result: ${JSON.stringify(result)}`);
+    }
+    
+    // 発声完了後に動作モード情報を出力
+    const currentOperator = await operatorManager.showCurrentOperator();
+    const modeInfo = `発声完了 - オペレータ: ${currentOperator.operatorId || '未割り当て'}, タスクID: ${result.taskId}`;
+    logger.info(modeInfo);
+    
+    if (isDebugMode) {
+      logger.debug("=== SAY TOOL DEBUG END ===");
+    }
+    
+    const responseText = isDebugMode 
+      ? `[DEBUG MODE] 同期発声完了: タスクID ${result.taskId}, オペレータ: ${currentOperator.operatorId || '未割り当て'}, 成功: ${result.success}, ファイル: ${result.outputFile || 'なし'}`
+      : `発声完了: タスクID ${result.taskId}, オペレータ: ${currentOperator.operatorId || '未割り当て'}`;
     
     return {
       content: [{
         type: "text",
-        text: `音声合成キューに追加: タスクID ${result.taskId}, キュー長 ${result.queueLength}`
+        text: responseText
       }]
     };
   } catch (error) {
+    logger.debug(`SAY TOOL ERROR: ${(error as Error).message}`);
+    logger.debug(`Stack trace: ${(error as Error).stack}`);
     throw new Error(`音声出力エラー: ${(error as Error).message}`);
+  }
+});
+
+// ログ取得ツール
+server.registerTool("debug_logs", {
+  description: "デバッグ用ログの取得と表示。ログレベル・時刻・検索条件による絞り込み、統計情報の表示が可能",
+  inputSchema: {
+    action: z.enum(['get', 'stats', 'clear']).describe("実行するアクション: get=ログ取得, stats=統計表示, clear=ログクリア"),
+    level: z.array(z.enum(['error', 'warn', 'info', 'verbose', 'debug'])).optional().describe("取得するログレベル（複数選択可）"),
+    since: z.string().optional().describe("この時刻以降のログを取得（ISO 8601形式）"),
+    limit: z.number().min(1).max(1000).optional().describe("取得する最大ログエントリ数（1-1000）"),
+    search: z.string().optional().describe("ログメッセージ内の検索キーワード"),
+    format: z.enum(['formatted', 'raw']).optional().describe("出力形式: formatted=整形済み, raw=生データ")
+  }
+}, async (args): Promise<ToolResponse> => {
+  const { action = 'get', level, since, limit, search, format = 'formatted' } = args || {};
+  
+  try {
+    switch (action) {
+      case 'get': {
+        const options: Parameters<typeof logger.getLogEntries>[0] = {};
+        
+        if (level && level.length > 0) {
+          options.level = level as any;
+        }
+        
+        if (since) {
+          try {
+            options.since = new Date(since);
+          } catch {
+            throw new Error(`無効な日時形式です: ${since}`);
+          }
+        }
+        
+        if (limit) {
+          options.limit = limit;
+        }
+        
+        if (search) {
+          options.search = search;
+        }
+        
+        const entries = logger.getLogEntries(options);
+        
+        if (entries.length === 0) {
+          return {
+            content: [{
+              type: "text",
+              text: "条件に一致するログエントリが見つかりませんでした。"
+            }]
+          };
+        }
+        
+        let resultText: string;
+        
+        if (format === 'raw') {
+          resultText = `ログエントリ (${entries.length}件):\n\n${JSON.stringify(entries, null, 2)}`;
+        } else {
+          resultText = `ログエントリ (${entries.length}件):\n\n`;
+          entries.forEach((entry, index) => {
+            resultText += `${index + 1}. [${entry.level.toUpperCase()}] ${entry.timestamp}\n`;
+            resultText += `   ${entry.message}\n`;
+            if (entry.args && entry.args.length > 0) {
+              resultText += `   引数: ${entry.args.map(arg => 
+                typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+              ).join(', ')}\n`;
+            }
+            resultText += '\n';
+          });
+        }
+        
+        return {
+          content: [{
+            type: "text",
+            text: resultText
+          }]
+        };
+      }
+      
+      case 'stats': {
+        const stats = logger.getLogStats();
+        const statsText = `📊 ログ統計情報\n\n` +
+          `総エントリ数: ${stats.totalEntries}\n\n` +
+          `レベル別エントリ数:\n` +
+          `  ERROR: ${stats.entriesByLevel.error}\n` +
+          `  WARN:  ${stats.entriesByLevel.warn}\n` +
+          `  INFO:  ${stats.entriesByLevel.info}\n` +
+          `  VERB:  ${stats.entriesByLevel.verbose}\n` +
+          `  DEBUG: ${stats.entriesByLevel.debug}\n\n` +
+          `時刻範囲:\n` +
+          `  最古: ${stats.oldestEntry || 'なし'}\n` +
+          `  最新: ${stats.newestEntry || 'なし'}\n\n` +
+          `蓄積モード: ${logger.isAccumulating() ? 'ON' : 'OFF'}`;
+        
+        return {
+          content: [{
+            type: "text",
+            text: statsText
+          }]
+        };
+      }
+      
+      case 'clear': {
+        const beforeCount = logger.getLogStats().totalEntries;
+        logger.clearLogEntries();
+        
+        return {
+          content: [{
+            type: "text",
+            text: `ログエントリをクリアしました（${beforeCount}件削除）`
+          }]
+        };
+      }
+      
+      default:
+        throw new Error(`無効なアクション: ${action}`);
+    }
+    
+  } catch (error) {
+    throw new Error(`ログ取得エラー: ${(error as Error).message}`);
   }
 });
 
@@ -424,6 +594,15 @@ server.registerTool("operator_styles", {
 // サーバーの起動
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
+  
+  if (isDebugMode) {
+    // デバッグモード時は受信メッセージをログに出力（connect前に設定）
+    transport.onmessage = (message) => {
+      logger.info(`Received MCP message: ${JSON.stringify(message)}`);
+    };
+  }
+  
+  logger.info("Say COEIROINK MCP Server starting...");
   await server.connect(transport);
   logger.info("Say COEIROINK MCP Server started");
 }

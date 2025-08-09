@@ -318,6 +318,7 @@ describe('AudioSynthesizer', () => {
             const operatorVoice: OperatorVoice = {
                 voice_id: 'operator-voice-id',
                 character: {
+                    name: 'テストキャラクター',
                     available_styles: {
                         'style1': {
                             disabled: false,
@@ -361,6 +362,7 @@ describe('AudioSynthesizer', () => {
             const operatorVoice: OperatorVoice = {
                 voice_id: 'operator-voice-id',
                 character: {
+                    name: 'テストキャラクター',
                     available_styles: {
                         'style1': { disabled: false, style_id: 1, name: 'スタイル1' },
                         'style2': { disabled: false, style_id: 2, name: 'スタイル2' },
@@ -412,7 +414,7 @@ describe('AudioSynthesizer', () => {
         });
     });
 
-    describe('synthesize', () => {
+    describe('synthesizeStream (single chunk)', () => {
         test('短いテキストを単一チャンクで合成できること', async () => {
             const text = 'こんにちは';
             const mockAudioBuffer = new ArrayBuffer(1000);
@@ -422,9 +424,13 @@ describe('AudioSynthesizer', () => {
                 arrayBuffer: async () => mockAudioBuffer
             });
 
-            const result = await audioSynthesizer.synthesize(text, 'test-voice-id', 1.0);
+            const results: AudioResult[] = [];
+            for await (const result of audioSynthesizer.synthesizeStream(text, 'test-voice-id', 1.0)) {
+                results.push(result);
+            }
 
-            expect(result).toEqual({
+            expect(results).toHaveLength(1);
+            expect(results[0]).toEqual({
                 chunk: expect.objectContaining({
                     text: 'こんにちは',
                     isFirst: true,
@@ -482,10 +488,14 @@ describe('AudioSynthesizer', () => {
                 arrayBuffer: async () => mockAudioBuffer
             });
 
-            const result = await audioSynthesizer.synthesize(text, 'test-voice-id', 1.0);
+            const results: AudioResult[] = [];
+            for await (const result of audioSynthesizer.synthesizeStream(text, 'test-voice-id', 1.0)) {
+                results.push(result);
+            }
 
-            expect(result.chunk.text).toBe('あ');
-            expect(result.audioBuffer).toBe(mockAudioBuffer);
+            expect(results).toHaveLength(1);
+            expect(results[0].chunk.text).toBe('あ');
+            expect(results[0].audioBuffer).toBe(mockAudioBuffer);
         });
 
         test('特殊文字を含むテキストでも正常に処理されること', async () => {
@@ -497,9 +507,13 @@ describe('AudioSynthesizer', () => {
                 arrayBuffer: async () => mockAudioBuffer
             });
 
-            const result = await audioSynthesizer.synthesize(text, 'test-voice-id', 1.0);
+            const results: AudioResult[] = [];
+            for await (const result of audioSynthesizer.synthesizeStream(text, 'test-voice-id', 1.0)) {
+                results.push(result);
+            }
 
-            expect(result.chunk.text).toBe(text);
+            expect(results).toHaveLength(1);
+            expect(results[0].chunk.text).toBe(text);
         });
 
         test('数値のみのテキストでも正常に処理されること', async () => {
@@ -511,9 +525,42 @@ describe('AudioSynthesizer', () => {
                 arrayBuffer: async () => mockAudioBuffer
             });
 
-            const result = await audioSynthesizer.synthesize(text, 'test-voice-id', 1.0);
+            const results: AudioResult[] = [];
+            for await (const result of audioSynthesizer.synthesizeStream(text, 'test-voice-id', 1.0)) {
+                results.push(result);
+            }
 
-            expect(result.chunk.text).toBe(text);
+            expect(results).toHaveLength(1);
+            expect(results[0].chunk.text).toBe(text);
+        });
+    });
+
+    describe('統合的動作テスト', () => {
+        test('テキスト分割からチャンク合成まで一貫して動作すること', async () => {
+            const longText = 'a'.repeat(150); // 複数チャンクに分割される
+            const mockAudioBuffer = new ArrayBuffer(1000);
+            
+            (global.fetch as jest.Mock).mockResolvedValue({
+                ok: true,
+                arrayBuffer: async () => mockAudioBuffer
+            });
+            
+            // テキスト分割
+            const chunks = audioSynthesizer.splitTextIntoChunks(longText);
+            expect(chunks.length).toBeGreaterThan(1);
+            
+            // 各チャンクの合成
+            for (const chunk of chunks) {
+                const result = await audioSynthesizer.synthesizeChunk(
+                    chunk,
+                    'test-speaker-1',
+                    1.0
+                );
+                
+                expect(result.chunk).toEqual(chunk);
+                expect(result.audioBuffer).toBeInstanceOf(ArrayBuffer);
+                expect(result.latency).toBeGreaterThan(0);
+            }
         });
     });
 

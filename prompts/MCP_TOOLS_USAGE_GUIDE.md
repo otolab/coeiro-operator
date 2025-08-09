@@ -1,9 +1,90 @@
-# code-bugs MCPツール使用ガイド
+# MCP Tools 使用ガイド
+
+このプロジェクトで利用可能なMCP（Model Context Protocol）ツールの使い方とガイドです。
+
+## COEIRO Operator MCPツール
+
+COEIRO Operatorが提供するMCPツールは以下の通りです：
+
+### operator_assign
+オペレータの割り当てを行います。
+
+**引数**:
+- `operator`: 指定するオペレータ名（英語表記、例: 'tsukuyomi', 'alma'など。省略時または空文字列時はランダム選択。日本語表記は無効）
+- `style`: 指定するスタイル名（例: 'normal', 'ura', 'sleepy'など。省略時はキャラクターのデフォルト設定に従う）
+
+### operator_release
+現在のオペレータを解放します。
+
+### operator_status
+現在のオペレータ状況を確認します。
+
+### operator_available
+利用可能なオペレータ一覧を表示します。
+
+### operator_styles
+現在のオペレータまたは指定したキャラクターの利用可能なスタイル一覧を表示します。
+
+**引数**:
+- `character`: キャラクターID（省略時は現在のオペレータのスタイル情報を表示）
+
+### say
+COEIROINK音声合成システムを使用して日本語音声を出力します（低レイテンシストリーミング対応）。
+
+**引数**:
+- `message`: 発話させるメッセージ（日本語）
+- `rate`: 話速（WPM、デフォルト200）
+- `style`: スタイルID（オペレータのスタイル選択を上書き）
+- `voice`: 音声ID（省略時はオペレータ設定を使用）
+
+### debug_logs
+デバッグ用ログの取得と表示。ログレベル・時刻・検索条件による絞り込み、統計情報の表示が可能。
+
+**引数**:
+- `action`: 実行するアクション（'get'=ログ取得, 'stats'=統計表示, 'clear'=ログクリア）
+- `level`: 取得するログレベル（複数選択可）
+- `since`: この時刻以降のログを取得（ISO 8601形式）
+- `limit`: 取得する最大ログエントリ数（1-1000）
+- `search`: ログメッセージ内の検索キーワード
+- `format`: 出力形式（'formatted'=整形済み, 'raw'=生データ）
+
+## MCPデバッグ環境
+
+プロジェクトには包括的なMCPデバッグ環境が実装されています：
+
+### Echo Back MCPサーバー
+テスト用のMCPサーバー（`src/mcp-debug/test/echo-server.ts`）で、以下の機能を提供：
+
+- **制御コマンド処理**: `CTRL:` プレフィックスによる制御機能
+- **JSON-RPC処理**: 標準MCPプロトコル対応
+- **出力チャネル分離**: MCP/Control/Debug/Error出力の分離
+- **ログ蓄積機能**: 高性能ログ蓄積（0.01ms/ログ）
+
+### 統合テストシステム
+自動化されたMCP機能テスト（`src/mcp-debug/test/integration.test.ts`）：
+
+- 継続的JSON処理テスト
+- 出力チャネル分離テスト
+- プロセス管理テスト
+- 制御コマンドテスト
+- ログ蓄積テスト
+- エラーハンドリングテスト
+
+### テスト実行方法
+```bash
+# MCPデバッグ統合テスト
+./scripts/test-mcp-debug.sh
+
+# COEIRO Operator統合テスト
+./test-coeiro-mcp-debug.sh
+```
+
+## 外部MCPツール（code-bugs）
 
 code-bugsが提供するMCP（Model Context Protocol）ツールの使い方と意味、Use-caseを説明します。
 これらのツールはコード品質向上とプロジェクト分析のためのインターフェースです。
 
-## 概要
+### 概要
 
 code-bugsは以下の3つのMCPサーバーを提供しています：
 

@@ -282,15 +282,28 @@ export class AudioSynthesizer {
      * テキストを音切れ防止のためのオーバーラップ付きチャンクに分割
      */
     splitTextIntoChunks(text: string, splitMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): Chunk[] {
+        logger.debug("=== SPLIT_TEXT_INTO_CHUNKS DEBUG ===");
+        logger.debug(`Input splitMode: ${splitMode}`);
+        logger.debug(`Text length: ${text.length}`);
+        logger.debug(`Text preview: "${text.substring(0, 100)}${text.length > 100 ? '...' : ''}"`);
+        
         // 句読点分割の場合は専用処理
         if (splitMode === 'punctuation') {
-            return this.splitByPunctuation(text);
+            logger.debug("Using punctuation-based splitting");
+            const chunks = this.splitByPunctuation(text);
+            logger.debug(`Punctuation splitting result: ${chunks.length} chunks`);
+            chunks.forEach((chunk, index) => {
+                logger.debug(`  Chunk ${index}: "${chunk.text.substring(0, 50)}${chunk.text.length > 50 ? '...' : ''}"`);
+            });
+            return chunks;
         }
         
+        logger.debug(`Using ${splitMode} splitting mode`);
         const chunks: Chunk[] = [];
         const config = this.getSplitModeConfig()[splitMode];
         const chunkSize = config.chunkSize;
         const overlap = config.overlap;
+        logger.debug(`Split config - chunkSize: ${chunkSize}, overlap: ${overlap}`);
         
         for (let i = 0; i < text.length; i += chunkSize - overlap) {
             const end = Math.min(i + chunkSize, text.length);
@@ -306,6 +319,11 @@ export class AudioSynthesizer {
                 });
             }
         }
+        
+        logger.debug(`Non-punctuation splitting result: ${chunks.length} chunks`);
+        chunks.forEach((chunk, index) => {
+            logger.debug(`  Chunk ${index}: "${chunk.text.substring(0, 50)}${chunk.text.length > 50 ? '...' : ''}"`);
+        });
         
         return chunks;
     }
@@ -443,26 +461,20 @@ export class AudioSynthesizer {
      * ストリーミング音声合成
      */
     async* synthesizeStream(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): AsyncGenerator<AudioResult> {
+        logger.debug("=== SYNTHESIZE_STREAM DEBUG ===");
+        logger.debug(`chunkMode parameter: ${chunkMode}`);
+        logger.debug(`text length: ${text.length}`);
+        
         const chunks = this.splitTextIntoChunks(text, chunkMode);
+        logger.debug(`Total chunks generated: ${chunks.length}`);
         
         for (const chunk of chunks) {
+            logger.debug(`Processing chunk ${chunk.index}: "${chunk.text.substring(0, 30)}${chunk.text.length > 30 ? '...' : ''}"`);
             const result = await this.synthesizeChunk(chunk, voiceId, speed);
             yield result;
         }
+        
+        logger.debug("=== SYNTHESIZE_STREAM COMPLETE ===");
     }
 
-    /**
-     * 単純な音声合成（単一ファイル）
-     */
-    async synthesize(text: string, voiceId: string | OperatorVoice, speed: number): Promise<AudioResult> {
-        const chunk: Chunk = {
-            text,
-            index: 0,
-            isFirst: true,
-            isLast: true,
-            overlap: 0
-        };
-
-        return await this.synthesizeChunk(chunk, voiceId, speed);
-    }
 }

@@ -25,21 +25,91 @@ claude mcp add coeiro-operator
 - MCPツールの動作に問題がある場合
 - モジュールの依存関係を変更した後
 
+### MCPデバッグ環境の活用
+
+プロジェクトには包括的なMCPデバッグ環境が実装されています：
+
+#### デバッグテストの実行
+```bash
+# MCPデバッグ機能の統合テスト
+./scripts/test-mcp-debug.sh
+
+# COEIRO Operator統合テスト  
+./test-coeiro-mcp-debug.sh
+```
+
+#### Echo Back MCPサーバーによるテスト
+```bash
+# Echo Backサーバーの起動（デバッグモード）
+node dist/mcp-debug/test/echo-server.js --debug
+
+# 制御コマンドのテスト
+echo "CTRL:status" | node dist/mcp-debug/test/echo-server.js
+
+# JSON-RPCツールのテスト
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"test"}},"id":1}' | node dist/mcp-debug/test/echo-server.js
+```
+
+#### ログシステムの活用
+```bash
+# ログ蓄積状況の確認
+node --input-type=module -e "
+import { logger, LoggerPresets } from './dist/utils/logger.js';
+LoggerPresets.debug();
+logger.enableAccumulation();
+logger.info('テストログ');
+console.log('蓄積数:', logger.getLogStats().totalEntries);
+"
+```
+
+### Jest E2Eテストの実行
+
+プロジェクトにはJestベースのE2Eテストが実装されています：
+
+```bash
+# MCPデバッグ環境のE2Eテスト
+npm run test:mcp-debug
+
+# COEIRO Operator統合E2Eテスト  
+npm run test:coeiro-e2e
+
+# 全E2Eテストの実行
+npm run test:e2e
+
+# E2Eテストの監視モード
+npm run test:e2e:watch
+
+# 全テスト（ユニット + E2E）
+npm run test:all
+```
+
+#### E2Eテストの特徴
+- **Echo Back MCPサーバー**: 制御コマンド、JSON-RPC、出力分離のテスト
+- **パフォーマンステスト**: ログシステムの性能検証（500ログ/秒以上）
+- **統合テスト**: 既存システムとMCPデバッグ環境の互換性確認
+- **エラーハンドリング**: 異常系処理の確認
+
 ### 開発フロー例
 
 ```bash
 # 1. コード修正
 npm run build
 
-# 2. MCPサーバー再起動
+# 2. Jest E2Eテスト（推奨）
+npm run test:e2e
+
+# 3. シェルベースのテスト（オプション）
+./scripts/test-mcp-debug.sh
+
+# 4. MCPサーバー再起動
 claude mcp remove coeiro-operator
 claude mcp add coeiro-operator
 
-# 3. 動作確認
+# 5. 動作確認
 # Claude Codeでoperator_assignやsayツールをテスト
 ```
 
-この方法により、開発効率が大幅に向上し、変更の反映漏れを防ぐことができる。
+Jest E2Eテストにより、開発効率が大幅に向上し、自動化されたテストで品質を保証できます。
 
 ## その他の開発テクニック
 

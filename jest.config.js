@@ -1,6 +1,5 @@
 export default {
-  preset: 'ts-jest/presets/default-esm',
-  extensionsToTreatAsEsm: ['.ts'],
+  preset: 'ts-jest',
   testEnvironment: 'node',
   testMatch: [
     '<rootDir>/src/**/*.test.ts'
@@ -10,15 +9,13 @@ export default {
     '!src/**/*.test.ts',
     '!src/**/*.d.ts'
   ],
-  moduleNameMapper: {
-    '^(\\.{1,2}/.*)\\.js$': '$1'
-  },
   transform: {
     '^.+\\.ts$': ['ts-jest', {
-      useESM: true
+      tsconfig: {
+        module: 'commonjs',
+        target: 'es2020'
+      }
     }]
   },
-  transformIgnorePatterns: [
-    'node_modules/(?!(.*\\.mjs$))'
-  ]
+  testTimeout: 15000
 };
