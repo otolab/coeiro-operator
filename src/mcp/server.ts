@@ -356,53 +356,39 @@ server.registerTool("say", {
   const { message, voice, rate, style } = args;
   
   try {
-    if (isDebugMode) {
-      logger.debug("=== SAY TOOL DEBUG START ===");
-      logger.debug(`Input parameters:`);
-      logger.debug(`  message: "${message}"`);
-      logger.debug(`  voice: ${voice || 'null (will use operator voice)'}`);
-      logger.debug(`  rate: ${rate || 'undefined (will use config default)'}`);
-      logger.debug(`  style: ${style || 'undefined (will use operator default)'}`);
-      
-      // 設定情報をログ出力
-      const config = await loadConfig();
-      logger.debug(`Current audio config:`);
-      logger.debug(`  splitMode: ${config.audio?.splitMode || 'undefined (will fallback to punctuation)'}`);
-      logger.debug(`  latencyMode: ${config.audio?.latencyMode || 'undefined'}`);
-      logger.debug(`  bufferSize: ${config.audio?.bufferSize || 'undefined'}`);
-      logger.debug("==============================");
-    }
+    logger.debug("=== SAY TOOL DEBUG START ===");
+    logger.debug(`Input parameters:`);
+    logger.debug(`  message: "${message}"`);
+    logger.debug(`  voice: ${voice || 'null (will use operator voice)'}`);
+    logger.debug(`  rate: ${rate || 'undefined (will use config default)'}`);
+    logger.debug(`  style: ${style || 'undefined (will use operator default)'}`);
     
-    // デバッグモード時：同期実行、通常モード時：非同期実行
-    const result = isDebugMode 
-      ? await sayCoeiroink.synthesizeTextInternal(message, {
-          voice: voice || null,
-          rate: rate || undefined,
-          style: style || undefined,
-          allowFallback: false  // MCPツールではフォールバックを無効化
-        })
-      : await sayCoeiroink.synthesizeTextAsync(message, {
-          voice: voice || null,
-          rate: rate || undefined,
-          style: style || undefined
-        });
+    // 設定情報をログ出力
+    const config = await loadConfig();
+    logger.debug(`Current audio config:`);
+    logger.debug(`  splitMode: ${config.audio?.splitMode || 'undefined (will fallback to punctuation)'}`);
+    logger.debug(`  latencyMode: ${config.audio?.latencyMode || 'undefined'}`);
+    logger.debug(`  bufferSize: ${config.audio?.bufferSize || 'undefined'}`);
+    logger.debug("==============================");
     
-    if (isDebugMode) {
-      logger.debug(`Result: ${JSON.stringify(result)}`);
-    }
+    // 常に非同期キュー処理を使用
+    const result = await sayCoeiroink.synthesizeTextAsync(message, {
+      voice: voice || null,
+      rate: rate || undefined,
+      style: style || undefined,
+      allowFallback: false  // MCPツールではオペレータが必須
+    });
+    
+    logger.debug(`Result: ${JSON.stringify(result)}`);
     
     // 発声完了後に動作モード情報を出力
     const currentOperator = await operatorManager.showCurrentOperator();
     const modeInfo = `発声完了 - オペレータ: ${currentOperator.operatorId || '未割り当て'}, タスクID: ${result.taskId}`;
     logger.info(modeInfo);
     
-    if (isDebugMode) {
-      logger.debug("=== SAY TOOL DEBUG END ===");
-    }
+    logger.debug("=== SAY TOOL DEBUG END ===");
     
-    const responseText = isDebugMode 
-      ? `[DEBUG MODE] 同期発声完了: タスクID ${result.taskId}, オペレータ: ${currentOperator.operatorId || '未割り当て'}, 成功: ${result.success}, ファイル: ${result.outputFile || 'なし'}`
-      : `発声完了: タスクID ${result.taskId}, オペレータ: ${currentOperator.operatorId || '未割り当て'}`;
+    const responseText = `発声完了: タスクID ${result.taskId}, オペレータ: ${currentOperator.operatorId || '未割り当て'}`;
     
     return {
       content: [{
@@ -595,12 +581,10 @@ server.registerTool("operator_styles", {
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   
-  if (isDebugMode) {
-    // デバッグモード時は受信メッセージをログに出力（connect前に設定）
-    transport.onmessage = (message) => {
-      logger.info(`Received MCP message: ${JSON.stringify(message)}`);
-    };
-  }
+  // デバッグ時はMCPメッセージをログに出力（connect前に設定）
+  transport.onmessage = (message) => {
+    logger.debug(`Received MCP message: ${JSON.stringify(message)}`);
+  };
   
   logger.info("Say COEIROINK MCP Server starting...");
   await server.connect(transport);
