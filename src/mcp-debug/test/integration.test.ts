@@ -127,7 +127,7 @@ class IntegrationTestRunner {
         
         if (line.includes('DEBUG:')) {
           this.output.debugMessages.push(line);
-        } else if (line.includes('ERROR') || line.includes('Error')) {
+        } else if (line.includes('ERROR') || line.includes('Error') || line.includes('Test error:')) {
           this.output.errorMessages.push(line);
         }
       });
