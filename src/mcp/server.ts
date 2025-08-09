@@ -59,10 +59,10 @@ const { isDebugMode, configPath } = parseArguments();
 
 // デバッグモードの場合は詳細ログ、そうでなければMCPサーバーモード
 if (isDebugMode) {
-  LoggerPresets.debug(); // デバッグレベルのログ出力（蓄積あり）
+  LoggerPresets.mcpServerDebugWithAccumulation(); // デバッグモード：全レベル出力・蓄積
   logger.info("DEBUG MODE: Verbose logging enabled (--debug flag detected)");
 } else {
-  LoggerPresets.mcpServerWithAccumulation(); // MCP準拠のログ設定（蓄積あり）
+  LoggerPresets.mcpServerWithAccumulation(); // 通常モード：info以上のみ蓄積
 }
 
 if (configPath) {

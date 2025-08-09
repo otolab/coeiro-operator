@@ -162,6 +162,7 @@ node dist/mcp/server.js -d
 - 既存`src/utils/logger.ts`との完全互換性
 - LoggerPresetsを通じた設定管理
 - MCPサーバーモードでの自動最適化
+- モード別ログ収集（通常モード: info以上、デバッグモード: 全レベル）
 
 詳細は [`docs/mcp-debug-guide.md`](./docs/mcp-debug-guide.md) を参照してください。
 

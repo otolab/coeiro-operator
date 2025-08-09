@@ -285,15 +285,27 @@ export const LoggerPresets = {
     });
   },
 
-  // MCPサーバーモード（蓄積あり）：エラーのみstderrに出力、全ログ蓄積
+  // MCPサーバーモード（蓄積あり）：エラーのみstderrに出力、info以上を蓄積
   mcpServerWithAccumulation: (): void => {
     configureLogger({
-      level: 'error',           // 出力はエラーのみ
-      accumulateLevel: 'debug', // 蓄積は全レベル
+      level: 'error',         // 出力はエラーのみ
+      accumulateLevel: 'info', // 蓄積はinfo以上（通常モード）
       isMcpMode: true,
       prefix: 'MCP',
       accumulate: true,
       maxEntries: 2000
+    });
+  },
+
+  // MCPサーバーデバッグモード（蓄積あり）：詳細ログ出力、全ログ蓄積
+  mcpServerDebugWithAccumulation: (): void => {
+    configureLogger({
+      level: 'debug',         // デバッグモードでは詳細ログ出力
+      accumulateLevel: 'debug', // 蓄積は全レベル（デバッグモード）
+      isMcpMode: false,       // デバッグ時はstdout制限なし
+      prefix: 'MCP-DEBUG',
+      accumulate: true,
+      maxEntries: 3000
     });
   },
 
