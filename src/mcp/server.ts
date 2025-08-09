@@ -33,13 +33,13 @@ interface ToolResponse {
   [key: string]: unknown;
 }
 
-// デバッグモード判定
-const isDebugMode = process.argv.includes('--debug') || process.env.COEIRO_DEBUG === 'true';
+// コマンドライン引数からデバッグモードを判定
+const isDebugMode = process.argv.includes('--debug') || process.argv.includes('-d');
 
-// デバッグモードの場合は通常ログ、そうでなければMCPサーバーモード
+// デバッグモードの場合は詳細ログ、そうでなければMCPサーバーモード
 if (isDebugMode) {
-  LoggerPresets.cli(); // 標準出力にログ出力
-  logger.info("DEBUG MODE: Verbose logging enabled");
+  LoggerPresets.debug(); // デバッグレベルのログ出力
+  logger.info("DEBUG MODE: Verbose logging enabled (--debug flag detected)");
 } else {
   LoggerPresets.mcpServer(); // MCP準拠のログ設定
 }
@@ -325,27 +325,27 @@ server.registerTool("say", {
 }, async (args): Promise<ToolResponse> => {
   const { message, voice, rate, style } = args;
   
-  logger.info("SAY TOOL CALLED - デバッグモード処理開始");
-  
   try {
-    logger.debug("=== SAY TOOL DEBUG START ===");
-    logger.debug(`Input parameters:`);
-    logger.debug(`  message: "${message}"`);
-    logger.debug(`  voice: ${voice || 'null (will use operator voice)'}`);
-    logger.debug(`  rate: ${rate || 'undefined (will use config default)'}`);
-    logger.debug(`  style: ${style || 'undefined (will use operator default)'}`);
+    if (isDebugMode) {
+      logger.debug("=== SAY TOOL DEBUG START ===");
+      logger.debug(`Input parameters:`);
+      logger.debug(`  message: "${message}"`);
+      logger.debug(`  voice: ${voice || 'null (will use operator voice)'}`);
+      logger.debug(`  rate: ${rate || 'undefined (will use config default)'}`);
+      logger.debug(`  style: ${style || 'undefined (will use operator default)'}`);
+      
+      // 設定情報をログ出力
+      const config = await loadConfig();
+      logger.debug(`Current audio config:`);
+      logger.debug(`  splitMode: ${config.audio?.splitMode || 'undefined (will fallback to punctuation)'}`);
+      logger.debug(`  latencyMode: ${config.audio?.latencyMode || 'undefined'}`);
+      logger.debug(`  bufferSize: ${config.audio?.bufferSize || 'undefined'}`);
+      logger.debug("==============================");
+    }
     
-    // 設定情報をログ出力
-    const config = await loadConfig();
-    logger.debug(`Current audio config:`);
-    logger.debug(`  splitMode: ${config.audio?.splitMode || 'undefined (will fallback to punctuation)'}`);
-    logger.debug(`  latencyMode: ${config.audio?.latencyMode || 'undefined'}`);
-    logger.debug(`  bufferSize: ${config.audio?.bufferSize || 'undefined'}`);
-    logger.debug("==============================");
-    
-    // デバッグモード時は同期実行、通常時は非同期
+    // デバッグモード時：同期実行、通常モード時：非同期実行
     const result = isDebugMode 
-      ? await sayCoeiroink.synthesizeTextAsyncAndWait(message, {
+      ? await sayCoeiroink.synthesizeTextInternal(message, {
           voice: voice || null,
           rate: rate || undefined,
           style: style || undefined,
@@ -354,17 +354,30 @@ server.registerTool("say", {
       : await sayCoeiroink.synthesizeTextAsync(message, {
           voice: voice || null,
           rate: rate || undefined,
-          style: style || undefined,
-          allowFallback: false  // MCPツールではフォールバックを無効化
+          style: style || undefined
         });
     
-    logger.debug(`Result: ${JSON.stringify(result)}`);
-    logger.debug("=== SAY TOOL DEBUG END ===");
+    if (isDebugMode) {
+      logger.debug(`Result: ${JSON.stringify(result)}`);
+    }
+    
+    // 発声完了後に動作モード情報を出力
+    const currentOperator = await operatorManager.showCurrentOperator();
+    const modeInfo = `発声完了 - オペレータ: ${currentOperator.operatorId || '未割り当て'}, タスクID: ${result.taskId}`;
+    logger.info(modeInfo);
+    
+    if (isDebugMode) {
+      logger.debug("=== SAY TOOL DEBUG END ===");
+    }
+    
+    const responseText = isDebugMode 
+      ? `[DEBUG MODE] 同期発声完了: タスクID ${result.taskId}, オペレータ: ${currentOperator.operatorId || '未割り当て'}, 成功: ${result.success}, ファイル: ${result.outputFile || 'なし'}`
+      : `発声完了: タスクID ${result.taskId}, オペレータ: ${currentOperator.operatorId || '未割り当て'}`;
     
     return {
       content: [{
         type: "text",
-        text: `音声合成キューに追加: タスクID ${result.taskId}, キュー長 ${result.queueLength}`
+        text: responseText
       }]
     };
   } catch (error) {

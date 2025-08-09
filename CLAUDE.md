@@ -63,10 +63,33 @@ npm run build
 ### MCPサーバーの再起動
 コード変更後にMCPサーバーを再起動するには：
 ```bash
-claude mcp remove coeiro-operator
-claude mcp add coeiro-operator
+claude mcp remove coeiro-operator -s local
+claude mcp add coeiro-operator ./dist/mcp/server.js
 ```
 この方法により変更が確実に反映されます。詳細は`docs/development-tips.md`を参照。
+
+### MCPサーバーのデバッグモード
+
+MCPサーバーは2つのモードで動作します：
+
+#### 通常モード（デフォルト）
+```bash
+node dist/mcp/server.js
+```
+- 非同期音声再生（`synthesizeTextAsync()`使用）
+- 簡潔なログ出力
+- MCPサーバーとしての標準動作
+
+#### デバッグモード
+```bash
+node dist/mcp/server.js --debug
+# または
+node dist/mcp/server.js -d
+```
+- 同期音声再生（`synthesizeTextInternal()`使用）
+- 詳細なデバッグログ出力
+- 設定情報とパラメータの詳細表示
+- 開発・テスト用途
 
 ### 開発フロー
 1. コード修正
