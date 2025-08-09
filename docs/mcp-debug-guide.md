@@ -400,6 +400,93 @@ MCPツールとして `debug_logs` を追加することで、Claude Code から
 // Parameters: { action: "get", level: ["error", "warn"], limit: 50 }
 ```
 
+## 実用的なデバッグワークフロー
+
+### 1. 音声合成デバッグのワークフロー
+
+```bash
+# ステップ1: デバッグモードでMCPサーバー起動
+node dist/mcp/server.js --debug
+
+# ステップ2: オペレータ割り当て
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_assign","arguments":{"operator":"ai_shuka"}},"id":1}' | node dist/mcp/server.js --debug
+
+# ステップ3: 並行生成状態確認
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"parallel_generation_control","arguments":{"action":"status"}},"id":2}' | node dist/mcp/server.js --debug
+
+# ステップ4: 音声合成テスト
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"デバッグテストです。"}},"id":3}' | node dist/mcp/server.js --debug
+
+# ステップ5: ログ統計確認
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_logs","arguments":{"action":"stats"}},"id":4}' | node dist/mcp/server.js --debug
+```
+
+### 2. 並行生成パフォーマンステスト
+
+```bash
+# 逐次生成でのベースライン測定
+echo '{"name":"parallel_generation_control","arguments":{"action":"disable"}}' | node dist/mcp/server.js --debug
+echo '{"name":"say","arguments":{"message":"パフォーマンステスト用の長いテキストです。複数の文を含んでいます。..."}}' | node dist/mcp/server.js --debug
+
+# 並行生成での改善効果確認
+echo '{"name":"parallel_generation_control","arguments":{"action":"enable"}}' | node dist/mcp/server.js --debug
+echo '{"name":"say","arguments":{"message":"パフォーマンステスト用の長いテキストです。複数の文を含んでいます。..."}}' | node dist/mcp/server.js --debug
+
+# 統計比較
+echo '{"name":"parallel_generation_control","arguments":{"action":"status"}}' | node dist/mcp/server.js --debug
+```
+
+### 3. Echo Back MCPサーバーでの基本テスト
+
+```bash
+# Echo Backサーバーでの動作確認
+node dist/mcp-debug/test/echo-server.js --debug
+
+# 制御コマンドテスト
+echo 'CTRL:status' | node dist/mcp-debug/test/echo-server.js
+echo 'CTRL:logs:stats' | node dist/mcp-debug/test/echo-server.js
+
+# MCPツールテスト
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"テスト"}},"id":1}' | node dist/mcp-debug/test/echo-server.js
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_info","arguments":{"type":"stats"}},"id":2}' | node dist/mcp-debug/test/echo-server.js
+```
+
+### 4. 自動統合テスト
+
+```bash
+# 包括的なMCPデバッグテスト
+node dist/mcp-debug/test/integration.test.js
+
+# COEIRO Operator統合テスト
+./test-coeiro-mcp-debug.sh
+```
+
+### 5. トラブルシューティング手順
+
+#### 音声が再生されない場合
+```bash
+# 1. サーバー接続確認
+echo '{"name":"operator_status","arguments":{}}' | node dist/mcp/server.js --debug
+
+# 2. オペレータ確認
+echo '{"name":"operator_available","arguments":{}}' | node dist/mcp/server.js --debug
+
+# 3. デバッグログ確認
+echo '{"name":"debug_logs","arguments":{"action":"get","level":["error","warn"],"limit":10}}' | node dist/mcp/server.js --debug
+```
+
+#### 並行生成が動作しない場合
+```bash
+# 1. 現在の設定確認
+echo '{"name":"parallel_generation_control","arguments":{"action":"status"}}' | node dist/mcp/server.js --debug
+
+# 2. 有効化
+echo '{"name":"parallel_generation_control","arguments":{"action":"enable"}}' | node dist/mcp/server.js --debug
+
+# 3. 複数チャンクテスト
+echo '{"name":"say","arguments":{"message":"これは最初の文です。これは二番目の文です。これは三番目の文です。"}}' | node dist/mcp/server.js --debug
+```
+
 ## 拡張方法
 
 ### 新しい制御コマンド追加
