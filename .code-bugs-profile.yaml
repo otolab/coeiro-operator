@@ -11,6 +11,15 @@ global:
 
 # サブコマンド設定
 commands:
+  # こちらを先に実行
+  depcruise-analysis:
+    applies:
+      - rootDir: ./src
+        entries:
+          - mcp/server.ts
+          - cli/say-coeiroink.ts
+          - cli/operator-manager.ts
+
   analysis:
     # recipes:  # デフォルトのpackages/cli/recipes/が自動的に含まれるため、カスタムレシピがない場合は指定不要
     #   - ./custom-recipes  # カスタムレシピディレクトリがある場合のみ指定
@@ -27,11 +36,3 @@ commands:
           - refactoring-suggestion-1
           - refactoring-suggestion-2
           - refactoring-suggestion-3
-
-  depcruise-analysis:
-    applies:
-      - rootDir: ./src
-        entries:
-          - index.ts
-          - say/cli.ts
-          - operator/cli.ts
