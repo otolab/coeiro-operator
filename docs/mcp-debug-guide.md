@@ -162,7 +162,52 @@ LoggerPresets.cli();
 LoggerPresets.quiet();
 ```
 
-### ログ取得
+### ログシステムの詳細
+
+#### ログレベル階層
+```
+quiet (0) < error (1) < warn (2) < info (3) < verbose (4) < debug (5)
+```
+
+#### プリセット設定詳細
+
+| プリセット | 出力レベル | 蓄積レベル | 蓄積有効 | MCPモード | 用途 |
+|-----------|------------|------------|----------|-----------|------|
+| `mcpServer` | error | error | ❌ | ✅ | 本番MCPサーバー |
+| `mcpServerWithAccumulation` | error | debug | ✅ | ✅ | デバッグ対応MCPサーバー |
+| `cli` | info | info | ❌ | ❌ | CLIツール |
+| `debug` | debug | debug | ✅ | ❌ | 開発・デバッグ |
+| `quiet` | quiet | quiet | ❌ | ✅ | 静寂モード |
+
+#### プログラマティック使用
+
+```typescript
+import { 
+  DebugLogManager, 
+  LoggerPresets, 
+  getLogger 
+} from './src/mcp-debug/logger/index.js';
+
+// 1. プリセット設定
+LoggerPresets.debug(); // デバッグモード有効
+
+// 2. ロガー取得
+const logger = getLogger('my-service');
+
+// 3. ログ出力
+logger.info('サービス開始', { port: 3000 });
+logger.debug('デバッグ情報', { state: 'processing' });
+logger.error('エラー発生', { error: new Error('Something went wrong') });
+
+// 4. コンテキスト付きログ
+const contextLogger = logger.withContext({ 
+  requestId: 'req-123',
+  userId: 'user-456' 
+});
+contextLogger.info('Request processed');
+```
+
+#### ログ取得・管理
 
 ```typescript
 import { DebugLogManager } from './src/mcp-debug/logger/index.js';
@@ -179,6 +224,32 @@ const entries = accumulator.getEntries({
 
 // 統計情報取得
 const stats = accumulator.getStats();
+console.log('Total entries:', stats.totalEntries);
+console.log('By level:', stats.entriesByLevel);
+
+// リアルタイムストリーミング
+const streamId = accumulator.createStream(
+  { level: ['error'] },
+  (entry) => console.log('Real-time error:', entry.message)
+);
+
+// ストリーム停止
+accumulator.destroyStream(streamId);
+```
+
+#### MCPツールでのログ取得
+
+```bash
+# ログエントリ取得
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_info","arguments":{"type":"logs"}},"id":1}' | node dist/mcp-debug/test/echo-server.js
+
+# 統計情報取得
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_info","arguments":{"type":"stats"}},"id":2}' | node dist/mcp-debug/test/echo-server.js
+
+# 制御コマンドでログ操作
+echo 'CTRL:logs:stats' | node dist/mcp-debug/test/echo-server.js
+echo 'CTRL:logs:get:limit=10:level=error,warn' | node dist/mcp-debug/test/echo-server.js
+echo 'CTRL:logs:clear' | node dist/mcp-debug/test/echo-server.js
 ```
 
 ## 開発フロー
@@ -282,6 +353,53 @@ manager.configure({
 - **デバッグモード**: 本番環境では無効化
 - **ストリーミング**: 不要なログストリームは破棄
 
+## 既存MCPサーバーへの適用
+
+### COEIRO Operator MCPサーバーでの使用例
+
+```typescript
+import { LoggerPresets, getLogger } from './src/mcp-debug/logger/index.js';
+
+// MCPサーバー起動時
+LoggerPresets.mcpServerWithAccumulation(); // デバッグ対応
+const logger = getLogger('coeiro-mcp');
+
+// 音声合成処理での使用
+logger.info('音声合成開始', { text: message, style: selectedStyle });
+logger.debug('設定情報', { splitMode, bufferSize });
+
+// エラー処理
+try {
+  await synthesizeText(text);
+  logger.info('音声合成完了');
+} catch (error) {
+  logger.error('音声合成失敗', { error, text });
+}
+```
+
+### 制御コマンドでのリアルタイム監視
+
+```bash
+# MCPサーバー状態確認
+echo 'CTRL:status' | node dist/mcp/server.js
+
+# 音声合成ログの確認
+echo 'CTRL:logs:get:limit=20:level=info,error' | node dist/mcp/server.js
+
+# エラーログのみ表示
+echo 'CTRL:logs:get:level=error' | node dist/mcp/server.js
+```
+
+### デバッグツールの統合
+
+MCPツールとして `debug_logs` を追加することで、Claude Code から直接ログにアクセス可能：
+
+```typescript
+// Claude Code からの呼び出し例
+// MCP Tool: debug_logs
+// Parameters: { action: "get", level: ["error", "warn"], limit: 50 }
+```
+
 ## 拡張方法
 
 ### 新しい制御コマンド追加
@@ -295,5 +413,24 @@ manager.configure({
 1. Echo Backサーバーの `handleToolsList` にスキーマ追加
 2. `handleToolsCall` に処理ロジック追加
 3. 統合テストに検証ケース追加
+
+### 既存MCPサーバーでの段階的導入
+
+1. **ログシステムのみ導入**
+   ```typescript
+   import { LoggerPresets } from './src/mcp-debug/logger/index.js';
+   LoggerPresets.mcpServerWithAccumulation();
+   ```
+
+2. **制御コマンド追加**
+   ```typescript
+   import { ControlHandler } from './src/mcp-debug/control/handler.js';
+   const controlHandler = new ControlHandler();
+   ```
+
+3. **デバッグツール統合**
+   ```typescript
+   // debug_logs ツールをMCPツールリストに追加
+   ```
 
 この環境により、MCPサーバーの開発とデバッグが大幅に効率化されます。
