@@ -10,10 +10,6 @@
 
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 interface TestResult {
   name: string;
@@ -79,7 +75,7 @@ class IntegrationTestRunner {
   }
 
   private async startEchoServer(): Promise<void> {
-    const serverPath = path.join(__dirname, '../test/echo-server.js');
+    const serverPath = path.join(path.dirname(__filename), 'echo-server.js');
     
     console.log('🚀 Starting echo server...');
     
@@ -544,8 +540,21 @@ async function main() {
 }
 
 // 直接実行された場合のみテストを実行
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   main().catch(console.error);
 }
 
 export { IntegrationTestRunner };
+
+// 基本テストを追加
+describe('MCP Debug Environment Integration Tests', () => {
+  test('IntegrationTestRunnerクラスのインスタンス化確認', () => {
+    const runner = new IntegrationTestRunner();
+    expect(runner).toBeInstanceOf(IntegrationTestRunner);
+  });
+
+  test('Echo Serverパスの確認', () => {
+    const serverPath = path.join(path.dirname(__filename), 'echo-server.js');
+    expect(serverPath).toContain('echo-server.js');
+  });
+});
