@@ -579,13 +579,14 @@ server.registerTool("operator_styles", {
 
 // 並行生成制御ツール
 server.registerTool("parallel_generation_control", {
-  description: "チャンク並行生成機能の制御と設定管理を行います。生成の並行数、待機時間、先読み数などを調整できます。",
+  description: "チャンク並行生成機能の制御と設定管理を行います。生成の並行数、待機時間、先読み数、初回ポーズ機能などを調整できます。",
   inputSchema: {
     action: z.enum(['enable', 'disable', 'status', 'update_options']).describe("実行するアクション"),
     options: z.object({
       maxConcurrency: z.number().min(1).max(5).optional().describe("最大並行生成数（1-5）"),
       delayBetweenRequests: z.number().min(0).max(1000).optional().describe("リクエスト間隔（ms、0-1000）"),
-      bufferAheadCount: z.number().min(0).max(3).optional().describe("先読みチャンク数（0-3）")
+      bufferAheadCount: z.number().min(0).max(3).optional().describe("先読みチャンク数（0-3）"),
+      pauseUntilFirstComplete: z.boolean().optional().describe("初回チャンク完了まで並行生成をポーズ（レイテンシ改善）")
     }).optional().describe("更新するオプション（action=update_optionsの場合）")
   }
 }, async (args) => {
@@ -620,10 +621,11 @@ server.registerTool("parallel_generation_control", {
             type: "text",
             text: `📊 並行生成ステータス\n\n` +
                   `🎛️ 設定:\n` +
-                  `  - 状態: ${currentOptions.enableParallelGeneration ? '✅ 有効' : '❌ 無効'}\n` +
-                  `  - 最大並行数: ${currentOptions.maxConcurrency}\n` +
+                  `  - 状態: ${currentOptions.maxConcurrency > 1 ? '✅ 並行生成' : '❌ 逐次生成'}\n` +
+                  `  - 最大並行数: ${currentOptions.maxConcurrency} ${currentOptions.maxConcurrency === 1 ? '(逐次モード)' : '(並行モード)'}\n` +
                   `  - リクエスト間隔: ${currentOptions.delayBetweenRequests}ms\n` +
-                  `  - 先読み数: ${currentOptions.bufferAheadCount}\n\n` +
+                  `  - 先読み数: ${currentOptions.bufferAheadCount}\n` +
+                  `  - 初回ポーズ: ${currentOptions.pauseUntilFirstComplete ? '✅ 有効' : '❌ 無効'}\n\n` +
                   `📈 現在の統計:\n` +
                   `  - アクティブタスク: ${stats.activeTasks}\n` +
                   `  - 完了済み結果: ${stats.completedResults}\n` +
@@ -641,9 +643,10 @@ server.registerTool("parallel_generation_control", {
               type: "text",
               text: `⚙️ オプション更新完了\n\n` +
                     `🔧 新しい設定:\n` +
-                    `  - 最大並行数: ${updatedOptions.maxConcurrency}\n` +
+                    `  - 最大並行数: ${updatedOptions.maxConcurrency} ${updatedOptions.maxConcurrency === 1 ? '(逐次モード)' : '(並行モード)'}\n` +
                     `  - リクエスト間隔: ${updatedOptions.delayBetweenRequests}ms\n` +
-                    `  - 先読み数: ${updatedOptions.bufferAheadCount}\n\n` +
+                    `  - 先読み数: ${updatedOptions.bufferAheadCount}\n` +
+                    `  - 初回ポーズ: ${updatedOptions.pauseUntilFirstComplete ? '✅ 有効' : '❌ 無効'}\n\n` +
                     `💡 次回の音声合成から適用されます。`
             }]
           };

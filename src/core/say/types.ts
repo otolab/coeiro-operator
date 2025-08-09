@@ -53,10 +53,10 @@ export interface AudioConfig {
         overlapSamples?: number;
     };
     parallelGeneration?: {
-        enabled?: boolean;          // 並行生成の有効/無効
-        maxConcurrency?: number;    // 最大並行生成数
+        maxConcurrency?: number;    // 最大並行生成数（1=逐次、2以上=並行）
         delayBetweenRequests?: number; // リクエスト間隔（ms）
         bufferAheadCount?: number;  // 先読みチャンク数
+        pauseUntilFirstComplete?: boolean; // 初回チャンク完了まで並行生成をポーズ
     };
 }
 

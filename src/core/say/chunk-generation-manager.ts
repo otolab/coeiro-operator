@@ -17,6 +17,7 @@ export interface GenerationTask {
 export interface GenerationOptions {
     maxConcurrency: number;        // 最大並行生成数（デフォルト: 2）
     delayBetweenRequests: number; // リクエスト間隔（ms、デフォルト: 50ms）
+    pauseUntilFirstComplete: boolean; // 初回チャンク完了まで並行生成をポーズ（デフォルト: false）
 }
 
 /**
@@ -27,6 +28,7 @@ export class ChunkGenerationManager {
     private completedResults: Map<number, AudioResult> = new Map();
     private options: GenerationOptions;
     private synthesizeFunction: (chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number) => Promise<AudioResult>;
+    private firstChunkCompleted: boolean = false; // 初回チャンク完了フラグ
 
     constructor(
         synthesizeFunction: (chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number) => Promise<AudioResult>,
@@ -36,6 +38,7 @@ export class ChunkGenerationManager {
         this.options = {
             maxConcurrency: 2,
             delayBetweenRequests: 50,
+            pauseUntilFirstComplete: true,  // デフォルトで初回ポーズを有効化
             ...options
         };
     }
@@ -44,6 +47,12 @@ export class ChunkGenerationManager {
      * チャンクの生成を開始（並行制御あり）
      */
     async startGeneration(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<void> {
+        // 初回ポーズ機能: 初回チャンク完了まで後続チャンクの生成を待機
+        if (this.options.pauseUntilFirstComplete && chunk.index > 0 && !this.firstChunkCompleted) {
+            logger.debug(`チャンク${chunk.index}: 初回チャンク完了まで生成をポーズ`);
+            await this.waitForFirstChunkCompletion();
+        }
+
         // 並行数制限のチェック
         while (this.activeTasks.size >= this.options.maxConcurrency) {
             await this.waitForAnyTaskCompletion();
@@ -59,7 +68,7 @@ export class ChunkGenerationManager {
         };
 
         this.activeTasks.set(chunk.index, task);
-        logger.debug(`チャンク${chunk.index}の生成開始 (並行数: ${this.activeTasks.size})`);
+        logger.debug(`チャンク${chunk.index}の生成開始 (並行数: ${this.activeTasks.size}, 初回完了: ${this.firstChunkCompleted})`);
 
         // 生成完了時の処理を設定
         task.promise
@@ -138,6 +147,7 @@ export class ChunkGenerationManager {
     clear(): void {
         this.activeTasks.clear();
         this.completedResults.clear();
+        this.firstChunkCompleted = false; // 初回完了フラグもリセット
     }
 
     /**
@@ -169,6 +179,27 @@ export class ChunkGenerationManager {
         await Promise.race(promises);
     }
 
+    /**
+     * 初回チャンク（チャンク0）の完了を待機
+     */
+    private async waitForFirstChunkCompletion(): Promise<void> {
+        // 既に完了している場合は即座に返す
+        if (this.firstChunkCompleted) {
+            return;
+        }
+
+        // チャンク0のタスクが存在する場合は完了を待機
+        const firstTask = this.activeTasks.get(0);
+        if (firstTask) {
+            await firstTask.promise;
+        }
+
+        // ポーリングによる確認（安全のため）
+        while (!this.firstChunkCompleted) {
+            await this.delay(10); // 10ms間隔でチェック
+        }
+    }
+
     private onTaskCompleted(chunkIndex: number, result: AudioResult): void {
         const task = this.activeTasks.get(chunkIndex);
         if (task) {
@@ -177,6 +208,12 @@ export class ChunkGenerationManager {
             
             this.activeTasks.delete(chunkIndex);
             this.completedResults.set(chunkIndex, result);
+
+            // 初回チャンク完了フラグの設定
+            if (chunkIndex === 0 && !this.firstChunkCompleted) {
+                this.firstChunkCompleted = true;
+                logger.debug('初回チャンク完了: 並行生成ポーズを解除');
+            }
         }
     }
 

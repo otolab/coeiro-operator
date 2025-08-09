@@ -49,7 +49,13 @@ const DEFAULT_CONFIG: Config = {
     audio: {
         latencyMode: 'balanced',
         splitMode: 'punctuation',
-        bufferSize: BUFFER_SIZES.DEFAULT
+        bufferSize: BUFFER_SIZES.DEFAULT,
+        parallelGeneration: {
+            maxConcurrency: 2,        // 最大並行生成数（1=逐次、2以上=並行、デフォルト: 2）
+            delayBetweenRequests: 50, // リクエスト間隔（ms）
+            bufferAheadCount: 1,      // 先読みチャンク数
+            pauseUntilFirstComplete: true // 初回チャンク完了まで並行生成をポーズ（レイテンシ改善、デフォルト有効）
+        }
     }
 };
 
@@ -275,31 +281,6 @@ export class SayCoeiroink {
         return await this.speechQueue.enqueueAndWait(text, options);
     }
 
-    /**
-     * 並行生成モードの制御API
-     */
-    
-    // 並行生成の有効/無効を切り替え
-    setParallelGenerationEnabled(enabled: boolean): void {
-        this.audioSynthesizer.setParallelGenerationEnabled(enabled);
-        logger.info(`並行チャンク生成: ${enabled ? '有効' : '無効'}`);
-    }
-
-    // ストリーム制御オプションの更新
-    updateStreamControllerOptions(options: Partial<StreamControllerOptions>): void {
-        this.audioSynthesizer.updateStreamControllerOptions(options);
-        logger.debug('ストリーム制御オプション更新', options);
-    }
-
-    // 現在のストリーム制御設定を取得
-    getStreamControllerOptions(): StreamControllerOptions {
-        return this.audioSynthesizer.getStreamControllerOptions();
-    }
-
-    // 生成統計情報を取得
-    getGenerationStats() {
-        return this.audioSynthesizer.getGenerationStats();
-    }
 
     // 内部用の実際の音声合成処理
     async synthesizeTextInternal(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
@@ -415,6 +396,43 @@ export class SayCoeiroink {
             logger.info('音声ストリーミング再生完了');
             return { success: true, mode: 'streaming' };
         }
+    }
+
+    /**
+     * 並行生成の有効/無効を設定
+     */
+    setParallelGenerationEnabled(enabled: boolean): void {
+        this.audioSynthesizer.setParallelGenerationEnabled(enabled);
+        logger.info(`並行生成設定変更: ${enabled ? '有効' : '無効'}`);
+    }
+
+    /**
+     * AudioStreamControllerのオプションを更新
+     */
+    updateStreamControllerOptions(options: Partial<StreamControllerOptions>): void {
+        this.audioSynthesizer.updateStreamControllerOptions(options);
+        logger.info('AudioStreamController設定更新', options);
+    }
+
+    /**
+     * 並行生成の統計情報を取得
+     */
+    getGenerationStats() {
+        return this.audioSynthesizer.getGenerationStats();
+    }
+
+    /**
+     * 現在の並行生成設定を取得
+     */
+    getParallelGenerationConfig() {
+        return this.audioSynthesizer.getStreamControllerOptions();
+    }
+
+    /**
+     * ストリーム制御オプションを取得
+     */
+    getStreamControllerOptions() {
+        return this.audioSynthesizer.getStreamControllerOptions();
     }
 }
 

@@ -8,7 +8,6 @@ import { ChunkGenerationManager, GenerationOptions } from './chunk-generation-ma
 import type { Chunk, AudioResult, OperatorVoice } from './types.js';
 
 export interface StreamControllerOptions extends GenerationOptions {
-    enableParallelGeneration: boolean; // 並行生成の有効/無効（デフォルト: false）
     bufferAheadCount: number;          // 先読みチャンク数（デフォルト: 1）
 }
 
@@ -27,10 +26,10 @@ export class AudioStreamController {
     ) {
         this.synthesizeFunction = synthesizeFunction;
         this.options = {
-            maxConcurrency: 2,
+            maxConcurrency: 2,                // 1=逐次、2以上=並行、デフォルト: 2
             delayBetweenRequests: 50,
-            enableParallelGeneration: false,
             bufferAheadCount: 1,
+            pauseUntilFirstComplete: true,    // デフォルトで初回ポーズを有効化
             ...options
         };
 
@@ -38,7 +37,8 @@ export class AudioStreamController {
             synthesizeFunction,
             {
                 maxConcurrency: this.options.maxConcurrency,
-                delayBetweenRequests: this.options.delayBetweenRequests
+                delayBetweenRequests: this.options.delayBetweenRequests,
+                pauseUntilFirstComplete: this.options.pauseUntilFirstComplete
             }
         );
     }
@@ -51,44 +51,20 @@ export class AudioStreamController {
         voiceInfo: string | OperatorVoice,
         speed: number
     ): AsyncGenerator<AudioResult> {
-        if (!this.options.enableParallelGeneration) {
-            // 従来の逐次生成
-            yield* this.synthesizeStreamSequential(chunks, voiceInfo, speed);
-            return;
-        }
-
-        // 並行生成モード
+        // maxConcurrency=1なら逐次、2以上なら並行生成
         yield* this.synthesizeStreamParallel(chunks, voiceInfo, speed);
     }
 
     /**
-     * 逐次生成（従来の方式）
-     */
-    private async* synthesizeStreamSequential(
-        chunks: Chunk[],
-        voiceInfo: string | OperatorVoice,
-        speed: number
-    ): AsyncGenerator<AudioResult> {
-        logger.debug('逐次生成モードで音声合成開始');
-        
-        for (const chunk of chunks) {
-            logger.debug(`逐次生成: チャンク${chunk.index}処理中`);
-            const result = await this.synthesizeFunction(chunk, voiceInfo, speed);
-            yield result;
-        }
-        
-        logger.debug('逐次生成モード完了');
-    }
-
-    /**
-     * 並行生成（新方式）
+     * 並行生成（maxConcurrency=1なら逐次、2以上なら並行）
      */
     private async* synthesizeStreamParallel(
         chunks: Chunk[],
         voiceInfo: string | OperatorVoice,
         speed: number
     ): AsyncGenerator<AudioResult> {
-        logger.debug('並行生成モードで音声合成開始');
+        const mode = this.options.maxConcurrency === 1 ? '逐次' : '並行';
+        logger.debug(`${mode}生成モードで音声合成開始 (maxConcurrency=${this.options.maxConcurrency})`);
         
         if (chunks.length === 0) {
             return;
@@ -101,7 +77,7 @@ export class AudioStreamController {
             let currentIndex = 0;
             
             while (currentIndex < chunks.length) {
-                // 先読み生成の開始
+                // 先読み生成の開始（maxConcurrencyに基づく）
                 const nextIndex = currentIndex + 1;
                 if (nextIndex < chunks.length && 
                     !this.generationManager.isInProgress(nextIndex) && 
@@ -122,19 +98,19 @@ export class AudioStreamController {
                 }
 
                 // 現在のチャンクの完了を待機してyield
-                logger.debug(`並行生成: チャンク${currentIndex}結果待機中`);
+                logger.debug(`${mode}生成: チャンク${currentIndex}結果待機中`);
                 const result = await this.generationManager.getResult(currentIndex);
                 
-                logger.debug(`並行生成: チャンク${currentIndex}結果取得、yield開始`);
+                logger.debug(`${mode}生成: チャンク${currentIndex}結果取得、yield開始`);
                 yield result;
                 
                 currentIndex++;
             }
             
-            logger.debug('並行生成モード完了');
+            logger.debug(`${mode}生成モード完了`);
             
         } catch (error) {
-            logger.error(`並行生成エラー: ${(error as Error).message}`);
+            logger.error(`${mode}生成エラー: ${(error as Error).message}`);
             throw error;
         } finally {
             // クリーンアップ
@@ -143,11 +119,11 @@ export class AudioStreamController {
     }
 
     /**
-     * 並行生成の有効/無効を切り替え
+     * 並行生成の有効/無効を切り替え（maxConcurrencyで制御）
      */
     setParallelGenerationEnabled(enabled: boolean): void {
-        this.options.enableParallelGeneration = enabled;
-        logger.info(`並行生成モード: ${enabled ? '有効' : '無効'}`);
+        this.options.maxConcurrency = enabled ? 2 : 1;
+        logger.info(`並行生成モード: ${enabled ? '有効 (maxConcurrency=2)' : '無効 (maxConcurrency=1)'}`);
     }
 
     /**
@@ -161,7 +137,8 @@ export class AudioStreamController {
             this.synthesizeFunction,
             {
                 maxConcurrency: this.options.maxConcurrency,
-                delayBetweenRequests: this.options.delayBetweenRequests
+                delayBetweenRequests: this.options.delayBetweenRequests,
+                pauseUntilFirstComplete: this.options.pauseUntilFirstComplete
             }
         );
         

@@ -50,10 +50,10 @@ export class AudioSynthesizer {
         this.streamController = new AudioStreamController(
             this.synthesizeChunk.bind(this),
             {
-                enableParallelGeneration: parallelConfig.enabled || false,
                 maxConcurrency: parallelConfig.maxConcurrency || 2,
                 delayBetweenRequests: parallelConfig.delayBetweenRequests || 50,
-                bufferAheadCount: parallelConfig.bufferAheadCount || 1
+                bufferAheadCount: parallelConfig.bufferAheadCount || 1,
+                pauseUntilFirstComplete: parallelConfig.pauseUntilFirstComplete || true
             }
         );
     }
