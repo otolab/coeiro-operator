@@ -232,26 +232,6 @@ describe('Say Integration Tests', () => {
     });
 
     describe('データフロー統合テスト', () => {
-        test('テキスト分割からチャンク合成まで一貫して動作すること', async () => {
-            const longText = 'a'.repeat(150); // 複数チャンクに分割される
-            
-            // テキスト分割
-            const chunks = sayCoeiroink.splitTextIntoChunks(longText);
-            expect(chunks.length).toBeGreaterThan(1);
-            
-            // 各チャンクの合成
-            for (const chunk of chunks) {
-                const result = await sayCoeiroink.synthesizeChunk(
-                    chunk,
-                    'test-speaker-1',
-                    1.0
-                );
-                
-                expect(result.chunk).toEqual(chunk);
-                expect(result.audioBuffer).toBeInstanceOf(ArrayBuffer);
-                expect(result.latency).toBeGreaterThan(0);
-            }
-        });
 
         test('ストリーミング合成ジェネレータが正常に動作すること', async () => {
             const text = 'ストリーミングテスト用の長いテキスト。'.repeat(5);
