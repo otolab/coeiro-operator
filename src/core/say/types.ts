@@ -102,7 +102,6 @@ export interface SynthesizeOptions {
     voice?: string | OperatorVoice | null;
     rate?: number;
     outputFile?: string | null;
-    streamMode?: boolean;
     style?: string;
     chunkMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';  // テキスト分割モード
     bufferSize?: number;  // スピーカーバッファサイズ制御（バイト単位）

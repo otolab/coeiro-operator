@@ -38,6 +38,30 @@ export class SpeechQueue {
     }
 
     /**
+     * デバッグ用：音声タスクをキューに追加して完了を待つ
+     */
+    async enqueueAndWait(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+        const taskId = this.taskIdCounter++;
+        const task: SpeechTask = {
+            id: taskId,
+            text,
+            options,
+            timestamp: Date.now()
+        };
+
+        this.speechQueue.push(task);
+
+        // キュー処理を同期的に待つ
+        await this.processQueue();
+
+        return {
+            success: true,
+            taskId,
+            queueLength: this.speechQueue.length - 1 // 追加したタスクを除く（enqueueと統一）
+        };
+    }
+
+    /**
      * キューの処理を開始
      */
     private async processQueue(): Promise<void> {

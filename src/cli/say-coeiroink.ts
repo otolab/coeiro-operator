@@ -17,7 +17,6 @@ interface ParsedOptions {
     rate: number;
     inputFile: string;
     outputFile: string;
-    streamMode: boolean;
     text: string;
     chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
     bufferSize: number;
@@ -42,7 +41,6 @@ Options:
     -r rate            Speech rate in words per minute (default: ${this.config.voice.rate})
     -o outfile         Write audio to file instead of playing (WAV format)
     -f file            Read text from file (use '-' for stdin)
-    -s                 Force stream mode (auto-enabled for long text)
     --chunk-mode mode  Text splitting mode: punctuation|none|small|medium|large (default: punctuation)
     --buffer-size size Audio buffer size in bytes: ${BUFFER_SIZES.MIN}-${BUFFER_SIZES.MAX} (default: ${BUFFER_SIZES.DEFAULT})
     -h                 Show this help
@@ -84,7 +82,6 @@ Examples:
             rate: this.config.voice.rate,
             inputFile: '',
             outputFile: '',
-            streamMode: false,
             text: '',
             chunkMode: 'punctuation',
             bufferSize: BUFFER_SIZES.DEFAULT
@@ -126,10 +123,6 @@ Examples:
                     i++;
                     break;
                 
-                case '-s':
-                case '--stream':
-                    options.streamMode = true;
-                    break;
                 
                 case '--chunk-mode':
                     const chunkMode = args[i + 1];
@@ -203,7 +196,6 @@ Examples:
             voice: options.voice || null,
             rate: options.rate,
             outputFile: options.outputFile || null,
-            streamMode: options.streamMode,
             chunkMode: options.chunkMode,
             bufferSize: options.bufferSize
         });
@@ -227,8 +219,15 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // メイン実行関数
 async function main(): Promise<void> {
-    // CLIモードでは通常ログレベル（info）を使用
-    LoggerPresets.cli();
+    // デバッグモード判定
+    const isDebugMode = process.argv.includes('--debug') || process.env.COEIRO_DEBUG === 'true';
+    
+    // CLIモードでは通常ログレベル（info）を使用、デバッグモードではdebugレベル
+    if (isDebugMode) {
+        LoggerPresets.debug();
+    } else {
+        LoggerPresets.cli();
+    }
     
     const config = await loadConfig();
     const sayCoeiroink = new SayCoeiroink(config);

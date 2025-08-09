@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
-import { spawn, ChildProcess } from "child_process";
 import { z } from "zod";
 import { SayCoeiroink, loadConfig } from "../core/say/index.js";
 import { OperatorManager } from "../core/operator/index.js";
@@ -34,8 +33,16 @@ interface ToolResponse {
   [key: string]: unknown;
 }
 
-// MCPサーバーモードでlogger設定
-LoggerPresets.mcpServer();
+// デバッグモード判定
+const isDebugMode = process.argv.includes('--debug') || process.env.COEIRO_DEBUG === 'true';
+
+// デバッグモードの場合は通常ログ、そうでなければMCPサーバーモード
+if (isDebugMode) {
+  LoggerPresets.cli(); // 標準出力にログ出力
+  logger.info("DEBUG MODE: Verbose logging enabled");
+} else {
+  LoggerPresets.mcpServer(); // MCP準拠のログ設定
+}
 
 const server = new McpServer({
   name: "coeiro-operator",
@@ -213,38 +220,6 @@ function formatStylesResult(character: CharacterForFormatting, availableStyles: 
   return resultText;
 }
 
-// Promiseを返すspawn wrapper
-function spawnAsync(command: string, args: string[], env?: NodeJS.ProcessEnv): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const child: ChildProcess = spawn(command, args, {
-      stdio: ["pipe", "pipe", "pipe"],
-      env: env || process.env
-    });
-    
-    let stdout = "";
-    let stderr = "";
-    
-    child.stdout?.on("data", (data) => {
-      stdout += data.toString();
-    });
-    
-    child.stderr?.on("data", (data) => {
-      stderr += data.toString();
-    });
-    
-    child.on("close", (code) => {
-      if (code === 0) {
-        resolve(stdout.trim());
-      } else {
-        reject(new Error(`Command failed with code ${code}: ${stderr}`));
-      }
-    });
-    
-    child.on("error", (err) => {
-      reject(new Error(`Failed to execute command: ${err.message}`));
-    });
-  });
-}
 
 
 // operator-manager操作ツール
@@ -287,11 +262,11 @@ server.registerTool("operator_release", {
   inputSchema: {}
 }, async (): Promise<ToolResponse> => {
   try {
-    const result = await spawnAsync("operator-manager", ["release"]);
+    await operatorManager.releaseOperator();
     return {
       content: [{
         type: "text",
-        text: result
+        text: "オペレータを解放しました"
       }]
     };
   } catch (error) {
@@ -304,11 +279,12 @@ server.registerTool("operator_status", {
   inputSchema: {}
 }, async (): Promise<ToolResponse> => {
   try {
-    const result = await spawnAsync("operator-manager", ["status"]);
+    const status = await operatorManager.showCurrentOperator();
+    
     return {
       content: [{
         type: "text",
-        text: result
+        text: status.message
       }]
     };
   } catch (error) {
@@ -321,11 +297,15 @@ server.registerTool("operator_available", {
   inputSchema: {}
 }, async (): Promise<ToolResponse> => {
   try {
-    const result = await spawnAsync("operator-manager", ["available"]);
+    const availableOperators = await operatorManager.getAvailableOperators();
+    const text = availableOperators.length > 0
+      ? `利用可能なオペレータ: ${availableOperators.join(', ')}`
+      : "利用可能なオペレータがありません";
+    
     return {
       content: [{
         type: "text",
-        text: result
+        text: text
       }]
     };
   } catch (error) {
@@ -340,21 +320,46 @@ server.registerTool("say", {
     message: z.string().describe("発話させるメッセージ（日本語）"),
     voice: z.string().optional().describe("音声ID（省略時はオペレータ設定を使用）"),
     rate: z.number().optional().describe("話速（WPM、デフォルト200）"),
-    streamMode: z.boolean().optional().describe("ストリーミングモード強制（デフォルト自動）"),
     style: z.string().optional().describe("スタイルID（オペレータのスタイル選択を上書き）")
   }
 }, async (args): Promise<ToolResponse> => {
-  const { message, voice, rate, streamMode, style } = args;
+  const { message, voice, rate, style } = args;
+  
+  logger.info("SAY TOOL CALLED - デバッグモード処理開始");
   
   try {
-    // src/say/index.jsを直接呼び出し（enqueue処理で即座に戻る）
-    const result = await sayCoeiroink.synthesizeTextAsync(message, {
-      voice: voice || null,
-      rate: rate || undefined,
-      streamMode: streamMode || false,
-      style: style || undefined,
-      allowFallback: false  // MCPツールではフォールバックを無効化
-    });
+    logger.debug("=== SAY TOOL DEBUG START ===");
+    logger.debug(`Input parameters:`);
+    logger.debug(`  message: "${message}"`);
+    logger.debug(`  voice: ${voice || 'null (will use operator voice)'}`);
+    logger.debug(`  rate: ${rate || 'undefined (will use config default)'}`);
+    logger.debug(`  style: ${style || 'undefined (will use operator default)'}`);
+    
+    // 設定情報をログ出力
+    const config = await loadConfig();
+    logger.debug(`Current audio config:`);
+    logger.debug(`  splitMode: ${config.audio?.splitMode || 'undefined (will fallback to punctuation)'}`);
+    logger.debug(`  latencyMode: ${config.audio?.latencyMode || 'undefined'}`);
+    logger.debug(`  bufferSize: ${config.audio?.bufferSize || 'undefined'}`);
+    logger.debug("==============================");
+    
+    // デバッグモード時は同期実行、通常時は非同期
+    const result = isDebugMode 
+      ? await sayCoeiroink.synthesizeTextAsyncAndWait(message, {
+          voice: voice || null,
+          rate: rate || undefined,
+          style: style || undefined,
+          allowFallback: false  // MCPツールではフォールバックを無効化
+        })
+      : await sayCoeiroink.synthesizeTextAsync(message, {
+          voice: voice || null,
+          rate: rate || undefined,
+          style: style || undefined,
+          allowFallback: false  // MCPツールではフォールバックを無効化
+        });
+    
+    logger.debug(`Result: ${JSON.stringify(result)}`);
+    logger.debug("=== SAY TOOL DEBUG END ===");
     
     return {
       content: [{
@@ -363,6 +368,8 @@ server.registerTool("say", {
       }]
     };
   } catch (error) {
+    logger.debug(`SAY TOOL ERROR: ${(error as Error).message}`);
+    logger.debug(`Stack trace: ${(error as Error).stack}`);
     throw new Error(`音声出力エラー: ${(error as Error).message}`);
   }
 });
@@ -424,6 +431,15 @@ server.registerTool("operator_styles", {
 // サーバーの起動
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
+  
+  if (isDebugMode) {
+    // デバッグモード時は受信メッセージをログに出力（connect前に設定）
+    transport.onmessage = (message) => {
+      logger.info(`Received MCP message: ${JSON.stringify(message)}`);
+    };
+  }
+  
+  logger.info("Say COEIROINK MCP Server starting...");
   await server.connect(transport);
   logger.info("Say COEIROINK MCP Server started");
 }
