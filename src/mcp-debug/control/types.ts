@@ -13,7 +13,7 @@ export interface ControlCommand {
 // 制御応答の形式
 export interface ControlResponse {
   command: string;
-  status: 'ok' | 'error' | 'partial';
+  status: 'ok' | 'error' | 'partial' | 'success';
   data?: any;
   message?: string;
   timestamp: string;
@@ -41,8 +41,9 @@ export interface ServerStatus {
   };
   logStats: {
     totalEntries: number;
-    isAccumulating: boolean;
-    maxEntries: number;
+    entriesByLevel: Record<string, number>;
+    oldestEntry: string | null;
+    newestEntry: string | null;
   };
 }
 
@@ -56,7 +57,8 @@ export interface HealthCheck {
       latency?: number;
     };
   };
-  timestamp: string;
+  uptime: number;
+  lastCheck: string;
 }
 
 // 再起動オプション

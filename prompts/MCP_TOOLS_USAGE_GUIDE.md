@@ -48,6 +48,37 @@ COEIROINK音声合成システムを使用して日本語音声を出力しま�
 - `search`: ログメッセージ内の検索キーワード
 - `format`: 出力形式（'formatted'=整形済み, 'raw'=生データ）
 
+### parallel_generation_control
+チャンク並行生成機能の制御と設定管理を行います。音声合成の高速化を目的とした新機能です。
+
+**引数**:
+- `action`: 実行するアクション
+  - `'enable'`: 並行生成を有効化
+  - `'disable'`: 並行生成を無効化
+  - `'status'`: 現在の設定と統計情報を表示
+  - `'update_options'`: 並行生成オプションを更新
+- `options`: 更新するオプション（action=update_optionsの場合）
+  - `maxConcurrency`: 最大並行生成数（1-5）
+  - `delayBetweenRequests`: リクエスト間隔（ms、0-1000）
+  - `bufferAheadCount`: 先読みチャンク数（0-3）
+
+**使用例**:
+```json
+// 並行生成を有効化
+{"action": "enable"}
+
+// 設定確認
+{"action": "status"}
+
+// オプション更新
+{"action": "update_options", "options": {"maxConcurrency": 3, "delayBetweenRequests": 30}}
+```
+
+**効果**:
+- 複数チャンクの同時生成により高速化
+- レスポンシブな音声再生開始
+- 体感的なレイテンシ削減
+
 ## MCPデバッグ環境
 
 プロジェクトには包括的なMCPデバッグ環境が実装されています：

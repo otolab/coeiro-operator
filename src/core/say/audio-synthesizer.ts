@@ -20,6 +20,7 @@ import {
     SYNTHESIS_SETTINGS
 } from './constants.js';
 import { getVoiceProvider } from '../environment/voice-provider.js';
+import { AudioStreamController, StreamControllerOptions } from './audio-stream-controller.js';
 
 // ストリーミング設定
 const STREAM_CONFIG: StreamConfig = {
@@ -34,6 +35,7 @@ const STREAM_CONFIG: StreamConfig = {
 export class AudioSynthesizer {
     private audioConfig: AudioConfig;
     private voiceProvider = getVoiceProvider();
+    private streamController: AudioStreamController;
     
     constructor(private config: Config) {
         this.audioConfig = this.getAudioConfig();
@@ -42,6 +44,18 @@ export class AudioSynthesizer {
             host: this.config.connection.host,
             port: this.config.connection.port
         });
+
+        // AudioStreamControllerを初期化（設定ファイルベース）
+        const parallelConfig = this.config.audio?.parallelGeneration || {};
+        this.streamController = new AudioStreamController(
+            this.synthesizeChunk.bind(this),
+            {
+                maxConcurrency: parallelConfig.maxConcurrency || 2,
+                delayBetweenRequests: parallelConfig.delayBetweenRequests || 50,
+                bufferAheadCount: parallelConfig.bufferAheadCount || 1,
+                pauseUntilFirstComplete: parallelConfig.pauseUntilFirstComplete || true
+            }
+        );
     }
 
     /**
@@ -134,21 +148,24 @@ export class AudioSynthesizer {
         const chunks: Chunk[] = [];
         const config = SPLIT_SETTINGS.PUNCTUATION;
         
-        // 句点（。）で最初に分割
-        const rawSentences = text.split('。');
+        // 複数の句読点で分割（。！？）
+        // 複合句読点も考慮（？！、！？等）
+        const punctuationPattern = /([。！？]+)/;
+        const parts = text.split(punctuationPattern);
+        logger.debug(`Parts after punctuation split: ${JSON.stringify(parts)}`);
+        
         const sentences: string[] = [];
         
-        for (let i = 0; i < rawSentences.length; i++) {
-            const sentence = rawSentences[i].trim();
+        for (let i = 0; i < parts.length; i += 2) {
+            const sentence = parts[i] ? parts[i].trim() : '';
+            const punctuation = parts[i + 1] || '';
+            
             if (sentence.length > 0) {
-                // 最後の要素以外、または元のテキストが句点で終わっている場合は句点を復元
-                if (i < rawSentences.length - 1 || text.endsWith('。')) {
-                    sentences.push(sentence + '。');
-                } else {
-                    sentences.push(sentence);
-                }
+                sentences.push(sentence + punctuation);
             }
         }
+        
+        logger.debug(`Processed sentences: ${JSON.stringify(sentences)}`);
         
         // 短いテキストの場合は全体を1つのチャンクとして扱う
         if (text.trim().length > 0 && sentences.length === 0) {
@@ -162,61 +179,82 @@ export class AudioSynthesizer {
             return chunks;
         }
         
-        // 短いテキスト全体を結合して処理
-        if (sentences.length > 0 && sentences.every(s => s.length < config.MIN_CHUNK_SIZE)) {
-            const combinedText = sentences.join('');
-            chunks.push({
-                text: combinedText,
-                index: 0,
-                isFirst: true,
-                isLast: true,
-                overlap: 0
-            });
-            return chunks;
-        }
+        // 句読点分割：適切な長さのチャンクを作成し、短いチャンクは結合する
+        let currentChunk = '';
         
         for (let i = 0; i < sentences.length; i++) {
             const sentence = sentences[i];
             
-            // 文が最大文字数を超える場合は読点で分割、それでも長い場合は文字数で強制分割
+            // 文が最大文字数を超える場合は個別のチャンクとして処理
             if (sentence.length > config.MAX_CHUNK_SIZE) {
+                // 現在のチャンクがあれば先に追加
+                if (currentChunk.length > 0) {
+                    chunks.push({
+                        text: currentChunk,
+                        index: chunks.length,
+                        isFirst: chunks.length === 0,
+                        isLast: false,
+                        overlap: 0
+                    });
+                    currentChunk = '';
+                }
+                
+                // 長い文は個別処理（読点分割など）
                 if (config.ALLOW_COMMA_SPLIT && sentence.includes('、')) {
                     const subChunks = this.splitLongSentenceByComma(sentence, config.MAX_CHUNK_SIZE);
                     subChunks.forEach(subChunk => {
-                        if (subChunk.trim().length >= config.MIN_CHUNK_SIZE) {
-                            chunks.push({
-                                text: subChunk,
-                                index: chunks.length,
-                                isFirst: chunks.length === 0,
-                                isLast: false, // 後で更新
-                                overlap: 0
-                            });
-                        }
+                        chunks.push({
+                            text: subChunk,
+                            index: chunks.length,
+                            isFirst: chunks.length === 0,
+                            isLast: false,
+                            overlap: 0
+                        });
                     });
                 } else {
-                    // 読点もない場合は文字数で強制分割
-                    const forcedChunks = this.forceSplitByLength(sentence, config.MAX_CHUNK_SIZE);
-                    forcedChunks.forEach(chunk => {
-                        if (chunk.trim().length >= config.MIN_CHUNK_SIZE) {
-                            chunks.push({
-                                text: chunk,
-                                index: chunks.length,
-                                isFirst: chunks.length === 0,
-                                isLast: false, // 後で更新
-                                overlap: 0
-                            });
-                        }
+                    // 長い文をそのままチャンクとして追加
+                    chunks.push({
+                        text: sentence,
+                        index: chunks.length,
+                        isFirst: chunks.length === 0,
+                        isLast: false,
+                        overlap: 0
                     });
                 }
-            } else if (sentence.length >= config.MIN_CHUNK_SIZE) {
-                chunks.push({
-                    text: sentence,
-                    index: chunks.length,
-                    isFirst: chunks.length === 0,
-                    isLast: false, // 後で更新
-                    overlap: 0
-                });
+            } else {
+                // 短い文の結合処理
+                const combinedLength = currentChunk.length + sentence.length;
+                
+                if (currentChunk.length === 0) {
+                    // 最初の文
+                    currentChunk = sentence;
+                } else if (combinedLength <= config.MAX_CHUNK_SIZE && 
+                          (currentChunk.length < config.MIN_CHUNK_SIZE || sentence.length < config.MIN_CHUNK_SIZE)) {
+                    // 結合条件: 最大サイズ以下 かつ どちらかが最小サイズ未満
+                    currentChunk += sentence;
+                } else {
+                    // 現在のチャンクを確定し、新しいチャンクを開始
+                    chunks.push({
+                        text: currentChunk,
+                        index: chunks.length,
+                        isFirst: chunks.length === 0,
+                        isLast: false,
+                        overlap: 0
+                    });
+                    currentChunk = sentence;
+                }
             }
+        }
+        
+        // 残ったチャンクを追加
+        if (currentChunk.length > 0) {
+            chunks.push({
+                text: currentChunk,
+                index: chunks.length,
+                isFirst: chunks.length === 0,
+                isLast: false,
+                overlap: 0
+            });
         }
         
         // 最後のチャンクのisLastフラグを設定
@@ -458,7 +496,7 @@ export class AudioSynthesizer {
     }
 
     /**
-     * ストリーミング音声合成
+     * ストリーミング音声合成（リファクタリング版）
      */
     async* synthesizeStream(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): AsyncGenerator<AudioResult> {
         logger.debug("=== SYNTHESIZE_STREAM DEBUG ===");
@@ -468,13 +506,38 @@ export class AudioSynthesizer {
         const chunks = this.splitTextIntoChunks(text, chunkMode);
         logger.debug(`Total chunks generated: ${chunks.length}`);
         
-        for (const chunk of chunks) {
-            logger.debug(`Processing chunk ${chunk.index}: "${chunk.text.substring(0, 30)}${chunk.text.length > 30 ? '...' : ''}"`);
-            const result = await this.synthesizeChunk(chunk, voiceId, speed);
-            yield result;
-        }
+        // AudioStreamControllerを使用してストリーミング生成
+        yield* this.streamController.synthesizeStream(chunks, voiceId, speed);
         
         logger.debug("=== SYNTHESIZE_STREAM COMPLETE ===");
+    }
+
+    /**
+     * 並行生成モードの切り替え
+     */
+    setParallelGenerationEnabled(enabled: boolean): void {
+        this.streamController.setParallelGenerationEnabled(enabled);
+    }
+
+    /**
+     * ストリーム制御オプションの更新
+     */
+    updateStreamControllerOptions(options: Partial<StreamControllerOptions>): void {
+        this.streamController.updateOptions(options);
+    }
+
+    /**
+     * 現在のストリーム制御設定を取得
+     */
+    getStreamControllerOptions(): StreamControllerOptions {
+        return this.streamController.getOptions();
+    }
+
+    /**
+     * 生成統計情報を取得
+     */
+    getGenerationStats() {
+        return this.streamController.getGenerationStats();
     }
 
 }

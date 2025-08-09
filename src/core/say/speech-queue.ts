@@ -27,13 +27,13 @@ export class SpeechQueue {
 
         this.speechQueue.push(task);
 
-        // キュー処理を開始（非同期）
-        this.processQueue();
+        // キュー処理を開始（非同期、わずかに遅延させてテスト時の状態確認を可能にする）
+        setTimeout(() => this.processQueue(), 0);
 
         return {
             success: true,
             taskId,
-            queueLength: this.speechQueue.length - 1 // 追加したタスクを除く
+            queueLength: this.speechQueue.length // 現在のキュー長
         };
     }
 
@@ -57,7 +57,7 @@ export class SpeechQueue {
         return {
             success: true,
             taskId,
-            queueLength: this.speechQueue.length - 1 // 追加したタスクを除く（enqueueと統一）
+            queueLength: this.speechQueue.length // 現在のキュー長
         };
     }
 

@@ -50,6 +50,7 @@ npm run build
   - `audio-streaming-guide.md`: 音声ストリーミング再生システムガイド
   - `voice-provider-system.md`: VoiceProviderシステムガイド
   - `mcp-debug-guide.md`: MCPデバッグ環境ガイド
+  - `parallel-generation-system.md`: 並行チャンク生成システムガイド
 
 ## 音声設定
 
@@ -83,6 +84,12 @@ npm run build
       "mediumSize": 50,
       "largeSize": 100,
       "overlapRatio": 0.1
+    },
+    "parallelGeneration": {
+      "maxConcurrency": 2,
+      "delayBetweenRequests": 50,
+      "bufferAheadCount": 1,
+      "pauseUntilFirstComplete": true
     }
   }
 }
@@ -97,7 +104,27 @@ npm run build
 - `audio.bufferSize`: スピーカーバッファサイズ（256-8192バイト）
 - `audio.latencyMode`: レイテンシモード（`'ultra-low'`, `'balanced'`, `'quality'`）
 - `audio.splitSettings`: 分割設定（各モードでの分割サイズと重複比率）
+- `audio.parallelGeneration`: 並行チャンク生成設定（詳細は後述）
 - `voice.rate`: 話速（WPM: Words Per Minute）
+
+#### 並行チャンク生成設定
+
+新しく追加された並行生成機能により、音声合成の高速化が可能です：
+
+- `audio.parallelGeneration.maxConcurrency`: 最大並行生成数（1=逐次、2以上=並行、デフォルト: `2`、範囲: 1-5）
+- `audio.parallelGeneration.delayBetweenRequests`: リクエスト間隔（ms、デフォルト: `50`、範囲: 0-1000）
+- `audio.parallelGeneration.bufferAheadCount`: 先読みチャンク数（デフォルト: `1`、範囲: 0-3）
+- `audio.parallelGeneration.pauseUntilFirstComplete`: 初回チャンク完了まで並行生成をポーズ（デフォルト: `true`、レイテンシ改善）
+
+**効果**：
+- 複数チャンクの同時生成により高速化
+- レスポンシブな音声再生開始
+- 初回ポーズ機能により初期レイテンシを改善
+- 体感的なレイテンシ削減
+
+**注意**：
+- 初回ポーズ機能により安全性が向上し、デフォルト有効化
+- MCPツール `parallel_generation_control` で動的制御可能
 
 #### splitModeデフォルト動作
 
@@ -162,6 +189,7 @@ node dist/mcp/server.js -d
 - 既存`src/utils/logger.ts`との完全互換性
 - LoggerPresetsを通じた設定管理
 - MCPサーバーモードでの自動最適化
+- モード別ログ収集（通常モード: info以上、デバッグモード: 全レベル）
 
 詳細は [`docs/mcp-debug-guide.md`](./docs/mcp-debug-guide.md) を参照してください。
 

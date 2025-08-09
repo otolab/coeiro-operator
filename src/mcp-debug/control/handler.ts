@@ -16,15 +16,27 @@ import {
   ControlErrorCode 
 } from './types.js';
 import { ControlCommands } from './commands.js';
+import { TargetServerCommands } from './target-server-commands.js';
 import { DebugLogManager } from '../logger/index.js';
+import type { TargetServerWrapper } from '../wrapper/target-server-wrapper.js';
+import type { ModuleReloader } from '../wrapper/module-reloader.js';
 
 export class ControlHandler {
   private commands: ControlCommands;
+  private targetCommands?: TargetServerCommands;
   private logger: ReturnType<DebugLogManager['getLogger']>;
 
   constructor() {
     this.commands = new ControlCommands();
     this.logger = DebugLogManager.getInstance().getLogger('control');
+  }
+
+  /**
+   * ターゲットサーバー制御機能を設定
+   */
+  setTargetServerControl(wrapper: TargetServerWrapper, reloader?: ModuleReloader): void {
+    this.targetCommands = new TargetServerCommands({ wrapper, reloader });
+    this.logger.info('Target server control enabled');
   }
 
   /**
@@ -109,6 +121,11 @@ export class ControlHandler {
   }
 
   private async executeCommand(command: ControlCommand): Promise<ControlResponse> {
+    // ターゲットサーバー関連コマンドのチェック
+    if (command.command === 'target' && this.targetCommands) {
+      return await this.handleTargetCommand(command.args || []);
+    }
+
     switch (command.command) {
       case 'status':
         return await this.commands.getStatus();
@@ -129,6 +146,95 @@ export class ControlHandler {
         throw this.createError(
           ControlErrorCode.INVALID_COMMAND,
           `Unknown command: ${command.command}`
+        );
+    }
+  }
+
+  /**
+   * ターゲットサーバー制御コマンドを処理
+   */
+  private async handleTargetCommand(args: string[]): Promise<ControlResponse> {
+    if (!this.targetCommands) {
+      throw this.createError(
+        ControlErrorCode.INVALID_COMMAND,
+        'Target server control not available'
+      );
+    }
+
+    if (args.length === 0) {
+      throw this.createError(
+        ControlErrorCode.INVALID_ARGS,
+        'Target command requires subcommand'
+      );
+    }
+
+    const subcommand = args[0];
+    const subargs = args.slice(1);
+
+    switch (subcommand) {
+      case 'status':
+        return await this.targetCommands.getTargetStatus();
+
+      case 'start':
+        return await this.targetCommands.startTarget();
+
+      case 'stop':
+        return await this.targetCommands.stopTarget();
+
+      case 'restart':
+        return await this.targetCommands.restartTarget();
+
+      case 'reload':
+        return await this.targetCommands.reloadTarget(subargs[0]);
+
+      case 'health':
+        return await this.targetCommands.healthCheckTarget();
+
+      case 'watch':
+        return await this.handleTargetWatch(subargs);
+
+      case 'send':
+        return await this.targetCommands.sendCommand(subargs[0], subargs.slice(1));
+
+      default:
+        throw this.createError(
+          ControlErrorCode.INVALID_COMMAND,
+          `Unknown target subcommand: ${subcommand}`
+        );
+    }
+  }
+
+  /**
+   * ターゲットサーバーのファイル監視コマンドを処理
+   */
+  private async handleTargetWatch(args: string[]): Promise<ControlResponse> {
+    if (!this.targetCommands) {
+      throw this.createError(
+        ControlErrorCode.INVALID_COMMAND,
+        'Target server control not available'
+      );
+    }
+
+    if (args.length === 0) {
+      throw this.createError(
+        ControlErrorCode.INVALID_ARGS,
+        'Watch command requires subcommand (start|stop)'
+      );
+    }
+
+    const watchCommand = args[0];
+    
+    switch (watchCommand) {
+      case 'start':
+        return await this.targetCommands.startWatching(args[1]);
+      
+      case 'stop':
+        return await this.targetCommands.stopWatching();
+      
+      default:
+        throw this.createError(
+          ControlErrorCode.INVALID_COMMAND,
+          `Unknown watch subcommand: ${watchCommand}`
         );
     }
   }
@@ -294,7 +400,7 @@ export class ControlHandler {
    * 利用可能なコマンドのヘルプを取得
    */
   getHelp(): string {
-    return `
+    let help = `
 Available Control Commands:
 
 CTRL:status
@@ -320,8 +426,14 @@ Examples:
   CTRL:restart:graceful:timeout=60000
   CTRL:mode:debug
   CTRL:logs:get:limit=50:level=error,warn
-  CTRL:logs:clear
-    `.trim();
+  CTRL:logs:clear`;
+
+    // ターゲットサーバー制御が利用可能な場合は追加ヘルプを表示
+    if (this.targetCommands) {
+      help += '\n\n' + this.targetCommands.getTargetHelp();
+    }
+
+    return help.trim();
   }
 
   /**

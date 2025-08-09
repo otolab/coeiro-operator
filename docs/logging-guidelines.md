@@ -73,10 +73,17 @@ logger.error  > logger.warn > logger.info > logger.log > logger.debug
 - **出力される内容**: 全レベル
 - **目的**: 詳細な処理フロー確認
 
-### MCPサーバーモード
-- **ログレベル**: `error`
+### MCPサーバーモード（通常）
+- **ログレベル**: `error`（出力）/ `info`（蓄積）
 - **出力される内容**: `error`のみ
-- **目的**: stdout汚染防止
+- **蓄積される内容**: `error`, `warn`, `info`
+- **目的**: stdout汚染防止とストレージ効率最適化
+
+### MCPサーバーデバッグモード
+- **ログレベル**: `debug`（出力）/ `debug`（蓄積）
+- **出力される内容**: 全レベル
+- **蓄積される内容**: 全レベル
+- **目的**: 詳細なデバッグ情報の確認
 
 ## 実装のベストプラクティス
 
@@ -120,8 +127,42 @@ LoggerPresets.quiet();    // warn レベル
 
 ### MCPサーバーでのログレベル設定
 ```typescript
-// MCPサーバーモード（stdout汚染防止）
-LoggerPresets.mcpServer(); // error レベル
+// MCPサーバーモード（通常運用）
+LoggerPresets.mcpServerWithAccumulation(); // error出力/info蓄積
+
+// MCPサーバーデバッグモード
+LoggerPresets.mcpServerDebugWithAccumulation(); // debug出力/debug蓄積
+
+// 蓄積なしのMCPサーバーモード  
+LoggerPresets.mcpServer(); // error出力のみ
 ```
+
+## ログ蓄積機能
+
+### 蓄積レベルの独立制御
+COEIRO Operatorでは、出力レベルと蓄積レベルを独立して制御できます：
+
+- **出力レベル**: コンソールに表示されるログのレベル
+- **蓄積レベル**: メモリ内に保存されるログのレベル
+
+### MCPツールでのログ取得
+蓄積されたログは`debug_logs`ツールで取得できます：
+
+```typescript
+// ログ統計の取得
+debug_logs({ action: "stats" })
+
+// 最新のログエントリ取得
+debug_logs({ action: "get", limit: 50 })
+
+// 特定レベルのログのみ取得
+debug_logs({ action: "get", level: ["error", "warn"] })
+```
+
+### ストレージ効率の最適化
+通常運用時はinfo以上のみを蓄積することで：
+- メモリ使用量を削減
+- 重要な情報は確実に保持
+- デバッグ時には全情報を利用可能
 
 このガイドラインに従うことで、適切なログ出力を実現し、デバッグ効率と運用品質を向上させることができます。

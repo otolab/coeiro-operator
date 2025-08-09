@@ -18,11 +18,8 @@ describe('Say Integration Tests', () => {
     beforeEach(async () => {
         tempDir = join(tmpdir(), `say-integration-test-${Date.now()}`);
         
-        const config: Config = {
-            host: 'localhost',
-            port: '50032',
-            rate: 200
-        };
+        // デフォルト設定を使用（null を渡すとDEFAULT_CONFIGが使用される）
+        const config: Config | null = null;
 
         sayCoeiroink = new SayCoeiroink(config);
         
@@ -223,7 +220,7 @@ describe('Say Integration Tests', () => {
             
             const result = await sayCoeiroink.synthesizeText(longText, {
                 voice: 'test-speaker-1',
-                streamMode: true
+                chunkMode: 'punctuation'
             });
             
             expect(result.success).toBe(true);

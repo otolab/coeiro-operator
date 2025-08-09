@@ -30,3 +30,6 @@ dist/
 
 # code-bugs分析ファイル
 .code-bugs/
+
+# テストカバレッジ
+coverage/

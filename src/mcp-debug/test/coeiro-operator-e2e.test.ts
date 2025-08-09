@@ -1,8 +1,8 @@
 /**
- * Jest E2E Tests for COEIRO Operator MCP Server
- * COEIRO Operator MCPサーバーのJest E2Eテスト
+ * Jest E2E Tests for MCP Debug Environment - Target Server Wrapper
+ * MCPデバッグ環境のターゲットサーバーラッパーのE2Eテスト
  * 
- * 既存のlogger.tsシステムとMCPデバッグ環境の統合テスト
+ * 新機能：ターゲットサーバー統合機能のテスト
  */
 
 import { spawn, ChildProcess } from 'child_process';
@@ -171,7 +171,11 @@ class CoeirocoperatorE2ETestRunner {
         method: 'initialize',
         params: {
           protocolVersion: '2024-11-05',
-          capabilities: { tools: {} }
+          capabilities: { tools: {} },
+          clientInfo: {
+            name: 'coeiro-operator-e2e-test',
+            version: '1.0.0'
+          }
         },
         id: 1
       });
@@ -232,7 +236,7 @@ class CoeirocoperatorE2ETestRunner {
   }
 }
 
-describe('COEIRO Operator MCP Server E2E Tests', () => {
+describe('MCP Debug - Target Server Wrapper E2E Tests', () => {
   let testRunner: CoeirocoperatorE2ETestRunner;
 
   beforeEach(() => {
