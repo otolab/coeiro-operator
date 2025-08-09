@@ -12,8 +12,8 @@ import {
   LogOptions,
   ServerMode,
   ControlErrorCode 
-} from './types';
-import { DebugLogManager } from '../logger';
+} from './types.js';
+import { DebugLogManager } from '../logger/index.js';
 
 export class ControlCommands {
   private startTime: Date;

@@ -13,7 +13,7 @@ import {
   LogStream,
   ArchiveConfig,
   LogLevel
-} from './types';
+} from './types.js';
 
 export class DebugLogAccumulator implements LogAccumulator {
   private entries: LogEntry[] = [];

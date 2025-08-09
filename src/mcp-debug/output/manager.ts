@@ -14,7 +14,7 @@ import {
   BufferedChannel,
   FilteredChannel,
   MultiChannel
-} from './channels';
+} from './channels.js';
 
 export interface OutputConfig {
   enableDebugOutput: boolean;

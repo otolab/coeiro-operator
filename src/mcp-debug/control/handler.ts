@@ -14,9 +14,9 @@ import {
   ServerMode,
   ControlError,
   ControlErrorCode 
-} from './types';
-import { ControlCommands } from './commands';
-import { DebugLogManager } from '../logger';
+} from './types.js';
+import { ControlCommands } from './commands.js';
+import { DebugLogManager } from '../logger/index.js';
 
 export class ControlHandler {
   private commands: ControlCommands;

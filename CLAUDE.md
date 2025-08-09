@@ -42,6 +42,10 @@ npm run build
   - `development-tips.md`: 開発テクニック・Tips集
   - `audio-streaming-guide.md`: 音声ストリーミング再生システムガイド
   - `voice-provider-system.md`: VoiceProviderシステムガイド
+  - `mcp-debug-guide.md`: MCPデバッグ環境ガイド
+- `src/mcp-debug/`: MCPデバッグ環境
+  - `test/echo-server.ts`: Echo Back MCPサーバー
+  - `test/integration.test.ts`: 統合テストシステム
 
 ## 音声設定
 

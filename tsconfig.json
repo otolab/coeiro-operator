@@ -29,6 +29,7 @@
   "exclude": [
     "node_modules",
     "dist",
-    "**/*.test.ts"
+    "src/cli/say-coeiroink.test.ts",
+    "src/core/say/*.test.ts"
   ]
 }

@@ -16,8 +16,8 @@ import {
   LogManager,
   LogAccumulator,
   LogStream
-} from './types';
-import { DebugLogAccumulator } from './accumulator';
+} from './types.js';
+import { DebugLogAccumulator } from './accumulator.js';
 
 class DebugLogger implements Logger {
   private config: LoggerConfig;
@@ -373,4 +373,4 @@ export const LoggerPresets = {
 
 export default logger;
 export { DebugLogger, DebugLogManager, DebugLogAccumulator };
-export * from './types';
+export * from './types.js';

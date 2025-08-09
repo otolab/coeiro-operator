@@ -5,9 +5,9 @@
  */
 
 import { createInterface } from 'readline';
-import { ControlHandler } from './control/handler';
-import { OutputManager } from './output/manager';
-import { DebugLogManager, LoggerPresets } from './logger';
+import { ControlHandler } from './control/handler.js';
+import { OutputManager } from './output/manager.js';
+import { DebugLogManager, LoggerPresets } from './logger/index.js';
 
 // MCPサーバーのダミー実装（後で完全実装に置き換え）
 interface DummyMcpServer {
@@ -350,7 +350,7 @@ async function main() {
 }
 
 // 直接実行された場合のみサーバーを起動
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
     console.error('Unhandled error in main:', error);
     process.exit(1);
