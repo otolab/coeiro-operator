@@ -182,51 +182,22 @@ COEIROINK API → WAV → PCM → リサンプリング → フィルタリン�
 
 ## 🔧 開発者向け情報
 
-### 事前要件
+開発に参加される方は、以下のドキュメントを参照してください：
 
-- **Node.js 18以上**
-- **COEIROINK** - 音声合成エンジン（localhost:50032で動作）
-- **ビルドツール** - ネイティブモジュール構築用
-  - Windows: Visual Studio Build Tools
-  - macOS: Xcode Command Line Tools  
-  - Linux: build-essential + ALSA/PulseAudio開発ライブラリ
+- **[docs/development-tips.md](docs/development-tips.md)** - 開発環境構築・テクニック・Tips集
+- **[docs/testing-guide.md](docs/testing-guide.md)** - テスト環境とmcp-debug統合
+- **[docs/test-quality-guidelines.md](docs/test-quality-guidelines.md)** - テスト品質の基本原則
 
-### ソースからのインストール
+### クイック開発セットアップ
 
 ```bash
+# 基本要件: Node.js 18以上 + COEIROINK + ビルドツール
 git clone https://github.com/otolab/coeiro-operator.git
 cd coeiro-operator
-npm install
-npm run build
-npm link
+npm install && npm run build
 ```
 
-### 開発・テスト
-
-```bash
-# ビルド・型チェック
-npm run build
-npm run type-check
-
-# テスト実行
-npm test                        # 単体テスト
-npm run test:e2e               # E2Eテスト  
-./scripts/test-mcp-debug.sh    # MCPデバッグテスト
-```
-
-### プロジェクト構成
-
-```
-src/
-├── cli/                    # CLIツール
-├── core/                   # コア機能
-│   ├── operator/           # オペレータ管理
-│   ├── say/               # 音声合成システム
-│   └── environment/       # 環境情報管理
-├── mcp/                   # MCPサーバー
-├── mcp-debug/             # MCPデバッグ環境
-└── utils/                 # ユーティリティ
-```
+詳細な事前要件・開発環境構築は **[docs/development-tips.md](docs/development-tips.md)** を参照。
 
 ## 🆘 サポート・コミュニティ
 

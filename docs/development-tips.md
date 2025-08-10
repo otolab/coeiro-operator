@@ -5,6 +5,54 @@
 - [`docs/testing-guide.md`](./testing-guide.md) - テスト実行環境とmcp-debug統合
 - [`docs/test-quality-guidelines.md`](./test-quality-guidelines.md) - テスト品質の基本原則
 
+## 🛠️ 開発環境構築
+
+### 事前要件
+
+- **Node.js 18以上**
+- **COEIROINK** - 音声合成エンジン（localhost:50032で動作）
+- **ビルドツール** - ネイティブモジュール構築用
+  - Windows: Visual Studio Build Tools
+  - macOS: Xcode Command Line Tools  
+  - Linux: build-essential + ALSA/PulseAudio開発ライブラリ
+
+### ソースからのインストール
+
+```bash
+git clone https://github.com/otolab/coeiro-operator.git
+cd coeiro-operator
+npm install
+npm run build
+npm link
+```
+
+### 基本開発コマンド
+
+```bash
+# ビルド・型チェック
+npm run build
+npm run type-check
+
+# テスト実行
+npm test                        # 単体テスト
+npm run test:e2e               # E2Eテスト  
+./scripts/test-mcp-debug.sh    # MCPデバッグテスト
+```
+
+### プロジェクト構成
+
+```
+src/
+├── cli/                    # CLIツール
+├── core/                   # コア機能
+│   ├── operator/           # オペレータ管理
+│   ├── say/               # 音声合成システム
+│   └── environment/       # 環境情報管理
+├── mcp/                   # MCPサーバー
+├── mcp-debug/             # MCPデバッグ環境
+└── utils/                 # ユーティリティ
+```
+
 ## MCP サーバー開発
 
 ### ⚠️ 重要：開発中のコードテストについて

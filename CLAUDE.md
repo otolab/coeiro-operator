@@ -21,20 +21,7 @@ npm run test:e2e
 
 ## 📁 プロジェクト構成
 
-```
-src/
-├── cli/                    # CLIツール
-├── core/
-│   ├── operator/           # オペレータ管理機能
-│   ├── say/               # 音声出力機能  
-│   └── environment/       # 環境情報管理（VoiceProvider等）
-├── mcp/                   # MCPサーバー
-├── mcp-debug/             # MCPデバッグ環境
-└── utils/                 # ユーティリティ（ロガーシステム等）
-
-docs/                      # ドキュメント
-prompts/                   # システムプロンプトとガイド
-```
+**詳細**: `docs/development-tips.md#プロジェクト構成` を参照
 
 ## 🎛️ 設定システム
 
