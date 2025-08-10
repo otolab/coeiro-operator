@@ -259,25 +259,23 @@ await say.synthesizeTextAsync("キューに追加", {
 ##### assignOperator()
 ```typescript
 async assignOperator(
-  operatorName?: string,
-  sessionId?: string,
-  forceReassign?: boolean
+  operatorName?: string
 ): Promise<OperatorAssignResult>
 ```
 
 ##### releaseOperator()
 ```typescript
-async releaseOperator(sessionId?: string): Promise<OperatorReleaseResult>
+async releaseOperator(): Promise<OperatorReleaseResult>
 ```
 
 ##### showCurrentOperator()
 ```typescript
-async showCurrentOperator(sessionId?: string): Promise<OperatorStatus>
+async showCurrentOperator(): Promise<OperatorStatus>
 ```
 
 ##### listAvailableOperators()
 ```typescript
-async listAvailableOperators(sessionId?: string): Promise<AvailableOperators>
+async listAvailableOperators(): Promise<AvailableOperators>
 ```
 
 #### 使用例
@@ -288,7 +286,7 @@ const manager = new OperatorManager();
 await manager.initialize();
 
 // オペレータ割り当て
-const result = await manager.assignOperator("tsukuyomi");
+const result = await manager.assignSpecificOperator("tsukuyomi");
 
 // 状況確認
 const status = await manager.showCurrentOperator();

@@ -133,8 +133,7 @@ claude mcp test coeiro-operator
 ```
 ~/.coeiro-operator/
 ├── coeiroink-config.json     # COEIROINK接続設定
-├── operator-config.json      # オペレータ設定
-└── audio-config.json         # 音声処理設定
+└── operator-config.json      # オペレータ設定
 ```
 
 ### 基本設定例
