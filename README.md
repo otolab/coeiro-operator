@@ -61,20 +61,21 @@ operator-manager status
 say-coeiroink [options] "テキスト"
 
 # オプション一覧
--r, --rate <number>          話速設定 (50-400)
--o, --output <file>          出力ファイル指定
--v, --voice <id>             音声ID指定
--s, --style <id>             スタイルID指定
-    --stream                 ストリーミング強制
-    --no-stream              バッチ処理強制
-    --version                バージョン表示
-    --help                   ヘルプ表示
+-v voice                     音声ID指定（?で一覧表示）
+-r rate                      話速設定（WPM）
+-o outfile                   出力ファイル指定（WAV形式）
+-f file                      ファイル入力（-で標準入力）
+--chunk-mode mode            テキスト分割モード（punctuation|none|small|medium|large）
+--buffer-size size           バッファサイズ（256-4096+）
+-h                           ヘルプ表示
 
 # 使用例
-say-coeiroink "こんにちは"                          # 基本使用
-say-coeiroink -r 150 "ゆっくり話します"              # 話速調整
-say-coeiroink -o output.wav "保存テスト"              # ファイル出力
-say-coeiroink -v voice-id -s happy "楽しく話します"   # 音声・スタイル指定
+say-coeiroink "こんにちは"                                    # 基本使用
+say-coeiroink -v "?" # 音声一覧表示                          # 音声一覧表示
+say-coeiroink -r 150 "ゆっくり話します"                        # 話速調整
+say-coeiroink -o output.wav "保存テスト"                       # ファイル出力
+say-coeiroink --chunk-mode none "長文を分割せずに読み上げ"      # 分割モード指定
+say-coeiroink --buffer-size 256 "低レイテンシ再生"            # バッファサイズ指定
 ```
 
 #### operator-manager - オペレータ管理コマンド
@@ -84,25 +85,21 @@ say-coeiroink -v voice-id -s happy "楽しく話します"   # 音声・スタ�
 operator-manager <command> [options]
 
 # コマンド一覧
-assign [options]             オペレータ割り当て
-release [options]            オペレータ解放
-status [options]             状況確認
-available [options]          利用可能一覧
-configure <operator> [opts]  キャラクター設定
-config                       設定表示
-reset                        設定リセット
-
-# assignオプション
--o, --operator <name>        指定オペレータ名
--s, --session <id>           セッションID
--f, --force                  強制再割り当て
--r, --random                 ランダム割り当て
+assign [operatorId] [--style=style]   オペレータ割り当て（IDなしでランダム）
+release                               オペレータ解放
+status                                状況確認
+available                             利用可能一覧
+clear                                 全オペレータ状況クリア
 
 # 使用例
 operator-manager assign                              # ランダム割り当て
-operator-manager assign --operator "tsukuyomi"      # 指定割り当て
+operator-manager assign tsukuyomi                   # 指定割り当て
+operator-manager assign --style=happy               # スタイル指定ランダム割り当て
+operator-manager assign tsukuyomi --style=ura       # 指定割り当て+スタイル
 operator-manager status                              # 状況確認
+operator-manager available                           # 利用可能一覧
 operator-manager release                             # オペレータ解放
+operator-manager clear                               # 全クリア
 ```
 
 ### Claude Code MCPツール

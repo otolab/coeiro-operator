@@ -188,11 +188,11 @@ operator-manager status
 ### 2. 音声品質調整
 
 ```bash
-# サンプルレート確認
-say-coeiroink --info
+# 基本動作確認
+say-coeiroink "音声テスト"
 
-# 高品質設定テスト
-say-coeiroink -r 150 "高品質音声テストです"
+# 話速設定テスト
+say-coeiroink -r 150 "ゆっくり音声テストです"
 ```
 
 ### 3. MCPツール確認
@@ -254,8 +254,8 @@ export PATH=~/.npm-global/bin:$PATH
 # 詳細ログ有効化
 DEBUG=coeiro* say-coeiroink "デバッグテスト"
 
-# システム情報出力
-say-coeiroink --system-info
+# 基本動作確認
+say-coeiroink "デバッグテスト"
 
 # 設定確認
 operator-manager config
@@ -283,8 +283,8 @@ coeiro-operator --version
 # バックアップ
 cp -r ~/.coeiro-operator ~/.coeiro-operator.backup
 
-# 新設定生成
-operator-manager --reset-config
+# 設定クリア（必要に応じて）
+operator-manager clear
 ```
 
 ## パフォーマンス最適化
