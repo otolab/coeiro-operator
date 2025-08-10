@@ -54,21 +54,55 @@ operator-manager status
 
 ### コマンドライン
 
+#### say-coeiroink - 音声合成コマンド
+
 ```bash
-# シンプル音声合成
-say-coeiroink "こんにちは"
+# 基本構文
+say-coeiroink [options] "テキスト"
 
-# 話速調整
-say-coeiroink -r 150 "ゆっくり話します"
+# オプション一覧
+-r, --rate <number>          話速設定 (50-400)
+-o, --output <file>          出力ファイル指定
+-v, --voice <id>             音声ID指定
+-s, --style <id>             スタイルID指定
+    --stream                 ストリーミング強制
+    --no-stream              バッチ処理強制
+    --version                バージョン表示
+    --help                   ヘルプ表示
 
-# 分割モード制御
-say-coeiroink --split-mode small "短いレスポンス"
-say-coeiroink --buffer-size 2048 "高品質再生"
+# 使用例
+say-coeiroink "こんにちは"                          # 基本使用
+say-coeiroink -r 150 "ゆっくり話します"              # 話速調整
+say-coeiroink -o output.wav "保存テスト"              # ファイル出力
+say-coeiroink -v voice-id -s happy "楽しく話します"   # 音声・スタイル指定
+```
 
-# オペレータ管理
-operator-manager assign      # ランダム割り当て
-operator-manager status      # 現在のステータス  
-operator-manager release     # オペレータ解放
+#### operator-manager - オペレータ管理コマンド
+
+```bash
+# 基本構文
+operator-manager <command> [options]
+
+# コマンド一覧
+assign [options]             オペレータ割り当て
+release [options]            オペレータ解放
+status [options]             状況確認
+available [options]          利用可能一覧
+configure <operator> [opts]  キャラクター設定
+config                       設定表示
+reset                        設定リセット
+
+# assignオプション
+-o, --operator <name>        指定オペレータ名
+-s, --session <id>           セッションID
+-f, --force                  強制再割り当て
+-r, --random                 ランダム割り当て
+
+# 使用例
+operator-manager assign                              # ランダム割り当て
+operator-manager assign --operator "tsukuyomi"      # 指定割り当て
+operator-manager status                              # 状況確認
+operator-manager release                             # オペレータ解放
 ```
 
 ### Claude Code MCPツール
