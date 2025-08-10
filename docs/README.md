@@ -54,7 +54,7 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 ## 📋 プロジェクト情報
 
 ### 変更履歴・リリース
-- **[changelog.md](changelog.md)** - 変更履歴・リリースノート
+- **[../CHANGELOG.md](../CHANGELOG.md)** - 変更履歴・リリースノート
 
 ## 🎯 用途別ガイド
 

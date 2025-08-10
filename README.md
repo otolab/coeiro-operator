@@ -1,23 +1,23 @@
 # COEIRO Operator
 
-🎤 COEIROINK音声合成システムの高機能MCPサーバー・オペレータシステム
+COEIROINK音声合成システムの高機能MCPサーバー・オペレータシステム
 
 ## 概要
 
 COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシステムです。Claude Codeでの作業時に、複数のキャラクターによる高品質な音声通知とコミュニケーションを提供します。
 
-### ✨ 主な機能
+### 主な機能
 
-- 🎵 **高品質音声処理**: 24kHz→48kHz リサンプリング + デジタルフィルタリング
-- 👥 **音声オペレータシステム**: 複数のキャラクターによる音声通知
-- 🖥️ **クロスプラットフォーム対応**: Windows / macOS / Linux ネイティブ音声出力
-- 🔗 **MCPサーバー**: Claude Codeとの完全統合
-- ⚡ **低レイテンシストリーミング**: 非同期音声合成・並行チャンク生成
-- 🎛️ **動的設定管理**: COEIROINKサーバーから音声フォントを自動検出
-- 🔄 **セッション管理**: 複数セッション間でのオペレータ重複防止
-- 🛠️ **MCPデバッグ環境**: 包括的なテスト・デバッグシステム
+- **高品質音声処理**: 24kHz→48kHz リサンプリング + デジタルフィルタリング
+- **音声オペレータシステム**: 複数のキャラクターによる音声通知
+- **クロスプラットフォーム対応**: Windows / macOS / Linux ネイティブ音声出力
+- **MCPサーバー**: Claude Codeとの完全統合
+- **低レイテンシストリーミング**: 非同期音声合成・並行チャンク生成
+- **動的設定管理**: COEIROINKサーバーから音声フォントを自動検出
+- **セッション管理**: 複数セッション間でのオペレータ重複防止
+- **MCPデバッグ環境**: 包括的なテスト・デバッグシステム
 
-## 🚀 クイックスタート
+## クイックスタート
 
 ### 1. インストール
 
@@ -48,9 +48,9 @@ operator-manager assign
 operator-manager status
 ```
 
-🎉 これで準備完了！Claude Codeでオペレータ音声機能を利用できます。
+これで準備完了です。Claude Codeでオペレータ音声機能を利用できます。
 
-## 💬 基本的な使い方
+## 基本的な使い方
 
 ### コマンドライン
 
@@ -110,7 +110,7 @@ operator-manager clear                               # 全クリア
 - `say` - 音声出力（ストリーミング再生・並行生成対応）
 - `parallel_generation_control` - 並行生成設定の動的制御
 
-## ⚙️ 設定・カスタマイズ
+## 設定・カスタマイズ
 
 ### 設定ファイル
 
@@ -149,19 +149,19 @@ operator-manager clear                               # 全クリア
 - **[docs/configuration-guide.md](docs/configuration-guide.md)** - 設定・カスタマイズ完全ガイド
 - **[docs/CHARACTERS.md](docs/CHARACTERS.md)** - オペレータキャラクター詳細
 
-## 🎭 オペレータキャラクター
+## オペレータキャラクター
 
 利用可能なキャラクター（COEIROINK環境に依存）：
 
 | キャラクター | 特徴 | 音声の傾向 |
 |---|---|---|
-| 🌙 つくよみちゃん | 落ち着いた司会進行 | 安定感のある声 |
+| つくよみちゃん | 落ち着いた司会進行 | 安定感のある声 |
 
 詳細は [docs/CHARACTERS.md](docs/CHARACTERS.md) を参照。
 
-**注意**: 利用可能なキャラクターはCOEIROINK環境にインストールされた音声ライブラリに依存します。
+注意: 利用可能なキャラクターはCOEIROINK環境にインストールされた音声ライブラリに依存します。
 
-## 🏗️ 技術アーキテクチャ
+## 技術アーキテクチャ
 
 ### 音声処理パイプライン
 
@@ -185,31 +185,30 @@ COEIROINK API → WAV → PCM → リサンプリング → フィルタリン�
 - **dsp.js**: デジタル信号処理・フィルタリング
 - **echogarden**: ノイズリダクション（オプション）
 
-## 📚 ドキュメント
+## ドキュメント
 
-### 📖 ドキュメント一覧
-- **[📚 docs/README.md](docs/README.md)** - **ドキュメント完全インデックス**（用途別・カテゴリ別ガイド）
+### ドキュメント一覧
+- **[docs/README.md](docs/README.md)** - ドキュメント完全インデックス（用途別・カテゴリ別ガイド）
 
-### 🎵 音声・オーディオ
+### 音声・オーディオ
 - **[docs/audio-streaming-guide.md](docs/audio-streaming-guide.md)** - 音声ストリーミング機能ガイド
 - **[docs/audio-system.md](docs/audio-system.md)** - 音声システム詳細仕様
 - **[docs/parallel-generation-system.md](docs/parallel-generation-system.md)** - 並行チャンク生成システム
 
-### 🛠️ 開発・運用
+### 開発・運用
 - **[docs/development-tips.md](docs/development-tips.md)** - 開発テクニック・Tips集
 - **[docs/mcp-debug-guide.md](docs/mcp-debug-guide.md)** - MCPデバッグ環境ガイド
 - **[docs/troubleshooting.md](docs/troubleshooting.md)** - トラブルシューティング
 
-### 📖 リファレンス
-- **[docs/api-reference.md](docs/api-reference.md)** - 完全APIリファレンス
+### リファレンス
 - **[docs/configuration-guide.md](docs/configuration-guide.md)** - 設定・カスタマイズガイド
 - **[docs/voice-provider-system.md](docs/voice-provider-system.md)** - VoiceProviderシステム
 
-### 📋 プロジェクト情報
-- **[docs/changelog.md](docs/changelog.md)** - 変更履歴・リリースノート
+### プロジェクト情報
+- **[CHANGELOG.md](CHANGELOG.md)** - 変更履歴・リリースノート
 - **[docs/testing-guide.md](docs/testing-guide.md)** - テスト環境ガイド
 
-## 🔧 開発者向け情報
+## 開発者向け情報
 
 開発に参加される方は、以下のドキュメントを参照してください：
 
@@ -228,21 +227,21 @@ npm install && npm run build
 
 詳細な事前要件・開発環境構築は **[docs/development-tips.md](docs/development-tips.md)** を参照。
 
-## 🆘 サポート・コミュニティ
+## サポート・コミュニティ
 
 - **Issue報告**: [GitHub Issues](https://github.com/otolab/coeiro-operator/issues)
 - **機能要望**: [GitHub Issues](https://github.com/otolab/coeiro-operator/issues/new)
 - **プルリクエスト**: 歓迎いたします！
 
-## 📝 ライセンス
+## ライセンス
 
 MIT License
 
-## 🔗 関連プロジェクト
+## 関連プロジェクト
 
 - **[COEIROINK](https://coeiroink.com/)** - 音声合成エンジン本体
 - **[Claude Code](https://claude.ai/code)** - AI開発支援ツール（MCP対応）
 
 ---
 
-🎤 **素晴らしい音声体験をお楽しみください！**
+素晴らしい音声体験をお楽しみください。
