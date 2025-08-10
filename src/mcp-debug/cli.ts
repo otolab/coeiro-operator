@@ -23,6 +23,9 @@ interface CLIOptions {
   configPath?: string;
   interactive: boolean;
   help: boolean;
+  timeout: number;
+  commandTimeout: number;
+  childArgs: string[];
 }
 
 class MCPDebugCLI {
@@ -34,6 +37,7 @@ class MCPDebugCLI {
   private logManager: DebugLogManager;
   private readline?: any;
   private isShuttingDown = false;
+  private timeoutHandlers: Set<NodeJS.Timeout> = new Set();
 
   constructor(options: CLIOptions) {
     this.options = options;
@@ -140,7 +144,9 @@ class MCPDebugCLI {
       serverPath: this.options.targetServerPath,
       debugMode: this.options.debugMode,
       enableControlCommands: true,
-      interceptStdio: true
+      interceptStdio: true,
+      childArgs: this.options.childArgs,
+      timeout: this.options.timeout
     });
 
     // モジュールリローダーを初期化（オプション）
@@ -204,7 +210,21 @@ class MCPDebugCLI {
     logger.info('Starting target server...');
     console.log(`🚀 Starting target server: ${this.options.targetServerPath}`);
 
-    await this.wrapper.startTargetServer();
+    // タイムアウト付きでサーバー起動
+    const startupPromise = this.wrapper.startTargetServer();
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      const timeoutId = setTimeout(() => {
+        reject(new Error(`Target server startup timed out after ${this.options.timeout}ms`));
+      }, this.options.timeout);
+      this.timeoutHandlers.add(timeoutId);
+    });
+
+    try {
+      await Promise.race([startupPromise, timeoutPromise]);
+    } catch (error) {
+      logger.error('Target server startup failed or timed out', error);
+      throw error;
+    }
 
     // ファイル監視を開始（オプション）
     if (this.reloader) {
@@ -306,7 +326,26 @@ class MCPDebugCLI {
           throw new Error('Control handler not available');
         }
 
-        const response = await this.controlHandler.handleInput(input);
+        // タイムアウト付きでコマンド実行
+        const commandPromise = this.controlHandler.handleInput(input);
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          const timeoutId = setTimeout(() => {
+            reject(new Error(`Command timed out after ${this.options.commandTimeout}ms: ${input}`));
+          }, this.options.commandTimeout);
+          this.timeoutHandlers.add(timeoutId);
+        });
+
+        let response;
+        try {
+          response = await Promise.race([commandPromise, timeoutPromise]);
+        } catch (error) {
+          if ((error as Error).message.includes('timed out')) {
+            logger.warn('Command execution timed out', { command: input, timeout: this.options.commandTimeout });
+            console.log(`⏰ Command timed out after ${this.options.commandTimeout}ms: ${input}`);
+            return;
+          }
+          throw error;
+        }
         
         // 特別なコマンドの処理
         if (input === 'CTRL:help') {
@@ -323,7 +362,17 @@ class MCPDebugCLI {
         // 結果を表示
         this.displayResponse(response);
       } else {
-        console.log('❓ Unknown command. Type "help" for available commands.');
+        // 制御コマンドでない場合は、直接子プロセスに転送
+        if (this.wrapper) {
+          try {
+            this.wrapper.sendInput(input);
+          } catch (error) {
+            logger.error('Failed to send input to child process', error);
+            console.log(`❌ Failed to send input to target server: ${(error as Error).message}`);
+          }
+        } else {
+          console.log('❓ Unknown command. Type "help" for available commands.');
+        }
       }
 
     } catch (error) {
@@ -365,10 +414,10 @@ class MCPDebugCLI {
     console.log(`
 MCP Debug CLI - Target Server Control Interface
 
-Usage: mcp-debug <target-server-code>.ts [options]
+Usage: mcp-debug [options] <target-server-file> [-- <child-options>...]
 
 Arguments:
-  target-server-code.ts    Path to the target MCP server file
+  target-server-file      Path to the target MCP server file (.js files recommended)
 
 Options:
   --debug, -d             Enable debug mode with verbose logging
@@ -376,12 +425,28 @@ Options:
   --watch-path <path>     Custom path to watch for changes (default: server file directory)
   --config <path>         Custom config file path
   --interactive, -i       Start in interactive mode (default: true if TTY)
+  --timeout <ms>          Child process lifetime timeout in milliseconds (default: 30000)
+  --command-timeout <ms>  Control command timeout in milliseconds (default: 10000)
   --help, -h             Show this help message
 
+Child Options:
+  Options after '--' are passed to the target server child process
+
 Examples:
-  mcp-debug ./src/mcp/server.ts
-  mcp-debug ./my-server.js --debug --auto-reload
-  mcp-debug ./server.ts --watch-path ./src --interactive
+  # Basic usage
+  mcp-debug dist/mcp/server.js
+  
+  # With debug mode and extended timeout
+  mcp-debug --debug --timeout 60000 dist/mcp/server.js
+  
+  # Auto-reload with child options
+  mcp-debug --auto-reload dist/mcp/server.js -- --debug
+  
+  # mcp-debug timeout vs child timeout
+  mcp-debug --timeout 10000 dist/mcp-debug/test/echo-server.js -- --timeout 5000
+  
+  # Interactive mode with child options
+  mcp-debug --interactive dist/mcp/server.js -- --config custom-config.json
 
 Control Commands (available during runtime):
   CTRL:target:status      - Get target server status
@@ -397,6 +462,15 @@ Interactive Shortcuts:
   help                   - Show help
   clear                  - Clear screen
   exit/quit/q           - Exit the CLI
+
+Timeout Settings:
+  --timeout              - How long to allow child process to run (default: 30s)
+                          Controls the lifetime of the target server process
+  --command-timeout      - How long to wait for control commands (default: 10s)
+                          Controls mcp-debug internal command timeouts
+  
+Child options after '--' can include their own --timeout which controls 
+the target server's internal timeouts (e.g., tool execution timeouts).
     `);
   }
 
@@ -413,6 +487,12 @@ Interactive Shortcuts:
 
     try {
       logger.info('Shutting down MCP Debug CLI...');
+
+      // 全てのタイムアウトハンドラーをクリア
+      this.timeoutHandlers.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+      });
+      this.timeoutHandlers.clear();
 
       if (this.readline) {
         this.readline.close();
@@ -475,11 +555,21 @@ function parseArguments(): CLIOptions {
     debugMode: false,
     autoReload: false,
     interactive: process.stdout.isTTY,
-    help: false
+    help: false,
+    timeout: 30000, // 30秒デフォルト
+    commandTimeout: 10000, // 10秒デフォルト
+    childArgs: []
   };
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
+  // '--'で引数を分割
+  const separatorIndex = args.indexOf('--');
+  const mcpDebugArgs = separatorIndex >= 0 ? args.slice(0, separatorIndex) : args;
+  const childArgs = separatorIndex >= 0 ? args.slice(separatorIndex + 1) : [];
+
+  options.childArgs = childArgs;
+
+  for (let i = 0; i < mcpDebugArgs.length; i++) {
+    const arg = mcpDebugArgs[i];
 
     switch (arg) {
       case '--debug':
@@ -493,11 +583,11 @@ function parseArguments(): CLIOptions {
         break;
 
       case '--watch-path':
-        options.watchPath = args[++i];
+        options.watchPath = mcpDebugArgs[++i];
         break;
 
       case '--config':
-        options.configPath = args[++i];
+        options.configPath = mcpDebugArgs[++i];
         break;
 
       case '--interactive':
@@ -507,6 +597,24 @@ function parseArguments(): CLIOptions {
 
       case '--no-interactive':
         options.interactive = false;
+        break;
+
+      case '--timeout':
+        const timeoutValue = parseInt(mcpDebugArgs[++i], 10);
+        if (isNaN(timeoutValue) || timeoutValue <= 0) {
+          console.error('Error: --timeout must be a positive number');
+          process.exit(1);
+        }
+        options.timeout = timeoutValue;
+        break;
+
+      case '--command-timeout':
+        const commandTimeoutValue = parseInt(mcpDebugArgs[++i], 10);
+        if (isNaN(commandTimeoutValue) || commandTimeoutValue <= 0) {
+          console.error('Error: --command-timeout must be a positive number');
+          process.exit(1);
+        }
+        options.commandTimeout = commandTimeoutValue;
         break;
 
       case '--help':

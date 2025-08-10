@@ -4,15 +4,14 @@
  * テスト用エコーバックMCPサーバー
  * 
  * 以下の機能を提供：
- * 1. 制御コマンド処理（CTRL:xxx）
- * 2. MCPツールコール処理（JSON-RPC）
- * 3. 出力チャネル分離テスト
- * 4. ログ蓄積テスト
+ * 1. MCPツールコール処理（JSON-RPC）
+ * 2. 基本的なエコーバック機能
+ * 3. ログ蓄積テスト
+ * 
+ * 制御コマンド（CTRL:xxx）はmcp-debugが処理するため、このサーバーには届きません。
  */
 
 import { createInterface } from 'readline';
-import { ControlHandler } from '../control/handler.js';
-import { OutputManager } from '../output/manager.js';
 import { DebugLogManager, LoggerPresets } from '../logger/index.js';
 
 interface JsonRpcRequest {
@@ -34,8 +33,6 @@ interface JsonRpcResponse {
 }
 
 class EchoBackMcpServer {
-  private controlHandler: ControlHandler;
-  private outputManager: OutputManager;
   private logManager: DebugLogManager;
   private isDebugMode: boolean;
   private messageCount: number = 0;
@@ -47,20 +44,10 @@ class EchoBackMcpServer {
     this.logManager = DebugLogManager.getInstance();
     this.setupLogging();
 
-    // 制御ハンドラーの初期化
-    this.controlHandler = new ControlHandler();
-
-    // 出力管理の初期化
-    this.outputManager = new OutputManager({
-      enableDebugOutput: this.isDebugMode,
-      enableMcpOutput: true,
-      enableControlOutput: true
-    });
-
     const logger = this.logManager.getLogger('echo-server');
     logger.info('Echo Back MCP Server initialized', { 
       debugMode: this.isDebugMode,
-      pid: process.pid 
+      pid: process.pid
     });
   }
 
@@ -82,10 +69,8 @@ class EchoBackMcpServer {
       
       logger.info('Echo Back MCP Server started successfully');
       
-      // 初期化完了メッセージを出力
-      this.outputManager.writeControlResponse(
-        'CTRL_RESPONSE:init:ok:{"message":"Echo MCP Server ready"}'
-      );
+      // 初期化完了メッセージを標準出力に出力
+      console.log('Echo MCP Server ready');
       
     } catch (error) {
       logger.error('Failed to start echo server', error);
@@ -115,10 +100,7 @@ class EchoBackMcpServer {
           messageCount: this.messageCount
         });
 
-        if (trimmedInput.startsWith('CTRL:')) {
-          // 制御コマンドの処理
-          await this.handleControlCommand(trimmedInput);
-        } else if (this.isJsonRpc(trimmedInput)) {
+        if (this.isJsonRpc(trimmedInput)) {
           // JSON-RPCメッセージの処理
           await this.handleJsonRpc(trimmedInput);
         } else {
@@ -128,9 +110,7 @@ class EchoBackMcpServer {
         
       } catch (error) {
         logger.error('Error processing input', { input, error });
-        this.outputManager.writeError(
-          `Input processing error: ${(error as Error).message}`
-        );
+        console.error(`Input processing error: ${(error as Error).message}`);
       }
     });
 
@@ -151,31 +131,6 @@ class EchoBackMcpServer {
     }
   }
 
-  private async handleControlCommand(input: string): Promise<void> {
-    const logger = this.logManager.getLogger('control');
-    
-    try {
-      logger.info('Processing control command', { input });
-      
-      const response = await this.controlHandler.handleInput(input);
-      const formattedResponse = this.controlHandler.formatResponse(response);
-      
-      this.outputManager.writeControlResponse(formattedResponse);
-      
-      if (this.isDebugMode) {
-        this.outputManager.writeDebug(
-          `Control: ${response.command} -> ${response.status}`,
-          'control'
-        );
-      }
-      
-    } catch (error) {
-      logger.error('Control command failed', { input, error });
-      this.outputManager.writeControlResponse(
-        `CTRL_RESPONSE:error:error:{"message":"${(error as Error).message}"}`
-      );
-    }
-  }
 
   private async handleJsonRpc(input: string): Promise<void> {
     const logger = this.logManager.getLogger('mcp');
@@ -214,13 +169,10 @@ class EchoBackMcpServer {
       }
 
       const responseJson = JSON.stringify(response);
-      this.outputManager.writeMcpResponse(responseJson);
+      console.log(responseJson);
       
       if (this.isDebugMode) {
-        this.outputManager.writeDebug(
-          `MCP: ${request.method} -> ${response.error ? 'error' : 'ok'}`,
-          'mcp'
-        );
+        console.error(`DEBUG:MCP: ${request.method} -> ${response.error ? 'error' : 'ok'}`);
       }
       
     } catch (error) {
@@ -235,7 +187,7 @@ class EchoBackMcpServer {
         id: 'unknown'
       };
       
-      this.outputManager.writeMcpResponse(JSON.stringify(errorResponse));
+      console.log(JSON.stringify(errorResponse));
     }
   }
 
@@ -336,24 +288,8 @@ class EchoBackMcpServer {
 
     try {
       logger.info('Tool call', { name, args });
+      return await this.executeToolInternal(request, name, args);
 
-      switch (name) {
-        case 'echo':
-          return await this.handleEchoTool(request, args);
-        case 'debug_info':
-          return await this.handleDebugInfoTool(request, args);
-        case 'test_output':
-          return await this.handleTestOutputTool(request, args);
-        default:
-          return {
-            jsonrpc: '2.0',
-            error: {
-              code: -32601,
-              message: `Unknown tool: ${name}`
-            },
-            id: request.id
-          };
-      }
     } catch (error) {
       logger.error('Tool call failed', { name, args, error });
       return {
@@ -364,6 +300,26 @@ class EchoBackMcpServer {
         },
         id: request.id
       };
+    }
+  }
+
+  private async executeToolInternal(request: JsonRpcRequest, name: string, args: any): Promise<JsonRpcResponse> {
+    switch (name) {
+      case 'echo':
+        return await this.handleEchoTool(request, args);
+      case 'debug_info':
+        return await this.handleDebugInfoTool(request, args);
+      case 'test_output':
+        return await this.handleTestOutputTool(request, args);
+      default:
+        return {
+          jsonrpc: '2.0',
+          error: {
+            code: -32601,
+            message: `Unknown tool: ${name}`
+          },
+          id: request.id
+        };
     }
   }
 
@@ -410,7 +366,6 @@ class EchoBackMcpServer {
 
       case 'stats': {
         const stats = accumulator.getStats();
-        const outputStats = this.outputManager.getStats();
         return {
           jsonrpc: '2.0',
           result: {
@@ -419,7 +374,6 @@ class EchoBackMcpServer {
               text: `📊 Server Statistics:\n\n` +
                     `Messages processed: ${this.messageCount}\n` +
                     `Log entries: ${stats.totalEntries}\n` +
-                    `Output messages: ${outputStats.totalMessages}\n` +
                     `Debug mode: ${this.isDebugMode}\n` +
                     `Uptime: ${process.uptime().toFixed(1)}s`
             }]
@@ -429,17 +383,16 @@ class EchoBackMcpServer {
       }
 
       case 'status': {
-        const status = await this.controlHandler.getStatus();
+        const memUsage = process.memoryUsage();
         return {
           jsonrpc: '2.0',
           result: {
             content: [{
               type: 'text',
               text: `🖥️ Server Status:\n\n` +
-                    `Mode: ${status.mode}\n` +
-                    `PID: ${status.processId}\n` +
-                    `Memory: ${Math.round(status.memoryUsage.heapUsed / 1024 / 1024)}MB\n` +
-                    `Requests: ${status.mcpStats.totalRequests}`
+                    `PID: ${process.pid}\n` +
+                    `Memory: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB\n` +
+                    `Messages processed: ${this.messageCount}`
             }]
           },
           id: request.id
@@ -464,16 +417,16 @@ class EchoBackMcpServer {
     // 指定されたチャネルにテストメッセージを出力
     switch (channel) {
       case 'mcp':
-        this.outputManager.writeMcpResponse(`{"test":"mcp","message":"${message}"}`);
+        console.log(`{"test":"mcp","message":"${message}"}`);
         break;
       case 'control':
-        this.outputManager.writeControlResponse(`CTRL_RESPONSE:test:ok:{"message":"${message}"}`);
+        console.log(`CTRL_RESPONSE:test:ok:{"message":"${message}"}`);
         break;
       case 'debug':
-        this.outputManager.writeDebug(`Test debug: ${message}`, 'test');
+        console.error(`DEBUG: Test debug: ${message}`);
         break;
       case 'error':
-        this.outputManager.writeError(`Test error: ${message}`, 'test');
+        console.error(`ERROR: Test error: ${message}`);
         break;
     }
 
@@ -494,10 +447,8 @@ class EchoBackMcpServer {
     
     logger.info('Echo input', { input });
     
-    // 非JSON入力は制御レスポンスとしてエコー
-    this.outputManager.writeControlResponse(
-      `CTRL_RESPONSE:echo:ok:{"input":"${input}","count":${this.messageCount}}`
-    );
+    // 非JSON入力は標準出力にエコー
+    console.log(`Echo: ${input} (count: ${this.messageCount})`);
   }
 
   private shutdown(): void {
@@ -505,8 +456,6 @@ class EchoBackMcpServer {
     logger.info('Shutting down Echo Back MCP Server...');
 
     try {
-      this.outputManager.flush();
-      this.outputManager.shutdown();
       logger.info('Echo Back MCP Server shutdown completed');
     } catch (error) {
       console.error('Error during shutdown:', error);

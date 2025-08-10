@@ -20,9 +20,9 @@ export interface TargetServerStatus extends ServerStatus {
     lastRestart: Date | null;
     uptime: number;
     errorCount: number;
-    moduleInfo: {
-      exports: string[];
-      lastReload: Date | null;
+    processInfo: {
+      pid: number | null;
+      childProcess: string;
     };
   };
   reloader?: {
@@ -81,9 +81,9 @@ export class TargetServerCommands {
           lastRestart: wrapperState.lastRestart,
           uptime: wrapperState.uptime,
           errorCount: wrapperState.errorCount,
-          moduleInfo: {
-            exports: wrapperState.serverModule ? Object.keys(wrapperState.serverModule) : [],
-            lastReload: null // TODO: reloaderから取得
+          processInfo: {
+            pid: wrapperState.pid || null,
+            childProcess: wrapperState.childProcess ? 'running' : 'stopped'
           }
         },
         reloader: reloaderStats ? {
