@@ -1,5 +1,58 @@
 # 開発テクニック・メモ
 
+## 🔗 関連ドキュメント
+
+- [`docs/testing-guide.md`](./testing-guide.md) - テスト実行環境とmcp-debug統合
+- [`docs/test-quality-guidelines.md`](./test-quality-guidelines.md) - テスト品質の基本原則
+
+## 🛠️ 開発環境構築
+
+### 事前要件
+
+- **Node.js 18以上**
+- **COEIROINK** - 音声合成エンジン（localhost:50032で動作）
+- **ビルドツール** - ネイティブモジュール構築用
+  - Windows: Visual Studio Build Tools
+  - macOS: Xcode Command Line Tools  
+  - Linux: build-essential + ALSA/PulseAudio開発ライブラリ
+
+### ソースからのインストール
+
+```bash
+git clone https://github.com/otolab/coeiro-operator.git
+cd coeiro-operator
+npm install
+npm run build
+npm link
+```
+
+### 基本開発コマンド
+
+```bash
+# ビルド・型チェック
+npm run build
+npm run type-check
+
+# テスト実行
+npm test                        # 単体テスト
+npm run test:e2e               # E2Eテスト  
+./scripts/test-mcp-debug.sh    # MCPデバッグテスト
+```
+
+### プロジェクト構成
+
+```
+src/
+├── cli/                    # CLIツール
+├── core/                   # コア機能
+│   ├── operator/           # オペレータ管理
+│   ├── say/               # 音声合成システム
+│   └── environment/       # 環境情報管理
+├── mcp/                   # MCPサーバー
+├── mcp-debug/             # MCPデバッグ環境
+└── utils/                 # ユーティリティ
+```
+
 ## MCP サーバー開発
 
 ### ⚠️ 重要：開発中のコードテストについて
@@ -66,6 +119,111 @@ echo "CTRL:status" | node dist/mcp-debug/test/echo-server.js
 
 # JSON-RPCツールのテスト
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"test"}},"id":1}' | node dist/mcp-debug/test/echo-server.js
+```
+
+#### MCP-Debug環境を使った高度なテスト
+
+mcp-debug環境は、MCPサーバーの包括的なデバッグ・テスト機能を提供します。
+
+##### mcp-debug CLIの使用方法
+
+本来の設計では、以下のようにターゲットサーバーを指定してデバッグします：
+
+```bash
+# 理想的な使用方法（設計通り）
+node dist/mcp-debug/cli.js <target-server-file> [options]
+
+# 例：COEIRO OperatorのMCPサーバーをデバッグ
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload
+node dist/mcp-debug/cli.js dist/mcp/server.js --interactive
+
+# 利用可能なオプション
+--debug, -d              # デバッグモード（詳細ログ）
+--auto-reload, -r        # ファイル変更時自動リロード
+--watch-path <path>      # 監視するパス
+--interactive, -i        # インタラクティブモード
+```
+
+**インタラクティブモードでの制御コマンド：**
+- `status` → `CTRL:target:status` - ターゲットサーバー状態確認
+- `restart` → `CTRL:target:restart` - ターゲットサーバー再起動
+- `help` → `CTRL:help` - コマンドヘルプ表示
+- `exit/quit/q` - CLI終了
+
+##### 現在利用可能な代替手法
+
+mcp-debug環境では、以下の方法でテスト用設定ファイルを使用して特定の動作を検証できます：
+
+##### 設定ファイルを使った動作テスト
+```bash
+# 句読点分割モードの明示的テスト
+node dist/mcp/server.js --config test-configs/punctuation-test-config.json --debug
+
+# splitMode未指定時のデフォルト動作テスト
+node dist/mcp/server.js --config test-configs/default-split-mode-config.json --debug
+```
+
+**利用可能なテスト設定:**
+- `test-configs/punctuation-test-config.json` - 句読点分割モード明示指定
+- `test-configs/default-split-mode-config.json` - splitMode未指定（自動punctuation適用確認）
+
+##### Jest統合テストの実行
+```bash
+# 句読点分割モード専用テスト
+npm run test:punctuation
+
+# MCPデバッグ環境統合テスト
+npm run test:mcp-debug
+
+# COEIRO Operator E2Eテスト
+npm run test:coeiro-e2e
+```
+
+##### デバッグログによる動作検証
+```bash
+# 詳細ログ付きでMCPサーバーを起動
+COEIRO_DEBUG=true node dist/mcp/server.js --debug
+
+# 分割モード動作の確認（ログで "Using punctuation-based splitting" を確認）
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"これは最初の文です。これは二番目の文です。"}},"id":1}' | COEIRO_DEBUG=true node dist/mcp/server.js --debug
+```
+
+#### 音声合成テストコマンド例
+
+##### 基本的な音声合成テスト
+```bash
+# 1. MCPサーバー初期化
+echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test-client","version":"1.0.0"}},"id":1}' | node dist/mcp/server.js
+
+# 2. サーバー初期化完了通知
+echo '{"jsonrpc":"2.0","method":"initialized","params":{}}' | node dist/mcp/server.js
+
+# 3. オペレータ割り当て
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_assign","arguments":{}},"id":2}' | node dist/mcp/server.js
+
+# 4. 音声合成テスト（句読点分割モード確認）
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"これは最初の文です。これは二番目の文です。最後の文はここで終わります。"}},"id":3}' | node dist/mcp/server.js
+```
+
+##### パフォーマンステスト
+```bash
+# 並行生成システムの性能テスト（長文）
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"リファクタリング後のテスト音声です。チャンク生成管理システムが正常に動作していることを確認します。並行生成機能により、複数のチャンクが同時に処理され、レイテンシが大幅に改善されています。"}},"id":4}' | node dist/mcp/server.js
+
+# 話速調整テスト
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"話速テストです。","rate":150}},"id":5}' | node dist/mcp/server.js
+```
+
+##### 設定変更テスト
+```bash
+# 並行生成設定の変更
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"parallel_generation_control","arguments":{"maxConcurrency":3}},"id":6}' | node dist/mcp/server.js
+
+# ログレベル変更（デバッグモード）
+COEIRO_DEBUG=true node dist/mcp/server.js
+
+# 設定状況確認
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_logs","arguments":{"action":"stats"}},"id":7}' | node dist/mcp/server.js
 ```
 
 #### ログシステムの活用

@@ -1,35 +1,28 @@
 /**
  * Target Server Wrapper
- * テスト対象MCPサーバーを内部から呼び出すラッパー機能
+ * テスト対象MCPサーバーを子プロセスとして起動・制御するラッパー機能
  */
 
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { spawn, ChildProcess } from 'child_process';
 import { DebugLogManager } from '../logger/index.js';
 import { OutputManager } from '../output/manager.js';
 import type { ControlHandler } from '../control/handler.js';
-
-export interface ServerModule {
-  default?: any;
-  main?: () => Promise<void>;
-  server?: McpServer;
-  [key: string]: any;
-}
 
 export interface WrapperOptions {
   serverPath: string;
   debugMode?: boolean;
   enableControlCommands?: boolean;
   interceptStdio?: boolean;
+  childArgs?: string[];
+  timeout?: number;
 }
 
 export interface ServerState {
   isRunning: boolean;
-  serverModule: ServerModule | null;
-  serverInstance: McpServer | null;
-  transport: StdioServerTransport | null;
+  childProcess: ChildProcess | null;
   lastRestart: Date | null;
   errorCount: number;
+  pid?: number;
 }
 
 export class TargetServerWrapper {
@@ -38,24 +31,21 @@ export class TargetServerWrapper {
   private logManager: DebugLogManager;
   private outputManager: OutputManager;
   private controlHandler: ControlHandler | null = null;
-  private originalStdio: {
-    stdout: typeof process.stdout.write;
-    stderr: typeof process.stderr.write;
-  } | null = null;
+  private timeoutHandlers: Set<NodeJS.Timeout> = new Set();
 
   constructor(options: WrapperOptions) {
     this.options = {
       debugMode: false,
       enableControlCommands: true,
       interceptStdio: true,
+      childArgs: [],
+      timeout: 30000,
       ...options
     };
 
     this.state = {
       isRunning: false,
-      serverModule: null,
-      serverInstance: null,
-      transport: null,
+      childProcess: null,
       lastRestart: null,
       errorCount: 0
     };
@@ -75,7 +65,9 @@ export class TargetServerWrapper {
     logger.info('TargetServerWrapper initialized', {
       serverPath: this.options.serverPath,
       debugMode: this.options.debugMode,
-      enableControlCommands: this.options.enableControlCommands
+      enableControlCommands: this.options.enableControlCommands,
+      childArgs: this.options.childArgs,
+      timeout: this.options.timeout
     });
   }
 
@@ -84,106 +76,6 @@ export class TargetServerWrapper {
    */
   setControlHandler(handler: ControlHandler): void {
     this.controlHandler = handler;
-  }
-
-  /**
-   * 標準入出力をインターセプト
-   */
-  private interceptStdio(): void {
-    if (!this.options.interceptStdio || this.originalStdio) {
-      return;
-    }
-
-    const logger = this.logManager.getLogger('wrapper');
-    
-    // 元の stdio を保存
-    this.originalStdio = {
-      stdout: process.stdout.write.bind(process.stdout),
-      stderr: process.stderr.write.bind(process.stderr)
-    };
-
-    // stdout をインターセプト（MCP メッセージ用）
-    process.stdout.write = ((data: any, encoding?: any, cb?: any) => {
-      try {
-        const message = data.toString();
-        
-        // JSON-RPC メッセージかどうかチェック
-        if (message.trim().startsWith('{') && message.includes('jsonrpc')) {
-          this.outputManager.writeMcpResponse(message);
-          logger.debug('Intercepted MCP response', { message: message.substring(0, 100) });
-        } else {
-          // 通常の stdout はそのまま通す
-          this.originalStdio!.stdout(data, encoding, cb);
-        }
-      } catch (error) {
-        logger.error('Error intercepting stdout', error);
-        this.originalStdio!.stdout(data, encoding, cb);
-      }
-      
-      return true;
-    }) as any;
-
-    // stderr をインターセプト（エラーログ用）
-    process.stderr.write = ((data: any, encoding?: any, cb?: any) => {
-      try {
-        const message = data.toString();
-        this.outputManager.writeError(message);
-        logger.debug('Intercepted stderr', { message: message.substring(0, 100) });
-      } catch (error) {
-        this.originalStdio!.stderr(data, encoding, cb);
-      }
-      
-      return true;
-    }) as any;
-
-    logger.info('Stdio interception enabled');
-  }
-
-  /**
-   * 標準入出力のインターセプトを解除
-   */
-  private restoreStdio(): void {
-    if (!this.originalStdio) {
-      return;
-    }
-
-    process.stdout.write = this.originalStdio.stdout;
-    process.stderr.write = this.originalStdio.stderr;
-    this.originalStdio = null;
-
-    const logger = this.logManager.getLogger('wrapper');
-    logger.info('Stdio interception disabled');
-  }
-
-  /**
-   * テスト対象サーバーを動的ロード
-   */
-  async loadTargetServer(): Promise<void> {
-    const logger = this.logManager.getLogger('wrapper');
-    
-    try {
-      logger.info('Loading target server', { serverPath: this.options.serverPath });
-
-      // Node.js の require cache をクリア（rewire の代替）
-      const fullPath = require.resolve(this.options.serverPath);
-      delete require.cache[fullPath];
-
-      // モジュールを動的インポート
-      const serverModule = await import(this.options.serverPath);
-      this.state.serverModule = serverModule;
-
-      logger.info('Target server loaded successfully', {
-        exports: Object.keys(serverModule),
-        hasDefault: !!serverModule.default,
-        hasMain: !!serverModule.main,
-        hasServer: !!serverModule.server
-      });
-
-    } catch (error) {
-      logger.error('Failed to load target server', error);
-      this.state.errorCount++;
-      throw new Error(`Failed to load server from ${this.options.serverPath}: ${(error as Error).message}`);
-    }
   }
 
   /**
@@ -197,35 +89,120 @@ export class TargetServerWrapper {
     }
 
     try {
-      await this.loadTargetServer();
-      
-      // stdio インターセプトを開始
-      this.interceptStdio();
+      logger.info('Starting target server as child process', {
+        serverPath: this.options.serverPath,
+        childArgs: this.options.childArgs,
+        timeout: this.options.timeout
+      });
 
-      logger.info('Starting target server...');
+      // 子プロセスで対象サーバーを起動
+      const args = [...(this.options.childArgs || [])];
+      const childProcess = spawn('node', [this.options.serverPath, ...args], {
+        stdio: 'pipe',
+        env: { ...process.env }
+      });
 
-      // サーバーの起動方法を判定して実行
-      if (this.state.serverModule?.main) {
-        // main 関数がある場合は直接実行
-        await this.state.serverModule.main();
-      } else if (this.state.serverModule?.default?.main) {
-        // default export に main がある場合
-        await this.state.serverModule.default.main();
-      } else if (this.state.serverModule?.server) {
-        // server インスタンスがある場合は手動で接続
-        const transport = new StdioServerTransport();
-        await this.state.serverModule.server.connect(transport);
-        this.state.transport = transport;
-        this.state.serverInstance = this.state.serverModule.server;
-      } else {
-        throw new Error('No suitable startup method found in target server module');
+      this.state.childProcess = childProcess;
+      this.state.pid = childProcess.pid;
+
+      // 標準出力の処理
+      childProcess.stdout?.on('data', (data) => {
+        const message = data.toString();
+        if (this.options.interceptStdio) {
+          // JSON-RPC メッセージかどうかチェック
+          if (message.trim().startsWith('{') && message.includes('jsonrpc')) {
+            this.outputManager.writeMcpResponse(message);
+          } else if (message.includes('CTRL_RESPONSE:')) {
+            this.outputManager.writeControlResponse(message);
+          } else {
+            this.outputManager.writeMcpResponse(message);
+          }
+        } else {
+          process.stdout.write(data);
+        }
+      });
+
+      // 標準エラー出力の処理
+      childProcess.stderr?.on('data', (data) => {
+        const message = data.toString();
+        if (this.options.interceptStdio) {
+          this.outputManager.writeError(message);
+        } else {
+          process.stderr.write(data);
+        }
+      });
+
+      // プロセス終了時の処理
+      childProcess.on('close', (code, signal) => {
+        logger.info('Child process closed', { code, signal, pid: this.state.pid });
+        this.state.isRunning = false;
+        this.state.childProcess = null;
+        this.state.pid = undefined;
+      });
+
+      childProcess.on('error', (error) => {
+        logger.error('Child process error', { error, pid: this.state.pid });
+        this.state.errorCount++;
+        this.state.isRunning = false;
+        this.state.childProcess = null;
+        this.state.pid = undefined;
+      });
+
+      // タイムアウト設定
+      if (this.options.timeout && this.options.timeout > 0) {
+        const timeoutId = setTimeout(() => {
+          if (this.state.isRunning && this.state.childProcess) {
+            logger.warn('Child process timed out, killing process', { 
+              timeout: this.options.timeout, 
+              pid: this.state.pid 
+            });
+            this.state.childProcess.kill('SIGTERM');
+            
+            // 強制終了のタイムアウト
+            setTimeout(() => {
+              if (this.state.childProcess && !this.state.childProcess.killed) {
+                logger.warn('Force killing child process', { pid: this.state.pid });
+                this.state.childProcess.kill('SIGKILL');
+              }
+            }, 5000);
+          }
+        }, this.options.timeout);
+        
+        this.timeoutHandlers.add(timeoutId);
+
+        // プロセス終了時にタイムアウトをクリア
+        childProcess.on('close', () => {
+          clearTimeout(timeoutId);
+          this.timeoutHandlers.delete(timeoutId);
+        });
       }
 
-      this.state.isRunning = true;
-      this.state.lastRestart = new Date();
-      this.state.errorCount = 0;
+      // プロセス起動の確認（少し待機）
+      await new Promise<void>((resolve, reject) => {
+        const startupTimeout = setTimeout(() => {
+          if (!this.state.isRunning) {
+            reject(new Error('Child process failed to start within timeout'));
+          }
+        }, 5000);
 
-      logger.info('Target server started successfully');
+        // プロセスが起動したかの簡単なチェック
+        setTimeout(() => {
+          if (childProcess.pid && !childProcess.killed) {
+            this.state.isRunning = true;
+            this.state.lastRestart = new Date();
+            this.state.errorCount = 0;
+            clearTimeout(startupTimeout);
+            resolve();
+          }
+        }, 1000);
+
+        childProcess.on('error', (error) => {
+          clearTimeout(startupTimeout);
+          reject(error);
+        });
+      });
+
+      logger.info('Target server started successfully', { pid: this.state.pid });
 
     } catch (error) {
       logger.error('Failed to start target server', error);
@@ -242,31 +219,55 @@ export class TargetServerWrapper {
     const logger = this.logManager.getLogger('wrapper');
     
     try {
-      logger.info('Stopping target server...');
+      logger.info('Stopping target server...', { pid: this.state.pid });
 
-      if (this.state.transport) {
-        this.state.transport.close?.();
-        this.state.transport = null;
+      // 全てのタイムアウトハンドラーをクリア
+      this.timeoutHandlers.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+      });
+      this.timeoutHandlers.clear();
+
+      if (this.state.childProcess) {
+        // 子プロセスの終了を待機
+        const gracefulShutdown = new Promise<void>((resolve) => {
+          const killTimeout = setTimeout(() => {
+            if (this.state.childProcess && !this.state.childProcess.killed) {
+              logger.warn('Force killing child process', { pid: this.state.pid });
+              this.state.childProcess.kill('SIGKILL');
+            }
+            resolve();
+          }, 5000);
+
+          if (this.state.childProcess) {
+            this.state.childProcess.on('close', () => {
+              clearTimeout(killTimeout);
+              resolve();
+            });
+          } else {
+            clearTimeout(killTimeout);
+            resolve();
+          }
+
+          // SIGTERM で優雅な終了を試行
+          if (this.state.childProcess) {
+            this.state.childProcess.kill('SIGTERM');
+          }
+        });
+
+        await gracefulShutdown;
+        this.state.childProcess = null;
+        this.state.pid = undefined;
       }
-
-      if (this.state.serverInstance) {
-        // サーバーのクリーンアップ（可能であれば）
-        if (this.state.serverInstance && typeof (this.state.serverInstance as any).shutdown === 'function') {
-          await (this.state.serverInstance as any).shutdown();
-        }
-        this.state.serverInstance = null;
-      }
-
-      // stdio インターセプトを解除
-      this.restoreStdio();
 
       this.state.isRunning = false;
-      this.state.serverModule = null;
 
       logger.info('Target server stopped');
 
     } catch (error) {
       logger.error('Error stopping target server', error);
+      this.state.isRunning = false;
+      this.state.childProcess = null;
+      this.state.pid = undefined;
       throw error;
     }
   }
@@ -282,11 +283,11 @@ export class TargetServerWrapper {
     await this.stopTargetServer();
     
     // 少し待機してからリスタート
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise(resolve => setTimeout(resolve, 1000));
     
     await this.startTargetServer();
     
-    logger.info('Target server restarted successfully');
+    logger.info('Target server restarted successfully', { pid: this.state.pid });
   }
 
   /**
@@ -304,37 +305,61 @@ export class TargetServerWrapper {
   }
 
   /**
+   * 子プロセスに入力を送信
+   */
+  sendInput(input: string): void {
+    if (this.state.childProcess && this.state.childProcess.stdin) {
+      this.state.childProcess.stdin.write(input + '\n');
+    } else {
+      throw new Error('Child process is not running or stdin is not available');
+    }
+  }
+
+  /**
    * 制御コマンドを処理
    */
   async handleControlCommand(command: string): Promise<any> {
     const logger = this.logManager.getLogger('wrapper');
     
-    logger.debug('Handling control command', { command });
+    logger.debug('Handling control command', { command, pid: this.state.pid });
 
     // 基本的な制御コマンド
     switch (command) {
       case 'restart':
       case 'restart:graceful':
         await this.restartTargetServer();
-        return { status: 'restarted', timestamp: new Date() };
+        return { 
+          status: 'restarted', 
+          timestamp: new Date(),
+          pid: this.state.pid
+        };
 
       case 'stop':
         await this.stopTargetServer();
-        return { status: 'stopped', timestamp: new Date() };
+        return { 
+          status: 'stopped', 
+          timestamp: new Date()
+        };
 
       case 'start':
         await this.startTargetServer();
-        return { status: 'started', timestamp: new Date() };
+        return { 
+          status: 'started', 
+          timestamp: new Date(),
+          pid: this.state.pid
+        };
 
       case 'status':
         return this.getServerState();
 
       case 'reload':
-        // コードの再読み込み
-        await this.stopTargetServer();
-        await this.loadTargetServer();
-        await this.startTargetServer();
-        return { status: 'reloaded', timestamp: new Date() };
+        // 子プロセスの場合は再起動と同じ
+        await this.restartTargetServer();
+        return { 
+          status: 'reloaded', 
+          timestamp: new Date(),
+          pid: this.state.pid
+        };
 
       default:
         // その他のコマンドは制御ハンドラーに委譲
@@ -352,9 +377,15 @@ export class TargetServerWrapper {
   async shutdown(): Promise<void> {
     const logger = this.logManager.getLogger('wrapper');
     
-    logger.info('Shutting down TargetServerWrapper...');
+    logger.info('Shutting down TargetServerWrapper...', { pid: this.state.pid });
 
     try {
+      // 全てのタイムアウトハンドラーをクリア
+      this.timeoutHandlers.forEach(timeoutId => {
+        clearTimeout(timeoutId);
+      });
+      this.timeoutHandlers.clear();
+
       await this.stopTargetServer();
       this.outputManager.shutdown();
       

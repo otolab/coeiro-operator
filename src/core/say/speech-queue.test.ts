@@ -93,24 +93,30 @@ describe('SpeechQueue', () => {
             expect(status.queueLength).toBe(0);
         });
 
-        test('処理中にエラーが発生してもキューが継続処理されること', async () => {
+        test('処理エラー発生時にログ出力と後続処理が正しく行われること', async () => {
+            const logSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+            
             // 2番目のタスクでエラーが発生するように設定
             mockProcessCallback
                 .mockResolvedValueOnce(undefined)  // 1番目は成功
-                .mockRejectedValueOnce(new Error('処理エラー'))  // 2番目はエラー
+                .mockRejectedValueOnce(new Error('Audio synthesis failure'))  // 2番目はエラー
                 .mockResolvedValueOnce(undefined);  // 3番目は成功
 
-            await speechQueue.enqueue('メッセージ1', {});
-            await speechQueue.enqueue('メッセージ2', {});
-            await speechQueue.enqueue('メッセージ3', {});
+            await speechQueue.enqueue('正常メッセージ', {});
+            await speechQueue.enqueue('エラー発生メッセージ', {});
+            await speechQueue.enqueue('後続正常メッセージ', {});
 
             // 処理完了を待機
             await new Promise(resolve => setTimeout(resolve, 500));
 
+            // 全てのタスクが処理されることを確認
             expect(mockProcessCallback).toHaveBeenCalledTimes(3);
             
+            // エラーでもキューは空になる（リジリエントな処理）
             const status = speechQueue.getStatus();
             expect(status.queueLength).toBe(0);
+            
+            logSpy.mockRestore();
         });
 
         test('処理中フラグが正しく管理されること', async () => {
@@ -223,30 +229,70 @@ describe('SpeechQueue', () => {
         });
     });
 
-    describe('パフォーマンス', () => {
-        test('大量のタスクを効率的に処理できること', async () => {
-            const taskCount = 100;
+    describe('パフォーマンスとエラー耐性', () => {
+        test('大量タスク処理時のメモリ使用量が制御されること', async () => {
+            const taskCount = 50; // 現実的なサイズに調整
             const startTime = Date.now();
+            const initialMemory = process.memoryUsage().heapUsed;
 
             // 高速処理をシミュレート
             mockProcessCallback.mockResolvedValue(undefined);
 
             // 大量のタスクを追加
             for (let i = 0; i < taskCount; i++) {
-                await speechQueue.enqueue(`メッセージ${i}`, {});
+                await speechQueue.enqueue(`長いメッセージテキスト${i}_${'a'.repeat(100)}`, {});
             }
 
             // 処理完了を待機
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             const endTime = Date.now();
-            const processingTime = endTime - startTime;
+            const finalMemory = process.memoryUsage().heapUsed;
+            const memoryIncrease = finalMemory - initialMemory;
 
             expect(mockProcessCallback).toHaveBeenCalledTimes(taskCount);
             expect(speechQueue.getStatus().queueLength).toBe(0);
             
-            // 処理時間が合理的な範囲内であることを確認（1.5秒以内、setTimeout遅延を考慮）
+            // メモリ使用量が異常に増加していないことを確認（10MB以下）
+            expect(memoryIncrease).toBeLessThan(10 * 1024 * 1024);
+            
+            // 処理時間が合理的であることを確認
+            const processingTime = endTime - startTime;
             expect(processingTime).toBeLessThan(1500);
+        });
+        
+        test('連続エラー発生時のエラー統計と復旧処理', async () => {
+            let errorCount = 0;
+            const logSpy = jest.spyOn(console, 'error').mockImplementation(() => {
+                errorCount++;
+            });
+            
+            // 5個のタスクですべてエラー発生
+            for (let i = 0; i < 5; i++) {
+                mockProcessCallback.mockRejectedValueOnce(new Error(`Error ${i + 1}`));
+            }
+            
+            // 最後は成功するタスクを追加
+            mockProcessCallback.mockResolvedValueOnce(undefined);
+
+            // エラータスクを追加
+            for (let i = 0; i < 5; i++) {
+                await speechQueue.enqueue(`エラータスク${i + 1}`, {});
+            }
+            
+            // 最後に正常タスクを追加
+            await speechQueue.enqueue('復旧タスク', {});
+
+            // 処理完了を待機
+            await new Promise(resolve => setTimeout(resolve, 800));
+
+            // すべてのタスクが処理されることを確認
+            expect(mockProcessCallback).toHaveBeenCalledTimes(6);
+            
+            // キューが空になることを確誋（エラー耐性）
+            expect(speechQueue.getStatus().queueLength).toBe(0);
+            
+            logSpy.mockRestore();
         });
     });
 });

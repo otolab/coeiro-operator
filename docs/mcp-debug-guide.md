@@ -6,11 +6,93 @@ MCPサーバーの開発・デバッグを効率化するための統合デバ�
 
 MCPデバッグ環境は以下の機能を提供します：
 
-- **制御コマンド処理** - `CTRL:` プレフィックスでのサーバー制御
+- **mcp-debug CLI** - ターゲットサーバー制御・リロード機能
+- **子プロセス制御** - ターゲットサーバーを子プロセスとして管理・タイムアウト制御
+- **制御コマンド処理** - `CTRL:` プレフィックスでのサーバー制御（mcp-debugが処理）
+- **オプション分離** - `--` 区切りでmcp-debugと子プロセスのオプションを分離
 - **出力チャネル分離** - MCP/Control/Debug/Error出力の分離
 - **ログ蓄積機能** - デバッグ用ログの蓄積と取得
-- **Echo Back MCPサーバー** - テスト用のエコーバックサーバー
+- **Echo Back MCPサーバー** - テスト用の純粋なMCPエコーバックサーバー
 - **統合テストシステム** - 自動化されたテストスイート
+
+## アーキテクチャ
+
+```
+[mcp-debug CLI] 
+    ↓ 子プロセス起動・制御
+[ターゲットサーバー（例：echo-server）]
+
+- 制御コマンド（CTRL:*）→ mcp-debugが処理
+- JSON-RPC・その他 → ターゲットサーバーに転送
+```
+
+**重要**: 制御コマンド（`CTRL:` プレフィックス）はmcp-debugが処理するため、ターゲットサーバーには届きません。ターゲットサーバーは純粋なMCPサーバーとして動作します。
+
+## mcp-debug CLIの使用方法
+
+### 基本的な使用方法
+
+```bash
+# 基本的な使用方法
+node dist/mcp-debug/cli.js <target-server-file> [options] [-- <child-options>...]
+
+# COEIRO OperatorのMCPサーバーをデバッグ
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --interactive
+
+# 自動リロード機能付きで起動
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload
+
+# 子プロセスにオプションを渡す（'--'で区切り）
+node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js -- --debug
+
+# タイムアウト付きで起動
+node dist/mcp-debug/cli.js --timeout 10000 dist/mcp/server.js
+```
+
+### オプション
+
+| オプション | 説明 |
+|-----------|------|
+| `--debug, -d` | デバッグモード（詳細ログ出力） |
+| `--auto-reload, -r` | ファイル変更時の自動リロード |
+| `--watch-path <path>` | 監視するパス（デフォルト：サーバーファイルのディレクトリ） |
+| `--interactive, -i` | インタラクティブモード |
+| `--timeout <ms>` | 子プロセス寿命タイムアウト（ミリ秒、デフォルト: 30000） |
+| `--command-timeout <ms>` | 制御コマンドタイムアウト（ミリ秒、デフォルト: 10000） |
+| `--help, -h` | ヘルプ表示 |
+
+### 子プロセスオプション分離
+
+`--` を使用してmcp-debugのオプションと子プロセス向けオプションを分離できます：
+
+```bash
+# mcp-debugのタイムアウト vs 子プロセスのタイムアウト
+node dist/mcp-debug/cli.js --timeout 10000 echo-server.js -- --timeout 5000
+
+# 説明:
+# --timeout 10000  → mcp-debugが子プロセスを10秒で終了
+# -- --timeout 5000 → echo-serverが内部タイムアウトに5秒を使用
+```
+
+### インタラクティブモードでの制御
+
+```bash
+# インタラクティブモードで起動
+node dist/mcp-debug/cli.js dist/mcp/server.js --interactive
+
+# 利用可能なコマンド（プロンプトで入力）
+status          # ターゲットサーバーの状態確認
+restart         # ターゲットサーバーの再起動
+help           # 全コマンドのヘルプ
+clear          # 画面クリア
+exit/quit/q    # CLI終了
+
+# 制御コマンド直接実行
+CTRL:target:status      # サーバー状態詳細
+CTRL:target:restart     # サーバー再起動
+CTRL:target:reload      # リロード＋再起動
+CTRL:logs:stats        # ログ統計
+```
 
 ## セットアップ
 
@@ -34,33 +116,32 @@ bash scripts/test-mcp-debug.sh
 
 ## Echo Back MCPサーバー
 
-### 起動方法
+**重要**: Echo Back MCPサーバーは純粋なMCPサーバーです。制御コマンド（`CTRL:` プレフィックス）には対応しておらず、これらはmcp-debug CLIが処理します。
+
+### 推奨起動方法（mcp-debug経由）
 
 ```bash
-# 通常モード
+# mcp-debug経由での起動（推奨）
+node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js
+
+# デバッグモード付き
+node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js -- --debug
+
+# 制御コマンドのテスト
+echo 'CTRL:target:status' | node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js
+```
+
+### 直接起動（非推奨）
+
+```bash
+# 直接起動（制御コマンドは使用不可）
 node dist/mcp-debug/test/echo-server.js
 
 # デバッグモード（詳細ログ出力）
 node dist/mcp-debug/test/echo-server.js --debug
 ```
 
-### 制御コマンド
-
-サーバーは`CTRL:`プレフィックスの制御コマンドに対応：
-
-```bash
-# サーバー状態確認
-echo 'CTRL:status' | node dist/mcp-debug/test/echo-server.js
-
-# ヘルスチェック
-echo 'CTRL:health' | node dist/mcp-debug/test/echo-server.js
-
-# モード変更
-echo 'CTRL:mode:debug' | node dist/mcp-debug/test/echo-server.js
-
-# ログ統計取得
-echo 'CTRL:logs:stats' | node dist/mcp-debug/test/echo-server.js
-```
+**注意**: 直接起動した場合、制御コマンド機能は利用できません。
 
 ### MCPツール
 
@@ -254,7 +335,23 @@ echo 'CTRL:logs:clear' | node dist/mcp-debug/test/echo-server.js
 
 ## 開発フロー
 
-### 1. 新機能開発時
+### 1. mcp-debug CLIを使った新機能開発（推奨）
+
+```bash
+# 1. 自動リロード付きでサーバー起動
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload --interactive
+
+# 2. インタラクティブモードで開発・テスト
+> status              # 現在の状態確認
+> restart             # 変更後の再起動
+> CTRL:logs:stats     # ログ統計確認
+> exit                # 終了
+
+# 3. ファイル変更時は自動的にリロード
+# → コード修正 → 自動リロード → すぐにテスト可能
+```
+
+### 2. Echo Backサーバーを使った基本動作確認
 
 ```bash
 # 1. Echo Back サーバーで基本動作確認
@@ -267,13 +364,14 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments"
 node dist/mcp-debug/test/integration.test.js
 ```
 
-### 2. デバッグ時
+### 3. 従来のデバッグ手法
 
 ```bash
 # デバッグモードで詳細ログを確認
-node dist/mcp-debug/test/echo-server.js --debug
+node dist/mcp/server.js --debug
 
-# 制御コマンドでリアルタイム状態確認
+# 制御コマンドでリアルタイム状態確認（非対応）
+# Echo Backサーバーで代替：
 echo 'CTRL:logs:get:limit=10' | node dist/mcp-debug/test/echo-server.js
 ```
 
@@ -328,10 +426,20 @@ private async testNewFeature(): Promise<TestResult> {
 3. **テストタイムアウト**
    - サーバー起動を確認
    - `init:ok` メッセージを待機
+   - `--timeout` オプションで子プロセス寿命を調整
 
-4. **出力チャネルが分離されない**
-   - OutputManagerの設定を確認
+4. **制御コマンドが届かない**
+   - echo-serverには制御コマンドは届きません（仕様です）
+   - 制御コマンドはmcp-debug CLIが処理します
+   - 直接echo-serverを起動している場合はmcp-debug経由で起動してください
+
+5. **出力チャネルが分離されない**
+   - mcp-debug経由で起動していることを確認
    - デバッグモードでチャネル出力をテスト
+
+6. **子プロセスオプションが効かない**
+   - `--` でmcp-debugと子プロセスのオプションを分離してください
+   - 例: `node dist/mcp-debug/cli.js server.js -- --child-option`
 
 ### ログ設定の調整
 
@@ -402,7 +510,45 @@ MCPツールとして `debug_logs` を追加することで、Claude Code から
 
 ## 実用的なデバッグワークフロー
 
-### 1. 音声合成デバッグのワークフロー
+### 1. mcp-debug CLIを使ったデバッグ
+
+#### インタラクティブデバッグ（推奨）
+
+```bash
+# ステップ1: インタラクティブモードでmcp-debug CLI起動
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --interactive
+
+# ステップ2: インタラクティブコマンドでサーバー制御
+> status                    # サーバー状態確認
+> CTRL:target:restart      # サーバー再起動
+> CTRL:logs:stats         # ログ統計表示
+> exit                     # CLI終了
+```
+
+#### 自動リロード開発ワークフロー
+
+```bash
+# ファイル変更時に自動リロードでデバッグ
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload --watch-path ./src
+
+# ソースファイル変更 → 自動リロード → すぐにテスト
+# 開発効率が大幅に向上
+```
+
+#### タイムアウト制御とオプション分離
+
+```bash
+# 子プロセス寿命を制御（30秒でタイムアウト）
+node dist/mcp-debug/cli.js --timeout 30000 dist/mcp/server.js
+
+# mcp-debugと子プロセスのオプションを分離
+node dist/mcp-debug/cli.js --debug --timeout 60000 dist/mcp/server.js -- --config custom.json
+
+# echo-serverでのテスト例
+node dist/mcp-debug/cli.js --interactive dist/mcp-debug/test/echo-server.js -- --debug
+```
+
+### 2. 従来の音声合成デバッグワークフロー
 
 ```bash
 # ステップ1: デバッグモードでMCPサーバー起動
@@ -438,17 +584,20 @@ echo '{"name":"parallel_generation_control","arguments":{"action":"status"}}' | 
 
 ### 3. Echo Back MCPサーバーでの基本テスト
 
+**重要**: echo-serverは純粋なMCPサーバーのため、mcp-debug経由でテストしてください。
+
 ```bash
-# Echo Backサーバーでの動作確認
-node dist/mcp-debug/test/echo-server.js --debug
+# mcp-debug経由でのEcho Backサーバー動作確認（推奨）
+node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js -- --debug
 
-# 制御コマンドテスト
-echo 'CTRL:status' | node dist/mcp-debug/test/echo-server.js
-echo 'CTRL:logs:stats' | node dist/mcp-debug/test/echo-server.js
+# 制御コマンドテスト（mcp-debugが処理）
+echo 'CTRL:target:status' | node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js
 
-# MCPツールテスト
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"テスト"}},"id":1}' | node dist/mcp-debug/test/echo-server.js
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_info","arguments":{"type":"stats"}},"id":2}' | node dist/mcp-debug/test/echo-server.js
+# JSON-RPCツールテスト（echo-serverが処理）
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"テスト"}},"id":1}' | node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js
+
+# 非推奨：直接起動（制御コマンド機能なし）
+# node dist/mcp-debug/test/echo-server.js --debug
 ```
 
 ### 4. 自動統合テスト
