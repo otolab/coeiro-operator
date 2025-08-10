@@ -112,15 +112,15 @@ describe('AudioPlayer', () => {
     });
 
     describe('playAudioStream', () => {
-        test('正常に音声ストリームを再生できること', async () => {
+        test('音声ストリームを再生して正常に完了すること', async () => {
             // 初期化
+            let closeCallback: (() => void) | undefined;
             const mockSpeakerInstance = {
                 write: jest.fn(),
                 end: jest.fn(),
                 on: jest.fn((event, callback) => {
                     if (event === 'close') {
-                        // close イベントをすぐに発火
-                        setTimeout(callback, 0);
+                        closeCallback = callback;
                     }
                 })
             };
@@ -147,10 +147,19 @@ describe('AudioPlayer', () => {
                 latency: 100
             };
 
-            await audioPlayer.playAudioStream(audioResult);
-
-            expect(mockSpeakerInstance.write).toHaveBeenCalled();
-            expect(mockSpeakerInstance.end).toHaveBeenCalled();
+            // 再生を開始
+            const playPromise = audioPlayer.playAudioStream(audioResult);
+            
+            // closeイベントを発火して再生完了をシミュレート
+            if (closeCallback) {
+                setTimeout(closeCallback, 10);
+            }
+            
+            // 再生が正常に完了することを検証
+            await expect(playPromise).resolves.not.toThrow();
+            
+            // 音声データがSpeakerに送信されたことを確認
+            expect(mockSpeakerInstance.end).toHaveBeenCalledWith(expect.any(Buffer));
         });
 
         test('初期化されていない場合エラーを投げること', async () => {
@@ -165,13 +174,14 @@ describe('AudioPlayer', () => {
             );
         });
 
-        test('Speakerエラー時に適切なエラーを投げること', async () => {
+        test('Speaker再生エラー発生時に適切にエラーを伝播すること', async () => {
+            let errorCallback: ((error: Error) => void) | undefined;
             const mockSpeakerInstance = {
                 write: jest.fn(),
                 end: jest.fn(),
                 on: jest.fn((event, callback) => {
                     if (event === 'error') {
-                        setTimeout(() => callback(new Error('Speaker error')), 0);
+                        errorCallback = callback;
                     }
                 })
             };
@@ -191,9 +201,16 @@ describe('AudioPlayer', () => {
                 latency: 100
             };
 
-            await expect(audioPlayer.playAudioStream(audioResult)).rejects.toThrow(
-                '音声再生エラー: Speaker error'
-            );
+            // 再生を開始
+            const playPromise = audioPlayer.playAudioStream(audioResult);
+            
+            // エラーイベントを発火
+            if (errorCallback) {
+                setTimeout(() => errorCallback(new Error('Hardware audio device failure')), 10);
+            }
+
+            // エラーが正しく伝播されることを検証
+            await expect(playPromise).rejects.toThrow('Hardware audio device failure');
         });
     });
 
@@ -246,15 +263,23 @@ describe('AudioPlayer', () => {
             );
         });
 
-        test('ファイル保存エラー時に適切なエラーがスローされること', async () => {
+        test('ファイル保存時のファイルシステムエラーを適切に処理すること', async () => {
             const audioBuffer = new ArrayBuffer(1000);
-            const outputFile = '/invalid/path/output.wav';
+            const outputFile = '/readonly/path/output.wav';
             
-            mockWriteFile.mockRejectedValueOnce(new Error('Permission denied'));
+            // ファイルシステムエラーをシミュレート（実際に起こりうるエラー）
+            mockWriteFile.mockRejectedValueOnce(new Error('EACCES: permission denied, open \'/readonly/path/output.wav\''));
             
+            // エラーハンドリングとエラーメッセージの構成を検証
             await expect(
                 audioPlayer.saveAudio(audioBuffer, outputFile)
-            ).rejects.toThrow('音声ファイル保存エラー: Permission denied');
+            ).rejects.toThrow(/音声ファイル保存エラー:.*EACCES/);
+            
+            // ファイル書き込み処理が実際に呼び出されたことを確認
+            expect(mockWriteFile).toHaveBeenCalledWith(
+                outputFile,
+                expect.any(Buffer)
+            );
         });
     });
 
@@ -275,27 +300,44 @@ describe('AudioPlayer', () => {
             );
         });
 
-        test('非常に大きなオーディオバッファでも処理されること', async () => {
-            // 1MBのバッファをシミュレート（メモリ効率のため100MBから削減）
+        test('大きなオーディオバッファの保存で適切なメモリ管理が行われること', async () => {
+            // 1MBのバッファをシミュレート（現実的なサイズ）
             const largeBuffer = new ArrayBuffer(1024 * 1024);
             const outputFile = '/test/large.wav';
             
+            // メモリ使用量を監視するためのスパイを設定
+            const bufferFromSpy = jest.spyOn(Buffer, 'from');
+            
             mockWriteFile.mockResolvedValueOnce(undefined);
             
-            await expect(
-                audioPlayer.saveAudio(largeBuffer, outputFile)
-            ).resolves.not.toThrow();
+            await audioPlayer.saveAudio(largeBuffer, outputFile);
+            
+            // Buffer.fromが適切に呼ばれ、メモリ効率的に変換されることを確認
+            expect(bufferFromSpy).toHaveBeenCalledWith(largeBuffer);
+            expect(mockWriteFile).toHaveBeenCalledWith(
+                outputFile,
+                expect.any(Buffer)
+            );
+            
+            bufferFromSpy.mockRestore();
         });
 
-        test('無効なファイルパスでも適切にエラーハンドリングされること', async () => {
+        test('無効なファイルパス指定時にファイルシステムエラーが正しく処理されること', async () => {
             const audioBuffer = new ArrayBuffer(1000);
-            const invalidPath = '';
+            const invalidPath = '\x00invalid\x00path'; // null文字を含む無効なパス
             
-            mockWriteFile.mockRejectedValueOnce(new Error('Invalid path'));
+            // 実際のファイルシステムが返すエラーをシミュレート
+            mockWriteFile.mockRejectedValueOnce(new Error('EINVAL: invalid argument, open \'\x00invalid\x00path\''));
             
             await expect(
                 audioPlayer.saveAudio(audioBuffer, invalidPath)
-            ).rejects.toThrow('音声ファイル保存エラー: Invalid path');
+            ).rejects.toThrow(/音声ファイル保存エラー:.*EINVAL/);
+            
+            // 無効なパスでも処理が呼び出されることを確認（エラーハンドリングの検証）
+            expect(mockWriteFile).toHaveBeenCalledWith(
+                invalidPath,
+                expect.any(Buffer)
+            );
         });
     });
 });

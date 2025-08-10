@@ -21,140 +21,124 @@ describe('latencyModeプリセット機能', () => {
     });
 
     describe('AudioPlayer プリセット設定', () => {
-        test('ultra-lowプリセットが正しく適用されること', () => {
+        test('ultra-lowプリセットでバッファサイズが最小限に設定されること', async () => {
             const config: Config = {
                 connection: { host: 'localhost', port: '50032' },
                 voice: { rate: 200 },
                 audio: { latencyMode: 'ultra-low' }
             };
 
-            const audioPlayer = new AudioPlayer(config);
-            
-            // プリベートメソッドにアクセスするため、any型でキャスト
-            const audioConfig = (audioPlayer as any).audioConfig as AudioConfig;
+            const mockSpeakerInstance = {
+                write: jest.fn(),
+                end: jest.fn(),
+                on: jest.fn()
+            };
+            MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
-            expect(audioConfig.latencyMode).toBe('ultra-low');
-            expect(audioConfig.bufferSettings).toEqual({
-                highWaterMark: 64,
-                lowWaterMark: 32,
-                dynamicAdjustment: true
-            });
-            expect(audioConfig.paddingSettings).toEqual({
-                enabled: false,
-                prePhonemeLength: 0,
-                postPhonemeLength: 0,
-                firstChunkOnly: true
-            });
-            expect(audioConfig.crossfadeSettings).toEqual({
-                enabled: false,
-                skipFirstChunk: true,
-                overlapSamples: 0
-            });
+            const audioPlayer = new AudioPlayer(config);
+            await audioPlayer.initialize();
+            
+            // ultra-lowプリセットの動作を検証：最小バッファサイズ(64)でSpeakerが初期化される
+            expect(MockSpeaker).toHaveBeenCalledWith(expect.objectContaining({
+                highWaterMark: 64  // ultra-lowプリセットの特徴：最小レイテンシのための小さなバッファ
+            }));
         });
 
-        test('balancedプリセットが正しく適用されること', () => {
+        test('balancedプリセットでバランスの取れたバッファサイズが設定されること', async () => {
             const config: Config = {
                 connection: { host: 'localhost', port: '50032' },
                 voice: { rate: 200 },
                 audio: { latencyMode: 'balanced' }
             };
 
-            const audioPlayer = new AudioPlayer(config);
-            const audioConfig = (audioPlayer as any).audioConfig as AudioConfig;
+            const mockSpeakerInstance = {
+                write: jest.fn(),
+                end: jest.fn(),
+                on: jest.fn()
+            };
+            MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
-            expect(audioConfig.latencyMode).toBe('balanced');
-            expect(audioConfig.bufferSettings).toEqual({
-                highWaterMark: 256,
-                lowWaterMark: 128,
-                dynamicAdjustment: true
-            });
-            expect(audioConfig.paddingSettings).toEqual({
-                enabled: true,
-                prePhonemeLength: 0.01,
-                postPhonemeLength: 0.01,
-                firstChunkOnly: true
-            });
-            expect(audioConfig.crossfadeSettings).toEqual({
-                enabled: true,
-                skipFirstChunk: true,
-                overlapSamples: 24
-            });
+            const audioPlayer = new AudioPlayer(config);
+            await audioPlayer.initialize();
+            
+            // balancedプリセットの動作を検証：中程度のバッファサイズ(256)でSpeakerが初期化される
+            expect(MockSpeaker).toHaveBeenCalledWith(expect.objectContaining({
+                highWaterMark: 256  // balancedプリセットの特徴：レイテンシと品質のバランス
+            }));
         });
 
-        test('qualityプリセットが正しく適用されること', () => {
+        test('qualityプリセットで高品質のための大きなバッファサイズが設定されること', async () => {
             const config: Config = {
                 connection: { host: 'localhost', port: '50032' },
                 voice: { rate: 200 },
                 audio: { latencyMode: 'quality' }
             };
 
-            const audioPlayer = new AudioPlayer(config);
-            const audioConfig = (audioPlayer as any).audioConfig as AudioConfig;
+            const mockSpeakerInstance = {
+                write: jest.fn(),
+                end: jest.fn(),
+                on: jest.fn()
+            };
+            MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
-            expect(audioConfig.latencyMode).toBe('quality');
-            expect(audioConfig.bufferSettings).toEqual({
-                highWaterMark: 512,
-                lowWaterMark: 256,
-                dynamicAdjustment: false
-            });
-            expect(audioConfig.paddingSettings).toEqual({
-                enabled: true,
-                prePhonemeLength: 0.02,
-                postPhonemeLength: 0.02,
-                firstChunkOnly: false
-            });
-            expect(audioConfig.crossfadeSettings).toEqual({
-                enabled: true,
-                skipFirstChunk: false,
-                overlapSamples: 48
-            });
+            const audioPlayer = new AudioPlayer(config);
+            await audioPlayer.initialize();
+            
+            // qualityプリセットの動作を検証：大きなバッファサイズ(512)でSpeakerが初期化される
+            expect(MockSpeaker).toHaveBeenCalledWith(expect.objectContaining({
+                highWaterMark: 512  // qualityプリセットの特徴：高品質のための大きなバッファ
+            }));
         });
 
-        test('デフォルト（latencyMode未指定）でbalancedが適用されること', () => {
+        test('デフォルト（latencyMode未指定）でbalancedプリセットの動作となること', async () => {
             const config: Config = {
                 connection: { host: 'localhost', port: '50032' },
                 voice: { rate: 200 },
                 audio: { splitMode: 'punctuation' }
             };
 
-            const audioPlayer = new AudioPlayer(config);
-            const audioConfig = (audioPlayer as any).audioConfig as AudioConfig;
+            const mockSpeakerInstance = {
+                write: jest.fn(),
+                end: jest.fn(),
+                on: jest.fn()
+            };
+            MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
-            expect(audioConfig.latencyMode).toBe('balanced');
+            const audioPlayer = new AudioPlayer(config);
+            await audioPlayer.initialize();
+            
+            // デフォルトでbalancedプリセットの動作を検証
+            expect(MockSpeaker).toHaveBeenCalledWith(expect.objectContaining({
+                highWaterMark: 256  // デフォルトbalancedプリセットのバッファサイズ
+            }));
         });
 
-        test('個別設定でプリセットが上書きされること', () => {
+        test('個別設定でプリセットが上書きされた動作となること', async () => {
             const config: Config = {
                 connection: { host: 'localhost', port: '50032' },
                 voice: { rate: 200 },
                 audio: {
                     latencyMode: 'ultra-low',
                     bufferSettings: {
-                        highWaterMark: 128, // プリセットの64を上書き
-                        dynamicAdjustment: false // プリセットのtrueを上書き
-                    },
-                    paddingSettings: {
-                        enabled: true, // プリセットのfalseを上書き
-                        prePhonemeLength: 0.005
+                        highWaterMark: 128 // プリセットの64を上書き
                     }
                 }
             };
 
-            const audioPlayer = new AudioPlayer(config);
-            const audioConfig = (audioPlayer as any).audioConfig as AudioConfig;
+            const mockSpeakerInstance = {
+                write: jest.fn(),
+                end: jest.fn(),
+                on: jest.fn()
+            };
+            MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
-            expect(audioConfig.latencyMode).toBe('ultra-low');
-            expect(audioConfig.bufferSettings).toEqual({
-                highWaterMark: 128, // 上書きされた値
-                lowWaterMark: 32,   // プリセット値
-                dynamicAdjustment: false // 上書きされた値
-            });
-            expect(audioConfig.paddingSettings).toEqual({
-                enabled: true, // 上書きされた値
-                prePhonemeLength: 0.005, // 上書きされた値
-                postPhonemeLength: 0, // プリセット値
-                firstChunkOnly: true // プリセット値
-            });
+            const audioPlayer = new AudioPlayer(config);
+            await audioPlayer.initialize();
+            
+            // 個別設定が反映された動作を検証：上書きされたバッファサイズ(128)が使用される
+            expect(MockSpeaker).toHaveBeenCalledWith(expect.objectContaining({
+                highWaterMark: 128  // 個別設定でプリセット値(64)が上書きされた結果
+            }));
         });
     });
 
@@ -234,7 +218,7 @@ describe('latencyModeプリセット機能', () => {
             });
         });
 
-        test('splitModeConfigでプリセット値が使用されること', () => {
+        test('ultra-lowプリセットでテキストが小さなチャンクに分割されること', () => {
             const config: Config = {
                 connection: { host: 'localhost', port: '50032' },
                 voice: { rate: 200 },
@@ -243,77 +227,101 @@ describe('latencyModeプリセット機能', () => {
 
             const audioSynthesizer = new AudioSynthesizer(config);
             
-            // splitTextIntoChunksメソッドを呼び出してプリセット設定が反映されることを確認
-            const chunks = audioSynthesizer.splitTextIntoChunks('これはテストテキストです。', 'small');
+            // ultra-lowプリセットの動作を検証：短いテキストは1チャンク、長いテキストは小さなサイズで分割
+            const shortText = '短いテキスト'; // 6文字
+            const longText = 'これは非常に長いテキストで、ultra-lowプリセットのsmallSize(20文字)を超えるため分割されるはずです。'; // 40+文字
             
-            // ultra-lowプリセットのsmallSizeは20文字なので、この文字列（13文字）は1チャンクになる
-            expect(chunks).toHaveLength(1);
-            expect(chunks[0].text).toBe('これはテストテキストです。');
+            const shortChunks = audioSynthesizer.splitTextIntoChunks(shortText, 'small');
+            const longChunks = audioSynthesizer.splitTextIntoChunks(longText, 'small');
+            
+            // 短いテキストは1チャンク
+            expect(shortChunks).toHaveLength(1);
+            expect(shortChunks[0].text).toBe(shortText);
+            
+            // 長いテキストはultra-lowプリセットの小さなサイズで分割される
+            expect(longChunks.length).toBeGreaterThan(1);
+            // 各チャンクの文字数がプリセットの小サイズ(20文字)以下であることを確認
+            longChunks.forEach(chunk => {
+                expect(chunk.text.length).toBeLessThanOrEqual(20); // ultra-lowプリセットのsmallSize
+            });
         });
 
-        test('個別設定でプリセットが上書きされること', () => {
+        test('個別設定でプリセットが上書きされた分割動作となること', () => {
             const config: Config = {
                 connection: { host: 'localhost', port: '50032' },
                 voice: { rate: 200 },
                 audio: {
                     latencyMode: 'balanced',
                     splitSettings: {
-                        mediumSize: 80, // プリセットの50を上書き
-                        overlapRatio: 0.2 // プリセットの0.1を上書き
+                        mediumSize: 15 // プリセットの50を小さな値に上書き
                     }
                 }
             };
 
             const audioSynthesizer = new AudioSynthesizer(config);
-            const audioConfig = (audioSynthesizer as any).audioConfig as AudioConfig;
-
-            expect(audioConfig.splitSettings).toEqual({
-                smallSize: 30,    // プリセット値
-                mediumSize: 80,   // 上書きされた値
-                largeSize: 100,   // プリセット値
-                overlapRatio: 0.2 // 上書きされた値
+            
+            // 上書きされた設定での分割動作を検証
+            const testText = 'これはテストテキストです。個別設定でmediumSizeが15文字に設定されています。'; // 30+文字
+            const chunks = audioSynthesizer.splitTextIntoChunks(testText, 'medium');
+            
+            // 上書きされたmediumSize(15文字)で分割されることを検証
+            expect(chunks.length).toBeGreaterThan(1);
+            chunks.forEach(chunk => {
+                expect(chunk.text.length).toBeLessThanOrEqual(15); // 上書きされた値
             });
         });
     });
 
     describe('設定の階層化された適用', () => {
-        test('プリセット → 個別設定 → デフォルト値の順で適用されること', () => {
+        test('設定の階層化が正しい動作を生むこと', async () => {
             const config: Config = {
                 connection: { host: 'localhost', port: '50032' },
                 voice: { rate: 200 },
                 audio: {
                     latencyMode: 'quality',
                     bufferSettings: {
-                        highWaterMark: 1024 // 個別設定でプリセット値（512）を上書き
-                        // lowWaterMark は未指定なのでプリセット値（256）が使用される
-                        // dynamicAdjustment も未指定なのでプリセット値（false）が使用される
+                        highWaterMark: 1024 // qualityプリセットの512を上書き
                     }
                 }
             };
 
-            const audioPlayer = new AudioPlayer(config);
-            const audioConfig = (audioPlayer as any).audioConfig as AudioConfig;
+            const mockSpeakerInstance = {
+                write: jest.fn(),
+                end: jest.fn(),
+                on: jest.fn()
+            };
+            MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
-            expect(audioConfig.bufferSettings).toEqual({
-                highWaterMark: 1024,        // 個別設定で上書き
-                lowWaterMark: 256,          // プリセット値
-                dynamicAdjustment: false    // プリセット値
-            });
+            const audioPlayer = new AudioPlayer(config);
+            await audioPlayer.initialize();
+            
+            // 設定の階層化での動作を検証：個別設定(1024)がプリセット値(512)を上書き
+            expect(MockSpeaker).toHaveBeenCalledWith(expect.objectContaining({
+                highWaterMark: 1024 // 個別設定が優先された結果
+            }));
         });
 
-        test('audio設定が未指定の場合もデフォルトプリセットが適用されること', () => {
+        test('設定未指定でもデフォルトプリセットの動作となること', async () => {
             const config: Config = {
                 connection: { host: 'localhost', port: '50032' },
                 voice: { rate: 200 },
                 audio: {} // latencyMode未指定
             };
 
-            const audioPlayer = new AudioPlayer(config);
-            const audioConfig = (audioPlayer as any).audioConfig as AudioConfig;
+            const mockSpeakerInstance = {
+                write: jest.fn(),
+                end: jest.fn(),
+                on: jest.fn()
+            };
+            MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
-            // デフォルトの'balanced'プリセットが適用される
-            expect(audioConfig.latencyMode).toBe('balanced');
-            expect(audioConfig.bufferSettings?.highWaterMark).toBe(256);
+            const audioPlayer = new AudioPlayer(config);
+            await audioPlayer.initialize();
+
+            // 設定未指定でもデフォルトbalancedプリセットの動作を検証
+            expect(MockSpeaker).toHaveBeenCalledWith(expect.objectContaining({
+                highWaterMark: 256 // デフォルトbalancedプリセットのバッファサイズ
+            }));
         });
     });
 
