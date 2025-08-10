@@ -11,20 +11,8 @@ COEIRO OperatorのMCPツール、CLIコマンド、JavaScript APIの完全リフ
 #### パラメータ
 ```typescript
 {
-  operator?: string;           // 指定オペレータ名（省略時ランダム）
-  sessionId?: string;         // セッションID（省略時デフォルト）
-  forceReassign?: boolean;    // 強制再割り当て（デフォルト: false）
-}
-```
-
-#### 戻り値
-```typescript
-{
-  success: boolean;
-  operatorId: string;
-  operatorName: string;
-  sessionId: string;
-  character?: CharacterInfo;
+  operator?: string;  // 指定オペレータ名（英語表記、例: 'tsukuyomi'。省略時ランダム）
+  style?: string;     // 指定スタイル名（例: 'normal', 'ura'。省略時デフォルト）
 }
 ```
 
@@ -35,7 +23,7 @@ await mcp.call('operator_assign');
 
 // 指定割り当て
 await mcp.call('operator_assign', {
-  operator: "青山龍星"
+  operator: "tsukuyomi"
 });
 ```
 

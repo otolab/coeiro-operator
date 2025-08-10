@@ -17,30 +17,12 @@ COEIRO Operatorの一般的な問題と解決方法を説明します。
 ```bash
 # COEIROINK起動確認
 curl -X GET "http://localhost:50032/v1/speakers"
-
-# 接続テスト
-say-coeiroink --check-server
 ```
 
-2. **システム音量確認**
+2. **基本音声テスト**
 ```bash
-# macOS
-osascript -e "get volume settings"
-
-# Linux (ALSA)
-amixer get Master
-
-# Windows (PowerShell)
-Get-AudioDevice -PlaybackVolume
-```
-
-3. **音声デバイス確認**
-```bash
-# デバイス一覧表示
-say-coeiroink --list-devices
-
-# システム情報表示
-say-coeiroink --system-info
+# 簡単な音声出力テスト
+say-coeiroink "テスト音声です"
 ```
 
 #### 解決方法
@@ -54,22 +36,8 @@ say-coeiroink --system-info
 ```
 
 **音声デバイス問題**
-```bash
-# デフォルトデバイス変更（macOS）
-sudo defaults write com.apple.HIToolbox AppleCurrentKeyboardLayoutInputSourceID -string com.apple.keylayout.US
-
-# ALSA設定リセット（Linux）
-sudo alsactl restore
-```
-
-**権限問題**
-```bash
-# macOS: マイクアクセス許可確認
-# システム環境設定 > セキュリティとプライバシー > プライバシー
-
-# Linux: audio グループ追加
-sudo usermod -a -G audio $USER
-```
+- システムの音量設定を確認
+- 音声出力デバイスが正しく認識されているか確認
 
 ### 音質が悪い・ノイズが入る
 

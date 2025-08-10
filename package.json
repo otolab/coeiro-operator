@@ -38,11 +38,9 @@
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
-    "audify": "^1.9.0",
     "dsp.js": "^1.0.1",
     "echogarden": "^2.9.0",
     "node-libsamplerate": "^1.0.0",
-    "node-wav": "^0.0.2",
     "speaker": "^0.5.5",
     "uuid": "^11.1.0"
   },

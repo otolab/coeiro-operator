@@ -19,31 +19,7 @@ COEIRO Operatorの詳細なインストール手順とセットアップ方法�
 
 ### ネイティブ依存関係
 
-以下のライブラリのビルドに必要な開発ツール：
-
-#### Windows
-```powershell
-# Visual Studio Build Tools
-npm install -g windows-build-tools
-
-# または Visual Studio Community（C++デスクトップ開発）
-```
-
-#### macOS
-```bash
-# Xcode Command Line Tools
-xcode-select --install
-```
-
-#### Linux
-```bash
-# Ubuntu/Debian
-sudo apt-get install build-essential libasound2-dev
-
-# CentOS/RHEL/Fedora
-sudo yum groupinstall "Development Tools"
-sudo yum install alsa-lib-devel
-```
+一部のライブラリはネイティブコンパイルが必要です。各OS対応の開発ツールが必要になる場合があります。
 
 ## インストール方法
 
