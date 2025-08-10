@@ -4,12 +4,12 @@
 
 ## 概要
 
-COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシステムです。Claude Codeでの作業時に、13種類のキャラクターによる高品質な音声通知とコミュニケーションを提供します。
+COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシステムです。Claude Codeでの作業時に、複数のキャラクターによる高品質な音声通知とコミュニケーションを提供します。
 
 ### ✨ 主な機能
 
 - 🎵 **高品質音声処理**: 24kHz→48kHz リサンプリング + デジタルフィルタリング
-- 👥 **音声オペレータシステム**: 13種類のキャラクターによる音声通知
+- 👥 **音声オペレータシステム**: 複数のキャラクターによる音声通知
 - 🖥️ **クロスプラットフォーム対応**: Windows / macOS / Linux ネイティブ音声出力
 - 🔗 **MCPサーバー**: Claude Codeとの完全統合
 - ⚡ **低レイテンシストリーミング**: 非同期音声合成・並行チャンク生成
@@ -54,21 +54,52 @@ operator-manager status
 
 ### コマンドライン
 
+#### say-coeiroink - 音声合成コマンド
+
 ```bash
-# シンプル音声合成
-say-coeiroink "こんにちは"
+# 基本構文
+say-coeiroink [options] "テキスト"
 
-# 話速調整
-say-coeiroink -r 150 "ゆっくり話します"
+# オプション一覧
+-v voice                     音声ID指定（?で一覧表示）
+-r rate                      話速設定（WPM）
+-o outfile                   出力ファイル指定（WAV形式）
+-f file                      ファイル入力（-で標準入力）
+--chunk-mode mode            テキスト分割モード（punctuation|none|small|medium|large）
+--buffer-size size           バッファサイズ（256-4096+）
+-h                           ヘルプ表示
 
-# 分割モード制御
-say-coeiroink --split-mode small "短いレスポンス"
-say-coeiroink --buffer-size 2048 "高品質再生"
+# 使用例
+say-coeiroink "こんにちは"                                    # 基本使用
+say-coeiroink -v "?" # 音声一覧表示                          # 音声一覧表示
+say-coeiroink -r 150 "ゆっくり話します"                        # 話速調整
+say-coeiroink -o output.wav "保存テスト"                       # ファイル出力
+say-coeiroink --chunk-mode none "長文を分割せずに読み上げ"      # 分割モード指定
+say-coeiroink --buffer-size 256 "低レイテンシ再生"            # バッファサイズ指定
+```
 
-# オペレータ管理
-operator-manager assign      # ランダム割り当て
-operator-manager status      # 現在のステータス  
-operator-manager release     # オペレータ解放
+#### operator-manager - オペレータ管理コマンド
+
+```bash
+# 基本構文
+operator-manager <command> [options]
+
+# コマンド一覧
+assign [operatorId] [--style=style]   オペレータ割り当て（IDなしでランダム）
+release                               オペレータ解放
+status                                状況確認
+available                             利用可能一覧
+clear                                 全オペレータ状況クリア
+
+# 使用例
+operator-manager assign                              # ランダム割り当て
+operator-manager assign tsukuyomi                   # 指定割り当て
+operator-manager assign --style=happy               # スタイル指定ランダム割り当て
+operator-manager assign tsukuyomi --style=ura       # 指定割り当て+スタイル
+operator-manager status                              # 状況確認
+operator-manager available                           # 利用可能一覧
+operator-manager release                             # オペレータ解放
+operator-manager clear                               # 全クリア
 ```
 
 ### Claude Code MCPツール
@@ -120,17 +151,15 @@ operator-manager release     # オペレータ解放
 
 ## 🎭 オペレータキャラクター
 
-13種類の個性豊かなキャラクターが利用可能：
+利用可能なキャラクター（COEIROINK環境に依存）：
 
 | キャラクター | 特徴 | 音声の傾向 |
 |---|---|---|
 | 🌙 つくよみちゃん | 落ち着いた司会進行 | 安定感のある声 |
-| 👼 angelica | 元気で明るい | ハイトーンで活発 |
-| 🎀 冥鳴ひまり | 可愛らしく親しみやすい | 甘い声質 |
-| 🌸 四国めたん | 関西弁の愛されキャラ | 関西弁・親しみやすい |
-| 📚 ずんだもん | 東北弁の賢いアシスタント | 東北弁・知的 |
 
 詳細は [docs/CHARACTERS.md](docs/CHARACTERS.md) を参照。
+
+**注意**: 利用可能なキャラクターはCOEIROINK環境にインストールされた音声ライブラリに依存します。
 
 ## 🏗️ 技術アーキテクチャ
 

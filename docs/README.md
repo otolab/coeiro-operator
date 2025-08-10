@@ -48,9 +48,6 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 
 ## 📖 リファレンス
 
-### API・技術仕様
-- **[api-reference.md](api-reference.md)** - 完全APIリファレンス
-
 ### トラブルシューティング・サポート
 - **[troubleshooting.md](troubleshooting.md)** - 問題解決ガイド
 

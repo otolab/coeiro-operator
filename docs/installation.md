@@ -19,31 +19,7 @@ COEIRO Operatorの詳細なインストール手順とセットアップ方法�
 
 ### ネイティブ依存関係
 
-以下のライブラリのビルドに必要な開発ツール：
-
-#### Windows
-```powershell
-# Visual Studio Build Tools
-npm install -g windows-build-tools
-
-# または Visual Studio Community（C++デスクトップ開発）
-```
-
-#### macOS
-```bash
-# Xcode Command Line Tools
-xcode-select --install
-```
-
-#### Linux
-```bash
-# Ubuntu/Debian
-sudo apt-get install build-essential libasound2-dev
-
-# CentOS/RHEL/Fedora
-sudo yum groupinstall "Development Tools"
-sudo yum install alsa-lib-devel
-```
+一部のライブラリはネイティブコンパイルが必要です。各OS対応の開発ツールが必要になる場合があります。
 
 ## インストール方法
 
@@ -157,8 +133,7 @@ claude mcp test coeiro-operator
 ```
 ~/.coeiro-operator/
 ├── coeiroink-config.json     # COEIROINK接続設定
-├── operator-config.json      # オペレータ設定
-└── audio-config.json         # 音声処理設定
+└── operator-config.json      # オペレータ設定
 ```
 
 ### 基本設定例
@@ -200,7 +175,7 @@ claude mcp test coeiro-operator
 
 ```bash
 # COEIROINKサーバー確認
-say-coeiroink --check-server
+say-coeiroink "接続テスト"
 
 # 音声出力テスト
 say-coeiroink "インストールテストです"
@@ -213,11 +188,11 @@ operator-manager status
 ### 2. 音声品質調整
 
 ```bash
-# サンプルレート確認
-say-coeiroink --info
+# 基本動作確認
+say-coeiroink "音声テスト"
 
-# 高品質設定テスト
-say-coeiroink -r 150 "高品質音声テストです"
+# 話速設定テスト
+say-coeiroink -r 150 "ゆっくり音声テストです"
 ```
 
 ### 3. MCPツール確認
@@ -279,8 +254,8 @@ export PATH=~/.npm-global/bin:$PATH
 # 詳細ログ有効化
 DEBUG=coeiro* say-coeiroink "デバッグテスト"
 
-# システム情報出力
-say-coeiroink --system-info
+# 基本動作確認
+say-coeiroink "デバッグテスト"
 
 # 設定確認
 operator-manager config
@@ -308,8 +283,8 @@ coeiro-operator --version
 # バックアップ
 cp -r ~/.coeiro-operator ~/.coeiro-operator.backup
 
-# 新設定生成
-operator-manager --reset-config
+# 設定クリア（必要に応じて）
+operator-manager clear
 ```
 
 ## パフォーマンス最適化

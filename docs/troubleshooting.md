@@ -17,30 +17,12 @@ COEIRO Operatorの一般的な問題と解決方法を説明します。
 ```bash
 # COEIROINK起動確認
 curl -X GET "http://localhost:50032/v1/speakers"
-
-# 接続テスト
-say-coeiroink --check-server
 ```
 
-2. **システム音量確認**
+2. **基本音声テスト**
 ```bash
-# macOS
-osascript -e "get volume settings"
-
-# Linux (ALSA)
-amixer get Master
-
-# Windows (PowerShell)
-Get-AudioDevice -PlaybackVolume
-```
-
-3. **音声デバイス確認**
-```bash
-# デバイス一覧表示
-say-coeiroink --list-devices
-
-# システム情報表示
-say-coeiroink --system-info
+# 簡単な音声出力テスト
+say-coeiroink "テスト音声です"
 ```
 
 #### 解決方法
@@ -54,22 +36,8 @@ say-coeiroink --system-info
 ```
 
 **音声デバイス問題**
-```bash
-# デフォルトデバイス変更（macOS）
-sudo defaults write com.apple.HIToolbox AppleCurrentKeyboardLayoutInputSourceID -string com.apple.keylayout.US
-
-# ALSA設定リセット（Linux）
-sudo alsactl restore
-```
-
-**権限問題**
-```bash
-# macOS: マイクアクセス許可確認
-# システム環境設定 > セキュリティとプライバシー > プライバシー
-
-# Linux: audio グループ追加
-sudo usermod -a -G audio $USER
-```
+- システムの音量設定を確認
+- 音声出力デバイスが正しく認識されているか確認
 
 ### 音質が悪い・ノイズが入る
 
@@ -80,8 +48,8 @@ sudo usermod -a -G audio $USER
 
 #### 診断コマンド
 ```bash
-# 現在の音声設定確認
-say-coeiroink --audio-info
+# 音声設定テスト
+say-coeiroink -v "?" # 利用可能音声確認
 
 # 設定ファイル確認
 cat ~/.coeiro-operator/coeiroink-config.json
@@ -150,29 +118,26 @@ operator-manager available
 
 # 現在の状況確認  
 operator-manager status
-
-# セッション状況確認
-operator-manager sessions
 ```
 
 #### 解決方法
 
 **強制リセット**
 ```bash
-# 全セッションリセット
-operator-manager reset --all
+# 全オペレータ状況クリア
+operator-manager clear
 
-# 特定セッションリセット
-operator-manager release --session <session-id>
+# 現在のオペレータ解放
+operator-manager release
 ```
 
 **設定ファイル修復**
 ```bash
-# 設定リセット
-operator-manager reset --config
+# 設定ファイル確認
+cat ~/.coeiro-operator/operator-config.json
 
-# キャラクター設定再生成
-operator-manager rebuild-characters
+# 問題があれば手動削除・再起動で再生成
+rm ~/.coeiro-operator/operator-config.json
 ```
 
 ### キャラクター音声が正しくない
@@ -183,22 +148,23 @@ operator-manager rebuild-characters
 
 #### 確認コマンド
 ```bash
-# キャラクター設定確認
-operator-manager show-character "青山龍星"
+# 利用可能オペレータ確認
+operator-manager available
 
-# 音声マッピング確認
-operator-manager voice-mapping
+# 音声リスト確認
+say-coeiroink -v "?"
 ```
 
 #### 解決方法
 
 **キャラクター設定更新**
 ```bash
-# 動的設定再構築
-operator-manager build-dynamic-config
+# オペレータ再割り当て
+operator-manager release
+operator-manager assign tsukuyomi
 
-# 特定キャラクター設定
-operator-manager configure "青山龍星" --style-selection random
+# スタイル指定での割り当て
+operator-manager assign tsukuyomi --style=ura
 ```
 
 ## MCPサーバー問題
@@ -396,11 +362,11 @@ echo 'export DEBUG=coeiro*' >> ~/.bashrc
 ### システム情報収集
 
 ```bash
-# 総合診断
-say-coeiroink --system-info > system-report.txt
+# 基本動作確認
+say-coeiroink "システムテスト" > system-report.txt
 
-# 設定ダンプ
-operator-manager config --export > config-dump.json
+# オペレータ状況確認
+operator-manager status > config-dump.txt
 
 # 環境変数
 env | grep COEIRO > env-vars.txt
@@ -457,8 +423,8 @@ cp ~/.coeiro-operator.backup/coeiroink-config.json ~/.coeiro-operator/
 ### 情報収集コマンド
 
 ```bash
-# 問題報告用情報一括収集
-say-coeiroink --debug-report > debug-report-$(date +%Y%m%d).txt
+# 基本情報収集
+echo "COEIRO Operator Version: $(node -e 'console.log(require("./package.json").version)')" > debug-report-$(date +%Y%m%d).txt
 ```
 
 ### GitHub Issues
