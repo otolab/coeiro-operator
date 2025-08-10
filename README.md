@@ -1,118 +1,92 @@
 # COEIRO Operator
 
-COEIROINK音声合成システムのMCPサーバーとオペレータ管理システム
+🎤 COEIROINK音声合成システムの高機能MCPサーバー・オペレータシステム
 
 ## 概要
 
-COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシステムです。Claude Codeでの作業時に、複数のキャラクターによる音声通知とコミュニケーションを提供します。
+COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシステムです。Claude Codeでの作業時に、13種類のキャラクターによる高品質な音声通知とコミュニケーションを提供します。
 
-### 主な機能
+### ✨ 主な機能
 
-- **高品質音声処理**: 24kHz→48kHz リサンプリング + デジタルフィルタリング
-- **音声オペレータシステム**: 13種類のキャラクターによる音声通知
-- **クロスプラットフォーム対応**: Windows / macOS / Linux ネイティブ音声出力
-- **MCPサーバー**: Claude Codeとの完全統合
-- **非同期音声合成**: 低レイテンシストリーミング対応
-- **動的設定管理**: COEIROINKサーバーから音声フォントを自動検出
-- **セッション管理**: 複数セッション間でのオペレータ重複防止
-- **MCPデバッグ環境**: 包括的なテスト・デバッグシステム
+- 🎵 **高品質音声処理**: 24kHz→48kHz リサンプリング + デジタルフィルタリング
+- 👥 **音声オペレータシステム**: 13種類のキャラクターによる音声通知
+- 🖥️ **クロスプラットフォーム対応**: Windows / macOS / Linux ネイティブ音声出力
+- 🔗 **MCPサーバー**: Claude Codeとの完全統合
+- ⚡ **低レイテンシストリーミング**: 非同期音声合成・並行チャンク生成
+- 🎛️ **動的設定管理**: COEIROINKサーバーから音声フォントを自動検出
+- 🔄 **セッション管理**: 複数セッション間でのオペレータ重複防止
+- 🛠️ **MCPデバッグ環境**: 包括的なテスト・デバッグシステム
 
-## インストール
+## 🚀 クイックスタート
 
-### 事前要件
-
-- **Node.js 18以上**
-- **COEIROINK** - 音声合成エンジン（localhost:50032で動作）
-- **ビルドツール** - ネイティブモジュール構築用
-  - Windows: Visual Studio Build Tools
-  - macOS: Xcode Command Line Tools
-  - Linux: build-essential + ALSA/PulseAudio開発ライブラリ
-
-### インストール方法
+### 1. インストール
 
 ```bash
 # NPMからのインストール
 npm install -g coeiro-operator
 
-# ソースからのインストール（開発用）
-git clone https://github.com/otolab/coeiro-operator.git
-cd coeiro-operator
-npm install
-npm link
+# MCPサーバー登録（Claude Code）
+claude mcp add coeiro-operator
 ```
 
-### MCPサーバー登録
+### 2. COEIROINK準備
 
-Claude Codeで以下のコマンドを実行：
-
-```bash
-claude mcp add coeiro-operator --command "node dist/index.js"
-```
-
-## クイックスタート
-
-### 1. COEIROINK起動確認
+[COEIROINK](https://coeiroink.com/)をダウンロード・起動し、`localhost:50032`で動作していることを確認：
 
 ```bash
 curl -X GET "http://localhost:50032/v1/speakers"
 ```
 
-### 2. 動作テスト
+### 3. 動作確認
 
 ```bash
 # 音声出力テスト
 say-coeiroink "音声テストです"
 
-# オペレータ管理テスト
+# オペレータ管理テスト  
 operator-manager assign
 operator-manager status
-
-# MCPデバッグ環境テスト
-./scripts/test-mcp-debug.sh
-./test-coeiro-mcp-debug.sh
 ```
 
-## 基本的な使用方法
+🎉 これで準備完了！Claude Codeでオペレータ音声機能を利用できます。
+
+## 💬 基本的な使い方
 
 ### コマンドライン
 
 ```bash
-# 音声合成
+# シンプル音声合成
 say-coeiroink "こんにちは"
+
+# 話速調整
 say-coeiroink -r 150 "ゆっくり話します"
 
 # 分割モード制御
-say-coeiroink --split-mode none "長文を分割せずに読み上げ"
 say-coeiroink --split-mode small "短いレスポンス"
 say-coeiroink --buffer-size 2048 "高品質再生"
 
 # オペレータ管理
 operator-manager assign      # ランダム割り当て
-operator-manager status      # 現在のステータス
+operator-manager status      # 現在のステータス  
 operator-manager release     # オペレータ解放
 ```
 
-### MCPツール
+### Claude Code MCPツール
 
-- `operator_assign` - オペレータ割り当て
-- `operator_release` - オペレータ解放  
-- `operator_status` - 状況確認
-- `operator_available` - 利用可能一覧
-- `say` - 音声出力（ストリーミング再生対応）
+- `operator_assign` - オペレータ割り当て・キャラクター選択
+- `operator_release` - オペレータ解放
+- `operator_status` - 状況確認・利用可能オペレータ表示
+- `say` - 音声出力（ストリーミング再生・並行生成対応）
+- `parallel_generation_control` - 並行生成設定の動的制御
 
-## 設定・カスタマイズ
+## ⚙️ 設定・カスタマイズ
 
-詳細な設定方法については以下のドキュメントを参照してください：
-
-- **[docs/configuration-guide.md](docs/configuration-guide.md)** - 設定・カスタマイズガイド
-- **[docs/CHARACTERS.md](docs/CHARACTERS.md)** - オペレータキャラクター詳細
-
-### 設定ファイルの場所
+### 設定ファイル
 
 ```
 ~/.coeiro-operator/
 ├── coeiroink-config.json      # COEIROINK・音声設定
-├── operator-config.json       # オペレータ管理設定  
+├── operator-config.json       # オペレータ管理設定
 └── active-operators.json      # 利用状況管理（自動生成）
 ```
 
@@ -127,92 +101,145 @@ operator-manager release     # オペレータ解放
     "angie": {
       "disabled": true
     }
+  },
+  "audio": {
+    "latencyMode": "balanced",
+    "splitMode": "punctuation",
+    "parallelGeneration": {
+      "maxConcurrency": 2,
+      "pauseUntilFirstComplete": true
+    }
   }
 }
 ```
 
-## ドキュメント
+### 詳細設定ガイド
 
-### 技術仕様
-- **[docs/audio-streaming-guide.md](docs/audio-streaming-guide.md)** - 音声ストリーミング機能ガイド
-- **[docs/audio-system.md](docs/audio-system.md)** - 音声システム詳細仕様
-- **[docs/api-reference.md](docs/api-reference.md)** - 完全APIリファレンス
-- **[docs/mcp-debug-guide.md](docs/mcp-debug-guide.md)** - MCPデバッグ環境ガイド
-
-### 開発者ガイド  
-- **[docs/development-tips.md](docs/development-tips.md)** - 開発テクニック・Tips集
-- **[docs/configuration-guide.md](docs/configuration-guide.md)** - 設定・カスタマイズガイド
-- **[docs/troubleshooting.md](docs/troubleshooting.md)** - トラブルシューティング
-
-### プロジェクト情報
-- **[docs/changelog.md](docs/changelog.md)** - 変更履歴・リリースノート
+- **[docs/configuration-guide.md](docs/configuration-guide.md)** - 設定・カスタマイズ完全ガイド
 - **[docs/CHARACTERS.md](docs/CHARACTERS.md)** - オペレータキャラクター詳細
 
-## 技術構成
+## 🎭 オペレータキャラクター
 
-### 音声処理アーキテクチャ
+13種類の個性豊かなキャラクターが利用可能：
+
+| キャラクター | 特徴 | 音声の傾向 |
+|---|---|---|
+| 🌙 つくよみちゃん | 落ち着いた司会進行 | 安定感のある声 |
+| 👼 angelica | 元気で明るい | ハイトーンで活発 |
+| 🎀 冥鳴ひまり | 可愛らしく親しみやすい | 甘い声質 |
+| 🌸 四国めたん | 関西弁の愛されキャラ | 関西弁・親しみやすい |
+| 📚 ずんだもん | 東北弁の賢いアシスタント | 東北弁・知的 |
+
+詳細は [docs/CHARACTERS.md](docs/CHARACTERS.md) を参照。
+
+## 🏗️ 技術アーキテクチャ
+
+### 音声処理パイプライン
+
 ```
 COEIROINK API → WAV → PCM → リサンプリング → フィルタリング → Speaker出力
     (24kHz)                   (24→48kHz)      (ローパス24kHz)     (48kHz)
 ```
 
+### 並行チャンク生成システム
+
+```
+テキスト分割 → 並行音声合成 → ストリーミング再生
+     ↓              ↓              ↓
+  [チャンク1-5]   [同時生成]    [順次再生]
+```
+
 ### 主要ライブラリ
+
 - **speaker**: クロスプラットフォーム音声出力
-- **node-libsamplerate**: 高品質リサンプリング
-- **dsp.js**: デジタル信号処理・フィルタリング  
+- **node-libsamplerate**: 高品質リサンプリング  
+- **dsp.js**: デジタル信号処理・フィルタリング
+- **echogarden**: ノイズリダクション（オプション）
+
+## 📚 ドキュメント
+
+### 🎵 音声・オーディオ
+- **[docs/audio-streaming-guide.md](docs/audio-streaming-guide.md)** - 音声ストリーミング機能ガイド
+- **[docs/audio-system.md](docs/audio-system.md)** - 音声システム詳細仕様
+- **[docs/parallel-generation-system.md](docs/parallel-generation-system.md)** - 並行チャンク生成システム
+
+### 🛠️ 開発・運用
+- **[docs/development-tips.md](docs/development-tips.md)** - 開発テクニック・Tips集
+- **[docs/mcp-debug-guide.md](docs/mcp-debug-guide.md)** - MCPデバッグ環境ガイド
+- **[docs/troubleshooting.md](docs/troubleshooting.md)** - トラブルシューティング
+
+### 📖 リファレンス
+- **[docs/api-reference.md](docs/api-reference.md)** - 完全APIリファレンス
+- **[docs/configuration-guide.md](docs/configuration-guide.md)** - 設定・カスタマイズガイド
+- **[docs/voice-provider-system.md](docs/voice-provider-system.md)** - VoiceProviderシステム
+
+### 📋 プロジェクト情報
+- **[docs/changelog.md](docs/changelog.md)** - 変更履歴・リリースノート
+- **[docs/testing-guide.md](docs/testing-guide.md)** - テスト環境ガイド
+
+## 🔧 開発者向け情報
+
+### 事前要件
+
+- **Node.js 18以上**
+- **COEIROINK** - 音声合成エンジン（localhost:50032で動作）
+- **ビルドツール** - ネイティブモジュール構築用
+  - Windows: Visual Studio Build Tools
+  - macOS: Xcode Command Line Tools  
+  - Linux: build-essential + ALSA/PulseAudio開発ライブラリ
+
+### ソースからのインストール
+
+```bash
+git clone https://github.com/otolab/coeiro-operator.git
+cd coeiro-operator
+npm install
+npm run build
+npm link
+```
+
+### 開発・テスト
+
+```bash
+# ビルド・型チェック
+npm run build
+npm run type-check
+
+# テスト実行
+npm test                        # 単体テスト
+npm run test:e2e               # E2Eテスト  
+./scripts/test-mcp-debug.sh    # MCPデバッグテスト
+```
 
 ### プロジェクト構成
 
 ```
 src/
 ├── cli/                    # CLIツール
-│   ├── operator-manager.ts # オペレータ管理コマンド
-│   └── say-coeiroink.ts    # 音声合成コマンド
 ├── core/                   # コア機能
-│   ├── environment/        # 環境情報管理
-│   │   └── voice-provider.ts  # 音声情報プロバイダ（統一API）
 │   ├── operator/           # オペレータ管理
-│   │   ├── index.ts        # オペレータ管理メイン
-│   │   ├── config-manager.ts      # 設定管理
-│   │   ├── operator-state-manager.ts  # 状態管理
-│   │   ├── voice-selection-service.ts # 音声選択
-│   │   ├── file-operation-manager.ts  # ファイル操作
-│   │   └── character-defaults.ts      # キャラクター定義
-│   └── say/                # 音声合成システム
-│       ├── index.ts        # 音声合成メイン
-│       ├── audio-synthesizer.ts   # COEIROINK API連携
-│       ├── audio-player.ts        # 音声再生エンジン
-│       ├── speech-queue.ts        # キューイング
-│       ├── constants.ts           # 定数・デフォルト値
-│       └── types.ts              # 型定義
-├── mcp/                    # MCPサーバー
-│   └── server.ts          # MCPサーバーメイン
-├── mcp-debug/              # MCPデバッグ環境
-│   ├── test/               # テストサーバー・統合テスト
-│   ├── logger/             # 拡張ロガーシステム
-│   ├── control/            # 制御コマンドハンドラー
-│   └── output/             # 出力管理システム
-└── utils/                  # ユーティリティ
-    └── logger.ts          # 基本ログシステム
+│   ├── say/               # 音声合成システム
+│   └── environment/       # 環境情報管理
+├── mcp/                   # MCPサーバー
+├── mcp-debug/             # MCPデバッグ環境
+└── utils/                 # ユーティリティ
 ```
 
-### 主要な設計原則
+## 🆘 サポート・コミュニティ
 
-- **役割別グルーピング**: 機能ごとに明確に分離
-- **統一的な環境情報収集**: `VoiceProvider`による一元管理
-- **デフォルト値の集約**: `constants.ts`での統一管理
-- **型安全性**: TypeScriptによる厳密な型チェック
+- **Issue報告**: [GitHub Issues](https://github.com/otolab/coeiro-operator/issues)
+- **機能要望**: [GitHub Issues](https://github.com/otolab/coeiro-operator/issues/new)
+- **プルリクエスト**: 歓迎いたします！
 
-## サポート
-
-- Issue報告: [GitHub Issues](https://github.com/otolab/coeiro-operator/issues)
-- 機能要望: [GitHub Issues](https://github.com/otolab/coeiro-operator/issues/new)
-
-## ライセンス
+## 📝 ライセンス
 
 MIT License
 
-## 関連プロジェクト
+## 🔗 関連プロジェクト
 
 - **[COEIROINK](https://coeiroink.com/)** - 音声合成エンジン本体
 - **[Claude Code](https://claude.ai/code)** - AI開発支援ツール（MCP対応）
+
+---
+
+🎤 **素晴らしい音声体験をお楽しみください！**
