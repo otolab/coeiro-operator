@@ -176,7 +176,7 @@ claude mcp test coeiro-operator
 
 ```bash
 # COEIROINKサーバー確認
-say-coeiroink --check-server
+say-coeiroink "接続テスト"
 
 # 音声出力テスト
 say-coeiroink "インストールテストです"

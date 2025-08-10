@@ -152,7 +152,7 @@ operator-manager rebuild-characters
 #### 確認コマンド
 ```bash
 # キャラクター設定確認
-operator-manager show-character "青山龍星"
+operator-manager show-character "tsukuyomi"
 
 # 音声マッピング確認
 operator-manager voice-mapping
@@ -166,7 +166,7 @@ operator-manager voice-mapping
 operator-manager build-dynamic-config
 
 # 特定キャラクター設定
-operator-manager configure "青山龍星" --style-selection random
+operator-manager configure "tsukuyomi" --style-selection random
 ```
 
 ## MCPサーバー問題

@@ -260,6 +260,7 @@ curl -X GET "http://localhost:50032/v1/downloadable_speakers" | jq -r '.[].speak
 ### カスタマイズ可能項目
 
 - **greeting**: オペレータ開始時の挨拶メッセージ
+- **farewell**: オペレータ解放時のお別れメッセージ
 - **personality**: キャラクターの性格設定（説明用）
 - **speaking_style**: 話し方の特徴（説明用）
 

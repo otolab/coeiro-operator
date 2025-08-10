@@ -32,62 +32,21 @@ await mcp.call('operator_assign', {
 オペレータの解放を行います。
 
 #### パラメータ
-```typescript
-{
-  sessionId?: string;         // セッションID（省略時デフォルト）
-}
-```
-
-#### 戻り値
-```typescript
-{
-  success: boolean;
-  message: string;
-  sessionId: string;
-}
-```
+パラメータなし
 
 ### operator_status
 
 現在のオペレータ状況を確認します。
 
 #### パラメータ
-```typescript
-{
-  sessionId?: string;         // セッションID（省略時デフォルト）
-}
-```
-
-#### 戻り値
-```typescript
-{
-  operatorId: string | null;
-  operatorName: string | null;
-  sessionId: string;
-  assignedAt: string | null;
-  character?: CharacterInfo;
-}
-```
+パラメータなし
 
 ### operator_available
 
 利用可能なオペレータ一覧を取得します。
 
 #### パラメータ
-```typescript
-{
-  sessionId?: string;         // セッションID（省略時デフォルト）
-}
-```
-
-#### 戻り値
-```typescript
-{
-  available: string[];        // 利用可能オペレータ名配列
-  assigned: string[];         // 割り当て済みオペレータ名配列
-  sessionId: string;
-}
-```
+パラメータなし
 
 ### say
 
@@ -157,9 +116,6 @@ say-coeiroink [options] "テキスト"
 -s, --style <id>             スタイルID指定
     --stream                 ストリーミング強制
     --no-stream              バッチ処理強制
-    --check-server           サーバー接続確認
-    --list-voices            音声一覧表示
-    --system-info            システム情報表示
     --version                バージョン表示
     --help                   ヘルプ表示
 ```
@@ -220,10 +176,10 @@ reset                        設定リセット
 operator-manager assign
 
 # 指定割り当て
-operator-manager assign --operator "青山龍星"
+operator-manager assign --operator "tsukuyomi"
 
 # スタイル設定
-operator-manager configure "青山龍星" --style-selection random
+operator-manager configure "tsukuyomi" --style-selection random
 
 # 状況確認
 operator-manager status
@@ -332,7 +288,7 @@ const manager = new OperatorManager();
 await manager.initialize();
 
 // オペレータ割り当て
-const result = await manager.assignOperator("青山龍星");
+const result = await manager.assignOperator("tsukuyomi");
 
 // 状況確認
 const status = await manager.showCurrentOperator();
@@ -409,7 +365,7 @@ interface CharacterInfo {
 ```typescript
 {
   error: "OPERATOR_UNAVAILABLE", 
-  message: "Operator '青山龍星' is already assigned"
+  message: "Operator 'tsukuyomi' is already assigned"
 }
 ```
 
