@@ -62,6 +62,10 @@ node dist/mcp/server.js --debug  # 詳細ログ・同期音声再生
 
 ## 📖 ドキュメントインデックス
 
+### 📋 完全インデックス
+- `prompts/README.md` - プロンプト・ガイドインデックス
+- `docs/README.md` - ドキュメント完全インデックス（詳細・用途別）
+
 ### MCP・開発
 - `prompts/MCP_TOOLS_USAGE_GUIDE.md` - MCPツール使用ガイド
 - `docs/development-tips.md` - 開発テクニック・Tips集
