@@ -121,6 +121,44 @@ echo "CTRL:status" | node dist/mcp-debug/test/echo-server.js
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"test"}},"id":1}' | node dist/mcp-debug/test/echo-server.js
 ```
 
+#### MCP-Debug環境を使った高度なテスト
+
+mcp-debug環境では、テスト用設定ファイルを使用して特定の動作を検証できます：
+
+##### 設定ファイルを使った動作テスト
+```bash
+# 句読点分割モードの明示的テスト
+node dist/mcp/server.js --config test-configs/punctuation-test-config.json --debug
+
+# splitMode未指定時のデフォルト動作テスト
+node dist/mcp/server.js --config test-configs/default-split-mode-config.json --debug
+```
+
+**利用可能なテスト設定:**
+- `test-configs/punctuation-test-config.json` - 句読点分割モード明示指定
+- `test-configs/default-split-mode-config.json` - splitMode未指定（自動punctuation適用確認）
+
+##### Jest統合テストの実行
+```bash
+# 句読点分割モード専用テスト
+npm run test:punctuation
+
+# MCPデバッグ環境統合テスト
+npm run test:mcp-debug
+
+# COEIRO Operator E2Eテスト
+npm run test:coeiro-e2e
+```
+
+##### デバッグログによる動作検証
+```bash
+# 詳細ログ付きでMCPサーバーを起動
+COEIRO_DEBUG=true node dist/mcp/server.js --debug
+
+# 分割モード動作の確認（ログで "Using punctuation-based splitting" を確認）
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"これは最初の文です。これは二番目の文です。"}},"id":1}' | COEIRO_DEBUG=true node dist/mcp/server.js --debug
+```
+
 #### 音声合成テストコマンド例
 
 ##### 基本的な音声合成テスト
