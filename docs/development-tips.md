@@ -121,6 +121,44 @@ echo "CTRL:status" | node dist/mcp-debug/test/echo-server.js
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"test"}},"id":1}' | node dist/mcp-debug/test/echo-server.js
 ```
 
+#### 音声合成テストコマンド例
+
+##### 基本的な音声合成テスト
+```bash
+# 1. MCPサーバー初期化
+echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test-client","version":"1.0.0"}},"id":1}' | node dist/mcp/server.js
+
+# 2. サーバー初期化完了通知
+echo '{"jsonrpc":"2.0","method":"initialized","params":{}}' | node dist/mcp/server.js
+
+# 3. オペレータ割り当て
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_assign","arguments":{}},"id":2}' | node dist/mcp/server.js
+
+# 4. 音声合成テスト（句読点分割モード確認）
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"これは最初の文です。これは二番目の文です。最後の文はここで終わります。"}},"id":3}' | node dist/mcp/server.js
+```
+
+##### パフォーマンステスト
+```bash
+# 並行生成システムの性能テスト（長文）
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"リファクタリング後のテスト音声です。チャンク生成管理システムが正常に動作していることを確認します。並行生成機能により、複数のチャンクが同時に処理され、レイテンシが大幅に改善されています。"}},"id":4}' | node dist/mcp/server.js
+
+# 話速調整テスト
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"話速テストです。","rate":150}},"id":5}' | node dist/mcp/server.js
+```
+
+##### 設定変更テスト
+```bash
+# 並行生成設定の変更
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"parallel_generation_control","arguments":{"maxConcurrency":3}},"id":6}' | node dist/mcp/server.js
+
+# ログレベル変更（デバッグモード）
+COEIRO_DEBUG=true node dist/mcp/server.js
+
+# 設定状況確認
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_logs","arguments":{"action":"stats"}},"id":7}' | node dist/mcp/server.js
+```
+
 #### ログシステムの活用
 ```bash
 # ログ蓄積状況の確認
