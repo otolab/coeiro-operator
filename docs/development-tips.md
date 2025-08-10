@@ -134,7 +134,7 @@ mcp-debug環境は、MCPサーバーの包括的なデバッグ・テスト機�
 node dist/mcp-debug/cli.js <target-server-file> [options]
 
 # 例：COEIRO OperatorのMCPサーバーをデバッグ
-node dist/mcp-debug/cli.js src/mcp/server.ts --debug --auto-reload
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload
 node dist/mcp-debug/cli.js dist/mcp/server.js --interactive
 
 # 利用可能なオプション

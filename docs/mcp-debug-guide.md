@@ -22,7 +22,7 @@ MCPデバッグ環境は以下の機能を提供します：
 node dist/mcp-debug/cli.js <target-server-file> [options]
 
 # COEIRO OperatorのMCPサーバーをデバッグ
-node dist/mcp-debug/cli.js src/mcp/server.ts --debug --interactive
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --interactive
 
 # 自動リロード機能付きで起動
 node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload
@@ -42,7 +42,7 @@ node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload
 
 ```bash
 # インタラクティブモードで起動
-node dist/mcp-debug/cli.js src/mcp/server.ts --interactive
+node dist/mcp-debug/cli.js dist/mcp/server.js --interactive
 
 # 利用可能なコマンド（プロンプトで入力）
 status          # ターゲットサーバーの状態確認
@@ -304,7 +304,7 @@ echo 'CTRL:logs:clear' | node dist/mcp-debug/test/echo-server.js
 
 ```bash
 # 1. 自動リロード付きでサーバー起動
-node dist/mcp-debug/cli.js src/mcp/server.ts --debug --auto-reload --interactive
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload --interactive
 
 # 2. インタラクティブモードで開発・テスト
 > status              # 現在の状態確認
@@ -471,7 +471,7 @@ MCPツールとして `debug_logs` を追加することで、Claude Code から
 
 ```bash
 # ステップ1: インタラクティブモードでmcp-debug CLI起動
-node dist/mcp-debug/cli.js src/mcp/server.ts --debug --interactive
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --interactive
 
 # ステップ2: インタラクティブコマンドでサーバー制御
 > status                    # サーバー状態確認
@@ -484,7 +484,7 @@ node dist/mcp-debug/cli.js src/mcp/server.ts --debug --interactive
 
 ```bash
 # ファイル変更時に自動リロードでデバッグ
-node dist/mcp-debug/cli.js src/mcp/server.ts --debug --auto-reload --watch-path ./src
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload --watch-path ./src
 
 # ソースファイル変更 → 自動リロード → すぐにテスト
 # 開発効率が大幅に向上
