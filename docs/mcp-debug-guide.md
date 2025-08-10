@@ -36,11 +36,11 @@ MCPデバッグ環境は以下の機能を提供します：
 # 基本的な使用方法
 node dist/mcp-debug/cli.js <target-server-file> [options] [-- <child-options>...]
 
-# COEIRO OperatorのMCPサーバーをデバッグ
-node dist/mcp-debug/cli.js dist/mcp/server.js --debug --interactive
+# COEIRO OperatorのMCPサーバーをデバッグ（インタラクティブモード）
+node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
 
 # 自動リロード機能付きで起動
-node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload
+node dist/mcp-debug/cli.js --auto-reload dist/mcp/server.js -- --debug
 
 # 子プロセスにオプションを渡す（'--'で区切り）
 node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js -- --debug
@@ -77,8 +77,11 @@ node dist/mcp-debug/cli.js --timeout 10000 echo-server.js -- --timeout 5000
 ### インタラクティブモードでの制御
 
 ```bash
-# インタラクティブモードで起動
-node dist/mcp-debug/cli.js dist/mcp/server.js --interactive
+# インタラクティブモードで起動（子プロセスはデバッグモードなし）
+node dist/mcp-debug/cli.js --interactive dist/mcp/server.js
+
+# または子プロセスでもデバッグモード有効
+node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
 
 # 利用可能なコマンド（プロンプトで入力）
 status          # ターゲットサーバーの状態確認
@@ -339,7 +342,7 @@ echo 'CTRL:logs:clear' | node dist/mcp-debug/test/echo-server.js
 
 ```bash
 # 1. 自動リロード付きでサーバー起動
-node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload --interactive
+node dist/mcp-debug/cli.js --auto-reload --interactive dist/mcp/server.js -- --debug
 
 # 2. インタラクティブモードで開発・テスト
 > status              # 現在の状態確認
@@ -516,7 +519,7 @@ MCPツールとして `debug_logs` を追加することで、Claude Code から
 
 ```bash
 # ステップ1: インタラクティブモードでmcp-debug CLI起動
-node dist/mcp-debug/cli.js dist/mcp/server.js --debug --interactive
+node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
 
 # ステップ2: インタラクティブコマンドでサーバー制御
 > status                    # サーバー状態確認
