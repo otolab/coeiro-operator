@@ -123,7 +123,36 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments"
 
 #### MCP-Debug環境を使った高度なテスト
 
-mcp-debug環境では、テスト用設定ファイルを使用して特定の動作を検証できます：
+mcp-debug環境は、MCPサーバーの包括的なデバッグ・テスト機能を提供します。
+
+##### mcp-debug CLIの使用方法
+
+本来の設計では、以下のようにターゲットサーバーを指定してデバッグします：
+
+```bash
+# 理想的な使用方法（設計通り）
+node dist/mcp-debug/cli.js <target-server-file> [options]
+
+# 例：COEIRO OperatorのMCPサーバーをデバッグ
+node dist/mcp-debug/cli.js src/mcp/server.ts --debug --auto-reload
+node dist/mcp-debug/cli.js dist/mcp/server.js --interactive
+
+# 利用可能なオプション
+--debug, -d              # デバッグモード（詳細ログ）
+--auto-reload, -r        # ファイル変更時自動リロード
+--watch-path <path>      # 監視するパス
+--interactive, -i        # インタラクティブモード
+```
+
+**インタラクティブモードでの制御コマンド：**
+- `status` → `CTRL:target:status` - ターゲットサーバー状態確認
+- `restart` → `CTRL:target:restart` - ターゲットサーバー再起動
+- `help` → `CTRL:help` - コマンドヘルプ表示
+- `exit/quit/q` - CLI終了
+
+##### 現在利用可能な代替手法
+
+mcp-debug環境では、以下の方法でテスト用設定ファイルを使用して特定の動作を検証できます：
 
 ##### 設定ファイルを使った動作テスト
 ```bash

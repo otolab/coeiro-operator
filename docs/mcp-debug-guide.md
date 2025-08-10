@@ -6,11 +6,57 @@ MCPサーバーの開発・デバッグを効率化するための統合デバ�
 
 MCPデバッグ環境は以下の機能を提供します：
 
+- **mcp-debug CLI** - ターゲットサーバー制御・リロード機能
 - **制御コマンド処理** - `CTRL:` プレフィックスでのサーバー制御
 - **出力チャネル分離** - MCP/Control/Debug/Error出力の分離
 - **ログ蓄積機能** - デバッグ用ログの蓄積と取得
 - **Echo Back MCPサーバー** - テスト用のエコーバックサーバー
 - **統合テストシステム** - 自動化されたテストスイート
+
+## mcp-debug CLIの使用方法
+
+### 基本的な使用方法
+
+```bash
+# mcp-debug CLIを使ってターゲットサーバーをデバッグ
+node dist/mcp-debug/cli.js <target-server-file> [options]
+
+# COEIRO OperatorのMCPサーバーをデバッグ
+node dist/mcp-debug/cli.js src/mcp/server.ts --debug --interactive
+
+# 自動リロード機能付きで起動
+node dist/mcp-debug/cli.js dist/mcp/server.js --debug --auto-reload
+```
+
+### オプション
+
+| オプション | 説明 |
+|-----------|------|
+| `--debug, -d` | デバッグモード（詳細ログ出力） |
+| `--auto-reload, -r` | ファイル変更時の自動リロード |
+| `--watch-path <path>` | 監視するパス（デフォルト：サーバーファイルのディレクトリ） |
+| `--interactive, -i` | インタラクティブモード |
+| `--help, -h` | ヘルプ表示 |
+
+### インタラクティブモードでの制御
+
+```bash
+# インタラクティブモードで起動
+node dist/mcp-debug/cli.js src/mcp/server.ts --interactive
+
+# 利用可能なコマンド（プロンプトで入力）
+status          # ターゲットサーバーの状態確認
+restart         # ターゲットサーバーの再起動
+help           # 全コマンドのヘルプ
+clear          # 画面クリア
+exit/quit/q    # CLI終了
+
+# 制御コマンド直接実行
+CTRL:target:status      # サーバー状態詳細
+CTRL:target:restart     # サーバー再起動
+CTRL:target:reload      # リロード＋再起動
+CTRL:logs:stats        # ログ統計
+```
 
 ## セットアップ
 
@@ -254,7 +300,23 @@ echo 'CTRL:logs:clear' | node dist/mcp-debug/test/echo-server.js
 
 ## 開発フロー
 
-### 1. 新機能開発時
+### 1. mcp-debug CLIを使った新機能開発（推奨）
+
+```bash
+# 1. 自動リロード付きでサーバー起動
+node dist/mcp-debug/cli.js src/mcp/server.ts --debug --auto-reload --interactive
+
+# 2. インタラクティブモードで開発・テスト
+> status              # 現在の状態確認
+> restart             # 変更後の再起動
+> CTRL:logs:stats     # ログ統計確認
+> exit                # 終了
+
+# 3. ファイル変更時は自動的にリロード
+# → コード修正 → 自動リロード → すぐにテスト可能
+```
+
+### 2. Echo Backサーバーを使った基本動作確認
 
 ```bash
 # 1. Echo Back サーバーで基本動作確認
@@ -267,13 +329,14 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments"
 node dist/mcp-debug/test/integration.test.js
 ```
 
-### 2. デバッグ時
+### 3. 従来のデバッグ手法
 
 ```bash
 # デバッグモードで詳細ログを確認
-node dist/mcp-debug/test/echo-server.js --debug
+node dist/mcp/server.js --debug
 
-# 制御コマンドでリアルタイム状態確認
+# 制御コマンドでリアルタイム状態確認（非対応）
+# Echo Backサーバーで代替：
 echo 'CTRL:logs:get:limit=10' | node dist/mcp-debug/test/echo-server.js
 ```
 
@@ -402,7 +465,32 @@ MCPツールとして `debug_logs` を追加することで、Claude Code から
 
 ## 実用的なデバッグワークフロー
 
-### 1. 音声合成デバッグのワークフロー
+### 1. mcp-debug CLIを使ったデバッグ
+
+#### インタラクティブデバッグ（推奨）
+
+```bash
+# ステップ1: インタラクティブモードでmcp-debug CLI起動
+node dist/mcp-debug/cli.js src/mcp/server.ts --debug --interactive
+
+# ステップ2: インタラクティブコマンドでサーバー制御
+> status                    # サーバー状態確認
+> CTRL:target:restart      # サーバー再起動
+> CTRL:logs:stats         # ログ統計表示
+> exit                     # CLI終了
+```
+
+#### 自動リロード開発ワークフロー
+
+```bash
+# ファイル変更時に自動リロードでデバッグ
+node dist/mcp-debug/cli.js src/mcp/server.ts --debug --auto-reload --watch-path ./src
+
+# ソースファイル変更 → 自動リロード → すぐにテスト
+# 開発効率が大幅に向上
+```
+
+### 2. 従来の音声合成デバッグワークフロー
 
 ```bash
 # ステップ1: デバッグモードでMCPサーバー起動

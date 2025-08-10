@@ -38,7 +38,7 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 
 ### 開発環境
 - **[development-tips.md](development-tips.md)** - 開発テクニック・Tips集
-- **[mcp-debug-guide.md](mcp-debug-guide.md)** - MCPデバッグ環境ガイド
+- **[mcp-debug-guide.md](mcp-debug-guide.md)** - MCPデバッグ環境完全ガイド（CLI・自動リロード・制御コマンド）
 - **[mcp-debug-testing.md](mcp-debug-testing.md)** - MCPデバッグテスト
 
 ### テスト・品質管理
