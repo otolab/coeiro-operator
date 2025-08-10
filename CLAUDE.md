@@ -71,14 +71,19 @@ node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
 - `docs/test-quality-guidelines.md` - テスト品質の基本原則
 
 ### API・リファレンス
-- `docs/api-reference.md` - 完全APIリファレンス
 - `docs/CHARACTERS.md` - オペレータキャラクター詳細
 
 ## 🔍 開発フロー
 
 1. コード修正
 2. `npm run build`
-3. 直接MCPサーバー実行でテスト（上記コマンド）
-4. 必要に応じてClaude Code完全再起動
+3. MCPサーバー再起動（上記コマンド）  
+4. Claude Codeでツール動作確認
+
+### MCPサーバー再起動コマンド
+```bash
+claude mcp remove coeiro-operator -s local
+claude mcp add coeiro-operator ./dist/mcp/server.js
+```
 
 **詳細**: `docs/development-tips.md#推奨開発フロー` を参照
