@@ -167,8 +167,8 @@ operator-manager clear                               # 全クリア
 ### 音声処理パイプライン
 
 ```
-COEIROINK API → WAV → PCM → リサンプリング → フィルタリング → Speaker出力
-    (24kHz)                   (24→48kHz)      (ローパス24kHz)     (48kHz)
+COEIROINK API → WAV → PCM → リサンプリング → ローパスフィルター → Speaker出力
+    (24kHz)                   (24→48kHz)      (24kHz カットオフ)     (48kHz)
 ```
 
 ### 並行チャンク生成システム
