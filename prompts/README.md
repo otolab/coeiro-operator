@@ -14,6 +14,9 @@ Claude向けシステムプロンプトとガイドファイルのインデッ�
 - **[OPERATOR_SYSTEM.md](OPERATOR_SYSTEM.md)** - オペレータシステム仕様
 - **[UPDATE_CHARACTER_SETTINGS.md](UPDATE_CHARACTER_SETTINGS.md)** - キャラクター設定更新ガイド
 
+### ドキュメント管理
+- **[docs-code-sync.md](docs-code-sync.md)** - ドキュメントとコードの同期管理原則
+
 ## 🎯 使用方法
 
 これらのファイルは開発・運用時の参照用です：
