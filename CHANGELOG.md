@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **一時ファイル不要**: メモリ上でのPCMデータ処理
 
 #### テキスト分割モード制御
-- **5段階の分割モード**: `none`, `small`, `medium`, `large`, `auto`
+- **5段階の分割モード**: `punctuation`, `none`, `small`, `medium`, `large`
 - **分割なしモード**: 長文を一度に処理して自然な音声を実現
 - **レイテンシ最適化**: 用途に応じた分割サイズ選択
 - **オーバーラップ制御**: 音切れ防止の自動調整
