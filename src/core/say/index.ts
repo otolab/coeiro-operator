@@ -282,29 +282,40 @@ export class SayCoeiroink {
     }
 
 
-    // 内部用の実際の音声合成処理
-    async synthesizeTextInternal(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
-        logger.info(`音声合成開始: テキスト="${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
-        
-        const {
-            voice = null,
-            rate = this.config.voice?.rate || 200,
-            outputFile = null,
-            style = null,
-            chunkMode = this.config.audio?.splitMode || 'punctuation',
-            bufferSize = this.config.audio?.bufferSize || BUFFER_SIZES.DEFAULT,
-            allowFallback = true  // デフォルトフォールバックを許可するかどうか
-        } = options;
+    // オプション解析とデバッグログ出力
+    private resolveAndLogOptions(options: SynthesizeOptions): {
+        voice: string | OperatorVoice | null;
+        rate: number;
+        outputFile: string | null;
+        style: string | null;
+        chunkMode: any;
+        bufferSize: number;
+        allowFallback: boolean;
+    } {
+        const resolved = {
+            voice: options.voice || null,
+            rate: options.rate || this.config.voice?.rate || 200,
+            outputFile: options.outputFile || null,
+            style: options.style || null,
+            chunkMode: options.chunkMode || this.config.audio?.splitMode || 'punctuation',
+            bufferSize: options.bufferSize || this.config.audio?.bufferSize || BUFFER_SIZES.DEFAULT,
+            allowFallback: options.allowFallback ?? true
+        };
         
         logger.debug("=== SYNTHESIZE_TEXT_INTERNAL DEBUG ===");
         logger.debug(`Resolved options:`);
-        logger.debug(`  chunkMode: ${chunkMode} (from: ${options.chunkMode ? 'options' : 'config.audio.splitMode fallback'})`);
+        logger.debug(`  chunkMode: ${resolved.chunkMode} (from: ${options.chunkMode ? 'options' : 'config.audio.splitMode fallback'})`);
         logger.debug(`  config.audio.splitMode: ${this.config.audio?.splitMode || 'undefined'}`);
-        logger.debug(`  bufferSize: ${bufferSize}`);
-        logger.debug(`  allowFallback: ${allowFallback}`);
+        logger.debug(`  bufferSize: ${resolved.bufferSize}`);
+        logger.debug(`  allowFallback: ${resolved.allowFallback}`);
         
-        // 音声選択の優先順位処理
+        return resolved;
+    }
+
+    // 音声選択の優先順位処理とフォールバック
+    private async selectVoiceWithFallback(voice: string | OperatorVoice | null, allowFallback: boolean): Promise<string | OperatorVoice> {
         let selectedVoice: string | OperatorVoice | null = voice;
+        
         if (!selectedVoice) {
             // 1. operator-manager から現在のオペレータの音声を取得
             const operatorVoice = await this.getCurrentOperatorVoice();
@@ -329,72 +340,123 @@ export class SayCoeiroink {
             throw new Error('音声が指定されておらず、オペレータも割り当てられていません');
         }
 
-        // スタイル明示的指定の処理
-        if (style && typeof selectedVoice === 'object' && selectedVoice.character) {
-            const character = selectedVoice.character;
-            const specifiedStyle = Object.entries(character.available_styles || {})
-                .find(([styleId, styleData]) => styleId === style && !styleData.disabled);
-            
-            if (specifiedStyle) {
-                // 指定されたスタイルが有効な場合、一時的にキャラクターの設定を上書き
-                const modifiedCharacter = {
-                    ...character,
-                    style_selection: 'specified',
-                    default_style: style
-                };
-                selectedVoice = {
-                    ...selectedVoice,
-                    character: modifiedCharacter
-                };
-            } else {
-                logger.warn(`指定されたスタイル '${style}' は利用できません。デフォルトスタイルを使用します。`);
-            }
+        return selectedVoice;
+    }
+
+    // スタイル明示的指定の処理
+    private applyStyleIfSpecified(voice: string | OperatorVoice, style: string | null): string | OperatorVoice {
+        if (!style || typeof voice !== 'object' || !voice.character) {
+            return voice;
         }
 
-        // サーバー接続確認
+        const character = voice.character;
+        const specifiedStyle = Object.entries(character.available_styles || {})
+            .find(([styleId, styleData]) => styleId === style && !styleData.disabled);
+        
+        if (specifiedStyle) {
+            // 指定されたスタイルが有効な場合、一時的にキャラクターの設定を上書き
+            const modifiedCharacter = {
+                ...character,
+                style_selection: 'specified',
+                default_style: style
+            };
+            return {
+                ...voice,
+                character: modifiedCharacter
+            };
+        } else {
+            logger.warn(`指定されたスタイル '${style}' は利用できません。デフォルトスタイルを使用します。`);
+            return voice;
+        }
+    }
+
+    // サーバー接続確認
+    private async validateServerConnection(): Promise<void> {
         if (!(await this.checkServerConnection())) {
             const host = this.config.connection?.host || 'localhost';
             const port = this.config.connection?.port || '50032';
             logger.error(`COEIROINKサーバーに接続できません: http://${host}:${port}`);
             throw new Error(`Cannot connect to COEIROINK server (http://${host}:${port})`);
         }
+    }
 
-        const speed = this.convertRateToSpeed(rate);
+    // ファイル出力処理
+    private async processFileOutput(
+        text: string, 
+        voice: string | OperatorVoice, 
+        speed: number, 
+        chunkMode: any, 
+        outputFile: string
+    ): Promise<SynthesizeResult> {
+        logger.info(`ファイル出力モード: ${outputFile}`);
         
-        if (outputFile) {
-            logger.info(`ファイル出力モード: ${outputFile}`);
-            // ファイル出力モード：ストリーミング合成してファイルに保存
-            const audioChunks: ArrayBuffer[] = [];
-            for await (const audioResult of this.audioSynthesizer.synthesizeStream(text, selectedVoice, speed, chunkMode)) {
-                audioChunks.push(audioResult.audioBuffer);
-            }
-            
-            // 全チャンクを結合
-            const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
-            const combinedBuffer = new ArrayBuffer(totalLength);
-            const view = new Uint8Array(combinedBuffer);
-            let offset = 0;
-            
-            for (const chunk of audioChunks) {
-                view.set(new Uint8Array(chunk), offset);
-                offset += chunk.byteLength;
-            }
-            
-            await this.saveAudio(combinedBuffer, outputFile);
-            return { success: true, outputFile, mode: 'file' };
+        // ストリーミング合成してファイルに保存
+        const audioChunks: ArrayBuffer[] = [];
+        for await (const audioResult of this.audioSynthesizer.synthesizeStream(text, voice, speed, chunkMode)) {
+            audioChunks.push(audioResult.audioBuffer);
+        }
+        
+        // 全チャンクを結合
+        const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
+        const combinedBuffer = new ArrayBuffer(totalLength);
+        const view = new Uint8Array(combinedBuffer);
+        let offset = 0;
+        
+        for (const chunk of audioChunks) {
+            view.set(new Uint8Array(chunk), offset);
+            offset += chunk.byteLength;
+        }
+        
+        await this.saveAudio(combinedBuffer, outputFile);
+        return { success: true, outputFile, mode: 'file' };
+    }
+
+    // ストリーミング再生処理
+    private async processStreamingOutput(
+        text: string, 
+        voice: string | OperatorVoice, 
+        speed: number, 
+        chunkMode: any, 
+        bufferSize: number
+    ): Promise<SynthesizeResult> {
+        logger.info('ストリーミング再生モード');
+        
+        // 統一されたストリーミング再生
+        if (!(await this.initializeAudioPlayer())) {
+            logger.error('音声プレーヤーの初期化に失敗');
+            throw new Error('音声プレーヤーの初期化に失敗しました');
+        }
+        
+        logger.info('音声ストリーミング再生開始...');
+        logger.debug(`About to call streamSynthesizeAndPlay with chunkMode: ${chunkMode}`);
+        await this.streamSynthesizeAndPlay(text, voice, speed, chunkMode, bufferSize);
+        logger.info('音声ストリーミング再生完了');
+        return { success: true, mode: 'streaming' };
+    }
+
+    // 内部用の実際の音声合成処理（分割後のメインメソッド）
+    async synthesizeTextInternal(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+        logger.info(`音声合成開始: テキスト="${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
+        
+        // オプション解析とデバッグログ出力
+        const resolvedOptions = this.resolveAndLogOptions(options);
+        
+        // 音声選択処理
+        const selectedVoice = await this.selectVoiceWithFallback(resolvedOptions.voice, resolvedOptions.allowFallback);
+        
+        // スタイル処理
+        const finalVoice = this.applyStyleIfSpecified(selectedVoice, resolvedOptions.style);
+        
+        // サーバー接続確認
+        await this.validateServerConnection();
+        
+        const speed = this.convertRateToSpeed(resolvedOptions.rate);
+        
+        // 出力モードに応じた処理
+        if (resolvedOptions.outputFile) {
+            return await this.processFileOutput(text, finalVoice, speed, resolvedOptions.chunkMode, resolvedOptions.outputFile);
         } else {
-            logger.info('ストリーミング再生モード');
-            // 統一されたストリーミング再生
-            if (!(await this.initializeAudioPlayer())) {
-                logger.error('音声プレーヤーの初期化に失敗');
-                throw new Error('音声プレーヤーの初期化に失敗しました');
-            }
-            
-            logger.info('音声ストリーミング再生開始...');
-            logger.debug(`About to call streamSynthesizeAndPlay with chunkMode: ${chunkMode}`);
-            await this.streamSynthesizeAndPlay(text, selectedVoice, speed, chunkMode, bufferSize);
-            logger.info('音声ストリーミング再生完了');
-            return { success: true, mode: 'streaming' };
+            return await this.processStreamingOutput(text, finalVoice, speed, resolvedOptions.chunkMode, resolvedOptions.bufferSize);
         }
     }
 
