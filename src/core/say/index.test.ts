@@ -11,14 +11,59 @@ import { tmpdir } from 'os';
 // モックの設定
 vi.mock('fs/promises');
 vi.mock('../operator/index.js', () => ({
-  getOperatorManager: vi.fn(() => ({
-    getCurrentOperator: vi.fn(() => null),
-    getCharacterConfig: vi.fn(() => Promise.resolve(null))
+  OperatorManager: vi.fn().mockImplementation(() => ({
+    initialize: vi.fn().mockResolvedValue(undefined),
+    buildDynamicConfig: vi.fn().mockResolvedValue(undefined),
+    showCurrentOperator: vi.fn().mockResolvedValue({
+      operatorId: null,
+      characterName: null,
+      currentStyle: null,
+      message: 'オペレータが割り当てられていません'
+    }),
+    getCharacterInfo: vi.fn().mockResolvedValue(null),
+    assignOperator: vi.fn().mockResolvedValue(undefined),
+    releaseOperator: vi.fn().mockResolvedValue(undefined)
+  })),
+  default: vi.fn().mockImplementation(() => ({
+    initialize: vi.fn().mockResolvedValue(undefined),
+    buildDynamicConfig: vi.fn().mockResolvedValue(undefined),
+    showCurrentOperator: vi.fn().mockResolvedValue({
+      operatorId: null,
+      characterName: null,
+      currentStyle: null,
+      message: 'オペレータが割り当てられていません'
+    }),
+    getCharacterInfo: vi.fn().mockResolvedValue(null),
+    assignOperator: vi.fn().mockResolvedValue(undefined),
+    releaseOperator: vi.fn().mockResolvedValue(undefined)
   }))
 }));
-vi.mock('./speech-queue.js');
-vi.mock('./audio-player.js');
-vi.mock('./audio-synthesizer.js');
+vi.mock('./speech-queue.js', () => ({
+  SpeechQueue: vi.fn().mockImplementation(() => ({
+    enqueue: vi.fn().mockResolvedValue(undefined),
+    getStatus: vi.fn().mockReturnValue({ queueLength: 0, isProcessing: false }),
+    clear: vi.fn().mockReturnValue(undefined)
+  }))
+}));
+vi.mock('./audio-player.js', () => ({
+  AudioPlayer: vi.fn().mockImplementation(() => ({
+    initialize: vi.fn().mockReturnValue(true),
+    playAudioStream: vi.fn().mockResolvedValue(undefined),
+    applyCrossfade: vi.fn().mockReturnValue(new Uint8Array(0))
+  }))
+}));
+vi.mock('./audio-synthesizer.js', () => ({
+  AudioSynthesizer: vi.fn().mockImplementation(() => ({
+    listVoices: vi.fn().mockResolvedValue([]),
+    synthesizeChunk: vi.fn().mockResolvedValue({
+      chunk: { text: 'test', index: 0, isFirst: true, isLast: true, overlap: 0 },
+      audioData: new ArrayBuffer(1024)
+    }),
+    synthesizeStream: vi.fn().mockReturnValue(async function* () { yield { chunk: { text: 'test', index: 0, isFirst: true, isLast: true, overlap: 0 }, audioData: new ArrayBuffer(1024) }; }),
+    convertRateToSpeed: vi.fn().mockReturnValue(1.0),
+    splitTextIntoChunks: vi.fn().mockReturnValue([{ text: 'test', index: 0, isFirst: true, isLast: true, overlap: 0 }])
+  }))
+}));
 
 const mockReadFile = readFile as anyedFunction<typeof readFile>;
 const mockAccess = access as anyedFunction<typeof access>;
@@ -34,10 +79,17 @@ describe('loadConfig', () => {
 
     test('設定ファイルが存在する場合、正しく読み込むこと', async () => {
         const mockConfig = {
-            host: 'custom-host',
-            port: '9999',
-            rate: 300,
-            voice_id: 'custom-voice'
+            connection: {
+                host: 'custom-host',
+                port: '9999'
+            },
+            voice: {
+                rate: 300,
+                default_voice_id: 'custom-voice'
+            },
+            audio: {
+                latencyMode: 'quality'
+            }
         };
 
         mockAccess.mockResolvedValueOnce(undefined);
@@ -45,12 +97,19 @@ describe('loadConfig', () => {
 
         const config = await loadConfig();
 
-        expect(config).toEqual({
-            host: 'custom-host',
-            port: '9999',
-            rate: 300,
-            voice_id: 'custom-voice'
-        });
+        expect(config).toEqual(expect.objectContaining({
+            connection: {
+                host: 'custom-host',
+                port: '9999'
+            },
+            voice: {
+                rate: 300,
+                default_voice_id: 'custom-voice'
+            },
+            audio: expect.objectContaining({
+                latencyMode: 'quality'
+            })
+        }));
     });
 
     test('設定ファイルが存在しない場合、デフォルト設定を返すこと', async () => {
@@ -108,7 +167,15 @@ describe('loadConfig', () => {
 
     test('カスタム設定ファイルパスを指定できること', async () => {
         const customPath = '/custom/path/config.json';
-        const mockConfig = { host: 'test', port: '8080', rate: 150 };
+        const mockConfig = {
+            connection: {
+                host: 'test',
+                port: '8080'
+            },
+            voice: {
+                rate: 150
+            }
+        };
 
         mockAccess.mockResolvedValueOnce(undefined);
         mockReadFile.mockResolvedValueOnce(JSON.stringify(mockConfig));
@@ -117,22 +184,41 @@ describe('loadConfig', () => {
 
         expect(mockAccess).toHaveBeenCalledWith(customPath, expect.any(Number));
         expect(mockReadFile).toHaveBeenCalledWith(customPath, 'utf8');
-        expect(config).toEqual(expect.objectContaining(mockConfig));
+        expect(config).toEqual(expect.objectContaining({
+            connection: {
+                host: 'test',
+                port: '8080'
+            },
+            voice: expect.objectContaining({
+                rate: 150
+            })
+        }));
     });
 
     test('部分的な設定ファイルでもデフォルト値とマージされること', async () => {
-        const partialConfig = { host: 'partial-host' };
+        const partialConfig = {
+            connection: {
+                host: 'partial-host'
+            }
+        };
 
         mockAccess.mockResolvedValueOnce(undefined);
         mockReadFile.mockResolvedValueOnce(JSON.stringify(partialConfig));
 
         const config = await loadConfig();
 
-        expect(config).toEqual({
-            host: 'partial-host',
-            port: '50032',
-            rate: 200
-        });
+        expect(config).toEqual(expect.objectContaining({
+            connection: expect.objectContaining({
+                host: 'partial-host',
+                port: '50032'  // デフォルト値
+            }),
+            voice: expect.objectContaining({
+                rate: 200  // デフォルト値
+            }),
+            audio: expect.objectContaining({
+                latencyMode: 'balanced'  // デフォルト値
+            })
+        }));
     });
 });
 
