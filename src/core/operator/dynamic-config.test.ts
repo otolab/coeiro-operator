@@ -63,8 +63,12 @@ describe('DynamicConfigManagement', () => {
 
             const config = await configManager.buildDynamicConfig();
 
+            // デバッグ情報を出力
+            console.log('Generated config:', JSON.stringify(config, null, 2));
+            console.log('Characters keys:', Object.keys(config.characters || {}));
+
             // つくよみちゃんの設定確認
-            expect(config.characters.tsukuyomi).toBeDefined();
+            expect(config.characters?.tsukuyomi).toBeDefined();
             expect(config.characters.tsukuyomi.voice_id).toBe('uuid-tsukuyomi');
             expect(config.characters.tsukuyomi.available_styles.normal).toBeDefined();
             expect(config.characters.tsukuyomi.available_styles.normal.style_id).toBe(0);
