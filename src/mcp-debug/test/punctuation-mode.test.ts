@@ -5,6 +5,7 @@
  * chunkModeが未指定時の句読点分割モード機能確認
  */
 
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs/promises';

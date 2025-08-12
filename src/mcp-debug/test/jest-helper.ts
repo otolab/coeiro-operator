@@ -1,8 +1,9 @@
 /**
- * Jest Test Helper for MCP Debug Environment
- * MCPデバッグ環境のJestテストヘルパー
+ * Vitest Test Helper for MCP Debug Environment
+ * MCPデバッグ環境のVitestテストヘルパー
  */
 
+import { beforeEach, afterEach } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 
@@ -318,7 +319,7 @@ export async function executeNodeScript(script: string, cwd?: string): Promise<a
 }
 
 /**
- * Jest beforeEach/afterEach 用のセットアップヘルパー
+ * Vitest beforeEach/afterEach 用のセットアップヘルパー
  */
 export function setupMcpTest(config?: McpTestConfig) {
   let helper: McpTestHelper;

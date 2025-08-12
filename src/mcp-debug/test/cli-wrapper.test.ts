@@ -1,10 +1,11 @@
 /**
- * Jest Tests for MCP Debug CLI Wrapper
+ * Vitest Tests for MCP Debug CLI Wrapper
  * MCPデバッグCLIラッパーのテスト
  * 
  * 新機能：ターゲットサーバー統合機能の単体テスト
  */
 
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import { promises as fs } from 'fs';

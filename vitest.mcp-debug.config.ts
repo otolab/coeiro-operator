@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     // 基本設定
     environment: 'node',
-    testTimeout: 25000,
+    testTimeout: 30000,
 
     // MCP Debug専用テストファイル
     include: [

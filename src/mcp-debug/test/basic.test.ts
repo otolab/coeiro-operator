@@ -3,6 +3,7 @@
  * MCP Debug Environment Basic Tests
  */
 
+import { describe, test, expect } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 

@@ -10,6 +10,7 @@
  * 5. エラーハンドリングが適切に動作する
  */
 
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 
