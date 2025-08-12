@@ -8,12 +8,20 @@ import type { Config, AudioConfig } from './types.js';
 import Speaker from 'speaker';
 
 // モックの設定
-vi.mock('speaker');
-vi.mock('echogarden', () => ({}));
-vi.mock('dsp.js', () => ({}));
-vi.mock('node-libsamplerate', () => ({}));
+vi.mock('speaker', () => ({
+    default: vi.fn()
+}));
+vi.mock('echogarden', () => ({
+    default: {}
+}));
+vi.mock('dsp.js', () => ({
+    default: {}
+}));
+vi.mock('node-libsamplerate', () => ({
+    default: {}
+}));
 
-const MockSpeaker = Speaker as jest.MockedClass<typeof Speaker>;
+const MockSpeaker = Speaker as any;
 
 describe('latencyModeプリセット機能', () => {
     beforeEach(() => {

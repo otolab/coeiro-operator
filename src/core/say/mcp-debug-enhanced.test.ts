@@ -1,5 +1,4 @@
 /**
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * COEIRO Operator E2E Tests with MCP Debug Integration
  * mcp-debug統合機能を活用したCOEIRO Operatorのe2eテスト
  * 
@@ -7,6 +6,7 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * mcp-debugの統合機能を使って制御・テストします
  */
 
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 

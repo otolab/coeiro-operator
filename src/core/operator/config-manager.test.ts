@@ -185,7 +185,7 @@ describe('ConfigManager', () => {
                 }
             ];
 
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as any).mockResolvedValueOnce({
                 ok: true,
                 json: async () => mockResponse
             });
@@ -196,7 +196,7 @@ describe('ConfigManager', () => {
         });
 
         test('COEIROINKサーバーエラー時もconfig構築成功', async () => {
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Connection failed'));
+            (global.fetch as any).mockRejectedValueOnce(new Error('Connection failed'));
 
             // エラーが投げられないことを確認
             const config = await configManager.buildDynamicConfig();
@@ -211,7 +211,7 @@ describe('ConfigManager', () => {
             const configFile = join(tempDir, 'coeiroink-config.json');
             await writeFile(configFile, JSON.stringify(customConfig), 'utf8');
 
-            (global.fetch as jest.Mock).mockResolvedValueOnce({
+            (global.fetch as any).mockResolvedValueOnce({
                 ok: true,
                 json: async () => []
             });
@@ -225,7 +225,7 @@ describe('ConfigManager', () => {
     describe('buildDynamicConfig', () => {
         test('音声フォントが利用できない場合は内蔵設定を使用', async () => {
             // VoiceProviderが空配列を返すようにモック
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('No server'));
+            (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
 
             const config = await configManager.buildDynamicConfig();
 
@@ -243,7 +243,7 @@ describe('ConfigManager', () => {
             const configFile = join(tempDir, 'operator-config.json');
             await writeFile(configFile, JSON.stringify(userConfig), 'utf8');
 
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('No server'));
+            (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
 
             const config = await configManager.buildDynamicConfig();
 
@@ -252,7 +252,7 @@ describe('ConfigManager', () => {
         });
 
         test('キャッシュが正しく動作', async () => {
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('No server'));
+            (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
 
             // 初回呼び出し
             const config1 = await configManager.buildDynamicConfig();
@@ -264,7 +264,7 @@ describe('ConfigManager', () => {
         });
 
         test('forceRefreshでキャッシュを無視', async () => {
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('No server'));
+            (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
 
             // 初回呼び出し
             await configManager.buildDynamicConfig();
@@ -279,7 +279,7 @@ describe('ConfigManager', () => {
 
     describe('getCharacterConfig', () => {
         test('存在するキャラクターの設定を取得', async () => {
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('No server'));
+            (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
 
             const characterIds = await configManager.getAvailableCharacterIds();
             const firstCharacterId = characterIds[0];
@@ -292,7 +292,7 @@ describe('ConfigManager', () => {
         });
 
         test('存在しないキャラクターの場合エラーを投げる', async () => {
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('No server'));
+            (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
 
             await expect(
                 configManager.getCharacterConfig('non-existent-character')
@@ -302,7 +302,7 @@ describe('ConfigManager', () => {
 
     describe('refreshConfig', () => {
         test('キャッシュが正しくクリアされる', async () => {
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('No server'));
+            (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
 
             // 初回呼び出してキャッシュを作成
             await configManager.buildDynamicConfig();
@@ -311,7 +311,7 @@ describe('ConfigManager', () => {
             configManager.refreshConfig();
 
             // 再度呼び出し（新しいインスタンスが作られるはず）
-            (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('No server'));
+            (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
             await configManager.buildDynamicConfig();
 
             // fetchが2回呼ばれることを確認

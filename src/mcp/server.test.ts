@@ -9,10 +9,10 @@ import type { SynthesizeResult } from '../core/say/types.js';
 vi.mock('../core/say/index.js');
 vi.mock('../core/operator/index.js');
 
-const MockSayCoeiroink = SayCoeiroink as jest.MockedClass<typeof SayCoeiroink>;
+const MockSayCoeiroink = SayCoeiroink as any;
 
 describe('MCP Server allowFallback behavior', () => {
-    let mockSayCoeiroinkInstance: jest.Mocked<SayCoeiroink>;
+    let mockSayCoeiroinkInstance: any;
     
     beforeEach(() => {
         vi.clearAllMocks();

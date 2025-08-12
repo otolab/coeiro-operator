@@ -7,9 +7,24 @@ import type { Config, SynthesizeOptions } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { writeFile, readFile, unlink } from 'fs/promises';
+import Speaker from 'speaker';
 
-// fetchのモック
+// モックの設定
 global.fetch = vi.fn();
+vi.mock('speaker', () => ({
+    default: vi.fn()
+}));
+vi.mock('echogarden', () => ({
+    default: {}
+}));
+vi.mock('dsp.js', () => ({
+    default: {}
+}));
+vi.mock('node-libsamplerate', () => ({
+    default: {}
+}));
+
+const MockSpeaker = Speaker as any;
 
 describe('Say Integration Tests', () => {
     let sayCoeiroink: SayCoeiroink;
@@ -18,13 +33,25 @@ describe('Say Integration Tests', () => {
     beforeEach(async () => {
         tempDir = join(tmpdir(), `say-integration-test-${Date.now()}`);
         
+        // Speakerモックを設定
+        const mockSpeakerInstance = {
+            write: vi.fn(),
+            end: vi.fn(),
+            on: vi.fn((event, callback) => {
+                if (event === 'close') {
+                    setTimeout(callback, 10); // 非同期でcloseイベントを発火
+                }
+            })
+        };
+        MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
+        
         // デフォルト設定を使用（null を渡すとDEFAULT_CONFIGが使用される）
         const config: Config | null = null;
 
         sayCoeiroink = new SayCoeiroink(config);
         
         // COEIROINK サーバーのモック設定
-        (global.fetch as jest.Mock).mockImplementation((url: string) => {
+        (global.fetch as any).mockImplementation((url: string) => {
             if (url.includes('/v1/speakers')) {
                 return Promise.resolve({
                     ok: true,
@@ -42,11 +69,32 @@ describe('Say Integration Tests', () => {
             }
             
             if (url.includes('/v1/synthesis')) {
-                // 模擬音声データ（最小WAVファイル）
-                const mockWavData = new ArrayBuffer(1000);
+                // 模擬音声データ（有効なWAVファイル形式）
+                const buffer = new ArrayBuffer(44 + 1000); // ヘッダー44バイト + データ1000バイト
+                const view = new DataView(buffer);
+                
+                // RIFFヘッダー
+                view.setUint32(0, 0x52494646, false); // "RIFF"
+                view.setUint32(4, buffer.byteLength - 8, true); // ファイルサイズ
+                view.setUint32(8, 0x57415645, false); // "WAVE"
+                
+                // fmtチャンク
+                view.setUint32(12, 0x666d7420, false); // "fmt "
+                view.setUint32(16, 16, true); // chunkサイズ
+                view.setUint16(20, 1, true); // オーディオフォーマット（PCM）
+                view.setUint16(22, 1, true); // チャンネル数
+                view.setUint32(24, 48000, true); // サンプルレート
+                view.setUint32(28, 96000, true); // バイトレート
+                view.setUint16(32, 2, true); // ブロックアライン
+                view.setUint16(34, 16, true); // ビット深度
+                
+                // dataチャンク
+                view.setUint32(36, 0x64617461, false); // "data"
+                view.setUint32(40, 1000, true); // dataサイズ
+                
                 return Promise.resolve({
                     ok: true,
-                    arrayBuffer: async () => mockWavData
+                    arrayBuffer: async () => buffer
                 });
             }
             
@@ -54,6 +102,14 @@ describe('Say Integration Tests', () => {
         });
 
         vi.clearAllMocks();
+        
+        // 一時ディレクトリを作成
+        try {
+            const fs = await import('fs');
+            await fs.promises.mkdir(tempDir, { recursive: true });
+        } catch (error) {
+            // ディレクトリ作成エラーは無視
+        }
     });
 
     afterEach(async () => {
@@ -139,7 +195,7 @@ describe('Say Integration Tests', () => {
     describe('エラー処理統合テスト', () => {
         test('サーバー接続失敗時の適切なエラーハンドリング', async () => {
             // サーバー接続失敗をシミュレート
-            (global.fetch as jest.Mock).mockImplementation(() => 
+            (global.fetch as any).mockImplementation(() => 
                 Promise.reject(new Error('Connection refused'))
             );
 
@@ -153,7 +209,7 @@ describe('Say Integration Tests', () => {
 
         test('音声合成API失敗時の適切なエラーハンドリング', async () => {
             // speakers APIは成功、synthesis APIは失敗
-            (global.fetch as jest.Mock).mockImplementation((url: string) => {
+            (global.fetch as any).mockImplementation((url: string) => {
                 if (url.includes('/v1/speakers')) {
                     return Promise.resolve({
                         ok: true,

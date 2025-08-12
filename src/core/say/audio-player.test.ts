@@ -10,15 +10,26 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 // モックの設定
-vi.mock('speaker');
-vi.mock('fs/promises');
-vi.mock('echogarden', () => ({}));
-vi.mock('dsp.js', () => ({}));
-vi.mock('node-libsamplerate', () => ({}));
+vi.mock('speaker', () => ({
+  default: vi.fn()
+}));
+vi.mock('fs/promises', () => ({
+  readFile: vi.fn(),
+  writeFile: vi.fn()
+}));
+vi.mock('echogarden', () => ({
+  default: {}
+}));
+vi.mock('dsp.js', () => ({
+  default: {}
+}));
+vi.mock('node-libsamplerate', () => ({
+  default: {}
+}));
 
-const MockSpeaker = Speaker as jest.MockedClass<typeof Speaker>;
-const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
-const mockWriteFile = writeFile as jest.MockedFunction<typeof writeFile>;
+const MockSpeaker = Speaker as any;
+const mockReadFile = readFile as any;
+const mockWriteFile = writeFile as any;
 
 describe('AudioPlayer', () => {
     let audioPlayer: AudioPlayer;

@@ -11,7 +11,7 @@ import { join } from 'path';
 vi.mock('fs/promises');
 vi.mock('../core/say/index.js');
 
-const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
+const mockReadFile = readFile as anyedFunction<typeof readFile>;
 
 // SayCoeiroinkクラスのモック
 const MockSayCoeiroink = require('./index.js').SayCoeiroink;

@@ -37,6 +37,20 @@ describe('OperatorStateManager', () => {
     });
 
     afterEach(async () => {
+        // 現在のセッションのオペレータを解放
+        try {
+            await stateManager.silentReleaseCurrentOperator();
+        } catch (e) {
+            // エラーは無視（既に解放済みの場合）
+        }
+        
+        // 全オペレータを強制的にクリア
+        try {
+            await stateManager.clearAllOperators();
+        } catch (e) {
+            // エラーは無視
+        }
+        
         // 一時ディレクトリをクリーンアップ
         const fs = await import('fs');
         await fs.promises.rm(tempDir, { recursive: true, force: true });
@@ -67,32 +81,37 @@ describe('OperatorStateManager', () => {
 
     describe('reserveOperator', () => {
         test('利用可能なオペレータを正常に予約する', async () => {
-            const result = await stateManager.reserveOperator('operator1');
+            const testOperatorId = `operator-${Date.now()}-1`;
+            const result = await stateManager.reserveOperator(testOperatorId);
             expect(result).toBe(true);
             
             // 現在のオペレータIDを確認
             const currentOperatorId = await stateManager.getCurrentOperatorId();
-            expect(currentOperatorId).toBe('operator1');
+            expect(currentOperatorId).toBe(testOperatorId);
         });
 
         test('既に利用中のオペレータの予約を拒否する', async () => {
+            const testOperatorId = `operator-${Date.now()}-2`;
+            
             // まず別のStateManagerで同じオペレータを予約
             const otherStateManager = new OperatorStateManager('other-session', fileManager);
             await otherStateManager.initialize(configManager);
-            await otherStateManager.reserveOperator('operator1');
+            await otherStateManager.reserveOperator(testOperatorId);
             
             // 今のセッションで同じオペレータを予約しようとすると失敗
-            await expect(stateManager.reserveOperator('operator1')).rejects.toThrow('オペレータ operator1 は既に利用中です');
+            await expect(stateManager.reserveOperator(testOperatorId)).rejects.toThrow(`オペレータ ${testOperatorId} は既に利用中です`);
         });
     });
 
     describe('releaseOperator', () => {
         test('予約されたオペレータを正常に返却する', async () => {
+            const testOperatorId = `operator-${Date.now()}-3`;
+            
             // 事前にオペレータを予約
-            await stateManager.reserveOperator('operator1');
+            await stateManager.reserveOperator(testOperatorId);
             
             const result = await stateManager.releaseOperator();
-            expect(result.operatorId).toBe('operator1');
+            expect(result.operatorId).toBe(testOperatorId);
             expect(result.success).toBe(true);
             
             // 現在のオペレータが解放されていることを確認
@@ -107,10 +126,11 @@ describe('OperatorStateManager', () => {
 
     describe('getCurrentOperatorId', () => {
         test('現在のオペレータIDを取得する', async () => {
-            await stateManager.reserveOperator('operator1');
+            const testOperatorId = `operator-${Date.now()}-4`;
+            await stateManager.reserveOperator(testOperatorId);
             
             const currentId = await stateManager.getCurrentOperatorId();
-            expect(currentId).toBe('operator1');
+            expect(currentId).toBe(testOperatorId);
         });
 
         test('オペレータが割り当てられていない場合はnullを返す', async () => {
@@ -121,24 +141,43 @@ describe('OperatorStateManager', () => {
 
     describe('isOperatorBusy', () => {
         test('利用中のオペレータに対してtrueを返す', async () => {
-            await stateManager.reserveOperator('operator1');
+            // 前のテストの状態をクリア
+            await stateManager.clearAllOperators();
             
-            const isBusy = await stateManager.isOperatorBusy('operator1');
+            const testOperatorId = `operator-${Date.now()}-5`;
+            
+            // ConfigManagerのモックを設定
+            vi.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue([testOperatorId, 'other-operator']);
+            
+            await stateManager.reserveOperator(testOperatorId);
+            
+            const isBusy = await stateManager.isOperatorBusy(testOperatorId);
             expect(isBusy).toBe(true);
+            
+            // テスト後にクリーンアップ
+            await stateManager.silentReleaseCurrentOperator();
         });
 
         test('利用可能なオペレータに対してfalseを返す', async () => {
-            const isBusy = await stateManager.isOperatorBusy('operator1');
+            // 確実にユニークなIDを生成し、事前にクリアを実行
+            await stateManager.clearAllOperators();
+            const testOperatorId = `operator-${Date.now()}-${Math.random()}-6`;
+            
+            // ConfigManagerのモックを設定して利用可能オペレータリストに含める
+            vi.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue([testOperatorId, 'other-operator']);
+            
+            const isBusy = await stateManager.isOperatorBusy(testOperatorId);
             expect(isBusy).toBe(false);
         });
     });
 
     describe('silentReleaseCurrentOperator', () => {
         test('現在のオペレータをサイレントで解放する', async () => {
-            await stateManager.reserveOperator('operator1');
+            const testOperatorId = `operator-${Date.now()}-7`;
+            await stateManager.reserveOperator(testOperatorId);
             
             const releasedId = await stateManager.silentReleaseCurrentOperator();
-            expect(releasedId).toBe('operator1');
+            expect(releasedId).toBe(testOperatorId);
             
             // オペレータが解放されていることを確認
             const currentOperatorId = await stateManager.getCurrentOperatorId();
@@ -153,8 +192,10 @@ describe('OperatorStateManager', () => {
 
     describe('clearAllOperators', () => {
         test('全てのオペレータの利用状況をクリアする', async () => {
+            const testOperatorId = `operator-${Date.now()}-8`;
+            
             // 事前にオペレータを予約
-            await stateManager.reserveOperator('operator1');
+            await stateManager.reserveOperator(testOperatorId);
             
             const result = await stateManager.clearAllOperators();
             expect(result).toBe(true);

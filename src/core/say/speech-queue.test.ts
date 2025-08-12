@@ -7,7 +7,7 @@ import type { SpeechTask, SynthesizeOptions, SynthesizeResult } from './types.js
 
 describe('SpeechQueue', () => {
     let speechQueue: SpeechQueue;
-    let mockProcessCallback: jest.Mock;
+    let mockProcessCallback: any;
 
     beforeEach(() => {
         mockProcessCallback = vi.fn().mockResolvedValue(undefined);

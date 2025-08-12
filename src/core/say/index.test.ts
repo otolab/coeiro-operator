@@ -15,9 +15,9 @@ vi.mock('./speech-queue.js');
 vi.mock('./audio-player.js');
 vi.mock('./audio-synthesizer.js');
 
-const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
-const mockAccess = access as jest.MockedFunction<typeof access>;
-const mockMkdir = mkdir as jest.MockedFunction<typeof mkdir>;
+const mockReadFile = readFile as anyedFunction<typeof readFile>;
+const mockAccess = access as anyedFunction<typeof access>;
+const mockMkdir = mkdir as anyedFunction<typeof mkdir>;
 
 // fetchのモック
 global.fetch = vi.fn();
