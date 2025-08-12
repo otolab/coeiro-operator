@@ -8,16 +8,16 @@ import type { Config, AudioConfig } from './types.js';
 import Speaker from 'speaker';
 
 // モックの設定
-jest.mock('speaker');
-jest.mock('echogarden', () => ({}));
-jest.mock('dsp.js', () => ({}));
-jest.mock('node-libsamplerate', () => ({}));
+vi.mock('speaker');
+vi.mock('echogarden', () => ({}));
+vi.mock('dsp.js', () => ({}));
+vi.mock('node-libsamplerate', () => ({}));
 
 const MockSpeaker = Speaker as jest.MockedClass<typeof Speaker>;
 
 describe('latencyModeプリセット機能', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     describe('AudioPlayer プリセット設定', () => {
@@ -29,9 +29,9 @@ describe('latencyModeプリセット機能', () => {
             };
 
             const mockSpeakerInstance = {
-                write: jest.fn(),
-                end: jest.fn(),
-                on: jest.fn()
+                write: vi.fn(),
+                end: vi.fn(),
+                on: vi.fn()
             };
             MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
@@ -52,9 +52,9 @@ describe('latencyModeプリセット機能', () => {
             };
 
             const mockSpeakerInstance = {
-                write: jest.fn(),
-                end: jest.fn(),
-                on: jest.fn()
+                write: vi.fn(),
+                end: vi.fn(),
+                on: vi.fn()
             };
             MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
@@ -75,9 +75,9 @@ describe('latencyModeプリセット機能', () => {
             };
 
             const mockSpeakerInstance = {
-                write: jest.fn(),
-                end: jest.fn(),
-                on: jest.fn()
+                write: vi.fn(),
+                end: vi.fn(),
+                on: vi.fn()
             };
             MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
@@ -98,9 +98,9 @@ describe('latencyModeプリセット機能', () => {
             };
 
             const mockSpeakerInstance = {
-                write: jest.fn(),
-                end: jest.fn(),
-                on: jest.fn()
+                write: vi.fn(),
+                end: vi.fn(),
+                on: vi.fn()
             };
             MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
@@ -126,9 +126,9 @@ describe('latencyModeプリセット機能', () => {
             };
 
             const mockSpeakerInstance = {
-                write: jest.fn(),
-                end: jest.fn(),
-                on: jest.fn()
+                write: vi.fn(),
+                end: vi.fn(),
+                on: vi.fn()
             };
             MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
@@ -286,9 +286,9 @@ describe('latencyModeプリセット機能', () => {
             };
 
             const mockSpeakerInstance = {
-                write: jest.fn(),
-                end: jest.fn(),
-                on: jest.fn()
+                write: vi.fn(),
+                end: vi.fn(),
+                on: vi.fn()
             };
             MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
@@ -309,9 +309,9 @@ describe('latencyModeプリセット機能', () => {
             };
 
             const mockSpeakerInstance = {
-                write: jest.fn(),
-                end: jest.fn(),
-                on: jest.fn()
+                write: vi.fn(),
+                end: vi.fn(),
+                on: vi.fn()
             };
             MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
@@ -334,9 +334,9 @@ describe('latencyModeプリセット機能', () => {
             };
 
             const mockSpeakerInstance = {
-                write: jest.fn(),
-                end: jest.fn(),
-                on: jest.fn()
+                write: vi.fn(),
+                end: vi.fn(),
+                on: vi.fn()
             };
 
             MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
@@ -361,7 +361,7 @@ describe('latencyModeプリセット機能', () => {
             ] as const;
 
             for (const { latencyMode, expectedBuffer } of configs) {
-                jest.clearAllMocks();
+                vi.clearAllMocks();
 
                 const config: Config = {
                     connection: { host: 'localhost', port: '50032' },
@@ -370,9 +370,9 @@ describe('latencyModeプリセット機能', () => {
                 };
 
                 const mockSpeakerInstance = {
-                    write: jest.fn(),
-                    end: jest.fn(),
-                    on: jest.fn()
+                    write: vi.fn(),
+                    end: vi.fn(),
+                    on: vi.fn()
                 };
 
                 MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);

@@ -10,7 +10,7 @@ describe('SpeechQueue', () => {
     let mockProcessCallback: jest.Mock;
 
     beforeEach(() => {
-        mockProcessCallback = jest.fn().mockResolvedValue(undefined);
+        mockProcessCallback = vi.fn().mockResolvedValue(undefined);
         speechQueue = new SpeechQueue(mockProcessCallback);
     });
 
@@ -94,7 +94,7 @@ describe('SpeechQueue', () => {
         });
 
         test('処理エラー発生時にログ出力と後続処理が正しく行われること', async () => {
-            const logSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+            const logSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
             
             // 2番目のタスクでエラーが発生するように設定
             mockProcessCallback
@@ -263,7 +263,7 @@ describe('SpeechQueue', () => {
         
         test('連続エラー発生時のエラー統計と復旧処理', async () => {
             let errorCount = 0;
-            const logSpy = jest.spyOn(console, 'error').mockImplementation(() => {
+            const logSpy = vi.spyOn(console, 'error').mockImplementation(() => {
                 errorCount++;
             });
             

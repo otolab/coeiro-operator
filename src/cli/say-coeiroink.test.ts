@@ -8,8 +8,8 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 // モックの設定
-jest.mock('fs/promises');
-jest.mock('../core/say/index.js');
+vi.mock('fs/promises');
+vi.mock('../core/say/index.js');
 
 const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
 
@@ -29,9 +29,9 @@ describe('SayCoeiroinkCLI', () => {
     beforeEach(() => {
         // SayCoeiroinkのモックインスタンス
         mockSayCoeiroink = {
-            initialize: jest.fn().mockResolvedValue(undefined),
-            synthesizeText: jest.fn().mockResolvedValue({ success: true }),
-            listVoices: jest.fn().mockResolvedValue(undefined),
+            initialize: vi.fn().mockResolvedValue(undefined),
+            synthesizeText: vi.fn().mockResolvedValue({ success: true }),
+            listVoices: vi.fn().mockResolvedValue(undefined),
             config: { rate: 200 }
         };
 
@@ -39,9 +39,9 @@ describe('SayCoeiroinkCLI', () => {
 
         // stdinのモック
         mockStdin = {
-            setEncoding: jest.fn(),
-            on: jest.fn(),
-            read: jest.fn()
+            setEncoding: vi.fn(),
+            on: vi.fn(),
+            read: vi.fn()
         };
 
         Object.defineProperty(process, 'stdin', {
@@ -51,13 +51,13 @@ describe('SayCoeiroinkCLI', () => {
 
         // exitのモック
         Object.defineProperty(process, 'exit', {
-            value: jest.fn(),
+            value: vi.fn(),
             writable: true
         });
 
         cli = new SayCoeiroinkCLI(mockSayCoeiroink);
         
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     afterEach(() => {
@@ -271,7 +271,7 @@ describe('SayCoeiroinkCLI', () => {
 
     describe('showUsage', () => {
         test('ヘルプメッセージを出力すること', () => {
-            const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+            const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
 
             cli.showUsage();
 
@@ -302,7 +302,7 @@ describe('SayCoeiroinkCLI', () => {
         test('ヘルプが表示された場合、音声合成は実行されないこと', async () => {
             process.argv = ['node', 'cli.ts', '-h'];
 
-            const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+            const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
 
             await cli.run();
 
@@ -368,7 +368,7 @@ describe('SayCoeiroinkCLI', () => {
             process.argv = ['node', 'cli.ts', 'エラーテスト'];
             mockSayCoeiroink.synthesizeText.mockRejectedValueOnce(new Error('Synthesis failed'));
 
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
 
             await cli.run();
 
@@ -382,7 +382,7 @@ describe('SayCoeiroinkCLI', () => {
             process.argv = ['node', 'cli.ts', 'テスト'];
             mockSayCoeiroink.initialize.mockRejectedValueOnce(new Error('Initialization failed'));
 
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
 
             await cli.run();
 
@@ -395,7 +395,7 @@ describe('SayCoeiroinkCLI', () => {
         test('引数解析エラー時に適切にハンドリングされること', async () => {
             process.argv = ['node', 'cli.ts', '-r', 'invalid'];
 
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
 
             await cli.run();
 
@@ -452,7 +452,7 @@ describe('SayCoeiroinkCLI', () => {
             const boundaryRates = [1, 50, 100, 500, 1000];
 
             for (const rate of boundaryRates) {
-                jest.clearAllMocks();
+                vi.clearAllMocks();
                 process.argv = ['node', 'cli.ts', '-r', rate.toString(), 'テスト'];
 
                 await cli.run();

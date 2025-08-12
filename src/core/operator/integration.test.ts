@@ -1,4 +1,5 @@
 /**
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * src/operator/integration.test.ts: OperatorManager統合テスト
  * リファクタリング後の全体動作確認
  */

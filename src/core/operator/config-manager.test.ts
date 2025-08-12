@@ -8,7 +8,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 // fetchのモック
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe('ConfigManager', () => {
     let configManager: ConfigManager;
@@ -22,7 +22,7 @@ describe('ConfigManager', () => {
         configManager = new ConfigManager(tempDir);
         
         // fetchのモックをリセット
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     afterEach(async () => {

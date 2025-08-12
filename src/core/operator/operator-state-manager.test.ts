@@ -2,6 +2,7 @@
  * src/operator/operator-state-manager.test.ts: OperatorStateManagerテスト
  */
 
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OperatorStateManager } from './operator-state-manager.js';
 import FileOperationManager from './file-operation-manager.js';
 import ConfigManager from './config-manager.js';
@@ -44,7 +45,7 @@ describe('OperatorStateManager', () => {
     describe('getAvailableOperators', () => {
         test('利用可能なオペレータリストを取得する', async () => {
             // ConfigManagerの動的設定を構築（モック）
-            jest.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue(['operator1', 'operator2', 'operator3']);
+            vi.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue(['operator1', 'operator2', 'operator3']);
             
             const availableOperators = await stateManager.getAvailableOperators();
             expect(availableOperators).toEqual(['operator1', 'operator2', 'operator3']);
@@ -52,7 +53,7 @@ describe('OperatorStateManager', () => {
 
         test('利用中のオペレータを除外して返す', async () => {
             // ConfigManagerの動的設定を構築（モック）
-            jest.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue(['operator1', 'operator2', 'operator3']);
+            vi.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue(['operator1', 'operator2', 'operator3']);
             
             // operator1を別のセッションで予約
             const otherStateManager = new OperatorStateManager('other-session', fileManager);

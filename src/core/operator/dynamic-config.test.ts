@@ -10,7 +10,7 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 // fetchのモック
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe('DynamicConfigManagement', () => {
     let configManager: ConfigManager;
@@ -26,7 +26,7 @@ describe('DynamicConfigManagement', () => {
         mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
         
         // fetchのモックをリセット
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     afterEach(async () => {

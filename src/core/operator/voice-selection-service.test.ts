@@ -79,7 +79,7 @@ describe('VoiceSelectionService', () => {
     describe('getCharacterInfo', () => {
         test('キャラクター情報を正しく取得する', async () => {
             // ConfigManagerの動的設定を構築（モック）
-            jest.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
+            vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
             
             const character = await voiceSelectionService.getCharacterInfo('test-character');
             
@@ -102,7 +102,7 @@ describe('VoiceSelectionService', () => {
         let testCharacter: Character;
 
         beforeEach(async () => {
-            jest.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
+            vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
             testCharacter = await voiceSelectionService.getCharacterInfo('test-character');
         });
 
@@ -130,7 +130,7 @@ describe('VoiceSelectionService', () => {
         });
 
         test('無効なスタイルを指定した場合はデフォルトを使用', () => {
-            const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
             
             const selectedStyle = voiceSelectionService.selectStyle(testCharacter, 'invalid-style');
             
@@ -152,7 +152,7 @@ describe('VoiceSelectionService', () => {
                 ...mockCharacterConfig,
                 style_selection: 'random'
             };
-            jest.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(randomCharacterConfig);
+            vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(randomCharacterConfig);
             const randomCharacter = await voiceSelectionService.getCharacterInfo('random-character');
             
             const selectedStyle = voiceSelectionService.selectStyle(randomCharacter);
@@ -174,7 +174,7 @@ describe('VoiceSelectionService', () => {
                     }
                 }
             };
-            jest.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(noStyleCharacterConfig);
+            vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(noStyleCharacterConfig);
             const noStyleCharacter = await voiceSelectionService.getCharacterInfo('no-style-character');
             
             expect(() => voiceSelectionService.selectStyle(noStyleCharacter)).toThrow('キャラクター \'テストキャラクター\' に利用可能なスタイルがありません');
@@ -204,7 +204,7 @@ describe('VoiceSelectionService', () => {
 
     describe('generateVoiceConfigData', () => {
         test('音声設定データを正しく生成する', async () => {
-            jest.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
+            vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
             const character = await voiceSelectionService.getCharacterInfo('test-character');
             const selectedStyle = voiceSelectionService.selectStyle(character, 'happy');
             
@@ -221,7 +221,7 @@ describe('VoiceSelectionService', () => {
 
     describe('getOperatorCharacterInfo', () => {
         test('オペレータのキャラクター情報を取得する', async () => {
-            jest.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
+            vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
             
             const character = await voiceSelectionService.getOperatorCharacterInfo('operator1');
             
@@ -230,7 +230,7 @@ describe('VoiceSelectionService', () => {
         });
 
         test('存在しないオペレータの場合はエラー', async () => {
-            jest.spyOn(configManager, 'getCharacterConfig').mockRejectedValue(new Error('Character not found'));
+            vi.spyOn(configManager, 'getCharacterConfig').mockRejectedValue(new Error('Character not found'));
             
             await expect(voiceSelectionService.getOperatorCharacterInfo('invalid-operator')).rejects.toThrow('オペレータ \'invalid-operator\' は存在しないか無効です');
         });
@@ -239,7 +239,7 @@ describe('VoiceSelectionService', () => {
     describe('extractGreetingPatterns', () => {
         test('挨拶パターンを抽出する', async () => {
             const mockPatterns = ['こんにちは！', 'おはよう！', 'こんばんは！'];
-            jest.spyOn(configManager, 'getGreetingPatterns').mockResolvedValue(mockPatterns);
+            vi.spyOn(configManager, 'getGreetingPatterns').mockResolvedValue(mockPatterns);
             
             const patterns = await voiceSelectionService.extractGreetingPatterns();
             
@@ -250,7 +250,7 @@ describe('VoiceSelectionService', () => {
     describe('getAvailableCharacterIds', () => {
         test('利用可能なキャラクターIDリストを取得する', async () => {
             const mockIds = ['character1', 'character2', 'character3'];
-            jest.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue(mockIds);
+            vi.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue(mockIds);
             
             const ids = await voiceSelectionService.getAvailableCharacterIds();
             

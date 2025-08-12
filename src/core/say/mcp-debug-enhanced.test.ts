@@ -1,4 +1,5 @@
 /**
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * COEIRO Operator E2E Tests with MCP Debug Integration
  * mcp-debug統合機能を活用したCOEIRO Operatorのe2eテスト
  * 

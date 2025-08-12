@@ -6,12 +6,12 @@ import { AudioSynthesizer } from './audio-synthesizer.js';
 import type { Config, Chunk, OperatorVoice, AudioResult } from './types.js';
 
 // fetchのモック
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 // 他のモックの設定
-jest.mock('echogarden', () => ({}));
-jest.mock('dsp.js', () => ({}));
-jest.mock('node-libsamplerate', () => ({}));
+vi.mock('echogarden', () => ({}));
+vi.mock('dsp.js', () => ({}));
+vi.mock('node-libsamplerate', () => ({}));
 
 describe('AudioSynthesizer', () => {
     let audioSynthesizer: AudioSynthesizer;
@@ -24,7 +24,7 @@ describe('AudioSynthesizer', () => {
             audio: { latencyMode: 'balanced' }
         };
         audioSynthesizer = new AudioSynthesizer(config);
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     describe('初期化', () => {
@@ -244,7 +244,7 @@ describe('AudioSynthesizer', () => {
             });
 
             // console.logをモック
-            const consoleLogSpy = jest.spyOn(console, 'log').mockImplementation();
+            const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
 
             await audioSynthesizer.listVoices();
 
@@ -263,7 +263,7 @@ describe('AudioSynthesizer', () => {
         test('サーバーエラー時に適切なエラーを投げること', async () => {
             (global.fetch as jest.Mock).mockRejectedValueOnce(new Error('Connection failed'));
 
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
 
             await expect(audioSynthesizer.listVoices()).rejects.toThrow();
 

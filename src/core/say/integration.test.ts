@@ -9,7 +9,7 @@ import { join } from 'path';
 import { writeFile, readFile, unlink } from 'fs/promises';
 
 // fetchのモック
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe('Say Integration Tests', () => {
     let sayCoeiroink: SayCoeiroink;
@@ -53,7 +53,7 @@ describe('Say Integration Tests', () => {
             return Promise.reject(new Error('Unknown endpoint'));
         });
 
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     afterEach(async () => {
