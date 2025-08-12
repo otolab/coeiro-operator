@@ -16,6 +16,10 @@ describe('OperatorStateManager', () => {
     let configManager: ConfigManager;
     let tempDir: string;
     const sessionId = 'test-session-123';
+    
+    // Issue #35: テストID生成安定化 - 一意で衝突しないID生成
+    let testIdCounter = 0;
+    const generateTestOperatorId = () => `test-operator-${Date.now()}-${++testIdCounter}`;
 
     beforeEach(async () => {
         // 一時ディレクトリを作成
@@ -81,7 +85,7 @@ describe('OperatorStateManager', () => {
 
     describe('reserveOperator', () => {
         test('利用可能なオペレータを正常に予約する', async () => {
-            const testOperatorId = `operator-${Date.now()}-1`;
+            const testOperatorId = generateTestOperatorId();
             const result = await stateManager.reserveOperator(testOperatorId);
             expect(result).toBe(true);
             
@@ -91,7 +95,7 @@ describe('OperatorStateManager', () => {
         });
 
         test('既に利用中のオペレータの予約を拒否する', async () => {
-            const testOperatorId = `operator-${Date.now()}-2`;
+            const testOperatorId = generateTestOperatorId();
             
             // まず別のStateManagerで同じオペレータを予約
             const otherStateManager = new OperatorStateManager('other-session', fileManager);
@@ -105,7 +109,7 @@ describe('OperatorStateManager', () => {
 
     describe('releaseOperator', () => {
         test('予約されたオペレータを正常に返却する', async () => {
-            const testOperatorId = `operator-${Date.now()}-3`;
+            const testOperatorId = generateTestOperatorId();
             
             // 事前にオペレータを予約
             await stateManager.reserveOperator(testOperatorId);
@@ -126,7 +130,7 @@ describe('OperatorStateManager', () => {
 
     describe('getCurrentOperatorId', () => {
         test('現在のオペレータIDを取得する', async () => {
-            const testOperatorId = `operator-${Date.now()}-4`;
+            const testOperatorId = generateTestOperatorId();
             await stateManager.reserveOperator(testOperatorId);
             
             const currentId = await stateManager.getCurrentOperatorId();
@@ -144,7 +148,7 @@ describe('OperatorStateManager', () => {
             // 前のテストの状態をクリア
             await stateManager.clearAllOperators();
             
-            const testOperatorId = `operator-${Date.now()}-5`;
+            const testOperatorId = generateTestOperatorId();
             
             // ConfigManagerのモックを設定
             vi.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue([testOperatorId, 'other-operator']);
@@ -161,7 +165,7 @@ describe('OperatorStateManager', () => {
         test('利用可能なオペレータに対してfalseを返す', async () => {
             // 確実にユニークなIDを生成し、事前にクリアを実行
             await stateManager.clearAllOperators();
-            const testOperatorId = `operator-${Date.now()}-${Math.random()}-6`;
+            const testOperatorId = generateTestOperatorId();
             
             // ConfigManagerのモックを設定して利用可能オペレータリストに含める
             vi.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue([testOperatorId, 'other-operator']);
@@ -173,7 +177,7 @@ describe('OperatorStateManager', () => {
 
     describe('silentReleaseCurrentOperator', () => {
         test('現在のオペレータをサイレントで解放する', async () => {
-            const testOperatorId = `operator-${Date.now()}-7`;
+            const testOperatorId = generateTestOperatorId();
             await stateManager.reserveOperator(testOperatorId);
             
             const releasedId = await stateManager.silentReleaseCurrentOperator();
@@ -192,7 +196,7 @@ describe('OperatorStateManager', () => {
 
     describe('clearAllOperators', () => {
         test('全てのオペレータの利用状況をクリアする', async () => {
-            const testOperatorId = `operator-${Date.now()}-8`;
+            const testOperatorId = generateTestOperatorId();
             
             // 事前にオペレータを予約
             await stateManager.reserveOperator(testOperatorId);
