@@ -183,9 +183,10 @@ export class ConfigManager {
                     style_selection: "default"
                 };
                 
-                // 基本設定に音声情報を追加
+                // 基本設定に音声情報を追加（音声プロバイダの名前を優先）
                 const characterConfig: CharacterConfig = {
                     ...builtinConfig,
+                    name: voice.name, // 音声プロバイダからの正確な名前を使用
                     voice_id: voice.voice_id,
                     available_styles: {}
                 };

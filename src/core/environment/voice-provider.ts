@@ -185,12 +185,12 @@ export class VoiceProvider {
             'つくよみちゃん': 'tsukuyomi',
             'アンジーさん': 'angie', 
             'アルマちゃん': 'alma',
-            'AI声優-朱花': 'ai_shuka',
+            'AI声優-朱花': 'akane',
             'ディアちゃん': 'dia',
-            'AI声優-KANA': 'ai_kana',
-            'AI声優-金苗': 'ai_kanae',
-            'リリンちゃん': 'ririn',
-            'AI声優-MANA': 'ai_mana'
+            'AI声優-KANA': 'kana',
+            'AI声優-金苗': 'kanae',
+            'リリンちゃん': 'rilin',
+            'AI声優-MANA': 'mana'
         };
         
         return SPEAKER_NAME_TO_ID_MAP[speakerName] || 

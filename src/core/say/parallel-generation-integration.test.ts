@@ -62,6 +62,10 @@ describe('並行チャンク生成システム統合テスト', () => {
         
         // 並行生成有効な設定
         const config: Config = {
+            connection: {
+                host: 'localhost',
+                port: '50031'
+            },
             audio: {
                 parallelGeneration: {
                     enabled: true,
@@ -169,6 +173,10 @@ describe('並行チャンク生成システム統合テスト', () => {
         test('maxConcurrency設定による並行数制御が動作すること', async () => {
             // maxConcurrency=1で逐次生成をシミュレート
             const sequentialConfig: Config = {
+                connection: {
+                    host: 'localhost',
+                    port: '50031'
+                },
                 audio: {
                     parallelGeneration: {
                         enabled: true,
@@ -195,6 +203,10 @@ describe('並行チャンク生成システム統合テスト', () => {
 
         test('bufferAheadCount設定が先読み制御に効果があること', async () => {
             const bufferConfig: Config = {
+                connection: {
+                    host: 'localhost',
+                    port: '50031'
+                },
                 audio: {
                     parallelGeneration: {
                         enabled: true,
@@ -222,6 +234,10 @@ describe('並行チャンク生成システム統合テスト', () => {
     describe('並行生成無効時のフォールバック', () => {
         test('並行生成無効設定で逐次生成にフォールバックすること', async () => {
             const disabledConfig: Config = {
+                connection: {
+                    host: 'localhost',
+                    port: '50031'
+                },
                 audio: {
                     parallelGeneration: {
                         enabled: false // 無効
@@ -286,6 +302,10 @@ describe('並行チャンク生成システム統合テスト', () => {
 
         test('並行生成設定の境界値が適切に処理されること', async () => {
             const edgeCaseConfig: Config = {
+                connection: {
+                    host: 'localhost',
+                    port: '50031'
+                },
                 audio: {
                     parallelGeneration: {
                         enabled: true,
