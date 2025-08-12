@@ -10,7 +10,12 @@ import { tmpdir } from 'os';
 
 // モックの設定
 vi.mock('fs/promises');
-vi.mock('../operator/index.js');
+vi.mock('../operator/index.js', () => ({
+  getOperatorManager: vi.fn(() => ({
+    getCurrentOperator: vi.fn(() => null),
+    getCharacterConfig: vi.fn(() => Promise.resolve(null))
+  }))
+}));
 vi.mock('./speech-queue.js');
 vi.mock('./audio-player.js');
 vi.mock('./audio-synthesizer.js');
