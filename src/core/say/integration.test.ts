@@ -18,11 +18,25 @@ vi.mock('echogarden', () => ({
     default: {}
 }));
 vi.mock('dsp.js', () => ({
-    default: {}
+    default: {
+        IIRFilter: vi.fn().mockImplementation(() => ({
+            process: vi.fn()
+        })),
+        LOWPASS: 1
+    }
 }));
-vi.mock('node-libsamplerate', () => ({
-    default: {}
-}));
+vi.mock('node-libsamplerate', () => {
+    const MockSampleRate = vi.fn().mockImplementation(() => ({
+        resample: vi.fn(),
+        end: vi.fn(),
+        pipe: vi.fn((destination) => destination), // Transform Streamインターフェース
+        on: vi.fn(),
+        write: vi.fn(),
+        destroy: vi.fn()
+    }));
+    MockSampleRate.SRC_SINC_MEDIUM_QUALITY = 2;
+    return { default: MockSampleRate };
+});
 
 const MockSpeaker = Speaker as any;
 
