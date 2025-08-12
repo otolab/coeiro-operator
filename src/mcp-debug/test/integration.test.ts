@@ -8,6 +8,7 @@
  * 3. サーバーのプロセス管理機能が動作する
  */
 
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 

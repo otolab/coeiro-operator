@@ -10,15 +10,26 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 
 // モックの設定
-jest.mock('speaker');
-jest.mock('fs/promises');
-jest.mock('echogarden', () => ({}));
-jest.mock('dsp.js', () => ({}));
-jest.mock('node-libsamplerate', () => ({}));
+vi.mock('speaker', () => ({
+  default: vi.fn()
+}));
+vi.mock('fs/promises', () => ({
+  readFile: vi.fn(),
+  writeFile: vi.fn()
+}));
+vi.mock('echogarden', () => ({
+  default: {}
+}));
+vi.mock('dsp.js', () => ({
+  default: {}
+}));
+vi.mock('node-libsamplerate', () => ({
+  default: {}
+}));
 
-const MockSpeaker = Speaker as jest.MockedClass<typeof Speaker>;
-const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
-const mockWriteFile = writeFile as jest.MockedFunction<typeof writeFile>;
+const MockSpeaker = Speaker as any;
+const mockReadFile = readFile as any;
+const mockWriteFile = writeFile as any;
 
 describe('AudioPlayer', () => {
     let audioPlayer: AudioPlayer;
@@ -31,15 +42,15 @@ describe('AudioPlayer', () => {
             audio: { latencyMode: 'balanced' }
         };
         audioPlayer = new AudioPlayer(defaultConfig);
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     describe('初期化', () => {
         test('正常に初期化できること', async () => {
             MockSpeaker.mockImplementation(() => ({
-                write: jest.fn(),
-                end: jest.fn(),
-                on: jest.fn()
+                write: vi.fn(),
+                end: vi.fn(),
+                on: vi.fn()
             } as any));
 
             const result = await audioPlayer.initialize();
@@ -116,9 +127,9 @@ describe('AudioPlayer', () => {
             // 初期化
             let closeCallback: (() => void) | undefined;
             const mockSpeakerInstance = {
-                write: jest.fn(),
-                end: jest.fn(),
-                on: jest.fn((event, callback) => {
+                write: vi.fn(),
+                end: vi.fn(),
+                on: vi.fn((event, callback) => {
                     if (event === 'close') {
                         closeCallback = callback;
                     }
@@ -177,9 +188,9 @@ describe('AudioPlayer', () => {
         test('Speaker再生エラー発生時に適切にエラーを伝播すること', async () => {
             let errorCallback: ((error: Error) => void) | undefined;
             const mockSpeakerInstance = {
-                write: jest.fn(),
-                end: jest.fn(),
-                on: jest.fn((event, callback) => {
+                write: vi.fn(),
+                end: vi.fn(),
+                on: vi.fn((event, callback) => {
                     if (event === 'error') {
                         errorCallback = callback;
                     }
@@ -306,7 +317,7 @@ describe('AudioPlayer', () => {
             const outputFile = '/test/large.wav';
             
             // メモリ使用量を監視するためのスパイを設定
-            const bufferFromSpy = jest.spyOn(Buffer, 'from');
+            const bufferFromSpy = vi.spyOn(Buffer, 'from');
             
             mockWriteFile.mockResolvedValueOnce(undefined);
             

@@ -12,17 +12,15 @@
     "start": "node dist/mcp/server.js",
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:projects": "jest --projects jest.projects.mjs",
-    "test:projects:coverage": "jest --projects jest.projects.mjs --coverage",
-    "test:coeiro": "jest --selectProjects='COEIRO Operator Core' --projects jest.projects.mjs",
-    "test:mcp-debug": "jest --config jest.mcp-debug.config.mjs",
-    "test:mcp-debug:enhanced": "jest src/core/say/mcp-debug-enhanced.test.ts --config jest.config.mjs",
-    "test:e2e": "jest --testPathPattern=e2e.test.ts",
-    "test:e2e:watch": "jest --testPathPattern=e2e.test.ts --watch",
-    "test:all": "npm run test:projects",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest --coverage",
+    "test:ui": "vitest --ui",
+    "test:coeiro": "vitest --config vitest.config.ts",
+    "test:mcp-debug": "vitest --config vitest.mcp-debug.config.ts",
+    "test:e2e": "vitest --run e2e.test.ts",
+    "test:e2e:watch": "vitest --watch e2e.test.ts",
+    "test:all": "npm run test:coeiro && npm run test:mcp-debug",
     "type-check": "tsc --noEmit",
     "prepublishOnly": "npm run build"
   },
@@ -45,11 +43,10 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.2.0",
     "@types/uuid": "^10.0.0",
-    "jest": "^30.0.5",
-    "ts-jest": "^29.4.1",
-    "typescript": "^5.9.2"
+    "@vitest/ui": "^3.2.4",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
   }
 }

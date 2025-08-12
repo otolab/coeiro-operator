@@ -1,4 +1,5 @@
 /**
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * src/operator/file-operation-manager.test.ts: FileOperationManagerテスト
  */
 

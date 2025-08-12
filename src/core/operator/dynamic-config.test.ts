@@ -10,12 +10,12 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 // fetchのモック
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe('DynamicConfigManagement', () => {
     let configManager: ConfigManager;
     let tempDir: string;
-    let mockFetch: jest.MockedFunction<typeof fetch>;
+    let mockFetch: anyedFunction<typeof fetch>;
 
     beforeEach(async () => {
         // 一時ディレクトリを作成
@@ -23,10 +23,10 @@ describe('DynamicConfigManagement', () => {
         await mkdir(tempDir, { recursive: true });
         
         configManager = new ConfigManager(tempDir);
-        mockFetch = global.fetch as jest.MockedFunction<typeof fetch>;
+        mockFetch = global.fetch as anyedFunction<typeof fetch>;
         
         // fetchのモックをリセット
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     afterEach(async () => {

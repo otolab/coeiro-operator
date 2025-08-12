@@ -6,22 +6,22 @@ import { SayCoeiroink } from '../core/say/index.js';
 import type { SynthesizeResult } from '../core/say/types.js';
 
 // モックの設定
-jest.mock('../core/say/index.js');
-jest.mock('../core/operator/index.js');
+vi.mock('../core/say/index.js');
+vi.mock('../core/operator/index.js');
 
-const MockSayCoeiroink = SayCoeiroink as jest.MockedClass<typeof SayCoeiroink>;
+const MockSayCoeiroink = SayCoeiroink as any;
 
 describe('MCP Server allowFallback behavior', () => {
-    let mockSayCoeiroinkInstance: jest.Mocked<SayCoeiroink>;
+    let mockSayCoeiroinkInstance: any;
     
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
         
         // モックインスタンスを作成
         mockSayCoeiroinkInstance = {
-            synthesizeTextAsync: jest.fn(),
-            initialize: jest.fn(),
-            buildDynamicConfig: jest.fn()
+            synthesizeTextAsync: vi.fn(),
+            initialize: vi.fn(),
+            buildDynamicConfig: vi.fn()
         } as any;
         
         MockSayCoeiroink.mockImplementation(() => mockSayCoeiroinkInstance);

@@ -3,24 +3,25 @@
  */
 
 import { logger, configureLogger, LoggerPresets, LogLevel } from './logger.js';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 
 describe('Logger', () => {
   let consoleSpy: {
-    error: jest.SpyInstance;
-    warn: jest.SpyInstance;
-    log: jest.SpyInstance;
+    error: any;
+    warn: any;
+    log: any;
   };
 
   beforeEach(() => {
     consoleSpy = {
-      error: jest.spyOn(console, 'error').mockImplementation(),
-      warn: jest.spyOn(console, 'warn').mockImplementation(),
-      log: jest.spyOn(console, 'log').mockImplementation()
+      error: vi.spyOn(console, 'error').mockImplementation(() => {}),
+      warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
+      log: vi.spyOn(console, 'log').mockImplementation(() => {})
     };
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   describe('ログレベル制御', () => {

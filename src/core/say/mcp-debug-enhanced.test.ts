@@ -6,6 +6,7 @@
  * mcp-debugの統合機能を使って制御・テストします
  */
 
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 
@@ -88,15 +89,39 @@ class CoeirocoperatorMCPDebugTestRunner {
 
   /**
    * mcp-debug制御コマンドを送信
+   * Issue #35: レスポンス待機ロジック改善 - 固定時間待機から実際のレスポンス受信待機に変更
    */
   async sendControlCommand(command: string): Promise<void> {
     if (!this.cliProcess || !this.cliProcess.stdin) {
       throw new Error('COEIRO Operator debug session not started');
     }
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error(`Command timeout: ${command}`));
+      }, 10000);
+
+      // レスポンス待機のためのリスナーを設定
+      const initialResponseCount = this.output.controlResponses.length;
+      
+      const checkResponse = () => {
+        if (this.output.controlResponses.length > initialResponseCount) {
+          clearTimeout(timeout);
+          resolve();
+        } else {
+          setTimeout(checkResponse, 50);
+        }
+      };
+
       this.cliProcess!.stdin!.write(command + '\n');
-      setTimeout(resolve, 800); // COEIRO Operatorの処理時間を確保
+      
+      // 制御コマンドの場合は即座にレスポンス確認開始
+      if (command.startsWith('CTRL:')) {
+        setTimeout(checkResponse, 100);
+      } else {
+        // JSON-RPCコマンドの場合は少し待ってから確認
+        setTimeout(checkResponse, 200);
+      }
     });
   }
 
@@ -120,15 +145,24 @@ class CoeirocoperatorMCPDebugTestRunner {
 
   /**
    * レスポンス待機
+   * Issue #35: 実際のレスポンス受信を待機する改善版
    */
-  async waitForResponse(timeout: number): Promise<void> {
+  async waitForResponse(timeout: number): Promise<boolean> {
     return new Promise((resolve) => {
       const startTime = Date.now();
+      const initialMcpCount = this.output.mcpResponses.length;
+      const initialControlCount = this.output.controlResponses.length;
+      
       const checkResponse = () => {
-        if (Date.now() - startTime > timeout) {
-          resolve();
+        const hasNewMcpResponse = this.output.mcpResponses.length > initialMcpCount;
+        const hasNewControlResponse = this.output.controlResponses.length > initialControlCount;
+        
+        if (hasNewMcpResponse || hasNewControlResponse) {
+          resolve(true);
+        } else if (Date.now() - startTime > timeout) {
+          resolve(false); // タイムアウト
         } else {
-          setTimeout(checkResponse, 100);
+          setTimeout(checkResponse, 50);
         }
       };
       checkResponse();

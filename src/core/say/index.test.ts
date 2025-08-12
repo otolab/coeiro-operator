@@ -9,22 +9,22 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 
 // モックの設定
-jest.mock('fs/promises');
-jest.mock('../operator/index.js');
-jest.mock('./speech-queue.js');
-jest.mock('./audio-player.js');
-jest.mock('./audio-synthesizer.js');
+vi.mock('fs/promises');
+vi.mock('../operator/index.js');
+vi.mock('./speech-queue.js');
+vi.mock('./audio-player.js');
+vi.mock('./audio-synthesizer.js');
 
-const mockReadFile = readFile as jest.MockedFunction<typeof readFile>;
-const mockAccess = access as jest.MockedFunction<typeof access>;
-const mockMkdir = mkdir as jest.MockedFunction<typeof mkdir>;
+const mockReadFile = readFile as anyedFunction<typeof readFile>;
+const mockAccess = access as anyedFunction<typeof access>;
+const mockMkdir = mkdir as anyedFunction<typeof mkdir>;
 
 // fetchのモック
-global.fetch = jest.fn();
+global.fetch = vi.fn();
 
 describe('loadConfig', () => {
     beforeEach(() => {
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     test('設定ファイルが存在する場合、正しく読み込むこと', async () => {
@@ -74,7 +74,7 @@ describe('loadConfig', () => {
         mockAccess.mockResolvedValueOnce(undefined);
         mockReadFile.mockResolvedValueOnce('invalid json');
 
-        const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+        const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
         
         const config = await loadConfig();
 
@@ -165,7 +165,7 @@ describe('SayCoeiroink', () => {
 
         sayCoeiroink = new SayCoeiroink(mockConfig);
         
-        jest.clearAllMocks();
+        vi.clearAllMocks();
     });
 
     describe('コンストラクタ', () => {
@@ -208,7 +208,7 @@ describe('SayCoeiroink', () => {
     describe('initialize', () => {
         test('正常に初期化できること', async () => {
             const mockOperatorManager = sayCoeiroink['operatorManager'];
-            mockOperatorManager.initialize = jest.fn().mockResolvedValue(undefined);
+            mockOperatorManager.initialize = vi.fn().mockResolvedValue(undefined);
 
             await expect(sayCoeiroink.initialize()).resolves.not.toThrow();
             expect(mockOperatorManager.initialize).toHaveBeenCalledTimes(1);
@@ -216,7 +216,7 @@ describe('SayCoeiroink', () => {
 
         test('初期化エラー時に適切なエラーを投げること', async () => {
             const mockOperatorManager = sayCoeiroink['operatorManager'];
-            mockOperatorManager.initialize = jest.fn().mockRejectedValue(new Error('Init failed'));
+            mockOperatorManager.initialize = vi.fn().mockRejectedValue(new Error('Init failed'));
 
             await expect(sayCoeiroink.initialize()).rejects.toThrow(
                 'SayCoeiroink initialization failed: Init failed'
@@ -227,7 +227,7 @@ describe('SayCoeiroink', () => {
     describe('buildDynamicConfig', () => {
         test('動的設定を正常に構築できること', async () => {
             const mockOperatorManager = sayCoeiroink['operatorManager'];
-            mockOperatorManager.buildDynamicConfig = jest.fn().mockResolvedValue(undefined);
+            mockOperatorManager.buildDynamicConfig = vi.fn().mockResolvedValue(undefined);
 
             await expect(sayCoeiroink.buildDynamicConfig()).resolves.not.toThrow();
             expect(mockOperatorManager.buildDynamicConfig).toHaveBeenCalledTimes(1);
@@ -235,7 +235,7 @@ describe('SayCoeiroink', () => {
 
         test('設定構築エラー時に適切なエラーを投げること', async () => {
             const mockOperatorManager = sayCoeiroink['operatorManager'];
-            mockOperatorManager.buildDynamicConfig = jest.fn().mockRejectedValue(new Error('Config failed'));
+            mockOperatorManager.buildDynamicConfig = vi.fn().mockRejectedValue(new Error('Config failed'));
 
             await expect(sayCoeiroink.buildDynamicConfig()).rejects.toThrow(
                 'buildDynamicConfig failed: Config failed'
@@ -252,11 +252,11 @@ describe('SayCoeiroink', () => {
                 available_styles: {}
             };
 
-            mockOperatorManager.showCurrentOperator = jest.fn().mockResolvedValue({
+            mockOperatorManager.showCurrentOperator = vi.fn().mockResolvedValue({
                 operatorId: 'test-operator',
                 message: 'Current operator: test-operator'
             });
-            mockOperatorManager.getCharacterInfo = jest.fn().mockResolvedValue(mockCharacter);
+            mockOperatorManager.getCharacterInfo = vi.fn().mockResolvedValue(mockCharacter);
 
             const result = await sayCoeiroink.getCurrentOperatorVoice();
 
@@ -268,7 +268,7 @@ describe('SayCoeiroink', () => {
 
         test('オペレータが割り当てられていない場合、nullを返すこと', async () => {
             const mockOperatorManager = sayCoeiroink['operatorManager'];
-            mockOperatorManager.showCurrentOperator = jest.fn().mockResolvedValue({
+            mockOperatorManager.showCurrentOperator = vi.fn().mockResolvedValue({
                 operatorId: null,
                 message: 'No operator assigned'
             });
@@ -280,11 +280,11 @@ describe('SayCoeiroink', () => {
 
         test('キャラクター情報が取得できない場合、nullを返すこと', async () => {
             const mockOperatorManager = sayCoeiroink['operatorManager'];
-            mockOperatorManager.showCurrentOperator = jest.fn().mockResolvedValue({
+            mockOperatorManager.showCurrentOperator = vi.fn().mockResolvedValue({
                 operatorId: 'test-operator',
                 message: 'Current operator: test-operator'
             });
-            mockOperatorManager.getCharacterInfo = jest.fn().mockResolvedValue(null);
+            mockOperatorManager.getCharacterInfo = vi.fn().mockResolvedValue(null);
 
             const result = await sayCoeiroink.getCurrentOperatorVoice();
 
@@ -293,9 +293,9 @@ describe('SayCoeiroink', () => {
 
         test('エラー時にnullを返すこと', async () => {
             const mockOperatorManager = sayCoeiroink['operatorManager'];
-            mockOperatorManager.showCurrentOperator = jest.fn().mockRejectedValue(new Error('Connection failed'));
+            mockOperatorManager.showCurrentOperator = vi.fn().mockRejectedValue(new Error('Connection failed'));
 
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
 
             const result = await sayCoeiroink.getCurrentOperatorVoice();
 
@@ -317,7 +317,7 @@ describe('SayCoeiroink', () => {
                 queueLength: 1
             };
 
-            mockSpeechQueue.enqueue = jest.fn().mockResolvedValue(mockResult);
+            mockSpeechQueue.enqueue = vi.fn().mockResolvedValue(mockResult);
 
             const result = await sayCoeiroink.enqueueSpeech('テストテキスト', { rate: 150 });
 
@@ -334,7 +334,7 @@ describe('SayCoeiroink', () => {
                 queueLength: 2
             };
 
-            sayCoeiroink.enqueueSpeech = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink.enqueueSpeech = vi.fn().mockResolvedValue(mockResult);
 
             const result = await sayCoeiroink.synthesizeTextAsync('非同期テキスト');
 
@@ -351,7 +351,7 @@ describe('SayCoeiroink', () => {
                 latency: 100
             };
 
-            sayCoeiroink.synthesizeTextInternal = jest.fn().mockResolvedValue(mockResult);
+            sayCoeiroink.synthesizeTextInternal = vi.fn().mockResolvedValue(mockResult);
 
             const result = await sayCoeiroink.synthesizeText('同期テキスト', { rate: 180 });
 
@@ -363,13 +363,13 @@ describe('SayCoeiroink', () => {
     describe('synthesizeTextInternal', () => {
         beforeEach(() => {
             // 依存メソッドをモック
-            sayCoeiroink.getCurrentOperatorVoice = jest.fn().mockResolvedValue({
+            sayCoeiroink.getCurrentOperatorVoice = vi.fn().mockResolvedValue({
                 voice_id: 'default-voice',
                 character: {}
             });
-            sayCoeiroink['audioSynthesizer'].checkServerConnection = jest.fn().mockResolvedValue(true);
-            sayCoeiroink.initializeAudioPlayer = jest.fn().mockResolvedValue(true);
-            sayCoeiroink['audioSynthesizer'].convertRateToSpeed = jest.fn().mockReturnValue(1.0);
+            sayCoeiroink['audioSynthesizer'].checkServerConnection = vi.fn().mockResolvedValue(true);
+            sayCoeiroink.initializeAudioPlayer = vi.fn().mockResolvedValue(true);
+            sayCoeiroink['audioSynthesizer'].convertRateToSpeed = vi.fn().mockReturnValue(1.0);
         });
 
         test('オペレータ音声で正常に合成できること', async () => {
@@ -379,10 +379,10 @@ describe('SayCoeiroink', () => {
                 latency: 50
             };
 
-            sayCoeiroink['audioSynthesizer'].synthesizeStream = jest.fn().mockImplementation(async function* () {
+            sayCoeiroink['audioSynthesizer'].synthesizeStream = vi.fn().mockImplementation(async function* () {
                 yield mockResult;
             });
-            sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
+            sayCoeiroink.playAudioStream = vi.fn().mockResolvedValue(undefined);
 
             const result = await sayCoeiroink.synthesizeTextInternal('テスト');
 
@@ -404,10 +404,10 @@ describe('SayCoeiroink', () => {
                 latency: 75
             };
 
-            sayCoeiroink['audioSynthesizer'].synthesizeStream = jest.fn().mockImplementation(async function* () {
+            sayCoeiroink['audioSynthesizer'].synthesizeStream = vi.fn().mockImplementation(async function* () {
                 yield mockResult;
             });
-            sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
+            sayCoeiroink.playAudioStream = vi.fn().mockResolvedValue(undefined);
 
             const result = await sayCoeiroink.synthesizeTextInternal('テスト', options);
 
@@ -430,10 +430,10 @@ describe('SayCoeiroink', () => {
                 latency: 100
             };
 
-            sayCoeiroink['audioSynthesizer'].synthesizeStream = jest.fn().mockImplementation(async function* () {
+            sayCoeiroink['audioSynthesizer'].synthesizeStream = vi.fn().mockImplementation(async function* () {
                 yield mockResult;
             });
-            sayCoeiroink.saveAudio = jest.fn().mockResolvedValue(undefined);
+            sayCoeiroink.saveAudio = vi.fn().mockResolvedValue(undefined);
 
             const result = await sayCoeiroink.synthesizeTextInternal('テスト', options);
 
@@ -455,7 +455,7 @@ describe('SayCoeiroink', () => {
                 chunkMode: 'punctuation'
             };
 
-            sayCoeiroink.streamSynthesizeAndPlay = jest.fn().mockResolvedValue(undefined);
+            sayCoeiroink.streamSynthesizeAndPlay = vi.fn().mockResolvedValue(undefined);
 
             const result = await sayCoeiroink.synthesizeTextInternal(longText, options);
 
@@ -472,7 +472,7 @@ describe('SayCoeiroink', () => {
         });
 
         test('サーバー接続失敗時にエラーを投げること', async () => {
-            sayCoeiroink['audioSynthesizer'].checkServerConnection = jest.fn().mockResolvedValue(false);
+            sayCoeiroink['audioSynthesizer'].checkServerConnection = vi.fn().mockResolvedValue(false);
 
             await expect(
                 sayCoeiroink.synthesizeTextInternal('テスト')
@@ -480,7 +480,7 @@ describe('SayCoeiroink', () => {
         });
 
         test('音声が指定されておらずオペレータもない場合、allowFallback=trueでデフォルト音声を使用すること', async () => {
-            sayCoeiroink.getCurrentOperatorVoice = jest.fn().mockResolvedValue(null);
+            sayCoeiroink.getCurrentOperatorVoice = vi.fn().mockResolvedValue(null);
             
             const mockResult = {
                 chunk: { text: 'テスト', index: 0, isFirst: true, isLast: true, overlap: 0 },
@@ -488,10 +488,10 @@ describe('SayCoeiroink', () => {
                 latency: 50
             };
 
-            sayCoeiroink['audioSynthesizer'].synthesizeStream = jest.fn().mockImplementation(async function* () {
+            sayCoeiroink['audioSynthesizer'].synthesizeStream = vi.fn().mockImplementation(async function* () {
                 yield mockResult;
             });
-            sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
+            sayCoeiroink.playAudioStream = vi.fn().mockResolvedValue(undefined);
 
             const result = await sayCoeiroink.synthesizeTextInternal('テスト', { allowFallback: true });
 
@@ -505,7 +505,7 @@ describe('SayCoeiroink', () => {
         });
 
         test('音声が指定されておらずオペレータもない場合、allowFallback=falseでエラーを投げること', async () => {
-            sayCoeiroink.getCurrentOperatorVoice = jest.fn().mockResolvedValue(null);
+            sayCoeiroink.getCurrentOperatorVoice = vi.fn().mockResolvedValue(null);
 
             await expect(
                 sayCoeiroink.synthesizeTextInternal('テスト', { allowFallback: false })
@@ -513,7 +513,7 @@ describe('SayCoeiroink', () => {
         });
 
         test('音声が指定されておらずオペレータもない場合、allowFallbackデフォルト（true）でデフォルト音声を使用すること', async () => {
-            sayCoeiroink.getCurrentOperatorVoice = jest.fn().mockResolvedValue(null);
+            sayCoeiroink.getCurrentOperatorVoice = vi.fn().mockResolvedValue(null);
             
             const mockResult = {
                 chunk: { text: 'テスト', index: 0, isFirst: true, isLast: true, overlap: 0 },
@@ -521,10 +521,10 @@ describe('SayCoeiroink', () => {
                 latency: 50
             };
 
-            sayCoeiroink['audioSynthesizer'].synthesizeStream = jest.fn().mockImplementation(async function* () {
+            sayCoeiroink['audioSynthesizer'].synthesizeStream = vi.fn().mockImplementation(async function* () {
                 yield mockResult;
             });
-            sayCoeiroink.playAudioStream = jest.fn().mockResolvedValue(undefined);
+            sayCoeiroink.playAudioStream = vi.fn().mockResolvedValue(undefined);
 
             const result = await sayCoeiroink.synthesizeTextInternal('テスト'); // allowFallback未指定
 
@@ -538,7 +538,7 @@ describe('SayCoeiroink', () => {
         });
 
         test('音声プレーヤー初期化失敗時にエラーを投げること', async () => {
-            sayCoeiroink.initializeAudioPlayer = jest.fn().mockResolvedValue(false);
+            sayCoeiroink.initializeAudioPlayer = vi.fn().mockResolvedValue(false);
 
             await expect(
                 sayCoeiroink.synthesizeTextInternal('テスト')
@@ -548,7 +548,7 @@ describe('SayCoeiroink', () => {
 
     describe('ヘルパーメソッド', () => {
         test('convertRateToSpeed が AudioSynthesizer を委譲すること', () => {
-            sayCoeiroink['audioSynthesizer'].convertRateToSpeed = jest.fn().mockReturnValue(1.5);
+            sayCoeiroink['audioSynthesizer'].convertRateToSpeed = vi.fn().mockReturnValue(1.5);
 
             const result = sayCoeiroink.convertRateToSpeed(300);
 
@@ -557,7 +557,7 @@ describe('SayCoeiroink', () => {
         });
 
         test('initializeAudioPlayer が AudioPlayer を委譲すること', async () => {
-            sayCoeiroink['audioPlayer'].initialize = jest.fn().mockResolvedValue(true);
+            sayCoeiroink['audioPlayer'].initialize = vi.fn().mockResolvedValue(true);
 
             const result = await sayCoeiroink.initializeAudioPlayer();
 
@@ -569,7 +569,7 @@ describe('SayCoeiroink', () => {
     describe('キュー管理', () => {
         test('getSpeechQueueStatus が正しくステータスを返すこと', () => {
             const mockStatus = { queueLength: 3, isProcessing: true };
-            sayCoeiroink['speechQueue'].getStatus = jest.fn().mockReturnValue(mockStatus);
+            sayCoeiroink['speechQueue'].getStatus = vi.fn().mockReturnValue(mockStatus);
 
             const result = sayCoeiroink.getSpeechQueueStatus();
 
@@ -578,7 +578,7 @@ describe('SayCoeiroink', () => {
         });
 
         test('clearSpeechQueue が正しくキューをクリアすること', () => {
-            sayCoeiroink['speechQueue'].clear = jest.fn();
+            sayCoeiroink['speechQueue'].clear = vi.fn();
 
             sayCoeiroink.clearSpeechQueue();
 
@@ -588,9 +588,9 @@ describe('SayCoeiroink', () => {
 
     describe('エラーハンドリング', () => {
         test('予期しないエラーが適切に処理されること', async () => {
-            sayCoeiroink.getCurrentOperatorVoice = jest.fn().mockRejectedValue(new Error('Unexpected error'));
+            sayCoeiroink.getCurrentOperatorVoice = vi.fn().mockRejectedValue(new Error('Unexpected error'));
 
-            const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
+            const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
 
             const result = await sayCoeiroink.getCurrentOperatorVoice();
 

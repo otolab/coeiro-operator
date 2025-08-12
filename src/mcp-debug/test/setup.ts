@@ -3,14 +3,13 @@
  * MCPデバッグ環境のテストセットアップ
  */
 
+import { beforeAll, afterAll } from 'vitest';
+
 // グローバルテスト設定
 beforeAll(() => {
   // テスト環境の設定
   process.env.NODE_ENV = 'test';
   process.env.MCP_DEBUG_TEST_MODE = 'true';
-  
-  // より長いタイムアウトを設定（統合テストのため）
-  jest.setTimeout(20000);
 });
 
 afterAll(() => {
