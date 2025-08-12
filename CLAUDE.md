@@ -46,6 +46,9 @@ node dist/mcp/server.js --debug
 
 # mcp-debug CLI使用（インタラクティブモード）
 node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
+
+# 短時間テスト（10秒で自動終了、timeoutコマンド不要）
+node dist/mcp-debug/cli.js --timeout 10000 dist/mcp/server.js -- --debug
 ```
 
 

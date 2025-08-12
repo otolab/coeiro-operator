@@ -45,7 +45,10 @@ node dist/mcp-debug/cli.js --auto-reload dist/mcp/server.js -- --debug
 # 子プロセスにオプションを渡す（'--'で区切り）
 node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js -- --debug
 
-# タイムアウト付きで起動
+# タイムアウト付きで起動（10秒後に自動終了）
+node dist/mcp-debug/cli.js --timeout 10000 dist/mcp/server.js
+
+# テスト用途での短時間実行（推奨）
 node dist/mcp-debug/cli.js --timeout 10000 dist/mcp/server.js
 ```
 
@@ -57,7 +60,7 @@ node dist/mcp-debug/cli.js --timeout 10000 dist/mcp/server.js
 | `--auto-reload, -r` | ファイル変更時の自動リロード |
 | `--watch-path <path>` | 監視するパス（デフォルト：サーバーファイルのディレクトリ） |
 | `--interactive, -i` | インタラクティブモード |
-| `--timeout <ms>` | 子プロセス寿命タイムアウト（ミリ秒、デフォルト: 30000） |
+| `--timeout <ms>` | 子プロセス寿命タイムアウト（ミリ秒、デフォルト: 30000）**※テスト・デバッグ時は10000推奨** |
 | `--command-timeout <ms>` | 制御コマンドタイムアウト（ミリ秒、デフォルト: 10000） |
 | `--help, -h` | ヘルプ表示 |
 
@@ -97,6 +100,29 @@ CTRL:target:reload      # リロード＋再起動
 CTRL:logs:stats        # ログ統計
 ```
 
+## 開発Tips
+
+### timeoutコマンドの代替として--timeoutオプションを使用
+
+従来の`timeout`コマンドの代わりに、mcp-debugの`--timeout`オプションを使用できます：
+
+```bash
+# ❌ 従来の方法（timeoutコマンド使用）
+timeout 10s node dist/mcp-debug/cli.js dist/mcp/server.js
+
+# ✅ 推奨方法（--timeoutオプション使用）
+node dist/mcp-debug/cli.js --timeout 10000 dist/mcp/server.js
+
+# ✅ コマンド送信も同様
+echo 'CTRL:target:status' | node dist/mcp-debug/cli.js --timeout 10000 dist/mcp/server.js
+```
+
+**利点:**
+- プラットフォーム非依存（Windows/Mac/Linux対応）
+- より正確なタイムアウト制御
+- graceful shutdownサポート
+- ログ保持オプション
+
 ## セットアップ
 
 ### ビルド
@@ -130,8 +156,11 @@ node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js
 # デバッグモード付き
 node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js -- --debug
 
+# 短時間実行（10秒で自動終了、timeoutコマンド不要）
+node dist/mcp-debug/cli.js --timeout 10000 dist/mcp-debug/test/echo-server.js
+
 # 制御コマンドのテスト
-echo 'CTRL:target:status' | node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js
+echo 'CTRL:target:status' | node dist/mcp-debug/cli.js --timeout 10000 dist/mcp-debug/test/echo-server.js
 ```
 
 ### 直接起動（非推奨）
