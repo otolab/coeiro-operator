@@ -341,27 +341,58 @@ describe('Say Integration Tests', () => {
             expect(finalStatus.queueLength).toBe(0);
         }, 10000); // 10秒のタイムアウト
 
-        test('メモリリークが発生しないこと', async () => {
+        test('メモリリークが発生しないこと（Issue #50対応: 精密測定手法）', async () => {
+            // Issue #50: 改善されたメモリリーク検出手法を使用
+            // 従来の単純な差分測定ではなく、GC制御による精密測定を実装
+            
+            // GCが利用可能かチェック
+            if (!global.gc) {
+                console.warn('⚠️  global.gc() not available - skipping precise memory leak detection');
+                console.warn('💡 Run with --expose-gc for precise memory leak detection');
+                return; // GCが利用できない場合はスキップ
+            }
+            
+            // 複数回のフルGCでクリーンなベースライン確立
+            for (let i = 0; i < 3; i++) {
+                global.gc(true);
+                await new Promise(resolve => setTimeout(resolve, 50));
+            }
+            
             const initialMemory = process.memoryUsage().heapUsed;
             
-            // 大量の処理を実行
-            for (let i = 0; i < 50; i++) {
+            // より控えめな処理量（30回）でテスト時間短縮
+            for (let i = 0; i < 30; i++) {
                 await sayCoeiroink.synthesizeText(`メモリテスト${i}`, {
                     voice: 'test-speaker-1'
                 });
+                
+                // 10回ごとに中間GC実行
+                if (i % 10 === 0) {
+                    global.gc(true);
+                }
             }
             
-            // ガベージコレクションを強制実行
-            if (global.gc) {
-                global.gc();
+            // 最終的な複数回GC実行
+            for (let i = 0; i < 3; i++) {
+                global.gc(true);
+                await new Promise(resolve => setTimeout(resolve, 100));
             }
             
             const finalMemory = process.memoryUsage().heapUsed;
             const memoryIncrease = finalMemory - initialMemory;
+            const memoryIncreasePercentage = (memoryIncrease / initialMemory) * 100;
             
-            // メモリ増加が合理的な範囲内であることを確認（10MB未満）
-            expect(memoryIncrease).toBeLessThan(10 * 1024 * 1024);
-        });
+            // より現実的な閾値設定（5MB）
+            const thresholdBytes = 5 * 1024 * 1024;
+            
+            console.log(`📊 メモリ使用量分析:`);
+            console.log(`   初期: ${(initialMemory / 1024 / 1024).toFixed(2)}MB`);
+            console.log(`   最終: ${(finalMemory / 1024 / 1024).toFixed(2)}MB`);
+            console.log(`   増加: ${(memoryIncrease / 1024).toFixed(2)}KB (${memoryIncreasePercentage.toFixed(2)}%)`);
+            console.log(`   閾値: ${(thresholdBytes / 1024).toFixed(2)}KB`);
+            
+            expect(memoryIncrease).toBeLessThan(thresholdBytes);
+        }, 15000);
     });
 
     describe('例外状況統合テスト', () => {

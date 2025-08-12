@@ -16,6 +16,7 @@
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --coverage",
     "test:ui": "vitest --ui",
+    "test:memory": "NODE_OPTIONS=\"--expose-gc\" vitest memory-leak-detection.test.ts",
     "test:coeiro": "vitest --config vitest.config.ts",
     "test:mcp-debug": "vitest --config vitest.mcp-debug.config.ts",
     "test:e2e": "vitest --run e2e.test.ts",
