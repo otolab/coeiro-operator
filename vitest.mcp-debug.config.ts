@@ -43,6 +43,10 @@ export default defineConfig({
       threads: {
         singleThread: true
       }
-    }
+    },
+    
+    // ファイル内での並行実行も無効化
+    fileParallelism: false,
+    maxConcurrency: 1
   }
 });

@@ -438,7 +438,7 @@ describe('Punctuation Mode Tests', () => {
       console.timeEnd('Total test time');
     }, 60000);
 
-    test.only('punctuationモードの実際の分割動作を直接確認', async () => {
+    test('punctuationモードの実際の分割動作を直接確認', async () => {
       // splitModeが未指定の設定ファイルを使用
       const configContent = await fs.readFile(defaultConfigPath, 'utf-8');
       const config: PunctuationTestConfig = JSON.parse(configContent);
