@@ -82,38 +82,7 @@ describe('FileOperationManager', () => {
         });
     });
 
-    describe('initActiveOperators', () => {
-        test('ファイルが存在しない場合は初期化する', async () => {
-            const activeOperatorsFile = join(tempDir, 'active-operators.json');
-
-            await fileManager.initActiveOperators(activeOperatorsFile);
-
-            const content = await readFile(activeOperatorsFile, 'utf8');
-            const parsed = JSON.parse(content);
-            
-            expect(parsed).toHaveProperty('active');
-            expect(parsed).toHaveProperty('last_updated');
-            expect(parsed.active).toEqual({});
-            expect(typeof parsed.last_updated).toBe('string');
-        });
-
-        test('ファイルが既に存在する場合は何もしない', async () => {
-            const activeOperatorsFile = join(tempDir, 'existing-active-operators.json');
-            const existingData = {
-                active: { 'operator1': 'session1' },
-                last_updated: '2023-01-01T00:00:00.000Z'
-            };
-
-            // 既存ファイルを作成
-            await writeFile(activeOperatorsFile, JSON.stringify(existingData), 'utf8');
-
-            await fileManager.initActiveOperators(activeOperatorsFile);
-
-            const content = await readFile(activeOperatorsFile, 'utf8');
-            const parsed = JSON.parse(content);
-            expect(parsed).toEqual(existingData);
-        });
-    });
+    // 統一ファイルシステムに移行済み - 古いテストは削除
 
     describe('updateVoiceSetting', () => {
         test('音声設定を正しく更新する', async () => {
