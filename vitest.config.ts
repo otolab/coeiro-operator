@@ -5,6 +5,15 @@ export default defineConfig({
     // 基本設定
     environment: 'node',
     testTimeout: 20000,
+    
+    // Issue #50: メモリリーク検出のためのNode.jsオプション
+    // シングルスレッド実行でGCフラグ対応
+    pool: 'forks',
+    poolOptions: {
+      forks: {
+        singleFork: true
+      }
+    },
 
     // テストファイルパターン
     include: [
@@ -34,15 +43,7 @@ export default defineConfig({
     },
 
     // ESM設定（Vitestはネイティブ対応）
-    globals: true,
-    
-    // パラレル実行設定
-    pool: 'threads',
-    poolOptions: {
-      threads: {
-        singleThread: false
-      }
-    }
+    globals: true
   },
 
   // TypeScript解決設定
