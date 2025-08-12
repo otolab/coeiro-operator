@@ -10,7 +10,7 @@ import { constants } from 'fs';
 import { join } from 'path';
 import { spawn } from 'child_process';
 import ConfigManager, { CharacterConfig, CharacterStyle } from './config-manager.js';
-import FileOperationManager, { ActiveOperators, SessionData } from './file-operation-manager.js';
+import FileOperationManager from './file-operation-manager.js';
 import OperatorStateManager from './operator-state-manager.js';
 import VoiceSelectionService, { Character, Style } from './voice-selection-service.js';
 
@@ -79,17 +79,6 @@ async function getConfigDir(): Promise<string> {
 }
 
 /**
- * セッション固有ディレクトリを決定
- */
-async function getSessionDir(sessionId: string): Promise<string> {
-    const sessionDir = `/tmp/coeiroink-mcp-session-${sessionId}`;
-    try {
-        await mkdir(sessionDir, { recursive: true });
-    } catch {}
-    return sessionDir;
-}
-
-/**
  * セッションIDを取得
  */
 function getSessionId(): string {
@@ -105,10 +94,6 @@ function getSessionId(): string {
 export class OperatorManager {
     private sessionId: string;
     private configDir: string | null = null;
-    private sessionDir: string | null = null;
-    private activeOperatorsFile: string | null = null;
-    private speechLockFile: string | null = null;
-    private sessionOperatorFile: string | null = null;
     private coeiroinkConfigFile: string | null = null;
     private configManager: ConfigManager | null = null;
     private fileOperationManager: FileOperationManager;
@@ -124,11 +109,6 @@ export class OperatorManager {
 
     async initialize(): Promise<void> {
         this.configDir = await getConfigDir();
-        this.sessionDir = await getSessionDir(this.sessionId);
-        
-        this.activeOperatorsFile = join(this.configDir, 'active-operators.json');
-        this.speechLockFile = join(this.configDir, 'speech-lock');
-        this.sessionOperatorFile = join(this.sessionDir, `session-operator-${this.sessionId}.json`);
         this.coeiroinkConfigFile = join(this.configDir, 'coeiroink-config.json');
         
         // 設定管理システムを初期化
@@ -141,12 +121,14 @@ export class OperatorManager {
             console.warn(`OperatorManager dynamic config build failed:`, (error as Error).message);
         }
         
-        // OperatorStateManagerを初期化
-        this.operatorStateManager.initialize(
-            this.activeOperatorsFile,
-            this.sessionOperatorFile,
-            this.configManager
-        );
+        // OperatorStateManagerを初期化（統一ファイルシステム）
+        await this.operatorStateManager.initialize(this.configManager);
+        
+        // レガシーファイルからの移行（パスがある場合のみ）
+        if (this.configDir) {
+            const legacyActiveOperatorsFile = join(this.configDir, 'active-operators.json');
+            await this.fileOperationManager.migrateFromLegacyFiles(legacyActiveOperatorsFile, this.sessionId);
+        }
         
         // VoiceSelectionServiceを初期化
         this.voiceSelectionService.initialize(
@@ -185,16 +167,6 @@ export class OperatorManager {
         return await this.fileOperationManager.writeJsonFile(filePath, data);
     }
 
-    /**
-     * 利用中オペレータファイルの初期化
-     */
-    async initActiveOperators(): Promise<void> {
-        if (!this.activeOperatorsFile) {
-            throw new Error('activeOperatorsFile is not initialized');
-        }
-
-        return await this.fileOperationManager.initActiveOperators(this.activeOperatorsFile);
-    }
 
     /**
      * キャラクター情報を取得
@@ -284,7 +256,7 @@ export class OperatorManager {
             throw new Error('オペレータIDを指定してください');
         }
         
-        if (!this.configManager || !this.sessionOperatorFile || !this.activeOperatorsFile) {
+        if (!this.configManager) {
             throw new Error('Manager is not initialized');
         }
 
@@ -354,7 +326,7 @@ export class OperatorManager {
      * 現在のオペレータ情報表示
      */
     async showCurrentOperator(): Promise<StatusResult> {
-        if (!this.sessionOperatorFile || !this.configManager) {
+        if (!this.configManager) {
             throw new Error('Manager is not initialized');
         }
 

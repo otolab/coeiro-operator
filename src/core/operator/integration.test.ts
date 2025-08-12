@@ -137,18 +137,12 @@ describe('OperatorManager Integration Test', () => {
     });
 
     describe('リファクタリングされた委譲パターンの確認', () => {
-        test('FileOperationManager委譲が正常に動作する', async () => {
+        test('統一ファイルシステムが正常に動作する', async () => {
             await operatorManager.initialize();
             
-            // initActiveOperators の動作確認
-            await operatorManager.initActiveOperators();
-            
-            // アクティブオペレータファイルが作成されることを確認
-            const activeOperatorsFile = join(tempDir, '.coeiro-operator', 'active-operators.json');
-            const data = await operatorManager.readJsonFile(activeOperatorsFile, null);
-            
-            expect(data).not.toBeNull();
-            expect(typeof data).toBe('object');
+            // 統一ファイルシステムの動作確認（利用可能オペレータ取得で間接的にテスト）
+            const operators = await operatorManager.getAvailableOperators();
+            expect(Array.isArray(operators)).toBe(true);
         });
 
         test('OperatorStateManager委譲が正常に動作する', async () => {

@@ -3,7 +3,7 @@
  */
 
 import { OperatorStateManager } from './operator-state-manager.js';
-import FileOperationManager, { ActiveOperators, SessionData } from './file-operation-manager.js';
+import FileOperationManager from './file-operation-manager.js';
 import ConfigManager from './config-manager.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
@@ -14,17 +14,12 @@ describe('OperatorStateManager', () => {
     let fileManager: FileOperationManager;
     let configManager: ConfigManager;
     let tempDir: string;
-    let activeOperatorsFile: string;
-    let sessionOperatorFile: string;
     const sessionId = 'test-session-123';
 
     beforeEach(async () => {
         // 一時ディレクトリを作成
         tempDir = join(tmpdir(), `coeiro-state-test-${Date.now()}`);
         await mkdir(tempDir, { recursive: true });
-        
-        activeOperatorsFile = join(tempDir, 'active-operators.json');
-        sessionOperatorFile = join(tempDir, `session-operator-${sessionId}.json`);
         
         fileManager = new FileOperationManager();
         configManager = new ConfigManager(tempDir);
@@ -37,7 +32,7 @@ describe('OperatorStateManager', () => {
         await writeFile(join(tempDir, 'coeiroink-config.json'), JSON.stringify(coeiroinkConfig), 'utf8');
         
         stateManager = new OperatorStateManager(sessionId, fileManager);
-        stateManager.initialize(activeOperatorsFile, sessionOperatorFile, configManager);
+        await stateManager.initialize(configManager);
     });
 
     afterEach(async () => {
@@ -59,12 +54,10 @@ describe('OperatorStateManager', () => {
             // ConfigManagerの動的設定を構築（モック）
             jest.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue(['operator1', 'operator2', 'operator3']);
             
-            // operator1を利用中にセット
-            const activeData = {
-                active: { 'operator1': 'other-session' },
-                last_updated: new Date().toISOString()
-            };
-            await fileManager.writeJsonFile(activeOperatorsFile, activeData);
+            // operator1を別のセッションで予約
+            const otherStateManager = new OperatorStateManager('other-session', fileManager);
+            await otherStateManager.initialize(configManager);
+            await otherStateManager.reserveOperator('operator1');
             
             const availableOperators = await stateManager.getAvailableOperators();
             expect(availableOperators).toEqual(['operator2', 'operator3']);
@@ -76,24 +69,18 @@ describe('OperatorStateManager', () => {
             const result = await stateManager.reserveOperator('operator1');
             expect(result).toBe(true);
             
-            // アクティブオペレータファイルを確認
-            const activeData = await fileManager.readJsonFile<ActiveOperators>(activeOperatorsFile, { active: {}, last_updated: '' });
-            expect(activeData.active['operator1']).toBe(sessionId);
-            
-            // セッションファイルを確認
-            const sessionData = await fileManager.readJsonFile<SessionData>(sessionOperatorFile, {} as SessionData);
-            expect(sessionData.operator_id).toBe('operator1');
-            expect(sessionData.session_id).toBe(sessionId);
+            // 現在のオペレータIDを確認
+            const currentOperatorId = await stateManager.getCurrentOperatorId();
+            expect(currentOperatorId).toBe('operator1');
         });
 
         test('既に利用中のオペレータの予約を拒否する', async () => {
-            // operator1を他のセッションで利用中にセット
-            const activeData = {
-                active: { 'operator1': 'other-session' },
-                last_updated: new Date().toISOString()
-            };
-            await fileManager.writeJsonFile(activeOperatorsFile, activeData);
+            // まず別のStateManagerで同じオペレータを予約
+            const otherStateManager = new OperatorStateManager('other-session', fileManager);
+            await otherStateManager.initialize(configManager);
+            await otherStateManager.reserveOperator('operator1');
             
+            // 今のセッションで同じオペレータを予約しようとすると失敗
             await expect(stateManager.reserveOperator('operator1')).rejects.toThrow('オペレータ operator1 は既に利用中です');
         });
     });
@@ -107,13 +94,9 @@ describe('OperatorStateManager', () => {
             expect(result.operatorId).toBe('operator1');
             expect(result.success).toBe(true);
             
-            // アクティブオペレータファイルからoperator1が削除されていることを確認
-            const activeData = await fileManager.readJsonFile<ActiveOperators>(activeOperatorsFile, { active: {}, last_updated: '' });
-            expect(activeData.active['operator1']).toBeUndefined();
-            
-            // セッションファイルが削除されていることを確認
-            const sessionExists = await fileManager.fileExists(sessionOperatorFile);
-            expect(sessionExists).toBe(false);
+            // 現在のオペレータが解放されていることを確認
+            const currentOperatorId = await stateManager.getCurrentOperatorId();
+            expect(currentOperatorId).toBeNull();
         });
 
         test('オペレータが割り当てられていない場合はエラー', async () => {
@@ -157,8 +140,8 @@ describe('OperatorStateManager', () => {
             expect(releasedId).toBe('operator1');
             
             // オペレータが解放されていることを確認
-            const activeData = await fileManager.readJsonFile<ActiveOperators>(activeOperatorsFile, { active: {}, last_updated: '' });
-            expect(activeData.active['operator1']).toBeUndefined();
+            const currentOperatorId = await stateManager.getCurrentOperatorId();
+            expect(currentOperatorId).toBeNull();
         });
 
         test('オペレータが割り当てられていない場合はnullを返す', async () => {
@@ -169,22 +152,15 @@ describe('OperatorStateManager', () => {
 
     describe('clearAllOperators', () => {
         test('全てのオペレータの利用状況をクリアする', async () => {
-            // 複数のオペレータを利用中にセット
-            const activeData = {
-                active: { 
-                    'operator1': 'session1', 
-                    'operator2': 'session2' 
-                },
-                last_updated: new Date().toISOString()
-            };
-            await fileManager.writeJsonFile(activeOperatorsFile, activeData);
+            // 事前にオペレータを予約
+            await stateManager.reserveOperator('operator1');
             
             const result = await stateManager.clearAllOperators();
             expect(result).toBe(true);
             
-            // アクティブオペレータファイルが削除されていることを確認
-            const fileExists = await fileManager.fileExists(activeOperatorsFile);
-            expect(fileExists).toBe(false);
+            // クリア後は現在のオペレータがnullになっていることを確認
+            const currentOperatorId = await stateManager.getCurrentOperatorId();
+            expect(currentOperatorId).toBeNull();
         });
     });
 });

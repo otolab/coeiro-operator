@@ -1,17 +1,20 @@
 /**
  * src/operator/operator-state-manager.ts: オペレータ状態管理クラス
  * オペレータの予約、解放、状態クエリを担当
+ * 
+ * Issue #43 対応: 統一ファイル管理システムへの移行
+ * - 旧システム（分離ファイル）と新システム（統一ファイル）の両方をサポート
+ * - 段階的移行による安全な更新
+ * - 新システムは排他制御付きで複数プロセス対応
  */
 
-import FileOperationManager, { ActiveOperators, SessionData } from './file-operation-manager.js';
+import FileOperationManager from './file-operation-manager.js';
 import ConfigManager from './config-manager.js';
 
 export class OperatorStateManager {
     private fileOperationManager: FileOperationManager;
     private configManager: ConfigManager | null = null;
     private sessionId: string;
-    private activeOperatorsFile: string | null = null;
-    private sessionOperatorFile: string | null = null;
 
     constructor(sessionId: string, fileOperationManager: FileOperationManager) {
         this.sessionId = sessionId;
@@ -19,163 +22,87 @@ export class OperatorStateManager {
     }
 
     /**
-     * 初期化：必要なファイルパスとConfigManagerを設定
+     * 初期化：統一ファイル管理システム用
      */
-    initialize(
-        activeOperatorsFile: string, 
-        sessionOperatorFile: string, 
-        configManager: ConfigManager
-    ): void {
-        this.activeOperatorsFile = activeOperatorsFile;
-        this.sessionOperatorFile = sessionOperatorFile;
+    async initialize(configManager: ConfigManager): Promise<void> {
         this.configManager = configManager;
+        await this.fileOperationManager.initUnifiedOperatorState();
+        await this.fileOperationManager.cleanupStaleOperators(this.sessionId);
     }
 
     /**
-     * 利用可能なオペレータを取得
+     * 利用可能なオペレータを取得（統一システム版）
      */
     async getAvailableOperators(): Promise<string[]> {
-        if (!this.configManager || !this.activeOperatorsFile) {
+        if (!this.configManager) {
             throw new Error('State manager is not initialized');
         }
 
-        await this.fileOperationManager.initActiveOperators(this.activeOperatorsFile);
-        
         const allOperators = await this.configManager.getAvailableCharacterIds();
-        const activeOperators = await this.fileOperationManager.readJsonFile<ActiveOperators>(
-            this.activeOperatorsFile, 
-            { active: {}, last_updated: '' }
-        );
-        
-        const availableOperators = allOperators.filter(op => !activeOperators.active[op]);
-        
-        return availableOperators;
+        return await this.fileOperationManager.getAvailableOperatorsUnified(allOperators);
     }
 
     /**
-     * オペレータを予約
+     * オペレータを予約（統一システム版）
      */
     async reserveOperator(operatorId: string): Promise<boolean> {
-        if (!this.activeOperatorsFile || !this.sessionOperatorFile) {
-            throw new Error('File paths are not initialized');
-        }
-
-        await this.fileOperationManager.initActiveOperators(this.activeOperatorsFile);
+        const success = await this.fileOperationManager.reserveOperatorUnified(operatorId, this.sessionId);
         
-        const activeOperators = await this.fileOperationManager.readJsonFile<ActiveOperators>(
-            this.activeOperatorsFile, 
-            { active: {}, last_updated: '' }
-        );
-        
-        // オペレータが利用可能かチェック
-        if (activeOperators.active[operatorId]) {
+        if (!success) {
             throw new Error(`オペレータ ${operatorId} は既に利用中です`);
         }
         
-        // オペレータを予約
-        activeOperators.active[operatorId] = this.sessionId;
-        activeOperators.last_updated = new Date().toISOString();
-        await this.fileOperationManager.writeJsonFile(this.activeOperatorsFile, activeOperators);
-        
-        // セッション情報を保存
-        const sessionData: SessionData = {
-            operator_id: operatorId,
-            session_id: this.sessionId,
-            reserved_at: new Date().toISOString()
-        };
-        await this.fileOperationManager.writeJsonFile(this.sessionOperatorFile, sessionData);
-        
         return true;
     }
 
     /**
-     * オペレータを返却
+     * オペレータを返却（統一システム版）
      */
     async releaseOperator(): Promise<{ operatorId: string; success: boolean }> {
-        if (!this.sessionOperatorFile || !this.activeOperatorsFile) {
-            throw new Error('File paths are not initialized');
-        }
-
-        const sessionExists = await this.fileOperationManager.fileExists(this.sessionOperatorFile);
-        if (!sessionExists) {
+        const operatorId = await this.getCurrentOperatorId();
+        
+        if (!operatorId) {
             throw new Error('このセッションにはオペレータが割り当てられていません');
         }
         
-        const sessionData = await this.fileOperationManager.readJsonFile<SessionData>(this.sessionOperatorFile);
-        const operatorId = sessionData.operator_id;
+        const success = await this.fileOperationManager.releaseOperatorUnified(operatorId, this.sessionId);
         
-        // オペレータを返却
-        const activeOperators = await this.fileOperationManager.readJsonFile<ActiveOperators>(
-            this.activeOperatorsFile, 
-            { active: {}, last_updated: '' }
-        );
-        delete activeOperators.active[operatorId];
-        activeOperators.last_updated = new Date().toISOString();
-        await this.fileOperationManager.writeJsonFile(this.activeOperatorsFile, activeOperators);
-        
-        // セッションファイルを削除
-        await this.fileOperationManager.deleteFile(this.sessionOperatorFile);
-        
-        return { operatorId, success: true };
+        return { operatorId, success };
     }
 
     /**
-     * 全ての利用状況をクリア
+     * 全ての利用状況をクリア（統一システム版）
      */
     async clearAllOperators(): Promise<boolean> {
-        if (!this.activeOperatorsFile) {
-            throw new Error('activeOperatorsFile is not initialized');
-        }
-
-        // 利用中オペレータファイルを削除
-        await this.fileOperationManager.deleteFile(this.activeOperatorsFile);
+        // 統一ファイルを削除してリセット
+        const unifiedFilePath = this.fileOperationManager.getUnifiedOperatorFilePath();
+        await this.fileOperationManager.deleteFile(unifiedFilePath);
         
-        // 全セッションファイルを削除（簡単な実装）
-        try {
-            const fs = await import('fs');
-            const { exec } = await import('child_process');
-            exec('rm -f /tmp/coeiroink-mcp-session-*/session-operator-*.json');
-        } catch {}
+        // 新しい空の統一ファイルを作成
+        await this.fileOperationManager.initUnifiedOperatorState();
         
         return true;
     }
 
     /**
-     * 現在のセッションに割り当てられたオペレータIDを取得
+     * 現在のセッションに割り当てられたオペレータIDを取得（統一システム版）
      */
     async getCurrentOperatorId(): Promise<string | null> {
-        if (!this.sessionOperatorFile) {
-            throw new Error('sessionOperatorFile is not initialized');
-        }
-
-        const sessionExists = await this.fileOperationManager.fileExists(this.sessionOperatorFile);
-        if (!sessionExists) {
-            return null;
-        }
-        
-        const sessionData = await this.fileOperationManager.readJsonFile<SessionData>(this.sessionOperatorFile);
-        return sessionData.operator_id;
+        return await this.fileOperationManager.getCurrentOperatorUnified(this.sessionId);
     }
 
     /**
-     * 指定されたオペレータが他のセッションで利用中かチェック
+     * 指定されたオペレータが他のセッションで利用中かチェック（統一システム版）
      */
     async isOperatorBusy(operatorId: string): Promise<boolean> {
-        if (!this.activeOperatorsFile) {
-            throw new Error('activeOperatorsFile is not initialized');
-        }
-
-        await this.fileOperationManager.initActiveOperators(this.activeOperatorsFile);
-        const activeOperators = await this.fileOperationManager.readJsonFile<ActiveOperators>(
-            this.activeOperatorsFile, 
-            { active: {}, last_updated: '' }
-        );
+        const allOperators = await this.configManager?.getAvailableCharacterIds() || [];
+        const availableOperators = await this.fileOperationManager.getAvailableOperatorsUnified(allOperators);
         
-        return !!activeOperators.active[operatorId];
+        return !availableOperators.includes(operatorId);
     }
 
     /**
-     * 現在のオペレータをサイレントで解放（エラーハンドリング付き）
+     * 現在のオペレータをサイレントで解放（統一システム版）
      */
     async silentReleaseCurrentOperator(): Promise<string | null> {
         try {
@@ -184,20 +111,7 @@ export class OperatorStateManager {
                 return null;
             }
 
-            if (!this.activeOperatorsFile || !this.sessionOperatorFile) {
-                return null;
-            }
-
-            // 現在のオペレータをサイレントリリース
-            const activeOperators = await this.fileOperationManager.readJsonFile<ActiveOperators>(
-                this.activeOperatorsFile, 
-                { active: {}, last_updated: '' }
-            );
-            delete activeOperators.active[currentOperatorId];
-            activeOperators.last_updated = new Date().toISOString();
-            await this.fileOperationManager.writeJsonFile(this.activeOperatorsFile, activeOperators);
-            await this.fileOperationManager.deleteFile(this.sessionOperatorFile);
-            
+            await this.fileOperationManager.releaseOperatorUnified(currentOperatorId, this.sessionId);
             return currentOperatorId;
         } catch {
             return null;
