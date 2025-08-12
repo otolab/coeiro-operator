@@ -22,7 +22,10 @@ Claude Desktop統合環境で利用可能：
 - **`operator_release`**: オペレータ解放
 - **`operator_status`**: オペレータ状況確認
 - **`operator_available`**: 利用可能オペレータ一覧
+- **`operator_styles`**: キャラクターの利用可能なスタイル一覧表示
 - **`say`**: 音声出力（非同期キュー処理で即座に戻る）
+- **`debug_logs`**: デバッグ用ログの取得と表示
+- **`parallel_generation_control`**: チャンク並行生成機能の制御
 
 ## セッション管理
 
@@ -76,7 +79,7 @@ macOS `say`コマンド互換の音声合成CLI
 
 ---
 **作成日**: 2025年8月5日  
-**更新日**: 2025年8月5日 (ドキュメント再構成)
+**更新日**: 2025年8月12日 (最新MCPツール仕様に合わせて更新)
 **関連ファイル**: 
 - **[CHARACTERS.md](../docs/CHARACTERS.md)** - オペレータキャラクター詳細
 - **[UPDATE_CHARACTER_SETTINGS.md](UPDATE_CHARACTER_SETTINGS.md)** - キャラクター設定更新手順

@@ -1,13 +1,13 @@
 /**
- * Jest E2E Tests for MCP Debug Environment
- * MCPデバッグ環境のJest E2Eテスト
+ * Echo Back MCP Server Tests
+ * Echo Back MCPサーバーの単体テスト
  * 
  * 要件仕様の検証：
- * 1. 連続JSONオブジェクトの処理が安定している
- * 2. MCP/Control/Debug/Error出力が正しく分離される
- * 3. サーバーのプロセス管理機能が動作する
- * 4. Echo Back MCPサーバーが正常に動作する
- * 5. ログ蓄積機能が正常に動作する
+ * 1. 標準的なMCP初期化フローが正常に動作する
+ * 2. JSON-RPC処理が安定している
+ * 3. ツール機能（echo, debug_info, test_output）が正常に動作する
+ * 4. ログ蓄積機能が正常に動作する
+ * 5. エラーハンドリングが適切に動作する
  */
 
 import { spawn, ChildProcess } from 'child_process';
@@ -75,7 +75,8 @@ class McpE2ETestRunner {
       }, 5000);
 
       const checkInitialized = () => {
-        if (this.output.controlResponses.some(r => r.includes('init:ok'))) {
+        // Echo Back MCPサーバーの初期化完了メッセージを待機
+        if (this.output.stdout.some(line => line.includes('Echo MCP Server ready'))) {
           clearTimeout(timeout);
           resolve();
         } else {
@@ -166,7 +167,7 @@ class McpE2ETestRunner {
   }
 }
 
-describe('MCP Debug Environment E2E Tests', () => {
+describe('Echo Back MCP Server Tests', () => {
   let testRunner: McpE2ETestRunner;
 
   beforeEach(() => {
@@ -181,23 +182,40 @@ describe('MCP Debug Environment E2E Tests', () => {
     test('サーバーの起動と初期化', async () => {
       await testRunner.startEchoServer();
       
-      // 初期化完了の確認
-      expect(testRunner['output'].controlResponses).toEqual(
+      // Echo MCP Server ready メッセージの確認
+      expect(testRunner['output'].stdout).toEqual(
         expect.arrayContaining([
-          expect.stringContaining('CTRL_RESPONSE:init:ok')
+          expect.stringContaining('Echo MCP Server ready')
         ])
       );
     }, 10000);
 
-    test('制御コマンドの処理', async () => {
+    test('MCP initialize処理', async () => {
       await testRunner.startEchoServer();
       
-      // ステータス取得コマンド
-      await testRunner.sendCommand('CTRL:status');
+      // MCP initialize リクエスト
+      const initRequest = JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'initialize',
+        params: {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'test-client', version: '1.0.0' }
+        },
+        id: 1
+      });
       
-      expect(testRunner['output'].controlResponses).toEqual(
+      await testRunner.sendCommand(initRequest);
+      
+      // レスポンスの確認
+      expect(testRunner['output'].mcpResponses).toEqual(
         expect.arrayContaining([
-          expect.stringContaining('CTRL_RESPONSE:status:ok')
+          expect.objectContaining({
+            result: expect.objectContaining({
+              protocolVersion: '2024-11-05',
+              capabilities: expect.any(Object)
+            })
+          })
         ])
       );
     }, 10000);
@@ -278,19 +296,6 @@ describe('MCP Debug Environment E2E Tests', () => {
         ])
       );
     }, 10000);
-
-    test('制御レスポンスの分離', async () => {
-      await testRunner.startEchoServer();
-      
-      await testRunner.sendCommand('CTRL:health');
-      
-      const controlResponses = testRunner['output'].controlResponses;
-      expect(controlResponses).toEqual(
-        expect.arrayContaining([
-          expect.stringContaining('CTRL_RESPONSE:health:ok')
-        ])
-      );
-    }, 10000);
   });
 
   describe('連続処理テスト', () => {
@@ -315,25 +320,36 @@ describe('MCP Debug Environment E2E Tests', () => {
       expect(mcpResponses.filter(r => [10, 11, 12].includes(r.id))).toHaveLength(3);
     }, 15000);
 
-    test('制御コマンドとJSON-RPCの混在処理', async () => {
+    test('複数のJSON-RPCリクエストの混在処理', async () => {
       await testRunner.startEchoServer();
       
-      // 混在コマンド送信
-      await testRunner.sendCommand('CTRL:status');
+      // 複数の異なる種類のリクエストを送信
+      await testRunner.sendCommand(JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/list',
+        id: 20
+      }));
       await testRunner.sendCommand(JSON.stringify({
         jsonrpc: '2.0',
         method: 'tools/call',
         params: { name: 'echo', arguments: { message: 'mixed-test' } },
-        id: 20
+        id: 21
       }));
-      await testRunner.sendCommand('CTRL:health');
+      await testRunner.sendCommand(JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'tools/call',
+        params: { name: 'debug_info', arguments: { type: 'status' } },
+        id: 22
+      }));
       
       // 少し待機
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // 両方の形式が正常に処理されていることを確認
-      expect(testRunner['output'].controlResponses.length).toBeGreaterThanOrEqual(3); // init + status + health
-      expect(testRunner['output'].mcpResponses.find(r => r.id === 20)).toBeDefined();
+      // すべてのリクエストが処理されていることを確認
+      const mcpResponses = testRunner['output'].mcpResponses;
+      expect(mcpResponses.find(r => r.id === 20)).toBeDefined();
+      expect(mcpResponses.find(r => r.id === 21)).toBeDefined();
+      expect(mcpResponses.find(r => r.id === 22)).toBeDefined();
     }, 10000);
   });
 
@@ -452,17 +468,24 @@ describe('MCP Debug Environment E2E Tests', () => {
       expect(errorResponse.error.message).toContain('Unknown tool: nonexistent_tool');
     }, 10000);
 
-    test('不正な制御コマンドの処理', async () => {
+    test('不正なメソッド名の処理', async () => {
       await testRunner.startEchoServer();
       
-      await testRunner.sendCommand('CTRL:invalid_command');
+      // 存在しないメソッドを呼び出し
+      const invalidMethodRequest = JSON.stringify({
+        jsonrpc: '2.0',
+        method: 'invalid/method',
+        id: 50
+      });
       
-      const controlResponses = testRunner['output'].controlResponses;
-      expect(controlResponses).toEqual(
-        expect.arrayContaining([
-          expect.stringContaining('CTRL_RESPONSE:invalid_command:error')
-        ])
-      );
+      await testRunner.sendCommand(invalidMethodRequest);
+      
+      const mcpResponses = testRunner['output'].mcpResponses;
+      const errorResponse = mcpResponses.find(r => r.id === 50);
+      
+      expect(errorResponse).toBeDefined();
+      expect(errorResponse.error).toBeDefined();
+      expect(errorResponse.error.message).toContain('Method not found: invalid/method');
     }, 10000);
   });
 });
