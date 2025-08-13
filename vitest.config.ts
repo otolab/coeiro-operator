@@ -49,7 +49,9 @@ export default defineConfig({
   // TypeScript解決設定
   resolve: {
     alias: {
-      // 必要に応じて追加
+      // ESMパス解決のためのエイリアス
+      '@/core/operator': new URL('./src/core/operator', import.meta.url).pathname,
+      '@/core/say': new URL('./src/core/say', import.meta.url).pathname
     }
   }
 });
