@@ -29,6 +29,10 @@ describe('OperatorStateManager', () => {
         fileManager = new FileOperationManager();
         configManager = new ConfigManager(tempDir);
         
+        // テスト用に統一ファイルパスを上書き
+        const testFilePath = join(tempDir, 'test-operators.json');
+        fileManager.getUnifiedOperatorFilePath = () => testFilePath;
+        
         // モックの設定ファイルを作成（ConfigManagerのテスト用）
         const coeiroinkConfig = {
             host: 'localhost',
@@ -271,7 +275,12 @@ describe('OperatorStateManager', () => {
 
             // セッション2から同じオペレータを予約しようとする
             const session2Id = 'test-session-2-' + Date.now();
-            const stateManager2 = new OperatorStateManager(session2Id, fileManager);
+            const fileManager2 = new FileOperationManager();
+            // 同じ統一ファイルパスを使用
+            const testFilePath = join(tempDir, 'test-operators.json');
+            fileManager2.getUnifiedOperatorFilePath = () => testFilePath;
+            
+            const stateManager2 = new OperatorStateManager(session2Id, fileManager2);
             await stateManager2.initialize(configManager);
 
             // 予約に失敗することを確認

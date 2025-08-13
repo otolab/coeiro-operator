@@ -99,12 +99,12 @@ export class OperatorStateManager {
     }
 
     /**
-     * 指定されたオペレータが他のセッションで利用中かチェック
-     * Issue #56: セッションID渡すように修正
+     * 指定されたオペレータが利用中かチェック（全セッション対象）
+     * Issue #56: セッションIDを渡さず、全予約を対象とする
      */
     async isOperatorBusy(operatorId: string): Promise<boolean> {
         const allOperators = await this.configManager?.getAvailableCharacterIds() || [];
-        const availableOperators = await this.fileOperationManager.getAvailableOperatorsUnified(allOperators, this.sessionId);
+        const availableOperators = await this.fileOperationManager.getAvailableOperatorsUnified(allOperators);
         
         return !availableOperators.includes(operatorId);
     }
@@ -124,6 +124,14 @@ export class OperatorStateManager {
         } catch {
             return null;
         }
+    }
+
+    /**
+     * オペレータ予約のタイムアウトを延長
+     * Issue #58: sayコマンド実行時の動的タイムアウト延長
+     */
+    async refreshOperatorReservation(operatorId: string): Promise<boolean> {
+        return await this.fileOperationManager.refreshOperatorReservation(operatorId, this.sessionId);
     }
 }
 

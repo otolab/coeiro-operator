@@ -124,12 +124,6 @@ export class OperatorManager {
         // OperatorStateManagerを初期化（統一ファイルシステム）
         await this.operatorStateManager.initialize(this.configManager);
         
-        // レガシーファイルからの移行（パスがある場合のみ）
-        if (this.configDir) {
-            const legacyActiveOperatorsFile = join(this.configDir, 'active-operators.json');
-            await this.fileOperationManager.migrateFromLegacyFiles(legacyActiveOperatorsFile, this.sessionId);
-        }
-        
         // VoiceSelectionServiceを初期化
         this.voiceSelectionService.initialize(
             this.configManager,
@@ -357,6 +351,19 @@ export class OperatorManager {
             currentStyle: styleInfo,
             message: `現在のオペレータ: ${character.name} (${operatorId}) - ${selectedStyle.name}`
         };
+    }
+
+    /**
+     * オペレータ予約のタイムアウトを延長
+     * Issue #58: sayコマンド実行時の動的タイムアウト延長
+     */
+    async refreshOperatorReservation(): Promise<boolean> {
+        const operatorId = await this.operatorStateManager.getCurrentOperatorId();
+        if (!operatorId) {
+            return false; // オペレータが割り当てられていない
+        }
+        
+        return await this.operatorStateManager.refreshOperatorReservation(operatorId);
     }
 }
 
