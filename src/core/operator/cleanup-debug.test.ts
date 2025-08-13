@@ -16,6 +16,10 @@ describe('cleanupStaleOperators問題調査', () => {
         tempDir = join(tmpdir(), `cleanup-debug-${Date.now()}`);
         await mkdir(tempDir, { recursive: true });
         fileManager = new FileOperationManager();
+        
+        // テスト用に統一ファイルパスを上書き
+        const testFilePath = join(tempDir, 'test-operators.json');
+        fileManager.getUnifiedOperatorFilePath = () => testFilePath;
     });
 
     afterEach(async () => {
@@ -26,29 +30,24 @@ describe('cleanupStaleOperators問題調査', () => {
         }
     });
 
-    test('短命プロセスIDで予約された場合のcleanup動作', async () => {
+    test('時間ベースcleanup：最近の予約は保持される', async () => {
         await fileManager.initUnifiedOperatorState();
 
-        // 存在しないプロセスIDで予約をシミュレート
-        const nonExistentPid = 99999;
+        // 最近の予約を作成
         const success = await fileManager.reserveOperatorUnified('tsukuyomi', 'session_1');
         expect(success).toBe(true);
 
-        // 統一ファイルを直接編集して存在しないプロセスIDに変更
-        const filePath = fileManager.getUnifiedOperatorFilePath();
-        const state = await fileManager.readJsonFile(filePath, {});
-        state.operators.tsukuyomi.process_id = nonExistentPid.toString();
-        await fileManager.writeJsonFile(filePath, state);
-
-        // 異なるセッションからcleanupを実行
+        // 異なるセッションからcleanupを実行（時間ベース）
         await fileManager.cleanupStaleOperators('different_session');
 
-        // 予約が削除されているかチェック
+        // 予約が保持されているかチェック
+        const filePath = fileManager.getUnifiedOperatorFilePath();
         const stateAfterCleanup = await fileManager.readJsonFile(filePath, {});
         console.log('Cleanup後の状態:', stateAfterCleanup);
         
-        // プロセスが存在しないので削除されてしまう
-        expect(stateAfterCleanup.operators.tsukuyomi).toBeUndefined();
+        // 時間ベースなので最近の予約は保持される
+        expect(stateAfterCleanup.operators.tsukuyomi).toBeDefined();
+        expect(stateAfterCleanup.operators.tsukuyomi.session_id).toBe('session_1');
     });
 
     test('現在のプロセスIDでのプロセス存在チェック', async () => {
@@ -71,10 +70,10 @@ describe('cleanupStaleOperators問題調査', () => {
         }
     });
 
-    test('CLI使用パターンでの問題実証', async () => {
+    test('時間ベースcleanup：CLI使用パターンでの予約保持', async () => {
         await fileManager.initUnifiedOperatorState();
 
-        // session_1でtsukuyomiを予約（CLIプロセスと同じような短命プロセスをシミュレート）
+        // session_1でtsukuyomiを予約（CLIプロセスをシミュレート）
         const success = await fileManager.reserveOperatorUnified('tsukuyomi', 'session_1');
         expect(success).toBe(true);
 
@@ -83,14 +82,15 @@ describe('cleanupStaleOperators問題調査', () => {
         const initialState = await fileManager.readJsonFile(filePath, {});
         expect(initialState.operators.tsukuyomi).toBeDefined();
 
-        // 異なるセッションが初期化時にcleanupを実行（これが問題）
+        // 異なるセッションが初期化時にcleanupを実行（時間ベース）
         await fileManager.cleanupStaleOperators('session_2');
 
-        // 予約が誤って削除される
+        // 時間ベースなので予約は保持される
         const stateAfterCleanup = await fileManager.readJsonFile(filePath, {});
         console.log('Session_2のcleanup後:', stateAfterCleanup);
         
-        // CLIプロセスは短命なので、誤って削除される
-        expect(Object.keys(stateAfterCleanup.operators)).toHaveLength(0);
+        // 最近の予約は時間ベースで保持される
+        expect(stateAfterCleanup.operators.tsukuyomi).toBeDefined();
+        expect(Object.keys(stateAfterCleanup.operators)).toHaveLength(1);
     });
 });

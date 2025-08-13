@@ -99,12 +99,12 @@ export class OperatorStateManager {
     }
 
     /**
-     * 指定されたオペレータが他のセッションで利用中かチェック
-     * Issue #56: セッションID渡すように修正
+     * 指定されたオペレータが利用中かチェック（全セッション対象）
+     * Issue #56: セッションIDを渡さず、全予約を対象とする
      */
     async isOperatorBusy(operatorId: string): Promise<boolean> {
         const allOperators = await this.configManager?.getAvailableCharacterIds() || [];
-        const availableOperators = await this.fileOperationManager.getAvailableOperatorsUnified(allOperators, this.sessionId);
+        const availableOperators = await this.fileOperationManager.getAvailableOperatorsUnified(allOperators);
         
         return !availableOperators.includes(operatorId);
     }
