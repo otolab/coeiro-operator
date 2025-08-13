@@ -5,24 +5,18 @@
  * Issue #43 対応: 統一ファイル管理システム
  * 
  * 【実装方針】
- * 1. 分離ファイル問題の解決
- *    - active-operators.json (永続) と session-*.json (一時) の重複管理を統一
- *    - システム再起動でセッションIDリセット → 永続性の意味がない問題を解決
+ * 1. 統一ファイル管理
+ *    - /tmp/coeiroink-operators-{hostname}.json に一元化
+ *    - セッションIDベースの予約管理
  * 
  * 2. 複数プロセス間の排他制御
  *    - ファイルロック機構でread-modify-write操作の競合を防止
  *    - リトライ機構でデッドロック回避
  *    - アトミック操作で一貫性保証
  * 
- * 3. 統一ファイル構造
- *    - /tmp/coeiroink-operators-{hostname}.json に一元化
+ * 3. プロセス管理
  *    - プロセス起動時の無効セッション自動クリーンアップ
  *    - session_id + process_id による二重チェック
- * 
- * 4. 移行戦略
- *    - 既存ファイルからの自動移行
- *    - 下位互換性の一時的保持
- *    - 段階的な旧ファイル削除
  */
 
 import { readFile, writeFile, stat, unlink, rename, access } from 'fs/promises';
@@ -42,17 +36,10 @@ export interface UnifiedOperatorState {
 
 export class FileOperationManager {
     // ファイルロック設定
-    private readonly maxLockRetries = 10;
-    private readonly lockRetryDelay = 50; // ms
-    private readonly lockTimeout = 1000; // ms
+    private readonly maxLockRetries = 50;
+    private readonly lockRetryDelay = 20; // ms
+    private readonly lockTimeout = 2000; // ms
     
-    /**
-     * 実装段階
-     * Phase 1: ファイルロック機構の追加 (withFileLock, writeJsonFileWithLock)
-     * Phase 2: 統一ファイル管理機能 (UnifiedOperatorState 操作)
-     * Phase 3: 既存システムのリファクタリング (OperatorStateManager更新)
-     * Phase 4: 移行処理とクリーンアップ機能
-     */
     /**
      * JSONファイルを安全に読み込み
      */
@@ -161,7 +148,7 @@ export class FileOperationManager {
     }
 
     // =============================================================================
-    // Phase 1: ファイルロック機構
+    // ファイルロック機構
     // =============================================================================
 
     /**
@@ -172,6 +159,18 @@ export class FileOperationManager {
         
         for (let i = 0; i < this.maxLockRetries; i++) {
             try {
+                // 古いロックファイルのクリーンアップ（タイムアウト処理）
+                try {
+                    const stats = await stat(lockFile);
+                    const lockAge = Date.now() - stats.mtime.getTime();
+                    if (lockAge > this.lockTimeout) {
+                        console.warn(`Removing stale lock file: ${lockFile} (age: ${lockAge}ms)`);
+                        await this.deleteFile(lockFile);
+                    }
+                } catch {
+                    // ロックファイルが存在しない場合は正常
+                }
+                
                 // ロックファイル作成（排他的）
                 await writeFile(lockFile, process.pid.toString(), { flag: 'wx' });
                 
@@ -185,8 +184,9 @@ export class FileOperationManager {
                 }
             } catch (error: any) {
                 if (error.code === 'EEXIST') {
-                    // ロック競合 - リトライ
-                    await new Promise(resolve => setTimeout(resolve, this.lockRetryDelay));
+                    // ロック競合 - 指数バックオフでリトライ
+                    const backoffDelay = this.lockRetryDelay * Math.min(Math.pow(1.5, i), 10);
+                    await new Promise(resolve => setTimeout(resolve, backoffDelay + Math.random() * 10));
                     continue;
                 }
                 throw error;
@@ -205,7 +205,7 @@ export class FileOperationManager {
     }
 
     // =============================================================================
-    // Phase 2: 統一ファイル管理機能
+    // 統一ファイル管理機能
     // =============================================================================
 
     /**
@@ -222,22 +222,34 @@ export class FileOperationManager {
     async initUnifiedOperatorState(): Promise<void> {
         const filePath = this.getUnifiedOperatorFilePath();
         
-        try {
-            await stat(filePath);
-        } catch {
-            const initialData: UnifiedOperatorState = {
-                operators: {},
-                last_updated: new Date().toISOString()
-            };
-            await this.writeJsonFileWithLock(filePath, initialData);
-        }
+        // ファイルロック付きで二重初期化を防止
+        await this.withFileLock(filePath, async () => {
+            // ロック取得後に再度存在確認（競合状態での二重作成防止）
+            if (!await this.fileExists(filePath)) {
+                const initialData: UnifiedOperatorState = {
+                    operators: {},
+                    last_updated: new Date().toISOString()
+                };
+                try {
+                    await this.writeJsonFile(filePath, initialData);
+                } catch (error) {
+                    console.warn(`Failed to initialize unified operator state: ${(error as Error).message}`);
+                }
+            }
+        });
     }
 
     /**
-     * 無効セッションのクリーンアップ
+     * 古い予約のクリーンアップ（時間ベース）
+     * マルチプロセス環境（CLI、MCP）に対応した設計
      */
     async cleanupStaleOperators(currentSessionId: string): Promise<void> {
         const filePath = this.getUnifiedOperatorFilePath();
+        
+        // ファイルが存在しない場合はスキップ
+        if (!await this.fileExists(filePath)) {
+            return;
+        }
         
         await this.withFileLock(filePath, async () => {
             const state = await this.readJsonFile<UnifiedOperatorState>(filePath, {
@@ -245,21 +257,36 @@ export class FileOperationManager {
                 last_updated: new Date().toISOString()
             });
 
+            // オペレータが存在しない場合はスキップ
+            if (Object.keys(state.operators).length === 0) {
+                return;
+            }
+
             let hasChanges = false;
+            const now = Date.now();
+            // 2時間以上前の予約のみクリーンアップ（CLIやMCPの通常使用には十分）
+            const staleThreshold = 2 * 60 * 60 * 1000; // 2時間
             
-            // 無効なセッションを削除
+            // 古い予約を削除（プロセス存在チェックは行わない）
             for (const [operatorId, info] of Object.entries(state.operators)) {
-                // 同じセッションIDの場合はスキップ
+                // 同じセッションIDの場合はスキップ（自分の予約は保持）
                 if (info.session_id === currentSessionId) {
                     continue;
                 }
                 
-                // プロセスが存在するかチェック
+                // 予約時刻チェック
                 try {
-                    process.kill(parseInt(info.process_id), 0);
-                    // プロセスが存在する場合は保持
+                    const reservedAt = new Date(info.reserved_at).getTime();
+                    const age = now - reservedAt;
+                    
+                    if (age > staleThreshold) {
+                        console.log(`古い予約を削除: ${operatorId} (${Math.round(age / 1000 / 60 / 60)}時間前)`);
+                        delete state.operators[operatorId];
+                        hasChanges = true;
+                    }
                 } catch {
-                    // プロセスが存在しない場合は削除
+                    // 無効な日付の場合は削除
+                    console.log(`無効な予約時刻のため削除: ${operatorId}`);
                     delete state.operators[operatorId];
                     hasChanges = true;
                 }
@@ -273,7 +300,8 @@ export class FileOperationManager {
     }
 
     /**
-     * オペレータの予約（統一ファイル版）
+     * オペレータの予約
+     * Issue #56: 二重予約チェック強化
      */
     async reserveOperatorUnified(operatorId: string, sessionId: string): Promise<boolean> {
         const filePath = this.getUnifiedOperatorFilePath();
@@ -286,15 +314,34 @@ export class FileOperationManager {
             
             // オペレータが既に予約されているかチェック
             if (state.operators[operatorId]) {
-                // 同じセッションの場合は成功
-                if (state.operators[operatorId].session_id === sessionId) {
+                const existingReservation = state.operators[operatorId];
+                
+                // 完全に同じセッション（session_id + process_id）の場合は成功
+                if (existingReservation.session_id === sessionId && 
+                    existingReservation.process_id === process.pid.toString()) {
                     return true;
                 }
-                // 異なるセッションの場合は失敗
-                return false;
+                
+                // session_idが同じでもprocess_idが異なる場合は、古いプロセスが生きているかチェック
+                if (existingReservation.session_id === sessionId) {
+                    try {
+                        const existingPid = parseInt(existingReservation.process_id);
+                        process.kill(existingPid, 0); // プロセス存在チェック
+                        
+                        // 既存プロセスが生きている場合は拒否
+                        console.warn(`オペレータ ${operatorId} は同一セッションの別プロセス (PID: ${existingPid}) で使用中です`);
+                        return false;
+                    } catch {
+                        // 既存プロセスが死んでいる場合は上書き
+                        console.log(`オペレータ ${operatorId} の古いプロセス (PID: ${existingReservation.process_id}) が終了したため、新プロセスで予約します`);
+                    }
+                } else {
+                    // 完全に異なるセッションの場合は拒否
+                    return false;
+                }
             }
             
-            // オペレータを予約
+            // オペレータを予約（新規または上書き）
             state.operators[operatorId] = {
                 session_id: sessionId,
                 process_id: process.pid.toString(),
@@ -308,7 +355,7 @@ export class FileOperationManager {
     }
 
     /**
-     * オペレータの解放（統一ファイル版）
+     * オペレータの解放
      */
     async releaseOperatorUnified(operatorId: string, sessionId: string): Promise<boolean> {
         const filePath = this.getUnifiedOperatorFilePath();
@@ -339,9 +386,10 @@ export class FileOperationManager {
     }
 
     /**
-     * 利用可能なオペレータを取得（統一ファイル版）
+     * 利用可能なオペレータを取得
+     * Issue #56: セッションID考慮の修正 - 同じセッションの予約は利用可能として扱う
      */
-    async getAvailableOperatorsUnified(allOperators: string[]): Promise<string[]> {
+    async getAvailableOperatorsUnified(allOperators: string[], currentSessionId?: string): Promise<string[]> {
         const filePath = this.getUnifiedOperatorFilePath();
         
         const state = await this.readJsonFile<UnifiedOperatorState>(filePath, {
@@ -349,12 +397,22 @@ export class FileOperationManager {
             last_updated: new Date().toISOString()
         });
         
-        const reservedOperators = Object.keys(state.operators);
-        return allOperators.filter(op => !reservedOperators.includes(op));
+        // セッションIDが指定されている場合は、そのセッション以外の予約のみを除外
+        if (currentSessionId) {
+            const reservedByOtherSessions = Object.keys(state.operators).filter(operatorId => {
+                const reservation = state.operators[operatorId];
+                return reservation.session_id !== currentSessionId;
+            });
+            return allOperators.filter(op => !reservedByOtherSessions.includes(op));
+        } else {
+            // セッションIDが指定されていない場合は従来の動作（全予約を除外）
+            const reservedOperators = Object.keys(state.operators);
+            return allOperators.filter(op => !reservedOperators.includes(op));
+        }
     }
 
     /**
-     * 現在のセッションのオペレータを取得（統一ファイル版）
+     * 現在のセッションのオペレータを取得
      */
     async getCurrentOperatorUnified(sessionId: string): Promise<string | null> {
         const filePath = this.getUnifiedOperatorFilePath();
@@ -373,86 +431,6 @@ export class FileOperationManager {
         return null;
     }
 
-    // =============================================================================
-    // Phase 4: 移行処理とクリーンアップ
-    // =============================================================================
-
-    /**
-     * 既存ファイルから統一ファイルへの移行
-     */
-    async migrateFromLegacyFiles(activeOperatorsFile: string, sessionId: string): Promise<void> {
-        try {
-            // 既存のactive-operators.jsonを読み込み
-            const legacyData = await this.readJsonFile<{
-                active: Record<string, string>;
-                last_updated: string;
-            }>(activeOperatorsFile, {
-                active: {},
-                last_updated: new Date().toISOString()
-            });
-
-            if (Object.keys(legacyData.active).length === 0) {
-                return; // 移行データなし
-            }
-
-            const unifiedFilePath = this.getUnifiedOperatorFilePath();
-            
-            await this.withFileLock(unifiedFilePath, async () => {
-                const unifiedState = await this.readJsonFile<UnifiedOperatorState>(unifiedFilePath, {
-                    operators: {},
-                    last_updated: new Date().toISOString()
-                });
-
-                // レガシーデータを統一形式に変換
-                for (const [operatorId, legacySessionId] of Object.entries(legacyData.active)) {
-                    // 現在のセッションのもののみ移行
-                    if (legacySessionId === sessionId) {
-                        unifiedState.operators[operatorId] = {
-                            session_id: sessionId,
-                            process_id: process.pid.toString(),
-                            reserved_at: legacyData.last_updated || new Date().toISOString()
-                        };
-                    }
-                }
-
-                unifiedState.last_updated = new Date().toISOString();
-                await this.writeJsonFile(unifiedFilePath, unifiedState);
-            });
-
-            console.log(`Migrated ${Object.keys(legacyData.active).length} operators from legacy files`);
-        } catch (error) {
-            console.warn('Migration from legacy files failed:', (error as Error).message);
-        }
-    }
-
-    /**
-     * レガシーファイルのクリーンアップ（安全な削除）
-     */
-    async cleanupLegacyFiles(activeOperatorsFile: string, sessionOperatorFile: string): Promise<void> {
-        try {
-            // セッションファイルの削除（安全）
-            await this.deleteFile(sessionOperatorFile);
-
-            // active-operators.jsonの処理（慎重に）
-            const legacyData = await this.readJsonFile<{
-                active: Record<string, string>;
-                last_updated: string;
-            }>(activeOperatorsFile, {
-                active: {},
-                last_updated: new Date().toISOString()
-            });
-
-            // 他のセッションが使用中でなければ削除
-            if (Object.keys(legacyData.active).length === 0) {
-                await this.deleteFile(activeOperatorsFile);
-                console.log('Cleaned up legacy active-operators.json (was empty)');
-            } else {
-                console.log('Legacy active-operators.json retained (contains other sessions)');
-            }
-        } catch (error) {
-            console.warn('Legacy file cleanup failed:', (error as Error).message);
-        }
-    }
 
     /**
      * システム全体のヘルスチェック
