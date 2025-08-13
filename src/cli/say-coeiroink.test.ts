@@ -2,6 +2,7 @@
  * src/say/cli.test.ts: CLIクラステスト
  */
 
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import SayCoeiroinkCLI from './say-coeiroink.js';
 import { readFile } from 'fs/promises';
 import { tmpdir } from 'os';
@@ -11,15 +12,18 @@ import { join } from 'path';
 vi.mock('fs/promises');
 vi.mock('../core/say/index.js');
 
-const mockReadFile = readFile as anyedFunction<typeof readFile>;
+const mockReadFile = vi.mocked(readFile);
 
 // SayCoeiroinkクラスのモック
-const MockSayCoeiroink = require('./index.js').SayCoeiroink;
+const MockSayCoeiroink = vi.fn();
 
 // processのモック
 const originalArgv = process.argv;
 const originalStdin = process.stdin;
 const originalExit = process.exit;
+
+// process.exitのスパイ
+let processExitSpy: ReturnType<typeof vi.spyOn>;
 
 describe('SayCoeiroinkCLI', () => {
     let cli: SayCoeiroinkCLI;
@@ -37,6 +41,13 @@ describe('SayCoeiroinkCLI', () => {
 
         MockSayCoeiroink.mockImplementation(() => mockSayCoeiroink);
 
+        // Configのモック
+        const mockConfig = {
+            connection: { host: 'localhost', port: '50032' },
+            voice: { rate: 200 },
+            audio: { latencyMode: 'balanced' }
+        };
+
         // stdinのモック
         mockStdin = {
             setEncoding: vi.fn(),
@@ -49,13 +60,12 @@ describe('SayCoeiroinkCLI', () => {
             writable: true
         });
 
-        // exitのモック
-        Object.defineProperty(process, 'exit', {
-            value: vi.fn(),
-            writable: true
+        // process.exitのスパイ（実際に終了しないようにモック）
+        processExitSpy = vi.spyOn(process, 'exit').mockImplementation((code?: number) => {
+            throw new Error(`process.exit(${code}) called`);
         });
 
-        cli = new SayCoeiroinkCLI(mockSayCoeiroink);
+        cli = new SayCoeiroinkCLI(mockSayCoeiroink, mockConfig);
         
         vi.clearAllMocks();
     });
@@ -66,17 +76,14 @@ describe('SayCoeiroinkCLI', () => {
             value: originalStdin,
             writable: true
         });
-        Object.defineProperty(process, 'exit', {
-            value: originalExit,
-            writable: true
-        });
+        processExitSpy.mockRestore();
     });
 
     describe('parseArguments', () => {
         test('基本的な引数を正しく解析できること', async () => {
-            process.argv = ['node', 'cli.ts', 'Hello, World!'];
+            const args = ['Hello, World!'];
 
-            const result = await cli.parseArguments();
+            const result = await (cli as any).parseArguments(args);
 
             expect(result).toEqual({
                 text: 'Hello, World!',
@@ -84,9 +91,8 @@ describe('SayCoeiroinkCLI', () => {
                 voice: undefined,
                 outputFile: undefined,
                 inputFile: undefined,
-                streamMode: false,
-                helpRequested: false,
-                listVoices: false
+                chunkMode: 'punctuation',
+                bufferSize: undefined
             });
         });
 
@@ -304,11 +310,11 @@ describe('SayCoeiroinkCLI', () => {
 
             const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
 
-            await cli.run();
+            await expect(cli.run()).rejects.toThrow('process.exit(0) called');
 
             expect(consoleLogSpy).toHaveBeenCalled();
             expect(mockSayCoeiroink.synthesizeText).not.toHaveBeenCalled();
-            expect(process.exit).toHaveBeenCalledWith(0);
+            expect(processExitSpy).toHaveBeenCalledWith(0);
 
             consoleLogSpy.mockRestore();
         });
@@ -316,11 +322,11 @@ describe('SayCoeiroinkCLI', () => {
         test('音声リストが表示された場合、音声合成は実行されないこと', async () => {
             process.argv = ['node', 'cli.ts', '-v', '?'];
 
-            await cli.run();
+            await expect(cli.run()).rejects.toThrow('process.exit(0) called');
 
             expect(mockSayCoeiroink.listVoices).toHaveBeenCalledTimes(1);
             expect(mockSayCoeiroink.synthesizeText).not.toHaveBeenCalled();
-            expect(process.exit).toHaveBeenCalledWith(0);
+            expect(processExitSpy).toHaveBeenCalledWith(0);
         });
 
         test('入力ファイルからの音声合成が実行されること', async () => {
@@ -370,10 +376,10 @@ describe('SayCoeiroinkCLI', () => {
 
             const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
 
-            await cli.run();
+            await expect(cli.run()).rejects.toThrow('process.exit(1) called');
 
             expect(consoleErrorSpy).toHaveBeenCalledWith('Error:', 'Synthesis failed');
-            expect(process.exit).toHaveBeenCalledWith(1);
+            expect(processExitSpy).toHaveBeenCalledWith(1);
 
             consoleErrorSpy.mockRestore();
         });
@@ -384,10 +390,10 @@ describe('SayCoeiroinkCLI', () => {
 
             const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
 
-            await cli.run();
+            await expect(cli.run()).rejects.toThrow('process.exit(1) called');
 
             expect(consoleErrorSpy).toHaveBeenCalledWith('Error:', 'Initialization failed');
-            expect(process.exit).toHaveBeenCalledWith(1);
+            expect(processExitSpy).toHaveBeenCalledWith(1);
 
             consoleErrorSpy.mockRestore();
         });
@@ -397,10 +403,10 @@ describe('SayCoeiroinkCLI', () => {
 
             const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
 
-            await cli.run();
+            await expect(cli.run()).rejects.toThrow('process.exit(1) called');
 
             expect(consoleErrorSpy).toHaveBeenCalled();
-            expect(process.exit).toHaveBeenCalledWith(1);
+            expect(processExitSpy).toHaveBeenCalledWith(1);
 
             consoleErrorSpy.mockRestore();
         });
