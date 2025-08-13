@@ -209,4 +209,88 @@ describe('OperatorStateManager', () => {
             expect(currentOperatorId).toBeNull();
         });
     });
+
+    // Issue #56: operator重複アサイン問題のテスト
+    describe('Issue #56: operator重複アサイン問題', () => {
+        test('アサインされたオペレータが利用可能リストから除外されること', async () => {
+            // ConfigManagerのモックを設定
+            const mockOperators = ['tsukuyomi', 'metan', 'zundamon'];
+            vi.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue(mockOperators);
+
+            // 初期状態：全オペレータが利用可能
+            const initialAvailable = await stateManager.getAvailableOperators();
+            expect(initialAvailable).toEqual(mockOperators);
+
+            // tsukuyomiを予約
+            await stateManager.reserveOperator('tsukuyomi');
+
+            // 予約後：tsukuyomiが利用可能リストから除外されること
+            const availableAfterReserve = await stateManager.getAvailableOperators();
+            expect(availableAfterReserve).not.toContain('tsukuyomi');
+            expect(availableAfterReserve).toContain('metan');
+            expect(availableAfterReserve).toContain('zundamon');
+
+            // isOperatorBusyも正しく動作すること
+            const busyResult = await stateManager.isOperatorBusy('tsukuyomi');
+            expect(busyResult).toBe(true);
+
+            // 他のオペレータは引き続き利用可能
+            const metanBusy = await stateManager.isOperatorBusy('metan');
+            expect(metanBusy).toBe(false);
+        });
+
+        test('オペレータ解放後に利用可能リストに戻ること', async () => {
+            // ConfigManagerのモックを設定
+            const mockOperators = ['tsukuyomi', 'metan', 'zundamon'];
+            vi.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue(mockOperators);
+
+            // tsukuyomiを予約
+            await stateManager.reserveOperator('tsukuyomi');
+
+            // 予約後は利用不可
+            const availableAfterReserve = await stateManager.getAvailableOperators();
+            expect(availableAfterReserve).not.toContain('tsukuyomi');
+
+            // 解放
+            const releaseResult = await stateManager.releaseOperator();
+            expect(releaseResult.operatorId).toBe('tsukuyomi');
+            expect(releaseResult.success).toBe(true);
+
+            // 解放後は利用可能に戻る
+            const availableAfterRelease = await stateManager.getAvailableOperators();
+            expect(availableAfterRelease).toContain('tsukuyomi');
+
+            // isOperatorBusyも正しく動作すること
+            const busyAfterRelease = await stateManager.isOperatorBusy('tsukuyomi');
+            expect(busyAfterRelease).toBe(false);
+        });
+
+        test('異なるセッションからの同じオペレータ予約を拒否すること', async () => {
+            // セッション1でtsukuyomiを予約
+            await stateManager.reserveOperator('tsukuyomi');
+
+            // セッション2から同じオペレータを予約しようとする
+            const session2Id = 'test-session-2-' + Date.now();
+            const stateManager2 = new OperatorStateManager(session2Id, fileManager);
+            await stateManager2.initialize(configManager);
+
+            // 予約に失敗することを確認
+            await expect(stateManager2.reserveOperator('tsukuyomi'))
+                .rejects.toThrow('オペレータ tsukuyomi は既に利用中です');
+        });
+
+        test('同じセッションからの重複予約は成功すること', async () => {
+            // 最初の予約
+            const firstReserve = await stateManager.reserveOperator('tsukuyomi');
+            expect(firstReserve).toBe(true);
+
+            // 同じセッションからの重複予約は成功
+            const secondReserve = await stateManager.reserveOperator('tsukuyomi');
+            expect(secondReserve).toBe(true);
+
+            // 現在のオペレータIDも正しく設定されていること
+            const currentOperatorId = await stateManager.getCurrentOperatorId();
+            expect(currentOperatorId).toBe('tsukuyomi');
+        });
+    });
 });

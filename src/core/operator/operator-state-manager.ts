@@ -2,10 +2,10 @@
  * src/operator/operator-state-manager.ts: オペレータ状態管理クラス
  * オペレータの予約、解放、状態クエリを担当
  * 
- * Issue #43 対応: 統一ファイル管理システムへの移行
- * - 旧システム（分離ファイル）と新システム（統一ファイル）の両方をサポート
- * - 段階的移行による安全な更新
- * - 新システムは排他制御付きで複数プロセス対応
+ * Issue #43 対応: 統一ファイル管理システム
+ * - 統一ファイルによる一元管理
+ * - 排他制御付きで複数プロセス対応
+ * - セッションIDベースの予約管理
  */
 
 import FileOperationManager from './file-operation-manager.js';
@@ -22,16 +22,23 @@ export class OperatorStateManager {
     }
 
     /**
-     * 初期化：統一ファイル管理システム用
+     * 初期化
      */
     async initialize(configManager: ConfigManager): Promise<void> {
         this.configManager = configManager;
-        await this.fileOperationManager.initUnifiedOperatorState();
-        await this.fileOperationManager.cleanupStaleOperators(this.sessionId);
+        
+        try {
+            await this.fileOperationManager.initUnifiedOperatorState();
+            await this.fileOperationManager.cleanupStaleOperators(this.sessionId);
+        } catch (error) {
+            console.warn('OperatorStateManager initialization warning:', (error as Error).message);
+            // 初期化に失敗しても続行（最小限の機能は利用可能）
+        }
     }
 
     /**
-     * 利用可能なオペレータを取得（統一システム版）
+     * 利用可能なオペレータを取得
+     * セッションIDを渡さず、全予約を除外する（正しい動作）
      */
     async getAvailableOperators(): Promise<string[]> {
         if (!this.configManager) {
@@ -43,7 +50,7 @@ export class OperatorStateManager {
     }
 
     /**
-     * オペレータを予約（統一システム版）
+     * オペレータを予約
      */
     async reserveOperator(operatorId: string): Promise<boolean> {
         const success = await this.fileOperationManager.reserveOperatorUnified(operatorId, this.sessionId);
@@ -56,7 +63,7 @@ export class OperatorStateManager {
     }
 
     /**
-     * オペレータを返却（統一システム版）
+     * オペレータを返却
      */
     async releaseOperator(): Promise<{ operatorId: string; success: boolean }> {
         const operatorId = await this.getCurrentOperatorId();
@@ -71,7 +78,7 @@ export class OperatorStateManager {
     }
 
     /**
-     * 全ての利用状況をクリア（統一システム版）
+     * 全ての利用状況をクリア
      */
     async clearAllOperators(): Promise<boolean> {
         // 統一ファイルを削除してリセット
@@ -85,24 +92,25 @@ export class OperatorStateManager {
     }
 
     /**
-     * 現在のセッションに割り当てられたオペレータIDを取得（統一システム版）
+     * 現在のセッションに割り当てられたオペレータIDを取得
      */
     async getCurrentOperatorId(): Promise<string | null> {
         return await this.fileOperationManager.getCurrentOperatorUnified(this.sessionId);
     }
 
     /**
-     * 指定されたオペレータが他のセッションで利用中かチェック（統一システム版）
+     * 指定されたオペレータが他のセッションで利用中かチェック
+     * Issue #56: セッションID渡すように修正
      */
     async isOperatorBusy(operatorId: string): Promise<boolean> {
         const allOperators = await this.configManager?.getAvailableCharacterIds() || [];
-        const availableOperators = await this.fileOperationManager.getAvailableOperatorsUnified(allOperators);
+        const availableOperators = await this.fileOperationManager.getAvailableOperatorsUnified(allOperators, this.sessionId);
         
         return !availableOperators.includes(operatorId);
     }
 
     /**
-     * 現在のオペレータをサイレントで解放（統一システム版）
+     * 現在のオペレータをサイレントで解放
      */
     async silentReleaseCurrentOperator(): Promise<string | null> {
         try {
