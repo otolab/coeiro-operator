@@ -68,8 +68,8 @@ COEIROINK音声合成サーバーへの接続を設定します。
 ```json
 {
   "voice": {
-    "default_voice_id": "292ea286-3d5f-f1cc-157c-66462a6a9d08",
-    "default_style_id": 46,
+    "default_voice_id": "3c37646f-3881-5374-2a83-149267990abc",
+    "default_style_id": 0,
     "rate": 200
   }
 }

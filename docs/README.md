@@ -44,6 +44,7 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 ### テスト・品質管理
 - **[testing-guide.md](testing-guide.md)** - テスト環境とmcp-debug統合
 - **[test-quality-guidelines.md](test-quality-guidelines.md)** - テスト品質の基本原則
+- **[memory-leak-detection-guide.md](memory-leak-detection-guide.md)** - メモリリーク検出・精密測定ガイド
 - **[logging-guidelines.md](logging-guidelines.md)** - ログ出力ガイドライン
 
 ## 📖 リファレンス
