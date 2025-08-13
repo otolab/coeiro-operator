@@ -363,6 +363,50 @@ server.registerTool("say", {
     logger.debug(`  rate: ${rate || 'undefined (will use config default)'}`);
     logger.debug(`  style: ${style || 'undefined (will use operator default)'}`);
     
+    // Issue #58: オペレータ未アサイン時の再アサイン促進メッセージ
+    const currentOperator = await operatorManager.showCurrentOperator();
+    if (!currentOperator.operatorId) {
+      // 利用可能なオペレータを取得
+      let availableOperators: string[] = [];
+      try {
+        availableOperators = await operatorManager.getAvailableOperators();
+      } catch (error) {
+        logger.warn(`Failed to get available operators: ${(error as Error).message}`);
+      }
+      
+      let guidanceMessage = "⚠️  オペレータが割り当てられていません。\n\n";
+      guidanceMessage += "🔧 次の手順で進めてください：\n";
+      guidanceMessage += "1. operator_assign を実行してオペレータを選択\n";
+      guidanceMessage += "2. 再度 say コマンドで音声を生成\n\n";
+      
+      if (availableOperators.length > 0) {
+        guidanceMessage += `🎭 利用可能なオペレータ: ${availableOperators.join(', ')}\n\n`;
+        guidanceMessage += "💡 例：operator_assign ツールで 'tsukuyomi' を選択する場合は、operator パラメータに 'tsukuyomi' を指定してください。";
+      } else {
+        guidanceMessage += "❌ 現在利用可能なオペレータがありません。しばらく待ってから再試行してください。";
+      }
+      
+      return {
+        content: [{
+          type: "text",
+          text: guidanceMessage
+        }]
+      };
+    }
+    
+    // Issue #58: 動的タイムアウト延長 - sayコマンド実行時にオペレータ予約を延長
+    try {
+      const refreshSuccess = await operatorManager.refreshOperatorReservation();
+      if (refreshSuccess) {
+        logger.debug(`Operator reservation refreshed for: ${currentOperator.operatorId}`);
+      } else {
+        logger.warn(`Failed to refresh operator reservation for: ${currentOperator.operatorId}`);
+      }
+    } catch (error) {
+      logger.warn(`Error refreshing operator reservation: ${(error as Error).message}`);
+      // エラーは無視して音声生成を継続
+    }
+    
     // 設定情報をログ出力
     const config = await loadConfig();
     logger.debug(`Current audio config:`);
@@ -382,13 +426,12 @@ server.registerTool("say", {
     logger.debug(`Result: ${JSON.stringify(result)}`);
     
     // 発声完了後に動作モード情報を出力
-    const currentOperator = await operatorManager.showCurrentOperator();
-    const modeInfo = `発声完了 - オペレータ: ${currentOperator.operatorId || '未割り当て'}, タスクID: ${result.taskId}`;
+    const modeInfo = `発声完了 - オペレータ: ${currentOperator.operatorId}, タスクID: ${result.taskId}`;
     logger.info(modeInfo);
     
     logger.debug("=== SAY TOOL DEBUG END ===");
     
-    const responseText = `発声完了: タスクID ${result.taskId}, オペレータ: ${currentOperator.operatorId || '未割り当て'}`;
+    const responseText = `発声完了: タスクID ${result.taskId}, オペレータ: ${currentOperator.operatorId}`;
     
     return {
       content: [{

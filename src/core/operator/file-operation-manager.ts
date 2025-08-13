@@ -431,6 +431,39 @@ export class FileOperationManager {
         return null;
     }
 
+    /**
+     * オペレータ予約のタイムアウトを延長（reserved_atを現在時刻に更新）
+     * Issue #58: sayコマンド実行時の動的タイムアウト延長
+     */
+    async refreshOperatorReservation(operatorId: string, sessionId: string): Promise<boolean> {
+        const filePath = this.getUnifiedOperatorFilePath();
+        
+        return await this.withFileLock(filePath, async () => {
+            const state = await this.readJsonFile<UnifiedOperatorState>(filePath, {
+                operators: {},
+                last_updated: new Date().toISOString()
+            });
+            
+            // オペレータが予約されているかチェック
+            if (!state.operators[operatorId]) {
+                return false; // 予約されていない
+            }
+            
+            // セッションIDが一致するかチェック
+            const reservation = state.operators[operatorId];
+            if (reservation.session_id !== sessionId) {
+                return false; // 他のセッションが使用中
+            }
+            
+            // reserved_atを現在時刻に更新
+            state.operators[operatorId].reserved_at = new Date().toISOString();
+            state.last_updated = new Date().toISOString();
+            
+            await this.writeJsonFile(filePath, state);
+            return true;
+        });
+    }
+
 
     /**
      * システム全体のヘルスチェック

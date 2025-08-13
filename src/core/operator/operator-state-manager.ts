@@ -125,6 +125,14 @@ export class OperatorStateManager {
             return null;
         }
     }
+
+    /**
+     * オペレータ予約のタイムアウトを延長
+     * Issue #58: sayコマンド実行時の動的タイムアウト延長
+     */
+    async refreshOperatorReservation(operatorId: string): Promise<boolean> {
+        return await this.fileOperationManager.refreshOperatorReservation(operatorId, this.sessionId);
+    }
 }
 
 export default OperatorStateManager;
