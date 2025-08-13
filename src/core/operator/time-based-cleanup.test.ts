@@ -16,6 +16,10 @@ describe('時間ベースcleanup機能', () => {
         tempDir = join(tmpdir(), `time-cleanup-${Date.now()}`);
         await mkdir(tempDir, { recursive: true });
         fileManager = new FileOperationManager();
+        
+        // テスト用に統一ファイルパスを上書き
+        const testFilePath = join(tempDir, 'test-operators.json');
+        fileManager.getUnifiedOperatorFilePath = () => testFilePath;
     });
 
     afterEach(async () => {
@@ -26,7 +30,7 @@ describe('時間ベースcleanup機能', () => {
         }
     });
 
-    test('30分未満の予約は保持される', async () => {
+    test('2時間未満の予約は保持される', async () => {
         await fileManager.initUnifiedOperatorState();
         
         // 最近の予約を作成
@@ -44,12 +48,12 @@ describe('時間ベースcleanup機能', () => {
         expect(state.operators.tsukuyomi.session_id).toBe('session_1');
     });
 
-    test('30分以上前の予約は削除される', async () => {
+    test('2時間以上前の予約は削除される', async () => {
         await fileManager.initUnifiedOperatorState();
         
-        // 古い予約を手動で作成（31分前）
+        // 古い予約を手動で作成（3時間前）
         const filePath = fileManager.getUnifiedOperatorFilePath();
-        const oldTimestamp = new Date(Date.now() - 31 * 60 * 1000); // 31分前
+        const oldTimestamp = new Date(Date.now() - 3 * 60 * 60 * 1000); // 3時間前
         
         const state = await fileManager.readJsonFile(filePath, {});
         state.operators = {

@@ -264,8 +264,8 @@ export class FileOperationManager {
 
             let hasChanges = false;
             const now = Date.now();
-            // 30分以上前の予約のみクリーンアップ（CLIやMCPの通常使用には十分）
-            const staleThreshold = 30 * 60 * 1000; // 30分
+            // 2時間以上前の予約のみクリーンアップ（CLIやMCPの通常使用には十分）
+            const staleThreshold = 2 * 60 * 60 * 1000; // 2時間
             
             // 古い予約を削除（プロセス存在チェックは行わない）
             for (const [operatorId, info] of Object.entries(state.operators)) {
@@ -280,7 +280,7 @@ export class FileOperationManager {
                     const age = now - reservedAt;
                     
                     if (age > staleThreshold) {
-                        console.log(`古い予約を削除: ${operatorId} (${Math.round(age / 1000 / 60)}分前)`);
+                        console.log(`古い予約を削除: ${operatorId} (${Math.round(age / 1000 / 60 / 60)}時間前)`);
                         delete state.operators[operatorId];
                         hasChanges = true;
                     }
