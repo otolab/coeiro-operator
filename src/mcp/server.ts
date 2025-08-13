@@ -395,17 +395,18 @@ server.registerTool("say", {
     }
     
     // Issue #58: 動的タイムアウト延長 - sayコマンド実行時にオペレータ予約を延長
-    try {
-      const refreshSuccess = await operatorManager.refreshOperatorReservation();
-      if (refreshSuccess) {
-        logger.debug(`Operator reservation refreshed for: ${currentOperator.operatorId}`);
-      } else {
-        logger.warn(`Failed to refresh operator reservation for: ${currentOperator.operatorId}`);
-      }
-    } catch (error) {
-      logger.warn(`Error refreshing operator reservation: ${(error as Error).message}`);
-      // エラーは無視して音声生成を継続
-    }
+    // ベストエフォート非同期処理（エラーは無視、音声生成をブロックしない）
+    operatorManager.refreshOperatorReservation()
+      .then(refreshSuccess => {
+        if (refreshSuccess) {
+          logger.debug(`Operator reservation refreshed for: ${currentOperator.operatorId}`);
+        } else {
+          logger.debug(`Could not refresh operator reservation for: ${currentOperator.operatorId} (not critical)`);
+        }
+      })
+      .catch(error => {
+        logger.debug(`Operator reservation refresh failed: ${(error as Error).message} (not critical)`);
+      });
     
     // 設定情報をログ出力
     const config = await loadConfig();
