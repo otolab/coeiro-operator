@@ -13,7 +13,7 @@ COEIRO Operatorは、SpeechQueueを基盤とした統一実装により、CLIツ
 
 ### CLI実行モード（queue統一版）
 - **目的**: ユーザーが音声の完了を確認できる同期的な動作
-- **メソッド**: `synthesizeTextCLI()` 
+- **メソッド**: `synthesizeText()` 
 - **動作フロー**: 
   1. `enqueueWarmupAndWait()` - ドライバーウォームアップ
   2. `enqueueAndWait()` - 音声合成実行

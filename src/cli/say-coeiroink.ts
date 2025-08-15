@@ -193,7 +193,7 @@ Examples:
         const text = await this.getInputText(options);
 
         // Queue統一版：ウォームアップ → 音声合成 → 完了待機を全てqueue経由で処理
-        const result = await this.sayCoeiroink.synthesizeTextCLI(text, {
+        const result = await this.sayCoeiroink.synthesizeText(text, {
             voice: options.voice || null,
             rate: options.rate,
             outputFile: options.outputFile || null,
@@ -204,17 +204,9 @@ Examples:
         if (options.outputFile) {
             console.error(`Audio saved to: ${options.outputFile}`);
         }
-        // 注：音声再生時の完了待機は synthesizeTextCLI() 内で自動実行される
+        // 注：音声再生時の完了待機は synthesizeText() 内で自動実行される
     }
 
-    /**
-     * 音声再生完了を待機（レガシー、現在は未使用）
-     * @deprecated synthesizeTextCLI()のqueue統一処理で代替
-     */
-    private async waitForPlaybackCompletion(): Promise<void> {
-        // バッファ処理完了のため500ms待機
-        await new Promise(resolve => setTimeout(resolve, 500));
-    }
 }
 
 // プロセス終了ハンドリング
@@ -245,9 +237,6 @@ async function main(): Promise<void> {
     
     await sayCoeiroink.initialize();
     await sayCoeiroink.buildDynamicConfig();
-    
-    // AudioPlayerを事前初期化（ウォームアップのため）
-    await sayCoeiroink.initializeAudioPlayer();
     
     const cli = new SayCoeiroinkCLI(sayCoeiroink, config);
     await cli.run(process.argv.slice(2));

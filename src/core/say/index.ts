@@ -195,15 +195,7 @@ export class SayCoeiroink {
     }
 
     /**
-     * ドライバーウォームアップ（レガシー、直接実行版）
-     * @deprecated queueベースのenqueueWarmup()を使用してください
-     */
-    async warmupAudioDriver(): Promise<void> {
-        await this.audioPlayer.warmupAudioDriver();
-    }
-    
-    /**
-     * Queue統一版：ウォームアップタスクをキューに追加
+     * ウォームアップタスクをキューに追加
      */
     async enqueueWarmup(): Promise<SynthesizeResult> {
         return await this.speechQueue.enqueueWarmup();
@@ -290,12 +282,11 @@ export class SayCoeiroink {
     // ========================================================================
     
     /**
-     * CLIからの完全同期実行用メソッド（queue統一版）
+     * CLIからの完全同期実行用メソッド
      * - ウォームアップ → 音声合成 → 完了待機を全てqueueで処理
      * - 同期的な動作でユーザーが完了を確認できる
-     * - 従来のsynthesizeText + waitForPlaybackCompletionと同等
      */
-    async synthesizeTextCLI(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+    async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         // ファイル出力時はウォームアップと完了待機をスキップ
         if (options.outputFile) {
             return await this.speechQueue.enqueueAndWait(text, options);
@@ -318,14 +309,6 @@ export class SayCoeiroink {
      */
     async synthesizeTextAsync(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         return await this.enqueueSpeech(text, options);
-    }
-
-    /**
-     * レガシー：CLIからの直接呼び出し用メソッド（後方互換性）
-     * @deprecated synthesizeTextCLI()を使用してください
-     */
-    async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
-        return await this.synthesizeTextInternal(text, options);
     }
 
     /**

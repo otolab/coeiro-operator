@@ -63,28 +63,28 @@ export class SpeechQueue {
     }
 
     /**
-     * CLI用：音声タスクをキューに追加して完了を待つ
+     * 音声タスクをキューに追加して完了を待つ
      */
     async enqueueAndWait(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         return this.enqueueTaskAndWait('speech', text, options);
     }
 
     /**
-     * CLI用：ウォームアップタスクをキューに追加して完了を待つ
+     * ウォームアップタスクをキューに追加して完了を待つ
      */
     async enqueueWarmupAndWait(): Promise<SynthesizeResult> {
         return this.enqueueTaskAndWait('warmup', '', {});
     }
 
     /**
-     * CLI用：完了待機タスクをキューに追加して完了を待つ
+     * 完了待機タスクをキューに追加して完了を待つ
      */
     async enqueueCompletionWaitAndWait(): Promise<SynthesizeResult> {
         return this.enqueueTaskAndWait('completion_wait', '', {});
     }
 
     /**
-     * CLI用：タスクをキューに追加して完了を待つ（内部用）
+     * タスクをキューに追加して完了を待つ（内部用）
      */
     private async enqueueTaskAndWait(type: SpeechTaskType, text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         const taskId = this.taskIdCounter++;
