@@ -416,7 +416,10 @@ server.registerTool("say", {
     logger.debug(`  bufferSize: ${config.audio?.bufferSize || 'undefined'}`);
     logger.debug("==============================");
     
-    // 非同期で音声合成を開始（awaitしない）
+    // MCP設計: 音声合成タスクをキューに投稿のみ（再生完了を待たない）
+    // - synthesizeTextAsync() はキューに追加して即座にレスポンス
+    // - 実際の音声合成・再生は背景のSpeechQueueで非同期処理
+    // - CLIとは異なり、MCPではwaitForPlaybackCompletion()は呼ばない
     const speechPromise = sayCoeiroink.synthesizeTextAsync(message, {
       voice: voice || null,
       rate: rate || undefined,

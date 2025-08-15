@@ -273,17 +273,36 @@ export class SayCoeiroink {
         this.speechQueue.clear();
     }
 
-    // CLIからの直接呼び出し用メソッド
+    // ========================================================================
+    // CLI/MCP 実行モード別メソッド
+    // ========================================================================
+    
+    /**
+     * CLIからの直接呼び出し用メソッド
+     * - 音声合成を直接実行（キューを経由しない）
+     * - 再生完了まで待機する設計（CLI側でwaitForPlaybackCompletion実行）
+     * - 同期的な動作でユーザーが完了を確認できる
+     */
     async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         return await this.synthesizeTextInternal(text, options);
     }
 
-    // MCPサーバから呼び出される非同期キューイング版メソッド
+    /**
+     * MCPサーバから呼び出される非同期キューイング版メソッド
+     * - SpeechQueueにタスクを投稿のみ（即座にレスポンス）
+     * - 実際の音声合成・再生は背景で非同期実行
+     * - Claude Codeの応答性を重視した設計
+     * - 再生完了は待たない（MCPではwaitForPlaybackCompletion不要）
+     */
     async synthesizeTextAsync(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         return await this.enqueueSpeech(text, options);
     }
 
-    // デバッグ用：キュー処理完了を待つ版メソッド
+    /**
+     * デバッグ用：キュー処理完了を待つ版メソッド
+     * - テスト環境などで音声合成の完了確認が必要な場合に使用
+     * - 通常のMCP動作では使用しない
+     */
     async synthesizeTextAsyncAndWait(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         return await this.speechQueue.enqueueAndWait(text, options);
     }

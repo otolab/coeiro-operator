@@ -208,7 +208,9 @@ Examples:
         if (options.outputFile) {
             console.error(`Audio saved to: ${options.outputFile}`);
         } else {
-            // 音声再生完了を待機
+            // CLI設計: 音声再生完了を待機（MCPとは異なる動作）
+            // - ユーザーが音声の終了を確認できるよう同期的に待機
+            // - MCPサーバーではこの処理は実行されない（即座にレスポンス）
             await this.waitForPlaybackCompletion();
         }
     }
