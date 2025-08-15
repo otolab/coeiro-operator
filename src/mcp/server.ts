@@ -345,7 +345,7 @@ server.registerTool("operator_available", {
 
 // say音声出力ツール（src/say/index.js使用）
 server.registerTool("say", {
-  description: "COEIROINKを使って日本語音声を順次出力します（低レイテンシストリーミング対応）",
+  description: "COEIROINKを使って日本語音声を非同期で出力します（低レイテンシストリーミング対応、即座にレスポンス）",
   inputSchema: {
     message: z.string().describe("発話させるメッセージ（日本語）"),
     voice: z.string().optional().describe("音声ID（省略時はオペレータ設定を使用）"),
@@ -416,23 +416,32 @@ server.registerTool("say", {
     logger.debug(`  bufferSize: ${config.audio?.bufferSize || 'undefined'}`);
     logger.debug("==============================");
     
-    // 常に非同期キュー処理を使用
-    const result = await sayCoeiroink.synthesizeTextAsync(message, {
+    // MCP設計: 音声合成タスクをキューに投稿のみ（再生完了を待たない）
+    // - synthesizeTextAsync() はキューに追加して即座にレスポンス
+    // - 実際の音声合成・再生は背景のSpeechQueueで非同期処理
+    // - CLIとは異なり、MCPではウォームアップ・完了待機は実行しない
+    const speechPromise = sayCoeiroink.synthesizeTextAsync(message, {
       voice: voice || null,
       rate: rate || undefined,
       style: style || undefined,
       allowFallback: false  // MCPツールではオペレータが必須
     });
     
-    logger.debug(`Result: ${JSON.stringify(result)}`);
-    
-    // 発声完了後に動作モード情報を出力
-    const modeInfo = `発声完了 - オペレータ: ${currentOperator.operatorId}, タスクID: ${result.taskId}`;
-    logger.info(modeInfo);
+    // 完了ログを非同期で処理
+    speechPromise
+      .then(result => {
+        logger.debug(`Result: ${JSON.stringify(result)}`);
+        const modeInfo = `発声完了 - オペレータ: ${currentOperator.operatorId}, タスクID: ${result.taskId}`;
+        logger.info(modeInfo);
+      })
+      .catch(error => {
+        logger.error(`音声合成非同期処理エラー: ${(error as Error).message}`);
+      });
     
     logger.debug("=== SAY TOOL DEBUG END ===");
     
-    const responseText = `発声完了: タスクID ${result.taskId}, オペレータ: ${currentOperator.operatorId}`;
+    // 即座にレスポンスを返す（音声合成の完了を待たない）
+    const responseText = `音声合成を開始しました - オペレータ: ${currentOperator.operatorId}`;
     
     return {
       content: [{

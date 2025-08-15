@@ -142,10 +142,15 @@ export class SayCoeiroink {
         this.audioPlayer = new AudioPlayer(this.config);
         this.audioSynthesizer = new AudioSynthesizer(this.config);
         
-        // SpeechQueueを初期化（処理コールバックを渡す）
-        this.speechQueue = new SpeechQueue(async (task: SpeechTask) => {
-            await this.synthesizeTextInternal(task.text, task.options);
-        });
+        // SpeechQueueを初期化（処理コールバックとウォームアップコールバックを渡す）
+        this.speechQueue = new SpeechQueue(
+            async (task: SpeechTask) => {
+                await this.synthesizeTextInternal(task.text, task.options);
+            },
+            async () => {
+                await this.audioPlayer.warmupAudioDriver();
+            }
+        );
     }
 
     async initialize(): Promise<void> {
@@ -190,11 +195,10 @@ export class SayCoeiroink {
     }
 
     /**
-     * ドライバーウォームアップ（CLI初期化時専用）
-     * 無音再生でSpeakerドライバーを事前起動・安定化
+     * ウォームアップタスクをキューに追加
      */
-    async warmupAudioDriver(): Promise<void> {
-        await this.audioPlayer.warmupAudioDriver();
+    async enqueueWarmup(): Promise<SynthesizeResult> {
+        return await this.speechQueue.enqueueWarmup();
     }
 
     async getCurrentOperatorVoice(): Promise<OperatorVoice | null> {
@@ -273,17 +277,45 @@ export class SayCoeiroink {
         this.speechQueue.clear();
     }
 
-    // CLIからの直接呼び出し用メソッド
+    // ========================================================================
+    // CLI/MCP 実行モード別メソッド
+    // ========================================================================
+    
+    /**
+     * CLIからの完全同期実行用メソッド
+     * - ウォームアップ → 音声合成 → 完了待機を全てqueueで処理
+     * - 同期的な動作でユーザーが完了を確認できる
+     */
     async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
-        return await this.synthesizeTextInternal(text, options);
+        // ファイル出力時はウォームアップと完了待機をスキップ
+        if (options.outputFile) {
+            return await this.speechQueue.enqueueAndWait(text, options);
+        }
+        
+        // 音声再生時：ウォームアップ → 音声合成 → 完了待機
+        await this.speechQueue.enqueueWarmupAndWait();
+        const result = await this.speechQueue.enqueueAndWait(text, options);
+        await this.speechQueue.enqueueCompletionWaitAndWait();
+        
+        return result;
     }
 
-    // MCPサーバから呼び出される非同期キューイング版メソッド
+    /**
+     * MCPサーバから呼び出される非同期キューイング版メソッド
+     * - SpeechQueueにタスクを投稿のみ（即座にレスポンス）
+     * - 実際の音声合成・再生は背景で非同期実行
+     * - Claude Codeの応答性を重視した設計
+     * - ウォームアップや完了待機は実行しない
+     */
     async synthesizeTextAsync(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         return await this.enqueueSpeech(text, options);
     }
 
-    // デバッグ用：キュー処理完了を待つ版メソッド
+    /**
+     * デバッグ用：キュー処理完了を待つ版メソッド
+     * - テスト環境などで音声合成の完了確認が必要な場合に使用
+     * - 通常のMCP動作では使用しない
+     */
     async synthesizeTextAsyncAndWait(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         return await this.speechQueue.enqueueAndWait(text, options);
     }

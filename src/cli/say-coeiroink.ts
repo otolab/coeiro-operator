@@ -192,11 +192,7 @@ Examples:
         const options = await this.parseArguments(args);
         const text = await this.getInputText(options);
 
-        // 音声再生時のみドライバーウォームアップを実行
-        if (!options.outputFile) {
-            await this.sayCoeiroink.warmupAudioDriver();
-        }
-
+        // Queue統一版：ウォームアップ → 音声合成 → 完了待機を全てqueue経由で処理
         const result = await this.sayCoeiroink.synthesizeText(text, {
             voice: options.voice || null,
             rate: options.rate,
@@ -207,19 +203,10 @@ Examples:
 
         if (options.outputFile) {
             console.error(`Audio saved to: ${options.outputFile}`);
-        } else {
-            // 音声再生完了を待機
-            await this.waitForPlaybackCompletion();
         }
+        // 注：音声再生時の完了待機は synthesizeText() 内で自動実行される
     }
 
-    /**
-     * 音声再生完了を待機
-     */
-    private async waitForPlaybackCompletion(): Promise<void> {
-        // バッファ処理完了のため500ms待機
-        await new Promise(resolve => setTimeout(resolve, 500));
-    }
 }
 
 // プロセス終了ハンドリング
@@ -250,9 +237,6 @@ async function main(): Promise<void> {
     
     await sayCoeiroink.initialize();
     await sayCoeiroink.buildDynamicConfig();
-    
-    // AudioPlayerを事前初期化（ウォームアップのため）
-    await sayCoeiroink.initializeAudioPlayer();
     
     const cli = new SayCoeiroinkCLI(sayCoeiroink, config);
     await cli.run(process.argv.slice(2));

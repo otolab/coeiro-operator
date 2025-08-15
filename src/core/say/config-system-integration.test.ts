@@ -176,6 +176,13 @@ describe('設定システム統合テスト', () => {
             await writeFile(configFile, JSON.stringify(customConfig, null, 2));
 
             const config: Config = {
+                connection: {
+                    host: 'localhost',
+                    port: '50032'
+                },
+                voice: {
+                    rate: 200
+                },
                 audio: {
                     splitMode: 'small',
                     latencyMode: 'ultra-low',
@@ -198,7 +205,7 @@ describe('設定システム統合テスト', () => {
             });
 
             expect(result.success).toBe(true);
-            expect(result.mode).toBe('streaming');
+            expect(result.taskId).toBeDefined();
         });
     });
 
@@ -206,6 +213,13 @@ describe('設定システム統合テスト', () => {
         test('並行生成有効/無効の切り替え効果確認', async () => {
             // 初期設定（並行生成無効）
             const initialConfig: Config = {
+                connection: {
+                    host: 'localhost',
+                    port: '50032'
+                },
+                voice: {
+                    rate: 200
+                },
                 audio: {
                     parallelGeneration: {
                         enabled: false,
@@ -228,6 +242,13 @@ describe('設定システム統合テスト', () => {
 
             // 設定を有効に変更
             const enabledConfig: Config = {
+                connection: {
+                    host: 'localhost',
+                    port: '50032'
+                },
+                voice: {
+                    rate: 200
+                },
                 audio: {
                     parallelGeneration: {
                         enabled: true,
@@ -249,7 +270,7 @@ describe('設定システム統合テスト', () => {
             );
 
             expect(enabledResult.success).toBe(true);
-            expect(enabledResult.mode).toBe('streaming');
+            expect(enabledResult.taskId).toBeDefined();
         });
 
         test('maxConcurrency設定値による動作変化確認', async () => {
@@ -257,6 +278,13 @@ describe('設定システム統合テスト', () => {
 
             for (const maxConcurrency of concurrencyLevels) {
                 const config: Config = {
+                    connection: {
+                        host: 'localhost',
+                        port: '50032'
+                    },
+                    voice: {
+                        rate: 200
+                    },
                     audio: {
                         parallelGeneration: {
                             enabled: true,
@@ -277,7 +305,7 @@ describe('設定システム統合テスト', () => {
                 );
 
                 expect(result.success).toBe(true);
-                expect(result.mode).toBe('streaming');
+                expect(result.taskId).toBeDefined();
             }
         });
     });
@@ -288,6 +316,13 @@ describe('設定システム統合テスト', () => {
 
             for (const latencyMode of latencyModes) {
                 const config: Config = {
+                    connection: {
+                        host: 'localhost',
+                        port: '50032'
+                    },
+                    voice: {
+                        rate: 200
+                    },
                     audio: {
                         latencyMode,
                         splitMode: 'punctuation'
@@ -328,6 +363,13 @@ describe('設定システム統合テスト', () => {
 
             for (const splitMode of splitModes) {
                 const config: Config = {
+                    connection: {
+                        host: 'localhost',
+                        port: '50032'
+                    },
+                    voice: {
+                        rate: 200
+                    },
                     audio: {
                         splitMode,
                         latencyMode: 'balanced'
@@ -346,7 +388,7 @@ describe('設定システム統合テスト', () => {
                 
                 // 分割が発生する場合はストリーミングモード
                 if (splitMode !== 'none') {
-                    expect(result.mode).toBe('streaming');
+                    expect(result.taskId).toBeDefined();
                 }
             }
         });
@@ -359,6 +401,13 @@ describe('設定システム統合テスト', () => {
                 {
                     name: '高速重視',
                     config: {
+                        connection: {
+                            host: 'localhost',
+                            port: '50032'
+                        },
+                        voice: {
+                            rate: 200
+                        },
                         audio: {
                             splitMode: 'small' as const,
                             latencyMode: 'ultra-low' as const,
@@ -375,6 +424,13 @@ describe('設定システム統合テスト', () => {
                 {
                     name: '安定性重視',
                     config: {
+                        connection: {
+                            host: 'localhost',
+                            port: '50032'
+                        },
+                        voice: {
+                            rate: 200
+                        },
                         audio: {
                             splitMode: 'large' as const,
                             latencyMode: 'quality' as const,
@@ -391,6 +447,13 @@ describe('設定システム統合テスト', () => {
                 {
                     name: '省メモリ',
                     config: {
+                        connection: {
+                            host: 'localhost',
+                            port: '50032'
+                        },
+                        voice: {
+                            rate: 200
+                        },
                         audio: {
                             splitMode: 'medium' as const,
                             latencyMode: 'balanced' as const,
@@ -415,7 +478,7 @@ describe('設定システム統合テスト', () => {
                 );
 
                 expect(result.success).toBe(true);
-                expect(result.mode).toBe('streaming');
+                expect(result.taskId).toBeDefined();
             }
         });
     });
@@ -464,6 +527,13 @@ describe('設定システム統合テスト', () => {
     describe('設定の境界値テスト', () => {
         test('設定値の上限・下限での動作確認', async () => {
             const edgeCaseConfig: Config = {
+                connection: {
+                    host: 'localhost',
+                    port: '50032'
+                },
+                voice: {
+                    rate: 200
+                },
                 audio: {
                     parallelGeneration: {
                         enabled: true,

@@ -155,7 +155,7 @@ describe('Say Integration Tests', () => {
             });
             
             expect(result.success).toBe(true);
-            expect(result.mode).toBeDefined();
+            expect(result.taskId).toBeDefined();
         });
 
         test('ファイル出力から読み込み確認まで完全なフローが動作すること', async () => {
@@ -168,7 +168,7 @@ describe('Say Integration Tests', () => {
             });
             
             expect(result.success).toBe(true);
-            expect(result.outputFile).toBe(outputFile);
+            expect(result.taskId).toBeDefined();
             
             // ファイルが作成されているか確認
             const fileContent = await readFile(outputFile);
@@ -294,7 +294,7 @@ describe('Say Integration Tests', () => {
             });
             
             expect(result.success).toBe(true);
-            expect(result.mode).toBe('streaming');
+            expect(result.taskId).toBeDefined();
         });
     });
 
@@ -408,7 +408,7 @@ describe('Say Integration Tests', () => {
                     });
                     // 空文字列でも成功する場合はその旨を確認
                     expect(result.success).toBe(true);
-                    expect(result.mode).toBeDefined();
+                    expect(result.taskId).toBeDefined();
                 } catch (error) {
                     // エラーになる場合は適切なエラーメッセージかを確認
                     expect(error).toBeInstanceOf(Error);
@@ -431,7 +431,7 @@ describe('Say Integration Tests', () => {
                 });
                 
                 expect(result.success).toBe(true);
-                expect(result.mode).toBeDefined();
+                expect(result.taskId).toBeDefined();
             }
         });
 
@@ -449,12 +449,7 @@ describe('Say Integration Tests', () => {
                     const result = await sayCoeiroink.synthesizeText('フォールバックテスト', options);
                     // 成功した場合は、適切なフォールバックが動作したことを確認
                     expect(result.success).toBe(true);
-                    expect(result.mode).toBeDefined();
-                    
-                    // レート値のフォールバック確認
-                    if (options.rate !== undefined) {
-                        expect(typeof result.rate === 'undefined' || result.rate >= 50).toBe(true);
-                    }
+                    expect(result.taskId).toBeDefined();
                 } catch (error) {
                     // エラーが発生した場合は、適切なエラーメッセージであることを確認
                     expect(error).toBeInstanceOf(Error);
