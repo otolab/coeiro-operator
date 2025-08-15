@@ -592,4 +592,37 @@ export class AudioPlayer {
         const clamped = Math.max(0, Math.min(1, t));
         return clamped * clamped * (3 - 2 * clamped);
     }
+
+    /**
+     * 無音PCMデータを生成
+     * @param durationMs 無音の長さ（ミリ秒）
+     * @param sampleRate サンプルレート（デフォルト：24000Hz）
+     * @returns 無音のPCMデータ
+     */
+    generateSilentPCM(durationMs: number = 100, sampleRate: number = SAMPLE_RATES.SYNTHESIS): Uint8Array {
+        const samplesCount = Math.floor((sampleRate * durationMs) / 1000);
+        const bytesCount = samplesCount * 2; // 16bit = 2bytes per sample
+        return new Uint8Array(bytesCount); // すべて0で初期化される（無音）
+    }
+
+    /**
+     * ドライバーウォームアップ用の無音再生
+     * 短い無音を再生してSpeakerドライバーを起動・安定化
+     */
+    async warmupAudioDriver(): Promise<void> {
+        if (!this.isInitialized) {
+            logger.warn('AudioPlayer未初期化のためウォームアップをスキップ');
+            return;
+        }
+
+        try {
+            logger.debug('ドライバーウォームアップ開始（無音再生）');
+            const silentPCM = this.generateSilentPCM(100); // 100ms無音
+            await this.playPCMData(silentPCM, BUFFER_SIZES.PRESETS.ULTRA_LOW.HIGH_WATER_MARK);
+            logger.debug('ドライバーウォームアップ完了');
+        } catch (error) {
+            logger.warn(`ドライバーウォームアップエラー: ${(error as Error).message}`);
+            // エラーが発生しても処理を継続（ウォームアップは補助機能）
+        }
+    }
 }

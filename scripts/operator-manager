@@ -9,4 +9,5 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Node.jsでCLIを実行（コンパイル済みファイル使用）
-exec node "$PROJECT_ROOT/dist/cli/operator-manager.js" "$@"
+# punycode非推奨警告を抑制
+exec node --no-deprecation "$PROJECT_ROOT/dist/cli/operator-manager.js" "$@"

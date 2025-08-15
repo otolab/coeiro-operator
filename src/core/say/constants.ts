@@ -66,8 +66,8 @@ export const AUDIO_FORMAT = {
 // 📄 docs/installation.md: --buffer-size説明
 // ================================
 export const BUFFER_SIZES = {
-    /** デフォルトバッファサイズ */
-    DEFAULT: 1024,
+    /** デフォルトバッファサイズ（CLI安定性のため2048に増強） */
+    DEFAULT: 2048,
     /** 最小バッファサイズ */
     MIN: 256,
     /** 最大バッファサイズ */
@@ -80,8 +80,8 @@ export const BUFFER_SIZES = {
             LOW_WATER_MARK: 32
         },
         BALANCED: {
-            HIGH_WATER_MARK: 256,
-            LOW_WATER_MARK: 128
+            HIGH_WATER_MARK: 512,
+            LOW_WATER_MARK: 256
         },
         QUALITY: {
             HIGH_WATER_MARK: 512,

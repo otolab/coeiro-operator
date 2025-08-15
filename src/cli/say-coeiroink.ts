@@ -55,8 +55,8 @@ Chunk Modes:
 Buffer Sizes:
     256     Lowest latency, higher CPU usage
     512     Low latency, moderate CPU usage
-    1024    Balanced (default)
-    2048    Higher stability, lower CPU usage
+    1024    Balanced
+    2048    Higher stability (default)
     4096+   Maximum stability, background use
 
 Features:
@@ -192,6 +192,11 @@ Examples:
         const options = await this.parseArguments(args);
         const text = await this.getInputText(options);
 
+        // 音声再生時のみドライバーウォームアップを実行
+        if (!options.outputFile) {
+            await this.sayCoeiroink.warmupAudioDriver();
+        }
+
         const result = await this.sayCoeiroink.synthesizeText(text, {
             voice: options.voice || null,
             rate: options.rate,
@@ -202,7 +207,18 @@ Examples:
 
         if (options.outputFile) {
             console.error(`Audio saved to: ${options.outputFile}`);
+        } else {
+            // 音声再生完了を待機
+            await this.waitForPlaybackCompletion();
         }
+    }
+
+    /**
+     * 音声再生完了を待機
+     */
+    private async waitForPlaybackCompletion(): Promise<void> {
+        // バッファ処理完了のため500ms待機
+        await new Promise(resolve => setTimeout(resolve, 500));
     }
 }
 
@@ -234,6 +250,9 @@ async function main(): Promise<void> {
     
     await sayCoeiroink.initialize();
     await sayCoeiroink.buildDynamicConfig();
+    
+    // AudioPlayerを事前初期化（ウォームアップのため）
+    await sayCoeiroink.initializeAudioPlayer();
     
     const cli = new SayCoeiroinkCLI(sayCoeiroink, config);
     await cli.run(process.argv.slice(2));

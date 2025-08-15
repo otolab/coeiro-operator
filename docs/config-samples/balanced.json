@@ -11,6 +11,6 @@
   "audio": {
     "latencyMode": "balanced",
     "splitMode": "punctuation",
-    "bufferSize": 1024
+    "bufferSize": 2048
   }
 }

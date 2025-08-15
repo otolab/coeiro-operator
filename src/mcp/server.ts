@@ -131,7 +131,7 @@ async function assignOperator(
 
 interface CharacterForStyleExtraction {
   available_styles?: Record<string, {
-    enabled: boolean;
+    disabled?: boolean;
     name: string;
     personality: string;
     speaking_style: string;
@@ -140,7 +140,7 @@ interface CharacterForStyleExtraction {
 
 function extractStyleInfo(character: CharacterForStyleExtraction): StyleInfo[] {
   return Object.entries(character.available_styles || {})
-    .filter(([_, style]) => style.enabled)
+    .filter(([_, style]) => !style.disabled)
     .map(([styleId, style]) => ({
       id: styleId,
       name: style.name,
