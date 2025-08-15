@@ -498,6 +498,37 @@ export class FileOperationManager {
             };
         }
     }
+
+    /**
+     * 指定されたオペレータが時間切れしているかチェック
+     * @param operatorId チェック対象のオペレータID
+     * @param sessionId セッションID
+     * @returns 時間切れの場合true
+     */
+    async isOperatorStale(operatorId: string, sessionId: string): Promise<boolean> {
+        const filePath = this.getUnifiedOperatorFilePath();
+        
+        const state = await this.readJsonFile<UnifiedOperatorState>(filePath, {
+            operators: {},
+            last_updated: new Date().toISOString()
+        });
+
+        const reservation = state.operators[operatorId];
+        if (!reservation || reservation.session_id !== sessionId) {
+            return true; // 予約が存在しないか、異なるセッション
+        }
+
+        try {
+            const reservedAt = new Date(reservation.reserved_at).getTime();
+            const now = Date.now();
+            const age = now - reservedAt;
+            const staleThreshold = 2 * 60 * 60 * 1000; // 2時間（cleanupStaleOperatorsと同じ）
+
+            return age > staleThreshold;
+        } catch {
+            return true; // 無効な日付の場合は時間切れとして扱う
+        }
+    }
 }
 
 export default FileOperationManager;

@@ -99,6 +99,32 @@ export class OperatorStateManager {
     }
 
     /**
+     * 現在のセッションのオペレータが有効かチェック（時間切れ考慮）
+     * 時間切れの場合は自動的に解放する
+     */
+    async validateCurrentOperatorSession(): Promise<boolean> {
+        const currentOperatorId = await this.getCurrentOperatorId();
+        if (!currentOperatorId) {
+            return false; // オペレータが割り当てられていない
+        }
+
+        // 時間切れチェック
+        const isStale = await this.fileOperationManager.isOperatorStale(currentOperatorId, this.sessionId);
+        if (isStale) {
+            // 時間切れの場合は自動解放
+            try {
+                await this.releaseOperator();
+                console.log(`時間切れオペレータを自動解放: ${currentOperatorId}`);
+            } catch (error) {
+                console.warn(`時間切れオペレータの自動解放に失敗: ${(error as Error).message}`);
+            }
+            return false;
+        }
+
+        return true; // 有効なオペレータが存在
+    }
+
+    /**
      * 指定されたオペレータが利用中かチェック（全セッション対象）
      * Issue #56: セッションIDを渡さず、全予約を対象とする
      */
