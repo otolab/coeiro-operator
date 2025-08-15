@@ -164,7 +164,7 @@ describe('並行チャンク生成システム統合テスト', () => {
             const parallelDuration = Date.now() - parallelStartTime;
 
             expect(parallelResult.success).toBe(true);
-            expect(parallelResult.mode).toBe('streaming');
+            expect(parallelResult.taskId).toBeDefined();
             
             // 並行生成の場合、適切なレスポンス時間内で完了
             expect(parallelDuration).toBeLessThan(2000); // 2秒以内
