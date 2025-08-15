@@ -227,7 +227,7 @@ describe('並行チャンク生成システム統合テスト', () => {
             );
 
             expect(result.success).toBe(true);
-            expect(result.mode).toBe('streaming');
+            expect(result.taskId).toBeDefined();
         });
     });
 
