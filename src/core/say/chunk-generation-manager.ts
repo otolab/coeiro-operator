@@ -37,7 +37,7 @@ export class ChunkGenerationManager {
         this.synthesizeFunction = synthesizeFunction;
         this.options = {
             maxConcurrency: 2,
-            delayBetweenRequests: 50,
+            delayBetweenRequests: 100,  // 間隔を増加して安定性向上
             pauseUntilFirstComplete: true,  // デフォルトで初回ポーズを有効化
             ...options
         };

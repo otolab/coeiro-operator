@@ -189,6 +189,13 @@ export class SayCoeiroink {
         return await this.audioPlayer.initialize();
     }
 
+    /**
+     * ドライバーウォームアップ（CLI初期化時専用）
+     * 無音再生でSpeakerドライバーを事前起動・安定化
+     */
+    async warmupAudioDriver(): Promise<void> {
+        await this.audioPlayer.warmupAudioDriver();
+    }
 
     async getCurrentOperatorVoice(): Promise<OperatorVoice | null> {
         try {
