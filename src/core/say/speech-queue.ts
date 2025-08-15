@@ -3,7 +3,7 @@
  * 非同期音声タスクのキューイングと順次処理を担当
  */
 
-import type { SpeechTask, SynthesizeOptions, SynthesizeResult } from './types.js';
+import type { SpeechTask, SpeechTaskType, SynthesizeOptions, SynthesizeResult } from './types.js';
 import { logger } from '../../utils/logger.js';
 
 export class SpeechQueue {
@@ -11,15 +11,40 @@ export class SpeechQueue {
     private isProcessing: boolean = false;
     private taskIdCounter: number = Date.now();
 
-    constructor(private processCallback: (task: SpeechTask) => Promise<void>) {}
+    constructor(
+        private processCallback: (task: SpeechTask) => Promise<void>,
+        private warmupCallback?: () => Promise<void>
+    ) {}
 
     /**
      * 音声タスクをキューに追加
      */
     async enqueue(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+        return this.enqueueTask('speech', text, options);
+    }
+
+    /**
+     * ウォームアップタスクをキューに追加
+     */
+    async enqueueWarmup(): Promise<SynthesizeResult> {
+        return this.enqueueTask('warmup', '', {});
+    }
+
+    /**
+     * 完了待機タスクをキューに追加（CLI用）
+     */
+    async enqueueCompletionWait(): Promise<SynthesizeResult> {
+        return this.enqueueTask('completion_wait', '', {});
+    }
+
+    /**
+     * タスクをキューに追加（内部用）
+     */
+    private async enqueueTask(type: SpeechTaskType, text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         const taskId = this.taskIdCounter++;
         const task: SpeechTask = {
             id: taskId,
+            type,
             text,
             options,
             timestamp: Date.now()
@@ -38,27 +63,52 @@ export class SpeechQueue {
     }
 
     /**
-     * デバッグ用：音声タスクをキューに追加して完了を待つ
+     * CLI用：音声タスクをキューに追加して完了を待つ
      */
     async enqueueAndWait(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+        return this.enqueueTaskAndWait('speech', text, options);
+    }
+
+    /**
+     * CLI用：ウォームアップタスクをキューに追加して完了を待つ
+     */
+    async enqueueWarmupAndWait(): Promise<SynthesizeResult> {
+        return this.enqueueTaskAndWait('warmup', '', {});
+    }
+
+    /**
+     * CLI用：完了待機タスクをキューに追加して完了を待つ
+     */
+    async enqueueCompletionWaitAndWait(): Promise<SynthesizeResult> {
+        return this.enqueueTaskAndWait('completion_wait', '', {});
+    }
+
+    /**
+     * CLI用：タスクをキューに追加して完了を待つ（内部用）
+     */
+    private async enqueueTaskAndWait(type: SpeechTaskType, text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         const taskId = this.taskIdCounter++;
-        const task: SpeechTask = {
-            id: taskId,
-            text,
-            options,
-            timestamp: Date.now()
-        };
+        
+        return new Promise((resolve, reject) => {
+            const task: SpeechTask = {
+                id: taskId,
+                type,
+                text,
+                options,
+                timestamp: Date.now(),
+                resolve: () => resolve({
+                    success: true,
+                    taskId,
+                    queueLength: this.speechQueue.length
+                }),
+                reject
+            };
 
-        this.speechQueue.push(task);
+            this.speechQueue.push(task);
 
-        // キュー処理を同期的に待つ
-        await this.processQueue();
-
-        return {
-            success: true,
-            taskId,
-            queueLength: this.speechQueue.length // 現在のキュー長
-        };
+            // キュー処理を開始
+            setTimeout(() => this.processQueue(), 0);
+        });
     }
 
     /**
@@ -80,14 +130,51 @@ export class SpeechQueue {
             if (!task) break;
             
             try {
-                await this.processCallback(task);
-                logger.verbose(`音声タスク完了: ${task.id}`);
+                await this.processTask(task);
+                logger.verbose(`音声タスク完了: ${task.id} (${task.type})`);
+                
+                // CLI用完了通知
+                if (task.resolve) {
+                    task.resolve();
+                }
             } catch (error) {
-                logger.error(`音声タスクエラー: ${task.id}, ${(error as Error).message}`);
+                logger.error(`音声タスクエラー: ${task.id} (${task.type}), ${(error as Error).message}`);
+                
+                // CLI用エラー通知
+                if (task.reject) {
+                    task.reject(error as Error);
+                }
             }
         }
         
         this.isProcessing = false;
+    }
+
+    /**
+     * タスクタイプ別の処理を実行
+     */
+    private async processTask(task: SpeechTask): Promise<void> {
+        switch (task.type) {
+            case 'speech':
+                await this.processCallback(task);
+                break;
+                
+            case 'warmup':
+                if (this.warmupCallback) {
+                    await this.warmupCallback();
+                } else {
+                    logger.warn('ウォームアップコールバックが設定されていません');
+                }
+                break;
+                
+            case 'completion_wait':
+                // バッファ処理完了のため500ms待機
+                await new Promise(resolve => setTimeout(resolve, 500));
+                break;
+                
+            default:
+                logger.warn(`未知のタスクタイプ: ${task.type}`);
+        }
     }
 
     /**

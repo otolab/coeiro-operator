@@ -97,11 +97,17 @@ export interface OperatorVoice {
     };
 }
 
+export type SpeechTaskType = 'speech' | 'warmup' | 'completion_wait';
+
 export interface SpeechTask {
     id: number;
+    type: SpeechTaskType;
     text: string;
     options: SynthesizeOptions;
     timestamp: number;
+    // 完了通知用（CLI同期実行時）
+    resolve?: () => void;
+    reject?: (error: Error) => void;
 }
 
 export interface SynthesizeOptions {

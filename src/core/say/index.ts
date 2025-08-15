@@ -142,10 +142,15 @@ export class SayCoeiroink {
         this.audioPlayer = new AudioPlayer(this.config);
         this.audioSynthesizer = new AudioSynthesizer(this.config);
         
-        // SpeechQueueを初期化（処理コールバックを渡す）
-        this.speechQueue = new SpeechQueue(async (task: SpeechTask) => {
-            await this.synthesizeTextInternal(task.text, task.options);
-        });
+        // SpeechQueueを初期化（処理コールバックとウォームアップコールバックを渡す）
+        this.speechQueue = new SpeechQueue(
+            async (task: SpeechTask) => {
+                await this.synthesizeTextInternal(task.text, task.options);
+            },
+            async () => {
+                await this.audioPlayer.warmupAudioDriver();
+            }
+        );
     }
 
     async initialize(): Promise<void> {
@@ -190,11 +195,18 @@ export class SayCoeiroink {
     }
 
     /**
-     * ドライバーウォームアップ（CLI初期化時専用）
-     * 無音再生でSpeakerドライバーを事前起動・安定化
+     * ドライバーウォームアップ（レガシー、直接実行版）
+     * @deprecated queueベースのenqueueWarmup()を使用してください
      */
     async warmupAudioDriver(): Promise<void> {
         await this.audioPlayer.warmupAudioDriver();
+    }
+    
+    /**
+     * Queue統一版：ウォームアップタスクをキューに追加
+     */
+    async enqueueWarmup(): Promise<SynthesizeResult> {
+        return await this.speechQueue.enqueueWarmup();
     }
 
     async getCurrentOperatorVoice(): Promise<OperatorVoice | null> {
@@ -278,13 +290,23 @@ export class SayCoeiroink {
     // ========================================================================
     
     /**
-     * CLIからの直接呼び出し用メソッド
-     * - 音声合成を直接実行（キューを経由しない）
-     * - 再生完了まで待機する設計（CLI側でwaitForPlaybackCompletion実行）
+     * CLIからの完全同期実行用メソッド（queue統一版）
+     * - ウォームアップ → 音声合成 → 完了待機を全てqueueで処理
      * - 同期的な動作でユーザーが完了を確認できる
+     * - 従来のsynthesizeText + waitForPlaybackCompletionと同等
      */
-    async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
-        return await this.synthesizeTextInternal(text, options);
+    async synthesizeTextCLI(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+        // ファイル出力時はウォームアップと完了待機をスキップ
+        if (options.outputFile) {
+            return await this.speechQueue.enqueueAndWait(text, options);
+        }
+        
+        // 音声再生時：ウォームアップ → 音声合成 → 完了待機
+        await this.speechQueue.enqueueWarmupAndWait();
+        const result = await this.speechQueue.enqueueAndWait(text, options);
+        await this.speechQueue.enqueueCompletionWaitAndWait();
+        
+        return result;
     }
 
     /**
@@ -292,10 +314,18 @@ export class SayCoeiroink {
      * - SpeechQueueにタスクを投稿のみ（即座にレスポンス）
      * - 実際の音声合成・再生は背景で非同期実行
      * - Claude Codeの応答性を重視した設計
-     * - 再生完了は待たない（MCPではwaitForPlaybackCompletion不要）
+     * - ウォームアップや完了待機は実行しない
      */
     async synthesizeTextAsync(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
         return await this.enqueueSpeech(text, options);
+    }
+
+    /**
+     * レガシー：CLIからの直接呼び出し用メソッド（後方互換性）
+     * @deprecated synthesizeTextCLI()を使用してください
+     */
+    async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+        return await this.synthesizeTextInternal(text, options);
     }
 
     /**

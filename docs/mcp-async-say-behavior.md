@@ -1,22 +1,30 @@
-# CLI vs MCP 実行モードの設計
+# Queue統一実装による CLI vs MCP 実行モード
 
 ## 概要
 
-COEIRO Operatorは、CLIツールとMCPサーバーで異なる実行戦略を採用しています。この設計により、それぞれの用途に最適化された動作を提供します。
+COEIRO Operatorは、SpeechQueueを基盤とした統一実装により、CLIツールとMCPサーバーで最適化された動作を提供します。すべての音声処理（ウォームアップ、音声合成、完了待機）がqueue経由で実行されます。
 
-## 実行モード別の設計方針
+## Queue統一実装の設計
 
-### CLI実行モード
+### 共通基盤：SpeechQueue
+- **タスクタイプ**: `speech`, `warmup`, `completion_wait`
+- **処理方式**: 順次キュー処理で一貫性を保証
+- **柔軟性**: 同期・非同期実行を両方サポート
+
+### CLI実行モード（queue統一版）
 - **目的**: ユーザーが音声の完了を確認できる同期的な動作
-- **動作**: 音声合成を直接実行し、再生完了まで待機
-- **メソッド**: `synthesizeText()` → `synthesizeTextInternal()`
-- **待機処理**: `waitForPlaybackCompletion()` で再生終了を待つ
+- **メソッド**: `synthesizeTextCLI()` 
+- **動作フロー**: 
+  1. `enqueueWarmupAndWait()` - ドライバーウォームアップ
+  2. `enqueueAndWait()` - 音声合成実行
+  3. `enqueueCompletionWaitAndWait()` - 再生完了待機
+- **特徴**: 全てqueue経由、同期的に完了を待機
 
-### MCP実行モード  
+### MCP実行モード（queue統一版）
 - **目的**: Claude Codeの応答性を重視した非同期動作
-- **動作**: SpeechQueueにタスク投稿のみ、背景で音声処理
-- **メソッド**: `synthesizeTextAsync()` → `enqueueSpeech()`
-- **待機処理**: なし（即座にレスポンス）
+- **メソッド**: `synthesizeTextAsync()` → `enqueue()`
+- **動作フロー**: SpeechQueueにタスク投稿のみ
+- **特徴**: 即座にレスポンス、ウォームアップ・完了待機なし
 
 ## 変更内容
 
