@@ -324,6 +324,14 @@ export class OperatorManager {
             throw new Error('Manager is not initialized');
         }
 
+        // オペレータのタイムアウト検証を実行
+        const isValid = await this.operatorStateManager.validateCurrentOperatorSession();
+        if (!isValid) {
+            return {
+                message: 'オペレータは割り当てられていません'
+            };
+        }
+
         const operatorId = await this.operatorStateManager.getCurrentOperatorId();
         if (!operatorId) {
             return {
