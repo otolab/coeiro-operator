@@ -1,10 +1,12 @@
 /**
- * src/operator/voice-selection-service.ts: 音声選択・スタイル管理サービス
- * キャラクター情報取得、スタイル選択、音声設定更新を担当
+ * src/operator/character-info-service.ts: キャラクター情報管理サービス
+ * キャラクター詳細情報、スタイル情報の取得を担当（読み込み専用）
  */
 
+import { readFile, writeFile, access } from 'fs/promises';
+import { constants } from 'fs';
 import ConfigManager, { CharacterConfig, CharacterStyle } from './config-manager.js';
-import FileOperationManager from './file-operation-manager.js';
+import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
 
 // インターフェース定義
 export interface Style {
@@ -58,13 +60,12 @@ function convertCharacterConfigToCharacter(config: CharacterConfig): Character {
     };
 }
 
-export class VoiceSelectionService {
+export class CharacterInfoService {
     private configManager: ConfigManager | null = null;
-    private fileOperationManager: FileOperationManager;
     private coeiroinkConfigFile: string | null = null;
 
-    constructor(fileOperationManager: FileOperationManager) {
-        this.fileOperationManager = fileOperationManager;
+    constructor() {
+        // キャラクター情報の読み込み専用サービス
     }
 
     /**
@@ -80,7 +81,7 @@ export class VoiceSelectionService {
      */
     async getCharacterInfo(characterId: string): Promise<Character> {
         if (!this.configManager) {
-            throw new Error('VoiceSelectionService is not initialized');
+            throw new Error('CharacterInfoService is not initialized');
         }
         const config = await this.configManager.getCharacterConfig(characterId);
         return convertCharacterConfigToCharacter(config);
@@ -137,7 +138,7 @@ export class VoiceSelectionService {
      */
     async extractGreetingPatterns(): Promise<string[]> {
         if (!this.configManager) {
-            throw new Error('VoiceSelectionService is not initialized');
+            throw new Error('CharacterInfoService is not initialized');
         }
         return await this.configManager.getGreetingPatterns();
     }
@@ -147,14 +148,67 @@ export class VoiceSelectionService {
      */
     async updateVoiceSetting(voiceId: string | null, styleId: number = 0): Promise<void> {
         if (!this.coeiroinkConfigFile) {
-            throw new Error('coeiroinkConfigFile is not initialized');
+            throw new Error('CharacterInfoService is not initialized');
         }
-
-        return await this.fileOperationManager.updateVoiceSetting(
-            this.coeiroinkConfigFile, 
-            voiceId, 
-            styleId
-        );
+        
+        try {
+            // デフォルト設定を生成
+            const defaultConfig = {
+                connection: {
+                    host: CONNECTION_SETTINGS.DEFAULT_HOST,
+                    port: CONNECTION_SETTINGS.DEFAULT_PORT
+                },
+                voice: {
+                    rate: 200,
+                    default_voice_id: DEFAULT_VOICE.ID
+                },
+                audio: {
+                    latencyMode: 'balanced',
+                    splitMode: 'punctuation',
+                    bufferSize: 1024
+                }
+            };
+            
+            const config = await this.readJsonFile(this.coeiroinkConfigFile, defaultConfig) as Record<string, unknown>;
+            
+            // 設定を更新
+            if (!config.voice) {
+                config.voice = {};
+            }
+            const voiceConfig = config.voice as Record<string, unknown>;
+            
+            if (voiceId) {
+                voiceConfig.default_voice_id = voiceId;
+            }
+            if (styleId !== undefined) {
+                voiceConfig.default_style_id = styleId;
+            }
+            
+            await this.writeJsonFile(this.coeiroinkConfigFile, config);
+        } catch (error) {
+            console.error(`音声設定更新エラー: ${(error as Error).message}`);
+        }
+    }
+    
+    /**
+     * JSONファイルを安全に読み込み
+     */
+    private async readJsonFile<T>(filePath: string, defaultValue: T = {} as T): Promise<T> {
+        try {
+            await access(filePath, constants.F_OK);
+            const content = await readFile(filePath, 'utf8');
+            return JSON.parse(content);
+        } catch (error) {
+            console.error(`ファイル読み込みエラー: ${filePath}, ${(error as Error).message}`);
+            return defaultValue;
+        }
+    }
+    
+    /**
+     * JSONファイルを安全に書き込み
+     */
+    private async writeJsonFile(filePath: string, data: unknown): Promise<void> {
+        await writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
     }
 
     /**
@@ -162,7 +216,7 @@ export class VoiceSelectionService {
      */
     async getOperatorCharacterInfo(operatorId: string): Promise<Character> {
         if (!this.configManager) {
-            throw new Error('VoiceSelectionService is not initialized');
+            throw new Error('CharacterInfoService is not initialized');
         }
 
         try {
@@ -207,10 +261,10 @@ export class VoiceSelectionService {
      */
     async getAvailableCharacterIds(): Promise<string[]> {
         if (!this.configManager) {
-            throw new Error('VoiceSelectionService is not initialized');
+            throw new Error('CharacterInfoService is not initialized');
         }
         return await this.configManager.getAvailableCharacterIds();
     }
 }
 
-export default VoiceSelectionService;
+export default CharacterInfoService;

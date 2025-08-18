@@ -16,6 +16,7 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 
 ### 基本機能
 - **[audio-system.md](audio-system.md)** - 音声システム詳細仕様
+- **[speech-queue-system.md](speech-queue-system.md)** - SpeechQueue統一実装システム
 - **[audio-streaming-guide.md](audio-streaming-guide.md)** - 音声ストリーミング機能ガイド
 - **[parallel-generation-system.md](parallel-generation-system.md)** - 並行チャンク生成システム
 
@@ -48,6 +49,10 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 - **[logging-guidelines.md](logging-guidelines.md)** - ログ出力ガイドライン
 
 ## 📖 リファレンス
+
+### アーキテクチャ・設計
+- **[operator-assignment-specification.md](operator-assignment-specification.md)** - オペレータ割り当て仕様
+- **[generic-file-operation-manager.md](generic-file-operation-manager.md)** - 汎用FileOperationManager<T>仕様
 
 ### トラブルシューティング・サポート
 - **[troubleshooting.md](troubleshooting.md)** - 問題解決ガイド

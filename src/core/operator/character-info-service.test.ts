@@ -1,16 +1,16 @@
 /**
- * src/operator/voice-selection-service.test.ts: VoiceSelectionServiceテスト
+ * src/operator/character-info-service.test.ts: CharacterInfoServiceテスト
  */
 
-import { VoiceSelectionService, Character, Style } from './voice-selection-service.js';
+import { CharacterInfoService, Character, Style } from './character-info-service.js';
 import FileOperationManager from './file-operation-manager.js';
 import ConfigManager, { CharacterConfig } from './config-manager.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-describe('VoiceSelectionService', () => {
-    let voiceSelectionService: VoiceSelectionService;
+describe('CharacterInfoService', () => {
+    let characterInfoService: CharacterInfoService;
     let fileManager: FileOperationManager;
     let configManager: ConfigManager;
     let tempDir: string;
@@ -66,8 +66,8 @@ describe('VoiceSelectionService', () => {
         };
         await writeFile(coeiroinkConfigFile, JSON.stringify(coeiroinkConfig), 'utf8');
         
-        voiceSelectionService = new VoiceSelectionService(fileManager);
-        voiceSelectionService.initialize(configManager, coeiroinkConfigFile);
+        characterInfoService = new CharacterInfoService(fileManager);
+        characterInfoService.initialize(configManager, coeiroinkConfigFile);
     });
 
     afterEach(async () => {
@@ -81,7 +81,7 @@ describe('VoiceSelectionService', () => {
             // ConfigManagerの動的設定を構築（モック）
             vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
             
-            const character = await voiceSelectionService.getCharacterInfo('test-character');
+            const character = await characterInfoService.getCharacterInfo('test-character');
             
             expect(character.name).toBe('テストキャラクター');
             expect(character.voice_id).toBe('test-voice-123');
@@ -103,11 +103,11 @@ describe('VoiceSelectionService', () => {
 
         beforeEach(async () => {
             vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
-            testCharacter = await voiceSelectionService.getCharacterInfo('test-character');
+            testCharacter = await characterInfoService.getCharacterInfo('test-character');
         });
 
         test('デフォルトスタイルを正しく選択する', () => {
-            const selectedStyle = voiceSelectionService.selectStyle(testCharacter);
+            const selectedStyle = characterInfoService.selectStyle(testCharacter);
             
             expect(selectedStyle.styleId).toBe('normal');
             expect(selectedStyle.name).toBe('ノーマル');
@@ -115,7 +115,7 @@ describe('VoiceSelectionService', () => {
         });
 
         test('指定されたスタイルを正しく選択する', () => {
-            const selectedStyle = voiceSelectionService.selectStyle(testCharacter, 'happy');
+            const selectedStyle = characterInfoService.selectStyle(testCharacter, 'happy');
             
             expect(selectedStyle.styleId).toBe('happy');
             expect(selectedStyle.name).toBe('ハッピー');
@@ -123,7 +123,7 @@ describe('VoiceSelectionService', () => {
         });
 
         test('スタイル名で指定できる', () => {
-            const selectedStyle = voiceSelectionService.selectStyle(testCharacter, 'ハッピー');
+            const selectedStyle = characterInfoService.selectStyle(testCharacter, 'ハッピー');
             
             expect(selectedStyle.styleId).toBe('happy');
             expect(selectedStyle.name).toBe('ハッピー');
@@ -132,7 +132,7 @@ describe('VoiceSelectionService', () => {
         test('無効なスタイルを指定した場合はデフォルトを使用', () => {
             const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
             
-            const selectedStyle = voiceSelectionService.selectStyle(testCharacter, 'invalid-style');
+            const selectedStyle = characterInfoService.selectStyle(testCharacter, 'invalid-style');
             
             expect(selectedStyle.styleId).toBe('normal'); // デフォルト
             expect(consoleSpy).toHaveBeenCalledWith('指定されたスタイル \'invalid-style\' が見つかりません。デフォルト選択を使用します。');
@@ -142,7 +142,7 @@ describe('VoiceSelectionService', () => {
 
         test('disabledなスタイルは選択されない', () => {
             // sadスタイルは無効化されているので選択肢に含まれない
-            const selectedStyle = voiceSelectionService.selectStyle(testCharacter, 'sad');
+            const selectedStyle = characterInfoService.selectStyle(testCharacter, 'sad');
             
             expect(selectedStyle.styleId).toBe('normal'); // デフォルトが選択される
         });
@@ -153,9 +153,9 @@ describe('VoiceSelectionService', () => {
                 style_selection: 'random'
             };
             vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(randomCharacterConfig);
-            const randomCharacter = await voiceSelectionService.getCharacterInfo('random-character');
+            const randomCharacter = await characterInfoService.getCharacterInfo('random-character');
             
-            const selectedStyle = voiceSelectionService.selectStyle(randomCharacter);
+            const selectedStyle = characterInfoService.selectStyle(randomCharacter);
             
             // ランダムなので、利用可能なスタイル（normal, happy）のいずれかが選択される
             expect(['normal', 'happy']).toContain(selectedStyle.styleId);
@@ -175,15 +175,15 @@ describe('VoiceSelectionService', () => {
                 }
             };
             vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(noStyleCharacterConfig);
-            const noStyleCharacter = await voiceSelectionService.getCharacterInfo('no-style-character');
+            const noStyleCharacter = await characterInfoService.getCharacterInfo('no-style-character');
             
-            expect(() => voiceSelectionService.selectStyle(noStyleCharacter)).toThrow('キャラクター \'テストキャラクター\' に利用可能なスタイルがありません');
+            expect(() => characterInfoService.selectStyle(noStyleCharacter)).toThrow('キャラクター \'テストキャラクター\' に利用可能なスタイルがありません');
         });
     });
 
     describe('updateVoiceSetting', () => {
         test('音声設定を正しく更新する', async () => {
-            await voiceSelectionService.updateVoiceSetting('voice-123', 42);
+            await characterInfoService.updateVoiceSetting('voice-123', 42);
             
             const config = await fileManager.readJsonFile(coeiroinkConfigFile, {}) as Record<string, unknown>;
             const voiceConfig = config.voice as Record<string, unknown>;
@@ -205,10 +205,10 @@ describe('VoiceSelectionService', () => {
     describe('generateVoiceConfigData', () => {
         test('音声設定データを正しく生成する', async () => {
             vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
-            const character = await voiceSelectionService.getCharacterInfo('test-character');
-            const selectedStyle = voiceSelectionService.selectStyle(character, 'happy');
+            const character = await characterInfoService.getCharacterInfo('test-character');
+            const selectedStyle = characterInfoService.selectStyle(character, 'happy');
             
-            const configData = voiceSelectionService.generateVoiceConfigData(character, selectedStyle);
+            const configData = characterInfoService.generateVoiceConfigData(character, selectedStyle);
             
             expect(configData.voiceConfig.voiceId).toBe('test-voice-123');
             expect(configData.voiceConfig.styleId).toBe(1);
@@ -223,7 +223,7 @@ describe('VoiceSelectionService', () => {
         test('オペレータのキャラクター情報を取得する', async () => {
             vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
             
-            const character = await voiceSelectionService.getOperatorCharacterInfo('operator1');
+            const character = await characterInfoService.getOperatorCharacterInfo('operator1');
             
             expect(character.name).toBe('テストキャラクター');
             expect(character.voice_id).toBe('test-voice-123');
@@ -232,7 +232,7 @@ describe('VoiceSelectionService', () => {
         test('存在しないオペレータの場合はエラー', async () => {
             vi.spyOn(configManager, 'getCharacterConfig').mockRejectedValue(new Error('Character not found'));
             
-            await expect(voiceSelectionService.getOperatorCharacterInfo('invalid-operator')).rejects.toThrow('オペレータ \'invalid-operator\' は存在しないか無効です');
+            await expect(characterInfoService.getOperatorCharacterInfo('invalid-operator')).rejects.toThrow('オペレータ \'invalid-operator\' は存在しないか無効です');
         });
     });
 
@@ -241,7 +241,7 @@ describe('VoiceSelectionService', () => {
             const mockPatterns = ['こんにちは！', 'おはよう！', 'こんばんは！'];
             vi.spyOn(configManager, 'getGreetingPatterns').mockResolvedValue(mockPatterns);
             
-            const patterns = await voiceSelectionService.extractGreetingPatterns();
+            const patterns = await characterInfoService.extractGreetingPatterns();
             
             expect(patterns).toEqual(mockPatterns);
         });
@@ -252,7 +252,7 @@ describe('VoiceSelectionService', () => {
             const mockIds = ['character1', 'character2', 'character3'];
             vi.spyOn(configManager, 'getAvailableCharacterIds').mockResolvedValue(mockIds);
             
-            const ids = await voiceSelectionService.getAvailableCharacterIds();
+            const ids = await characterInfoService.getAvailableCharacterIds();
             
             expect(ids).toEqual(mockIds);
         });

@@ -1,49 +1,36 @@
 /**
- * src/operator/file-operation-manager.ts: ファイル操作管理クラス
- * JSONファイルの読み書き、アトミック操作を担当
- * 
- * Issue #43 対応: 統一ファイル管理システム
- * 
- * 【実装方針】
- * 1. 統一ファイル管理
- *    - /tmp/coeiroink-operators-{hostname}.json に一元化
- *    - セッションIDベースの予約管理
- * 
- * 2. 複数プロセス間の排他制御
- *    - ファイルロック機構でread-modify-write操作の競合を防止
- *    - リトライ機構でデッドロック回避
- *    - アトミック操作で一貫性保証
- * 
- * 3. プロセス管理
- *    - プロセス起動時の無効セッション自動クリーンアップ
- *    - session_id + process_id による二重チェック
+ * src/operator/file-operation-manager.ts: 汎用期限付きキーバリューストア
+ * 任意のデータTを期限付きで管理する汎用ファイル操作システム
  */
 
 import { readFile, writeFile, stat, unlink, rename, access } from 'fs/promises';
 import { constants } from 'fs';
-import { hostname } from 'os';
 import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
 
-// 統一ファイル構造
-export interface UnifiedOperatorState {
-    operators: Record<string, {
-        session_id: string;
-        process_id: string;
-        reserved_at: string;
+// 期限付きストレージ構造
+export interface TimedStorage<T> {
+    storage: Record<string, {
+        data: T;
+        updated_at: string; // ISO 8601形式
     }>;
-    last_updated: string;
 }
 
-export class FileOperationManager {
+export class FileOperationManager<T> {
     // ファイルロック設定
     private readonly maxLockRetries = 50;
     private readonly lockRetryDelay = 20; // ms
     private readonly lockTimeout = 2000; // ms
     
+    constructor(
+        private filePath: string,
+        private key: string,
+        private timeoutMs: number = 4 * 60 * 60 * 1000 // デフォルト4時間
+    ) {}
+
     /**
      * JSONファイルを安全に読み込み
      */
-    async readJsonFile<T>(filePath: string, defaultValue: T = {} as T): Promise<T> {
+    async readJsonFile<U>(filePath: string, defaultValue: U = {} as U): Promise<U> {
         try {
             await access(filePath, constants.F_OK);
             const content = await readFile(filePath, 'utf8');
@@ -72,58 +59,6 @@ export class FileOperationManager {
         await rename(tempFile, filePath);
     }
 
-
-    /**
-     * 音声設定を更新（新しい構造に対応）
-     */
-    async updateVoiceSetting(
-        coeiroinkConfigFile: string, 
-        voiceId: string | null, 
-        styleId: number = 0
-    ): Promise<void> {
-        try {
-            // デフォルト設定を生成
-            const defaultConfig = {
-                connection: {
-                    host: CONNECTION_SETTINGS.DEFAULT_HOST,
-                    port: CONNECTION_SETTINGS.DEFAULT_PORT
-                },
-                voice: {
-                    rate: 200,
-                    default_voice_id: DEFAULT_VOICE.ID  // つくよみちゃん「れいせい」（COEIROINKデフォルト）
-                },
-                audio: {
-                    latencyMode: 'balanced',
-                    splitMode: 'punctuation',
-                    bufferSize: 1024
-                }
-            };
-            
-            const config = await this.readJsonFile(coeiroinkConfigFile, defaultConfig) as Record<string, unknown>;
-            
-            // 新しい構造で設定を更新
-            if (!config.voice) {
-                config.voice = {};
-            }
-            const voiceConfig = config.voice as Record<string, unknown>;
-            
-            if (voiceId) {
-                voiceConfig.default_voice_id = voiceId;
-            }
-            if (styleId !== undefined) {
-                voiceConfig.default_style_id = styleId;
-            }
-            
-            // 古い設定値が残っている場合は削除
-            delete config.voice_id;
-            delete config.style_id;
-            
-            await this.writeJsonFile(coeiroinkConfigFile, config);
-        } catch (error) {
-            console.error(`音声設定更新エラー: ${(error as Error).message}`);
-        }
-    }
-
     /**
      * ファイルの存在確認
      */
@@ -147,15 +82,11 @@ export class FileOperationManager {
         }
     }
 
-    // =============================================================================
-    // ファイルロック機構
-    // =============================================================================
-
     /**
      * ファイルロックを取得してコールバック実行
      */
-    async withFileLock<T>(filePath: string, callback: () => Promise<T>): Promise<T> {
-        const lockFile = `${filePath}.lock`;
+    async withFileLock<R>(callback: () => Promise<R>): Promise<R> {
+        const lockFile = `${this.filePath}.lock`;
         
         for (let i = 0; i < this.maxLockRetries; i++) {
             try {
@@ -192,341 +123,176 @@ export class FileOperationManager {
                 throw error;
             }
         }
-        throw new Error(`Failed to acquire file lock after ${this.maxLockRetries} retries: ${filePath}`);
+        throw new Error(`Failed to acquire file lock after ${this.maxLockRetries} retries: ${this.filePath}`);
     }
 
     /**
-     * ファイルロック付きJSONファイル書き込み
+     * ストレージの読み取り
      */
-    async writeJsonFileWithLock(filePath: string, data: unknown): Promise<void> {
-        await this.withFileLock(filePath, async () => {
-            await this.writeJsonFile(filePath, data);
-        });
-    }
-
-    // =============================================================================
-    // 統一ファイル管理機能
-    // =============================================================================
-
-    /**
-     * 統一オペレータ状態ファイルのパスを生成
-     */
-    getUnifiedOperatorFilePath(): string {
-        const hostnameClean = hostname().replace(/[^a-zA-Z0-9]/g, '_');
-        return `/tmp/coeiroink-operators-${hostnameClean}.json`;
+    private async read(defaultValue: TimedStorage<T>): Promise<TimedStorage<T>> {
+        return this.readJsonFile<TimedStorage<T>>(this.filePath, defaultValue);
     }
 
     /**
-     * 統一オペレータ状態ファイルの初期化
+     * ストレージの書き込み
      */
-    async initUnifiedOperatorState(): Promise<void> {
-        const filePath = this.getUnifiedOperatorFilePath();
+    private async write(data: TimedStorage<T>): Promise<void> {
+        await this.writeJsonFile(this.filePath, data);
+    }
+
+    /**
+     * 期限切れエントリのクリーンアップ
+     */
+    private cleanupExpired(state: TimedStorage<T>): TimedStorage<T> {
+        const now = Date.now();
+        const validStorage: Record<string, any> = {};
         
-        // ファイルロック付きで二重初期化を防止
-        await this.withFileLock(filePath, async () => {
-            // ロック取得後に再度存在確認（競合状態での二重作成防止）
-            if (!await this.fileExists(filePath)) {
-                const initialData: UnifiedOperatorState = {
-                    operators: {},
-                    last_updated: new Date().toISOString()
-                };
-                try {
-                    await this.writeJsonFile(filePath, initialData);
-                } catch (error) {
-                    console.warn(`Failed to initialize unified operator state: ${(error as Error).message}`);
-                }
+        for (const [k, entry] of Object.entries(state.storage)) {
+            const age = now - new Date(entry.updated_at).getTime();
+            if (age <= this.timeoutMs) {
+                validStorage[k] = entry;
             }
-        });
-    }
-
-    /**
-     * 古い予約のクリーンアップ（時間ベース）
-     * マルチプロセス環境（CLI、MCP）に対応した設計
-     */
-    async cleanupStaleOperators(currentSessionId: string): Promise<void> {
-        const filePath = this.getUnifiedOperatorFilePath();
-        
-        // ファイルが存在しない場合はスキップ
-        if (!await this.fileExists(filePath)) {
-            return;
         }
         
-        await this.withFileLock(filePath, async () => {
-            const state = await this.readJsonFile<UnifiedOperatorState>(filePath, {
-                operators: {},
-                last_updated: new Date().toISOString()
-            });
+        return { storage: validStorage };
+    }
 
-            // オペレータが存在しない場合はスキップ
-            if (Object.keys(state.operators).length === 0) {
-                return;
-            }
-
-            let hasChanges = false;
-            const now = Date.now();
-            // 2時間以上前の予約のみクリーンアップ（CLIやMCPの通常使用には十分）
-            const staleThreshold = 2 * 60 * 60 * 1000; // 2時間
-            
-            // 古い予約を削除（プロセス存在チェックは行わない）
-            for (const [operatorId, info] of Object.entries(state.operators)) {
-                // 同じセッションIDの場合はスキップ（自分の予約は保持）
-                if (info.session_id === currentSessionId) {
-                    continue;
-                }
-                
-                // 予約時刻チェック
-                try {
-                    const reservedAt = new Date(info.reserved_at).getTime();
-                    const age = now - reservedAt;
-                    
-                    if (age > staleThreshold) {
-                        console.log(`古い予約を削除: ${operatorId} (${Math.round(age / 1000 / 60 / 60)}時間前)`);
-                        delete state.operators[operatorId];
-                        hasChanges = true;
-                    }
-                } catch {
-                    // 無効な日付の場合は削除
-                    console.log(`無効な予約時刻のため削除: ${operatorId}`);
-                    delete state.operators[operatorId];
-                    hasChanges = true;
-                }
-            }
-            
-            if (hasChanges) {
-                state.last_updated = new Date().toISOString();
-                await this.writeJsonFile(filePath, state);
-            }
+    /**
+     * ロック付きで操作を実行
+     */
+    private async withLock<R>(callback: (state: TimedStorage<T>) => Promise<R>): Promise<R> {
+        return this.withFileLock(async () => {
+            const state = await this.read({ storage: {} });
+            return callback(state);
         });
     }
 
     /**
-     * オペレータの予約
-     * Issue #56: 二重予約チェック強化
+     * データの保存（期限付き）
      */
-    async reserveOperatorUnified(operatorId: string, sessionId: string): Promise<boolean> {
-        const filePath = this.getUnifiedOperatorFilePath();
-        
-        return await this.withFileLock(filePath, async () => {
-            const state = await this.readJsonFile<UnifiedOperatorState>(filePath, {
-                operators: {},
-                last_updated: new Date().toISOString()
-            });
-            
-            // オペレータが既に予約されているかチェック
-            if (state.operators[operatorId]) {
-                const existingReservation = state.operators[operatorId];
-                
-                // 完全に同じセッション（session_id + process_id）の場合は成功
-                if (existingReservation.session_id === sessionId && 
-                    existingReservation.process_id === process.pid.toString()) {
-                    return true;
-                }
-                
-                // session_idが同じでもprocess_idが異なる場合は、古いプロセスが生きているかチェック
-                if (existingReservation.session_id === sessionId) {
-                    try {
-                        const existingPid = parseInt(existingReservation.process_id);
-                        process.kill(existingPid, 0); // プロセス存在チェック
-                        
-                        // 既存プロセスが生きている場合は拒否
-                        console.warn(`オペレータ ${operatorId} は同一セッションの別プロセス (PID: ${existingPid}) で使用中です`);
-                        return false;
-                    } catch {
-                        // 既存プロセスが死んでいる場合は上書き
-                        console.log(`オペレータ ${operatorId} の古いプロセス (PID: ${existingReservation.process_id}) が終了したため、新プロセスで予約します`);
-                    }
-                } else {
-                    // 完全に異なるセッションの場合は拒否
-                    return false;
-                }
-            }
-            
-            // オペレータを予約（新規または上書き）
-            state.operators[operatorId] = {
-                session_id: sessionId,
-                process_id: process.pid.toString(),
-                reserved_at: new Date().toISOString()
+    async store(data: T): Promise<void> {
+        await this.withLock(async (state) => {
+            const cleaned = this.cleanupExpired(state);
+            cleaned.storage[this.key] = {
+                data,
+                updated_at: new Date().toISOString()
             };
-            state.last_updated = new Date().toISOString();
-            
-            await this.writeJsonFile(filePath, state);
-            return true;
+            await this.write(cleaned);
         });
     }
 
     /**
-     * オペレータの解放
+     * データの復元
      */
-    async releaseOperatorUnified(operatorId: string, sessionId: string): Promise<boolean> {
-        const filePath = this.getUnifiedOperatorFilePath();
-        
-        return await this.withFileLock(filePath, async () => {
-            const state = await this.readJsonFile<UnifiedOperatorState>(filePath, {
-                operators: {},
-                last_updated: new Date().toISOString()
-            });
-            
-            // オペレータが予約されているかチェック
-            if (!state.operators[operatorId]) {
-                return true; // 既に解放済み
-            }
-            
-            // セッションIDが一致するかチェック
-            if (state.operators[operatorId].session_id !== sessionId) {
-                return false; // 他のセッションが使用中
-            }
-            
-            // オペレータを解放
-            delete state.operators[operatorId];
-            state.last_updated = new Date().toISOString();
-            
-            await this.writeJsonFile(filePath, state);
-            return true;
+    async restore(): Promise<T | null> {
+        return this.withLock(async (state) => {
+            const cleaned = this.cleanupExpired(state);
+            await this.write(cleaned);
+            const entry = cleaned.storage[this.key];
+            return entry ? entry.data : null;
         });
     }
 
     /**
-     * 利用可能なオペレータを取得
-     * Issue #56: セッションID考慮の修正 - 同じセッションの予約は利用可能として扱う
+     * 期限の更新（現在時刻に延長）
      */
-    async getAvailableOperatorsUnified(allOperators: string[], currentSessionId?: string): Promise<string[]> {
-        const filePath = this.getUnifiedOperatorFilePath();
-        
-        const state = await this.readJsonFile<UnifiedOperatorState>(filePath, {
-            operators: {},
-            last_updated: new Date().toISOString()
-        });
-        
-        // セッションIDが指定されている場合は、そのセッション以外の予約のみを除外
-        if (currentSessionId) {
-            const reservedByOtherSessions = Object.keys(state.operators).filter(operatorId => {
-                const reservation = state.operators[operatorId];
-                return reservation.session_id !== currentSessionId;
-            });
-            return allOperators.filter(op => !reservedByOtherSessions.includes(op));
-        } else {
-            // セッションIDが指定されていない場合は従来の動作（全予約を除外）
-            const reservedOperators = Object.keys(state.operators);
-            return allOperators.filter(op => !reservedOperators.includes(op));
-        }
-    }
-
-    /**
-     * 現在のセッションのオペレータを取得
-     */
-    async getCurrentOperatorUnified(sessionId: string): Promise<string | null> {
-        const filePath = this.getUnifiedOperatorFilePath();
-        
-        const state = await this.readJsonFile<UnifiedOperatorState>(filePath, {
-            operators: {},
-            last_updated: new Date().toISOString()
-        });
-        
-        for (const [operatorId, info] of Object.entries(state.operators)) {
-            if (info.session_id === sessionId) {
-                return operatorId;
+    async refresh(): Promise<boolean> {
+        return this.withLock(async (state) => {
+            const cleaned = this.cleanupExpired(state);
+            const entry = cleaned.storage[this.key];
+            if (entry) {
+                entry.updated_at = new Date().toISOString();
+                await this.write(cleaned);
+                return true;
             }
-        }
-        
-        return null;
-    }
-
-    /**
-     * オペレータ予約のタイムアウトを延長（reserved_atを現在時刻に更新）
-     * Issue #58: sayコマンド実行時の動的タイムアウト延長
-     */
-    async refreshOperatorReservation(operatorId: string, sessionId: string): Promise<boolean> {
-        const filePath = this.getUnifiedOperatorFilePath();
-        
-        return await this.withFileLock(filePath, async () => {
-            const state = await this.readJsonFile<UnifiedOperatorState>(filePath, {
-                operators: {},
-                last_updated: new Date().toISOString()
-            });
-            
-            // オペレータが予約されているかチェック
-            if (!state.operators[operatorId]) {
-                return false; // 予約されていない
-            }
-            
-            // セッションIDが一致するかチェック
-            const reservation = state.operators[operatorId];
-            if (reservation.session_id !== sessionId) {
-                return false; // 他のセッションが使用中
-            }
-            
-            // reserved_atを現在時刻に更新
-            state.operators[operatorId].reserved_at = new Date().toISOString();
-            state.last_updated = new Date().toISOString();
-            
-            await this.writeJsonFile(filePath, state);
-            return true;
+            await this.write(cleaned);
+            return false;
         });
     }
 
+    /**
+     * 自分以外の全データを取得
+     */
+    async getOtherEntries(): Promise<Record<string, T>> {
+        return this.withLock(async (state) => {
+            const cleaned = this.cleanupExpired(state);
+            await this.write(cleaned);
+            const result: Record<string, T> = {};
+            for (const [k, entry] of Object.entries(cleaned.storage)) {
+                if (k !== this.key) {
+                    result[k] = entry.data;
+                }
+            }
+            return result;
+        });
+    }
 
     /**
-     * システム全体のヘルスチェック
+     * 現在のキーのエントリを削除
      */
-    async performSystemHealthCheck(): Promise<{
-        unifiedFileExists: boolean;
-        unifiedFileSize: number;
-        operatorCount: number;
-        lastUpdated: string;
-    }> {
-        const unifiedFilePath = this.getUnifiedOperatorFilePath();
-        
+    async remove(): Promise<boolean> {
+        return this.withLock(async (state) => {
+            const cleaned = this.cleanupExpired(state);
+            const existed = !!cleaned.storage[this.key];
+            delete cleaned.storage[this.key];
+            await this.write(cleaned);
+            return existed;
+        });
+    }
+
+    /**
+     * 全データをクリア
+     */
+    async clear(): Promise<void> {
+        await this.withLock(async (state) => {
+            await this.write({ storage: {} });
+        });
+    }
+
+    /**
+     * 音声設定を更新（従来の互換性メソッド）
+     */
+    async updateVoiceSetting(
+        coeiroinkConfigFile: string, 
+        voiceId: string | null, 
+        styleId: number = 0
+    ): Promise<void> {
         try {
-            const stats = await stat(unifiedFilePath);
-            const state = await this.readJsonFile<UnifiedOperatorState>(unifiedFilePath, {
-                operators: {},
-                last_updated: new Date().toISOString()
-            });
-
-            return {
-                unifiedFileExists: true,
-                unifiedFileSize: stats.size,
-                operatorCount: Object.keys(state.operators).length,
-                lastUpdated: state.last_updated
+            // デフォルト設定を生成
+            const defaultConfig = {
+                connection: {
+                    host: CONNECTION_SETTINGS.DEFAULT_HOST,
+                    port: CONNECTION_SETTINGS.DEFAULT_PORT
+                },
+                voice: {
+                    rate: 200,
+                    default_voice_id: DEFAULT_VOICE.ID
+                },
+                audio: {
+                    latencyMode: 'balanced',
+                    splitMode: 'punctuation',
+                    bufferSize: 1024
+                }
             };
-        } catch {
-            return {
-                unifiedFileExists: false,
-                unifiedFileSize: 0,
-                operatorCount: 0,
-                lastUpdated: 'never'
-            };
-        }
-    }
-
-    /**
-     * 指定されたオペレータが時間切れしているかチェック
-     * @param operatorId チェック対象のオペレータID
-     * @param sessionId セッションID
-     * @returns 時間切れの場合true
-     */
-    async isOperatorStale(operatorId: string, sessionId: string): Promise<boolean> {
-        const filePath = this.getUnifiedOperatorFilePath();
-        
-        const state = await this.readJsonFile<UnifiedOperatorState>(filePath, {
-            operators: {},
-            last_updated: new Date().toISOString()
-        });
-
-        const reservation = state.operators[operatorId];
-        if (!reservation || reservation.session_id !== sessionId) {
-            return true; // 予約が存在しないか、異なるセッション
-        }
-
-        try {
-            const reservedAt = new Date(reservation.reserved_at).getTime();
-            const now = Date.now();
-            const age = now - reservedAt;
-            const staleThreshold = 2 * 60 * 60 * 1000; // 2時間（cleanupStaleOperatorsと同じ）
-
-            return age > staleThreshold;
-        } catch {
-            return true; // 無効な日付の場合は時間切れとして扱う
+            
+            const config = await this.readJsonFile(coeiroinkConfigFile, defaultConfig) as Record<string, unknown>;
+            
+            // 設定を更新
+            if (!config.voice) {
+                config.voice = {};
+            }
+            const voiceConfig = config.voice as Record<string, unknown>;
+            
+            if (voiceId) {
+                voiceConfig.default_voice_id = voiceId;
+            }
+            if (styleId !== undefined) {
+                voiceConfig.default_style_id = styleId;
+            }
+            
+            await this.writeJsonFile(coeiroinkConfigFile, config);
+        } catch (error) {
+            console.error(`音声設定更新エラー: ${(error as Error).message}`);
         }
     }
 }
