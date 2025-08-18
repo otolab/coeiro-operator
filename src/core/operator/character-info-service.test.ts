@@ -66,7 +66,7 @@ describe('CharacterInfoService', () => {
         };
         await writeFile(coeiroinkConfigFile, JSON.stringify(coeiroinkConfig), 'utf8');
         
-        characterInfoService = new VoiceSelectionService(fileManager);
+        characterInfoService = new CharacterInfoService(fileManager);
         characterInfoService.initialize(configManager, coeiroinkConfigFile);
     });
 
