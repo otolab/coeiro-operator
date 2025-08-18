@@ -535,6 +535,28 @@ export class SayCoeiroink {
     getStreamControllerOptions() {
         return this.audioSynthesizer.getStreamControllerOptions();
     }
+
+    /**
+     * SayCoeiroinkインスタンスのクリーンアップ（リソース解放）
+     * 長時間運用やシャットダウン時に呼び出し
+     */
+    async cleanup(): Promise<void> {
+        logger.debug('SayCoeiroink cleanup開始');
+        
+        try {
+            // SpeechQueueのクリア
+            this.speechQueue.clear();
+            
+            // AudioPlayerのクリーンアップ
+            await this.audioPlayer.cleanup();
+            
+            // AudioSynthesizerには特別なクリーンアップは不要（HTTPクライアントベース）
+            
+            logger.info('SayCoeiroink cleanup完了');
+        } catch (error) {
+            logger.warn(`SayCoeiroink cleanup warning: ${(error as Error).message}`);
+        }
+    }
 }
 
 // デフォルトエクスポート
