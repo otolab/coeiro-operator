@@ -214,6 +214,23 @@ async refresh(): Promise<boolean>
 **作成日**: 2025年8月18日  
 **バージョン**: 1.0  
 **関連ファイル**:
-- `src/core/operator/operator-state-manager.ts`
-- `src/core/operator/file-operation-manager.ts`
-- `src/core/operator/config-manager.ts`
+- `src/core/operator/index.ts` (OperatorManager統合クラス)
+- `src/core/operator/file-operation-manager.ts` (汎用期限付きKVストレージ)
+- `src/core/operator/character-info-service.ts` (キャラクター情報管理)
+- `src/core/operator/config-manager.ts` (設定管理)
+
+## 実装アーキテクチャ
+
+### 統合管理構造 (2025年8月更新)
+
+```
+OperatorManager (統合管理クラス)
+├── FileOperationManager<string> (内部状態管理)
+├── CharacterInfoService (キャラクター情報)
+└── ConfigManager (設定管理)
+```
+
+### 旧構造からの変更点
+- **OperatorStateManager**: OperatorManagerに統合
+- **VoiceSelectionService**: CharacterInfoServiceに名前変更・機能整理
+- **FileOperationManager**: 汎用的な期限付きKVストレージ `FileOperationManager<T>` に再設計

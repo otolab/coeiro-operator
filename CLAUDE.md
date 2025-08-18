@@ -29,6 +29,21 @@ npm run test:e2e
 
 **詳細**: `docs/development-tips.md#プロジェクト構成` を参照
 
+### 統合アーキテクチャ (2025年8月更新)
+
+#### OperatorManager統合構造
+```
+OperatorManager (統合管理クラス)
+├── FileOperationManager<string> (内部状態管理)
+├── CharacterInfoService (キャラクター情報)
+└── ConfigManager (設定管理)
+```
+
+#### 主要変更点
+- **OperatorStateManager**: OperatorManagerに統合
+- **VoiceSelectionService**: CharacterInfoServiceに名前変更
+- **FileOperationManager**: 汎用期限付きKVストレージ `FileOperationManager<T>` に再設計
+
 ### Queue統一実装アーキテクチャ
 
 - **SpeechQueue**: 音声タスクの一元管理（`src/core/say/speech-queue.ts`）

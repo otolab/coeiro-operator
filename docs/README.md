@@ -50,6 +50,10 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 
 ## 📖 リファレンス
 
+### アーキテクチャ・設計
+- **[operator-assignment-specification.md](operator-assignment-specification.md)** - オペレータ割り当て仕様
+- **[generic-file-operation-manager.md](generic-file-operation-manager.md)** - 汎用FileOperationManager<T>仕様
+
 ### トラブルシューティング・サポート
 - **[troubleshooting.md](troubleshooting.md)** - 問題解決ガイド
 

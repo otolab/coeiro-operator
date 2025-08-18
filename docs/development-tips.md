@@ -45,7 +45,12 @@ npm run test:e2e               # E2Eテスト
 src/
 ├── cli/                    # CLIツール
 ├── core/                   # コア機能
-│   ├── operator/           # オペレータ管理
+│   ├── operator/           # オペレータ管理 (統合アーキテクチャ)
+│   │   ├── index.ts        # 🔄 OperatorManager (統合管理クラス)
+│   │   ├── file-operation-manager.ts # 🔄 汎用期限付きKVストレージ<T>
+│   │   ├── character-info-service.ts # 🔄 キャラクター情報管理 (旧VoiceSelectionService)
+│   │   ├── config-manager.ts # 設定管理
+│   │   └── character-defaults.ts # キャラクターデフォルト設定
 │   ├── say/               # 音声合成システム (Queue統一実装)
 │   │   ├── speech-queue.ts # 🆕 統一音声タスクキュー
 │   │   ├── index.ts        # SayCoeiroink (CLI/MCP実行モード別)
@@ -55,6 +60,37 @@ src/
 ├── mcp-debug/             # MCPデバッグ環境
 └── utils/                 # ユーティリティ
 ```
+
+### 統合アーキテクチャ (2025年8月更新)
+
+#### OperatorManager統合構造
+```
+OperatorManager (統合管理クラス)
+├── FileOperationManager<string> (内部状態管理)
+├── CharacterInfoService (キャラクター情報)
+└── ConfigManager (設定管理)
+```
+
+#### 主要コンポーネント
+
+- **OperatorManager** (`src/core/operator/index.ts`): オペレータ統合管理
+  - 状態管理、キャラクター情報、設定管理を統合
+  - 外部公開API：予約、解放、状態確認、設定更新
+  - 内部で FileOperationManager<string> を使用
+
+- **FileOperationManager<T>** (`src/core/operator/file-operation-manager.ts`): 汎用期限付きKVストレージ
+  - ジェネリクス対応: 任意のデータ型T
+  - タイムアウト管理: 自動期限切れ処理
+  - API: `store(data: T)`, `restore(): T | null`, `refresh(): boolean`
+
+- **CharacterInfoService** (`src/core/operator/character-info-service.ts`): キャラクター情報専門
+  - 旧VoiceSelectionServiceから名前変更・機能整理
+  - キャラクター情報取得、スタイル選択、音声設定更新
+
+#### 旧構造からの変更点
+- **OperatorStateManager**: OperatorManagerに統合
+- **VoiceSelectionService**: CharacterInfoServiceに名前変更
+- **FileOperationManager**: 汎用的な期限付きKVストレージに再設計
 
 ### Queue統一実装の主要コンポーネント
 
