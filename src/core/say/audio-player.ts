@@ -24,6 +24,12 @@ import {
 
 export class AudioPlayer {
     private speaker: Speaker | null = null;
+    private currentSpeakerConfig: {
+        sampleRate: number;
+        channels: number;
+        bitDepth: number;
+        bufferSize: number;
+    } | null = null;
     private synthesisRate: number = SAMPLE_RATES.SYNTHESIS;
     private playbackRate: number = SAMPLE_RATES.PLAYBACK;
     private channels: number = AUDIO_FORMAT.CHANNELS;
@@ -152,22 +158,12 @@ export class AudioPlayer {
 
     async initialize(): Promise<boolean> {
         try {
-            // speakerライブラリを使用（ネイティブ音声出力）
-            const bufferSize = this.audioConfig.bufferSettings?.highWaterMark || BUFFER_SIZES.PRESETS.BALANCED.HIGH_WATER_MARK;
-            
-            this.speaker = new Speaker({
-                channels: this.channels,
-                bitDepth: this.bitDepth,
-                sampleRate: this.playbackRate,
-                highWaterMark: bufferSize
-            });
-            
             // ノイズ除去が有効な場合はEchogardenを初期化
             if (this.noiseReductionEnabled) {
                 await this.initializeEchogarden();
             }
             
-            logger.info(`音声プレーヤー初期化: speakerライブラリ使用（ネイティブ出力）${this.noiseReductionEnabled ? ' + Echogarden' : ''}`);
+            logger.info(`音声プレーヤー初期化: speakerライブラリ使用（ネイティブ出力）${this.noiseReductionEnabled ? ' + Echogarden' : ''} - Speaker遅延初期化`);
             this.isInitialized = true;
             return true;
         } catch (error) {
@@ -396,7 +392,62 @@ export class AudioPlayer {
     }
 
     /**
-     * PCMデータを直接スピーカーに再生
+     * 設定に基づいてSpeakerインスタンスを取得または作成
+     */
+    private getOrCreateSpeaker(sampleRate: number, bufferSize: number): Speaker {
+        const newConfig = {
+            sampleRate,
+            channels: this.channels,
+            bitDepth: this.bitDepth,
+            bufferSize
+        };
+
+        // 既存のSpeakerが同じ設定かチェック
+        const needsNewSpeaker = !this.speaker || !this.currentSpeakerConfig ||
+            this.currentSpeakerConfig.sampleRate !== newConfig.sampleRate ||
+            this.currentSpeakerConfig.channels !== newConfig.channels ||
+            this.currentSpeakerConfig.bitDepth !== newConfig.bitDepth ||
+            this.currentSpeakerConfig.bufferSize !== newConfig.bufferSize;
+
+        if (needsNewSpeaker) {
+            // 既存のSpeakerを適切にクリーンアップ
+            this.cleanupCurrentSpeaker();
+
+            logger.debug(`新しいSpeaker作成: ${sampleRate}Hz, ${this.channels}ch, ${this.bitDepth}bit, buffer:${bufferSize}`);
+            this.speaker = new Speaker({
+                channels: newConfig.channels,
+                bitDepth: newConfig.bitDepth,
+                sampleRate: newConfig.sampleRate,
+                highWaterMark: newConfig.bufferSize
+            });
+            
+            this.currentSpeakerConfig = newConfig;
+        }
+
+        return this.speaker!; // この時点でthis.speakerは必ずnon-null
+    }
+
+    /**
+     * 現在のSpeakerインスタンスをクリーンアップ
+     */
+    private cleanupCurrentSpeaker(): void {
+        if (this.speaker) {
+            try {
+                // SpeakerがWritableStreamを継承しているため、適切に終了
+                if (!this.speaker.destroyed) {
+                    this.speaker.removeAllListeners();
+                    this.speaker.destroy();
+                }
+            } catch (error) {
+                logger.warn(`Speaker cleanup warning: ${(error as Error).message}`);
+            }
+            this.speaker = null;
+            this.currentSpeakerConfig = null;
+        }
+    }
+
+    /**
+     * PCMデータを直接スピーカーに再生（改善版：Speakerインスタンス使い回し）
      * synthesis/playbackレートが異なる場合は適切なSpeaker設定を使用
      */
     private async playPCMData(pcmData: Uint8Array, bufferSize?: number, chunk?: Chunk): Promise<void> {
@@ -404,20 +455,19 @@ export class AudioPlayer {
             // synthesisRateとplaybackRateが異なる場合は、実際の生成レートを使用
             const actualSampleRate = this.synthesisRate === this.playbackRate ? 
                 this.playbackRate : this.synthesisRate;
-                
-            const speaker = new Speaker({
-                channels: AUDIO_FORMAT.CHANNELS,
-                bitDepth: AUDIO_FORMAT.BIT_DEPTH,
-                sampleRate: actualSampleRate,  // 実際のデータのサンプルレート
-                // バッファサイズ制御（デフォルト：1024、範囲：256-8192）
-                highWaterMark: bufferSize || BUFFER_SIZES.DEFAULT
-            });
+            
+            const finalBufferSize = bufferSize || BUFFER_SIZES.DEFAULT;
+            
+            // Speakerインスタンスを取得または作成（使い回し実装）
+            const speaker = this.getOrCreateSpeaker(actualSampleRate, finalBufferSize);
 
-            speaker.on('close', () => {
+            // 一時的なイベントリスナーを設定（既存リスナーと競合しないようonce使用）
+            speaker.once('close', () => {
+                logger.debug('Speaker close event received');
                 resolve();
             });
 
-            speaker.on('error', (error) => {
+            speaker.once('error', (error) => {
                 logger.error(`Speaker再生エラー: ${error.message}`);
                 reject(error);
             });
@@ -623,6 +673,30 @@ export class AudioPlayer {
         } catch (error) {
             logger.warn(`ドライバーウォームアップエラー: ${(error as Error).message}`);
             // エラーが発生しても処理を継続（ウォームアップは補助機能）
+        }
+    }
+
+    /**
+     * AudioPlayerのクリーンアップ（リソース解放）
+     * 長時間運用やシャットダウン時に呼び出し
+     */
+    async cleanup(): Promise<void> {
+        logger.debug('AudioPlayer cleanup開始');
+        
+        try {
+            // Speakerインスタンスのクリーンアップ
+            this.cleanupCurrentSpeaker();
+            
+            // Echogardenリソースの解放
+            if (this.echogardenInitialized) {
+                // Echogardenには明示的なクリーンアップメソッドがないため、フラグのみリセット
+                this.echogardenInitialized = false;
+            }
+            
+            this.isInitialized = false;
+            logger.info('AudioPlayer cleanup完了');
+        } catch (error) {
+            logger.warn(`AudioPlayer cleanup warning: ${(error as Error).message}`);
         }
     }
 }
