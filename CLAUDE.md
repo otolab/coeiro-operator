@@ -29,6 +29,13 @@ npm run test:e2e
 
 **詳細**: `docs/development-tips.md#プロジェクト構成` を参照
 
+### Queue統一実装アーキテクチャ
+
+- **SpeechQueue**: 音声タスクの一元管理（`src/core/say/speech-queue.ts`）
+- **CLI実行**: 同期処理（ウォームアップ→音声→完了待機）
+- **MCP実行**: 非同期キューイング（音声タスクのみ即座にレスポンス）
+- **タスクタイプ**: `speech` | `warmup` | `completion_wait`
+
 ## 🎛️ 設定システム
 
 **音声設定**: `~/.coeiro-operator/coeiroink-config.json`
@@ -84,15 +91,23 @@ node dist/mcp-debug/cli.js --timeout 10000 dist/mcp/server.js -- --debug
 
 ## 🔍 開発フロー
 
-1. コード修正
-2. `npm run build`
-3. MCPサーバー再起動（上記コマンド）  
-4. Claude Codeでツール動作確認
+### Queue統一実装での開発プロセス
+
+1. **コード修正** (特にSpeechQueue関連)
+2. **ビルド**: `npm run build`
+3. **テスト**: APIレスポンス構造変更確認 (`result.taskId` vs 従来の `result.mode`)
+4. **MCPサーバー再起動**（下記コマンド）
+5. **Claude Codeでツール動作確認**
 
 ### MCPサーバー再起動コマンド
 ```bash
 claude mcp remove coeiro-operator -s local
 claude mcp add coeiro-operator ./dist/mcp/server.js
 ```
+
+### テスト時の注意点
+- 統合テストではAPIレスポンス構造が `{ success, taskId }` に変更
+- レガシーメソッド（`synthesizeTextInternal`）削除によるテスト修正済み
+- SpeechQueueのタスク管理により非同期処理の動作が変更
 
 **詳細**: `docs/development-tips.md#推奨開発フロー` を参照

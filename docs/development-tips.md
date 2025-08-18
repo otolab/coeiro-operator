@@ -46,12 +46,26 @@ src/
 ├── cli/                    # CLIツール
 ├── core/                   # コア機能
 │   ├── operator/           # オペレータ管理
-│   ├── say/               # 音声合成システム
+│   ├── say/               # 音声合成システム (Queue統一実装)
+│   │   ├── speech-queue.ts # 🆕 統一音声タスクキュー
+│   │   ├── index.ts        # SayCoeiroink (CLI/MCP実行モード別)
+│   │   └── ...             # 音声処理コンポーネント
 │   └── environment/       # 環境情報管理
 ├── mcp/                   # MCPサーバー
 ├── mcp-debug/             # MCPデバッグ環境
 └── utils/                 # ユーティリティ
 ```
+
+### Queue統一実装の主要コンポーネント
+
+- **SpeechQueue** (`src/core/say/speech-queue.ts`): 音声タスクの統一管理
+  - タスクタイプ: `speech`, `warmup`, `completion_wait`
+  - CLI/MCP実行モード対応
+  - 同期/非同期処理の抽象化
+
+- **実行モード別API**:
+  - `synthesizeText()`: CLI用同期処理（ウォームアップ→音声→完了待機）
+  - `synthesizeTextAsync()`: MCP用非同期キューイング（即座にレスポンス）
 
 ## MCP サーバー開発
 

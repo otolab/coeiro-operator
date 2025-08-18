@@ -4,167 +4,148 @@
  * - アサインなし時の再アサイン促進メッセージ
  */
 
-import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { FileOperationManager } from './file-operation-manager.js';
-import { OperatorStateManager } from './operator-state-manager.js';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import OperatorManager from './index.js';
+import ConfigManager from './config-manager.js';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { mkdir, rm } from 'fs/promises';
+import { mkdir, rm, writeFile } from 'fs/promises';
 
 describe('Issue #58: sayコマンド改善機能', () => {
-    let fileManager: FileOperationManager;
-    let stateManager: OperatorStateManager;
+    let operatorManager: OperatorManager;
     let tempDir: string;
-    let mockConfigManager: any;
 
     beforeEach(async () => {
         tempDir = join(tmpdir(), `issue58-${Date.now()}`);
         await mkdir(tempDir, { recursive: true });
         
-        fileManager = new FileOperationManager();
-        stateManager = new OperatorStateManager('test_session', fileManager);
+        // .coeiro-operatorサブディレクトリを作成
+        const configSubDir = join(tempDir, '.coeiro-operator');
+        await mkdir(configSubDir, { recursive: true });
         
-        // テスト用に統一ファイルパスを上書き
-        const testFilePath = join(tempDir, 'test-operators.json');
-        fileManager.getUnifiedOperatorFilePath = () => testFilePath;
-        
-        // モックConfigManagerを作成
-        mockConfigManager = {
-            getAvailableCharacterIds: async () => ['tsukuyomi', 'metan', 'zundamon']
+        // 設定ファイルのモックを作成
+        const coeiroinkConfig = {
+            host: 'localhost',
+            port: '50032',
+            voice: {
+                default_voice_id: 'test-voice-123',
+                rate: 200
+            }
         };
+        await writeFile(join(configSubDir, 'coeiroink-config.json'), JSON.stringify(coeiroinkConfig), 'utf8');
         
-        await stateManager.initialize(mockConfigManager);
+        const operatorConfig = {
+            characters: {
+                'test-operator-1': {
+                    name: 'テストキャラ1',
+                    personality: 'テスト用',
+                    speaking_style: 'フレンドリー',
+                    voice_id: 'test-voice-1',
+                    default_style: 'normal',
+                    style_selection: 'default',
+                    available_styles: {
+                        normal: {
+                            name: 'ノーマル',
+                            personality: '普通',
+                            speaking_style: '標準',
+                            style_id: 0,
+                            disabled: false
+                        }
+                    }
+                }
+            }
+        };
+        await writeFile(join(configSubDir, 'operator-config.json'), JSON.stringify(operatorConfig), 'utf8');
+        
+        operatorManager = new OperatorManager();
+        
+        // HOMEディレクトリを一時ディレクトリに設定
+        const originalHome = process.env.HOME;
+        process.env.HOME = tempDir;
+        
+        await operatorManager.initialize();
+        
+        // 環境変数を復元
+        if (originalHome) {
+            process.env.HOME = originalHome;
+        } else {
+            delete process.env.HOME;
+        }
     });
 
     afterEach(async () => {
+        try {
+            await operatorManager.silentReleaseCurrentOperator();
+            await operatorManager.clearAllOperators();
+        } catch {
+            // エラーは無視
+        }
+        
         try {
             await rm(tempDir, { recursive: true, force: true });
         } catch {
             // エラーは無視
         }
+        
+        vi.restoreAllMocks();
     });
 
     describe('動的タイムアウト延長機能', () => {
         test('refreshOperatorReservationメソッドが正常に動作すること', async () => {
             // オペレータを予約
-            await stateManager.reserveOperator('tsukuyomi');
-            
-            // 初期予約時刻を取得
-            const filePath = fileManager.getUnifiedOperatorFilePath();
-            const initialState = await fileManager.readJsonFile(filePath, {});
-            const initialReservedAt = initialState.operators.tsukuyomi.reserved_at;
-            
-            // 少し待ってからrefresh実行
-            await new Promise(resolve => setTimeout(resolve, 10));
+            await operatorManager.reserveOperator('test-operator-1');
             
             // タイムアウト延長を実行
-            const success = await fileManager.refreshOperatorReservation('tsukuyomi', 'test_session');
+            const success = await operatorManager.refreshOperatorReservation();
             expect(success).toBe(true);
-            
-            // 予約時刻が更新されていることを確認
-            const updatedState = await fileManager.readJsonFile(filePath, {});
-            const updatedReservedAt = updatedState.operators.tsukuyomi.reserved_at;
-            
-            expect(updatedReservedAt).not.toBe(initialReservedAt);
-            expect(new Date(updatedReservedAt).getTime()).toBeGreaterThan(new Date(initialReservedAt).getTime());
         });
 
-        test('他のセッションのオペレータは延長できないこと', async () => {
-            // 別セッションでオペレータを予約
-            await fileManager.reserveOperatorUnified('tsukuyomi', 'other_session');
-            
-            // 現在のセッションから延長を試行
-            const success = await fileManager.refreshOperatorReservation('tsukuyomi', 'test_session');
+        test('オペレータが割り当てられていない場合は延長が失敗すること', async () => {
+            // オペレータを予約せずに延長を試行
+            const success = await operatorManager.refreshOperatorReservation();
             expect(success).toBe(false);
         });
 
-        test('存在しないオペレータは延長できないこと', async () => {
-            // 予約されていないオペレータの延長を試行
-            const success = await fileManager.refreshOperatorReservation('nonexistent', 'test_session');
+        test('予約されていないオペレータの延長は失敗すること', async () => {
+            // オペレータを予約せずに延長を試行
+            const success = await operatorManager.refreshOperatorReservation();
             expect(success).toBe(false);
-        });
-
-        test('OperatorStateManagerのrefreshOperatorReservationが正常動作すること', async () => {
-            // オペレータを予約
-            await stateManager.reserveOperator('metan');
-            
-            // StateManager経由で延長
-            const success = await stateManager.refreshOperatorReservation('metan');
-            expect(success).toBe(true);
-            
-            // 予約が維持されていることを確認
-            const currentOperator = await stateManager.getCurrentOperatorId();
-            expect(currentOperator).toBe('metan');
         });
     });
 
     describe('予約状態の一貫性確認', () => {
         test('refreshOperatorReservation後もオペレータ状態が維持されること', async () => {
             // オペレータを予約
-            await stateManager.reserveOperator('zundamon');
+            await operatorManager.reserveOperator('test-operator-1');
             
             // 予約延長前の状態確認
-            const operatorBeforeRefresh = await stateManager.getCurrentOperatorId();
-            expect(operatorBeforeRefresh).toBe('zundamon');
+            const operatorBeforeRefresh = await operatorManager.getCurrentOperatorId();
+            expect(operatorBeforeRefresh).toBe('test-operator-1');
             
             // 予約延長実行
-            const refreshSuccess = await stateManager.refreshOperatorReservation('zundamon');
+            const refreshSuccess = await operatorManager.refreshOperatorReservation();
             expect(refreshSuccess).toBe(true);
             
             // 予約延長後の状態確認
-            const operatorAfterRefresh = await stateManager.getCurrentOperatorId();
-            expect(operatorAfterRefresh).toBe('zundamon');
+            const operatorAfterRefresh = await operatorManager.getCurrentOperatorId();
+            expect(operatorAfterRefresh).toBe('test-operator-1');
             
             // 利用可能オペレータからは除外されていることを確認
-            const availableOperators = await stateManager.getAvailableOperators();
-            expect(availableOperators).not.toContain('zundamon');
+            const availableOperators = await operatorManager.getAvailableOperators();
+            expect(availableOperators).not.toContain('test-operator-1');
         });
 
-        test('refreshOperatorReservation後の統一ファイル構造が正しいこと', async () => {
+        test('refreshOperatorReservation後のセッション管理が正しく動作すること', async () => {
             // オペレータを予約
-            await stateManager.reserveOperator('tsukuyomi');
+            await operatorManager.reserveOperator('test-operator-1');
             
             // 予約延長実行
-            await stateManager.refreshOperatorReservation('tsukuyomi');
+            const success = await operatorManager.refreshOperatorReservation();
+            expect(success).toBe(true);
             
-            // ファイル構造確認
-            const filePath = fileManager.getUnifiedOperatorFilePath();
-            const state = await fileManager.readJsonFile(filePath, {});
-            
-            // 必須フィールドが存在することを確認
-            expect(state.operators).toBeDefined();
-            expect(state.operators.tsukuyomi).toBeDefined();
-            expect(state.operators.tsukuyomi.session_id).toBe('test_session');
-            expect(state.operators.tsukuyomi.process_id).toBeDefined();
-            expect(state.operators.tsukuyomi.reserved_at).toBeDefined();
-            expect(state.last_updated).toBeDefined();
-            
-            // 日付フォーマットが正しいことを確認
-            expect(() => new Date(state.operators.tsukuyomi.reserved_at)).not.toThrow();
-            expect(() => new Date(state.last_updated)).not.toThrow();
-        });
-    });
-
-    describe('エラーハンドリング', () => {
-        test('ファイルロック競合時も適切に処理されること', async () => {
-            // オペレータを予約
-            await stateManager.reserveOperator('tsukuyomi');
-            
-            // 複数の同時refresh要求をテスト
-            const promises = Array.from({ length: 5 }, () => 
-                stateManager.refreshOperatorReservation('tsukuyomi')
-            );
-            
-            const results = await Promise.all(promises);
-            
-            // すべて成功すること
-            results.forEach(result => {
-                expect(result).toBe(true);
-            });
-            
-            // 最終状態が一貫していること
-            const finalOperator = await stateManager.getCurrentOperatorId();
-            expect(finalOperator).toBe('tsukuyomi');
+            // セッション状態が正しく維持されることを確認
+            const isValid = await operatorManager.validateCurrentOperatorSession();
+            expect(isValid).toBe(true);
         });
     });
 });

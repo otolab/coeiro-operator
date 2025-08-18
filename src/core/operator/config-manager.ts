@@ -35,10 +35,12 @@ export interface CharacterConfig {
 
 interface UserConfig {
     characters: Record<string, Partial<CharacterConfig>>;
+    operatorTimeout?: number; // ミリ秒単位のタイムアウト期間
 }
 
 interface MergedConfig {
     characters: Record<string, CharacterConfig>;
+    operatorTimeout: number; // ミリ秒単位のタイムアウト期間
 }
 
 export class ConfigManager {
@@ -238,7 +240,8 @@ export class ConfigManager {
         }
         
         this.mergedConfig = {
-            characters: mergedCharacters
+            characters: mergedCharacters,
+            operatorTimeout: userConfig.operatorTimeout || 4 * 60 * 60 * 1000 // デフォルト4時間
         };
         
         return this.mergedConfig;
@@ -282,6 +285,14 @@ export class ConfigManager {
         return Object.values(config.characters || {})
             .map(char => char.greeting)
             .filter(greeting => greeting && greeting.trim());
+    }
+
+    /**
+     * オペレータタイムアウト期間を取得（ミリ秒）
+     */
+    async getOperatorTimeout(): Promise<number> {
+        const config = await this.buildDynamicConfig();
+        return config.operatorTimeout;
     }
 
 }

@@ -77,8 +77,8 @@ describe('オペレータタイムアウト検証テスト (Issue #63)', () => {
             // 1.5秒待機（タイムアウト期間を超過）
             await new Promise(resolve => setTimeout(resolve, 1500));
             
-            // 時間切れチェック（手動でisOperatorStaleを呼び出し）
-            const isStale = await fileOperationManager.isOperatorStale(testOperator, operatorManager1.sessionId);
+            // 時間切れチェック（手動でisOperatorStaleを呼び出し、1秒のタイムアウトを指定）
+            const isStale = await fileOperationManager.isOperatorStale(testOperator, operatorManager1.sessionId, testStaleThreshold);
             expect(isStale).toBe(true);
             
             // showCurrentOperatorでタイムアウト検証を実行

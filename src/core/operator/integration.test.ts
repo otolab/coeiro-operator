@@ -1,10 +1,10 @@
 /**
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
  * src/operator/integration.test.ts: OperatorManager統合テスト
  * リファクタリング後の全体動作確認
  */
 
-import { OperatorManager } from './index.js';
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import OperatorManager from './index.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -18,12 +18,16 @@ describe('OperatorManager Integration Test', () => {
         tempDir = join(tmpdir(), `coeiro-integration-test-${Date.now()}-${Math.random().toString(36).substring(7)}`);
         await mkdir(tempDir, { recursive: true });
         
+        // .coeiro-operatorサブディレクトリを作成
+        const configSubDir = join(tempDir, '.coeiro-operator');
+        await mkdir(configSubDir, { recursive: true });
+        
         // 設定ファイルのモックを作成
         const coeiroinkConfig = {
             host: 'localhost',
             port: '50032'
         };
-        await writeFile(join(tempDir, 'coeiroink-config.json'), JSON.stringify(coeiroinkConfig), 'utf8');
+        await writeFile(join(configSubDir, 'coeiroink-config.json'), JSON.stringify(coeiroinkConfig), 'utf8');
         
         // OperatorManagerを初期化
         operatorManager = new OperatorManager();
