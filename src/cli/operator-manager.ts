@@ -140,8 +140,11 @@ class OperatorManagerCLI {
     }
 
     async handleAvailable(): Promise<void> {
-        const available: string[] = await this.manager.getAvailableOperators();
-        console.log(`利用可能なオペレータ: ${available.join(' ')}`);
+        const result = await this.manager.getAvailableOperators();
+        console.log(`利用可能なオペレータ: ${result.available.join(', ')}`);
+        if (result.busy.length > 0) {
+            console.log(`仕事中のオペレータ: ${result.busy.join(', ')}`);
+        }
     }
 
     async handleClear(): Promise<void> {

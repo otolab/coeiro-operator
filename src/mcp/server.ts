@@ -327,10 +327,14 @@ server.registerTool("operator_available", {
   inputSchema: {}
 }, async (): Promise<ToolResponse> => {
   try {
-    const availableOperators = await operatorManager.getAvailableOperators();
-    const text = availableOperators.length > 0
-      ? `利用可能なオペレータ: ${availableOperators.join(', ')}`
+    const result = await operatorManager.getAvailableOperators();
+    let text = result.available.length > 0
+      ? `利用可能なオペレータ: ${result.available.join(', ')}`
       : "利用可能なオペレータがありません";
+    
+    if (result.busy.length > 0) {
+      text += `\n仕事中のオペレータ: ${result.busy.join(', ')}`;
+    }
     
     return {
       content: [{
@@ -369,7 +373,8 @@ server.registerTool("say", {
       // 利用可能なオペレータを取得
       let availableOperators: string[] = [];
       try {
-        availableOperators = await operatorManager.getAvailableOperators();
+        const result = await operatorManager.getAvailableOperators();
+        availableOperators = result.available;
       } catch (error) {
         logger.warn(`Failed to get available operators: ${(error as Error).message}`);
       }
