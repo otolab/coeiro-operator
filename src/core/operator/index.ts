@@ -193,7 +193,7 @@ export class OperatorManager {
 
         const allOperators = await this.configManager.getAvailableCharacterIds();
         const otherAssignments = await this.dataStore.getOtherEntries();
-        const busyOperators = Object.values(otherAssignments);
+        const busyOperators = otherAssignments ? Object.values(otherAssignments) : [];
         
         const availableOperators = allOperators.filter(op => !busyOperators.includes(op));
         
