@@ -187,14 +187,33 @@ export class VoiceProvider {
             'アルマちゃん': 'alma',
             'AI声優-朱花': 'akane',
             'ディアちゃん': 'dia',
+            'KANA': 'kana',
             'AI声優-KANA': 'kana',
+            '金苗': 'kanae',
             'AI声優-金苗': 'kanae',
             'リリンちゃん': 'rilin',
-            'AI声優-MANA': 'mana'
+            'MANA': 'mana',
+            'AI声優-MANA': 'mana',
+            'おふとんP': 'ofutonp',
+            'クロワちゃん': 'kurowa',
+            'AI声優-青葉': 'aoba',
+            'AI声優-銀芽': 'ginga'
         };
         
-        return SPEAKER_NAME_TO_ID_MAP[speakerName] || 
-               speakerName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        // マッピングに存在しない場合の処理
+        if (SPEAKER_NAME_TO_ID_MAP[speakerName]) {
+            return SPEAKER_NAME_TO_ID_MAP[speakerName];
+        }
+        
+        // 英数字を含む場合のみ変換を試みる
+        const converted = speakerName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (converted.length === 0) {
+            // 空文字列になる場合は、名前をローマ字風に変換（簡易的な処理）
+            console.warn(`未登録の音声名: ${speakerName} - デフォルトIDを生成します`);
+            return 'unknown_' + Date.now().toString(36);
+        }
+        
+        return converted;
     }
 }
 

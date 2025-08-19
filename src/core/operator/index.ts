@@ -184,18 +184,23 @@ export class OperatorManager {
     }
 
     /**
-     * 利用可能なオペレータを取得
+     * 利用可能なオペレータを取得（仕事中のオペレータ情報も含む）
      */
-    async getAvailableOperators(): Promise<string[]> {
+    async getAvailableOperators(): Promise<{available: string[], busy: string[]}> {
         if (!this.configManager) {
             throw new Error('State manager is not initialized');
         }
 
         const allOperators = await this.configManager.getAvailableCharacterIds();
         const otherAssignments = await this.dataStore.getOtherEntries();
-        const usedOperators = Object.values(otherAssignments);
+        const busyOperators = Object.values(otherAssignments);
         
-        return allOperators.filter(op => !usedOperators.includes(op));
+        const availableOperators = allOperators.filter(op => !busyOperators.includes(op));
+        
+        return {
+            available: availableOperators,
+            busy: busyOperators
+        };
     }
 
     /**
@@ -264,10 +269,8 @@ export class OperatorManager {
      * 指定されたオペレータが利用中かチェック（全セッション対象）
      */
     async isOperatorBusy(operatorId: string): Promise<boolean> {
-        const allOperators = await this.configManager?.getAvailableCharacterIds() || [];
-        const availableOperators = await this.getAvailableOperators();
-        
-        return !availableOperators.includes(operatorId);
+        const result = await this.getAvailableOperators();
+        return !result.available.includes(operatorId);
     }
 
     /**
@@ -291,14 +294,14 @@ export class OperatorManager {
      * ランダムオペレータ選択と詳細情報付きアサイン
      */
     async assignRandomOperator(style: string | null = null): Promise<AssignResult> {
-        const availableOperators = await this.getAvailableOperators();
+        const result = await this.getAvailableOperators();
         
-        if (availableOperators.length === 0) {
+        if (result.available.length === 0) {
             throw new Error('利用可能なオペレータがありません');
         }
         
         // ランダム選択
-        const selectedOperator = availableOperators[Math.floor(Math.random() * availableOperators.length)];
+        const selectedOperator = result.available[Math.floor(Math.random() * result.available.length)];
         
         return await this.assignSpecificOperator(selectedOperator, style);
     }
