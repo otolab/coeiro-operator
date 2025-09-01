@@ -2,6 +2,20 @@
 
 COEIRO Operatorの一般的な問題と解決方法を説明します。
 
+## 🔍 クイック診断
+
+問題が発生した場合、まず以下のコマンドで状態を確認：
+
+```bash
+# システム全体の状態確認
+operator-manager status
+curl -X GET "http://localhost:50032/v1/speakers"
+npm run type-check
+
+# デバッグモードで詳細確認
+COEIRO_DEBUG=true say-coeiroink "テスト"
+```
+
 ## 音声出力の問題
 
 ### 音声が出力されない
@@ -189,14 +203,14 @@ DEBUG=mcp* coeiro-operator
 
 #### 解決方法
 
-**再登録**
+**開発中のコードテスト（推奨）**
 ```bash
-# MCP削除・再登録
-claude mcp remove coeiro-operator
-claude mcp add coeiro-operator coeiro-operator
+# mcp-debugでMCPサーバーをテスト
+node dist/mcp-debug/cli.js --interactive dist/mcp/server.js
 
-# 設定確認
-claude mcp test coeiro-operator
+# 直接実行テスト
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":1}' | \
+  node dist/mcp/server.js
 ```
 
 **権限問題**
@@ -218,11 +232,12 @@ npm install -g coeiro-operator
 
 #### デバッグ方法
 ```bash
-# 詳細ログ有効化
-DEBUG=coeiro* claude mcp test coeiro-operator
+# mcp-debugで個別ツールテスト
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_assign","arguments":{}},"id":1}' | \
+  node dist/mcp-debug/cli.js --debug dist/mcp/server.js
 
-# 個別ツールテスト
-curl -X POST localhost:3000/mcp/operator_assign
+# タイムアウト延長でテスト
+node dist/mcp-debug/cli.js --request-timeout 30000 dist/mcp/server.js
 ```
 
 ## インストール・依存関係問題

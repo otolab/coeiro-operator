@@ -39,8 +39,12 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 
 ### 開発環境
 - **[development-tips.md](development-tips.md)** - 開発テクニック・Tips集
-- **[mcp-debug-guide.md](mcp-debug-guide.md)** - MCPデバッグ環境完全ガイド（CLI・自動リロード・制御コマンド）
-- **[mcp-debug-testing.md](mcp-debug-testing.md)** - MCPデバッグテスト
+- **[debugging-guide.md](debugging-guide.md)** - COEIRO Operatorデバッグガイド
+- **[mcp-debug-guide.md](mcp-debug-guide.md)** - MCPデバッグツール基本ガイド
+- **[mcp-debug/](mcp-debug/)** - MCPデバッグ詳細ドキュメント
+  - [MCPプロトコル仕様](mcp-debug/mcp-protocol-specification.md)
+  - [テスト機能](mcp-debug/testing-features.md)
+  - [アーキテクチャ設計](mcp-debug/architecture.md)
 
 ### テスト・品質管理
 - **[testing-guide.md](testing-guide.md)** - テスト環境とmcp-debug統合
@@ -81,8 +85,9 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 
 ### 🆘 問題が発生した
 1. [troubleshooting.md](troubleshooting.md) で解決方法検索
-2. [mcp-debug-guide.md](mcp-debug-guide.md) でデバッグ方法確認
-3. [logging-guidelines.md](logging-guidelines.md) でログ確認方法確認
+2. [debugging-guide.md](debugging-guide.md) でデバッグ手順確認
+3. [mcp-debug-guide.md](mcp-debug-guide.md) でMCPツール使用
+4. [logging-guidelines.md](logging-guidelines.md) でログ確認方法確認
 
 ---
 

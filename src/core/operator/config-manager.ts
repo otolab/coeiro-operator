@@ -195,8 +195,8 @@ export class ConfigManager {
                 
                 // スタイル情報を追加
                 for (const style of voice.styles) {
-                    const styleKey = style.name === 'れいせい' ? 'normal' : 
-                                   style.name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                    // COEIROINKのスタイル名をそのままキーとして使用
+                    const styleKey = style.name;
                     
                     characterConfig.available_styles[styleKey] = {
                         name: style.name,
