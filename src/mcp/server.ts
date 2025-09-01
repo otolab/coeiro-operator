@@ -131,13 +131,12 @@ async function assignOperator(
 }
 
 function extractStyleInfo(character: Character): StyleInfo[] {
-  return Object.entries(character.availableStyles || {})
-    .filter(([_, style]) => !style.disabled)
-    .map(([styleId, style]) => ({
-      id: styleId,
+  return (character.speaker?.styles || [])
+    .map(style => ({
+      id: style.styleId.toString(),
       name: style.styleName,
-      personality: style.personality,
-      speakingStyle: style.speaking_style
+      personality: character.personality,
+      speakingStyle: character.speakingStyle
     }));
 }
 
@@ -201,12 +200,11 @@ async function getTargetCharacter(
 }
 
 function formatStylesResult(character: Character, availableStyles: StyleInfo[]): string {
-  let resultText = `🎭 ${character.speaker.speakerName} のスタイル情報\n\n`;
+  let resultText = `🎭 ${character.speaker?.speakerName || character.characterId} のスタイル情報\n\n`;
   
   resultText += `📋 基本情報:\n`;
   resultText += `   性格: ${character.personality}\n`;
   resultText += `   話し方: ${character.speakingStyle}\n`;
-  resultText += `   スタイル選択方法: ${character.styleSelection}\n`;
   resultText += `   デフォルトスタイル: ${character.defaultStyle}\n\n`;
   
   if (availableStyles.length > 0) {
@@ -403,16 +401,13 @@ server.registerTool("say", {
         const character = await operatorManager.getCharacterInfo(currentOperator.characterId);
         
         // 利用可能なスタイルを取得
-        const availableStyles = Object.entries(character.availableStyles || {})
-          .filter(([_, styleData]) => !styleData.disabled);
+        const availableStyles = character.speaker?.styles || [];
         
         // 指定されたスタイルが存在するか確認
-        const styleExists = availableStyles.some(([styleId, styleData]) => 
-          styleId === style || styleData.styleName === style
-        );
+        const styleExists = availableStyles.some(s => s.styleName === style);
         
         if (!styleExists) {
-          const styleNames = availableStyles.map(([_, styleData]) => styleData.styleName);
+          const styleNames = availableStyles.map(s => s.styleName);
           throw new Error(`指定されたスタイル '${style}' が見つかりません。利用可能なスタイル: ${styleNames.join(', ')}`);
         }
       } catch (error) {

@@ -10,7 +10,6 @@ interface CharacterConfig {
     greeting: string;
     farewell: string;
     default_style: string;
-    style_selection: string;
 }
 
 export const BUILTIN_CHARACTER_CONFIGS = {
@@ -21,7 +20,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "本日も作業をサポートさせていただきます。つくよみちゃんです。",
         farewell: "本日の作業、お疲れさまでした。",
         default_style: "normal",
-        style_selection: "default"
     },
     angie: {
         name: "アンジーさん",
@@ -30,7 +28,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "やっほー！今日もよろしくお願いします！",
         farewell: "今日もお疲れさまでした！",
         default_style: "normal",
-        style_selection: "default"
     },
     alma: {
         name: "アルマちゃん",
@@ -38,8 +35,7 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         speaking_style: "丁寧で優しい口調",
         greeting: "こんにちは。今日もがんばりましょう。",
         farewell: "今日もお疲れさまでした。",
-        default_style: "normal", 
-        style_selection: "default"
+        default_style: "normal"
     },
     akane: {
         name: "AI声優-朱花",
@@ -48,7 +44,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "こんにちは。本日もサポートいたします。",
         farewell: "本日の作業、お疲れさまでした。",
         default_style: "normal",
-        style_selection: "default"
     },
     kana: {
         name: "KANA",
@@ -57,7 +52,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "こんにちは。効率的に作業を進めましょう。",
         farewell: "本日の作業、お疲れさまでした。",
         default_style: "normal",
-        style_selection: "default"
     },
     kanae: {
         name: "金苗",
@@ -66,7 +60,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "こんにちは。一緒にがんばりましょう。",
         farewell: "今日もお疲れさまでした。",
         default_style: "normal",
-        style_selection: "default"
     },
     mana: {
         name: "MANA",
@@ -75,7 +68,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "MANAです。今日もゆっくり一緒に作業しましょうね。",
         farewell: "今日もお疲れ様でした。ゆっくり休んでくださいね。",
         default_style: "normal",
-        style_selection: "default"
     },
     dia: {
         name: "ディアちゃん",
@@ -84,7 +76,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "ディアです。今日も一緒に頑張りましょうね。",
         farewell: "今日も一日お疲れ様でした。ゆっくり休んでくださいね。",
         default_style: "normal",
-        style_selection: "default"
     },
     rilin: {
         name: "リリンちゃん",
@@ -93,7 +84,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "今日も元気いっぱい！リリンが担当します！",
         farewell: "今日も一日お疲れ様でした！また明日も頑張りましょう！",
         default_style: "normal",
-        style_selection: "default"
     },
     ofutonp: {
         name: "おふとんP",
@@ -102,7 +92,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "おふとんPです。今日もよろしくお願いします。",
         farewell: "お疲れ様でした。また明日もよろしくお願いします。",
         default_style: "normal",
-        style_selection: "default"
     },
     kurowa: {
         name: "クロワちゃん",
@@ -111,7 +100,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "騎士クロワです。本日もお供いたします。",
         farewell: "本日の任務、完了いたしました。",
         default_style: "normal",
-        style_selection: "default"
     },
     aoba: {
         name: "AI声優-青葉",
@@ -120,7 +108,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "AI声優の青葉です。今日もよろしくお願いします。",
         farewell: "お疲れ様でした。また次回もよろしくお願いします。",
         default_style: "normal",
-        style_selection: "default"
     },
     ginga: {
         name: "AI声優-銀芽",
@@ -129,7 +116,6 @@ export const BUILTIN_CHARACTER_CONFIGS = {
         greeting: "AI声優の銀芽です。本日もよろしくお願いいたします。",
         farewell: "本日の収録、お疲れ様でした。",
         default_style: "normal",
-        style_selection: "default"
     }
 } as const;
 

@@ -10,14 +10,6 @@ import { BUILTIN_CHARACTER_CONFIGS, SPEAKER_NAME_TO_ID_MAP } from './character-d
 import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
 import { getSpeakerProvider, type SpeakerData } from '../environment/speaker-provider.js';
 
-export interface CharacterStyle {
-    styleId: number;
-    styleName: string;
-    personality: string;
-    speaking_style: string;
-    disabled?: boolean;
-}
-
 export interface CharacterConfig {
     name: string;
     personality: string;
@@ -25,9 +17,7 @@ export interface CharacterConfig {
     greeting: string;
     farewell: string;
     default_style: string;
-    style_selection: string;
-    speaker_id: string | null;  // COEIROINKのspeakerUuid（voice_idから名称変更）
-    available_styles: Record<string, CharacterStyle>;
+    speaker_id: string | null;  // COEIROINKのspeakerUuid
     disabled?: boolean;
 }
 
@@ -176,29 +166,21 @@ export class ConfigManager {
                     speaking_style: "標準的な口調",
                     greeting: `こんにちは。${speaker.name}です。`,
                     farewell: "お疲れさまでした。",
-                    default_style: "normal",
-                    style_selection: "default"
+                    default_style: "normal"
                 };
                 
-                // 基本設定にSpeaker情報を追加（Speakerプロバイダの名前を優先）
+                // 基本設定にSpeaker情報を追加
                 const characterConfig: CharacterConfig = {
                     ...builtinConfig,
                     name: speaker.name, // Speakerプロバイダからの正確な名前を使用
-                    speaker_id: speaker.speaker_id,
-                    available_styles: {}
+                    speaker_id: speaker.speaker_id
                 };
                 
-                // スタイル情報を追加
-                for (const style of speaker.styles) {
-                    // COEIROINKのスタイル名をそのままキーとして使用
-                    const styleKey = style.name;
-                    
-                    characterConfig.available_styles[styleKey] = {
-                        styleId: style.style_id,
-                        styleName: style.name,
-                        personality: builtinConfig.personality,
-                        speaking_style: builtinConfig.speaking_style
-                    };
+                // デフォルトスタイルがスタイル一覧に存在するか確認
+                // 存在しない場合は最初のスタイルをデフォルトに
+                if (speaker.styles.length > 0 && 
+                    !speaker.styles.find(s => s.name === builtinConfig.default_style)) {
+                    characterConfig.default_style = speaker.styles[0].name;
                 }
                 
                 dynamicCharacters[speaker.id] = characterConfig;
@@ -208,15 +190,7 @@ export class ConfigManager {
             for (const [charId, builtinConfig] of Object.entries(BUILTIN_CHARACTER_CONFIGS)) {
                 dynamicCharacters[charId] = {
                     ...builtinConfig,
-                    speaker_id: null, // Speaker情報がない
-                    available_styles: {
-                        normal: {
-                            styleId: 0,
-                            styleName: 'れいせい',
-                            personality: builtinConfig.personality,
-                            speaking_style: builtinConfig.speaking_style
-                        }
-                    }
+                    speaker_id: null // Speaker情報がない
                 };
             }
         }

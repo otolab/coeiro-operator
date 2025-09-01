@@ -9,10 +9,10 @@ import { mkdir, stat, unlink, access } from 'fs/promises';
 import { constants } from 'fs';
 import { join } from 'path';
 import { spawn } from 'child_process';
-import ConfigManager, { CharacterConfig, CharacterStyle } from './config-manager.js';
+import ConfigManager, { CharacterConfig } from './config-manager.js';
 import FileOperationManager from './file-operation-manager.js';
 import { hostname } from 'os';
-import CharacterInfoService, { Character, Speaker, Style, StyleWithMetadata } from './character-info-service.js';
+import CharacterInfoService, { Character, Speaker, Style } from './character-info-service.js';
 
 // セッション情報（キャラクターとスタイルの組み合わせ）
 interface CharacterSession {
@@ -181,7 +181,7 @@ export class OperatorManager {
      * @param character キャラクター情報
      * @param specifiedStyle 指定されたスタイル名
      */
-    selectStyle(character: Character, specifiedStyle: string | null = null): StyleWithMetadata {
+    selectStyle(character: Character, specifiedStyle: string | null = null): Style {
         return this.characterInfoService.selectStyle(character, specifiedStyle);
     }
 
@@ -248,7 +248,7 @@ export class OperatorManager {
         
         return {
             characterId,
-            characterName: character ? character.speaker.speakerName : characterId,
+            characterName: character?.speaker?.speakerName || characterId,
             farewell: character?.farewell || ''
         };
     }
@@ -352,22 +352,20 @@ export class OperatorManager {
             if (currentCharacterId === specifiedCharacter) {
                 const selectedStyle = this.characterInfoService.selectStyle(character, style);
                 
-                const configData = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
-                
                 return {
                     characterId: specifiedCharacter,
-                    characterName: character.speaker.speakerName,
+                    characterName: character.speaker?.speakerName || character.characterId,
                     currentStyle: {
                         styleId: selectedStyle.styleId.toString(),
                         styleName: selectedStyle.styleName,
-                        personality: selectedStyle.personality,
-                        speakingStyle: selectedStyle.speaking_style
+                        personality: character.personality,
+                        speakingStyle: character.speakingStyle
                     },
                     speakerConfig: {
-                        speakerId: configData.speakerId,
-                        styleId: configData.styleId
+                        speakerId: character.speaker?.speakerId || '',
+                        styleId: selectedStyle.styleId
                     },
-                    message: `現在のオペレータ: ${character.speaker.speakerName} (${specifiedCharacter})`
+                    message: `現在のオペレータ: ${character.speaker?.speakerName || character.characterId} (${specifiedCharacter})`
                 };
             }
             
@@ -387,20 +385,18 @@ export class OperatorManager {
         await this.reserveOperator(specifiedCharacter, selectedStyle.styleId, selectedStyle.styleName);
         
         
-        const configData = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
-        
         return {
             characterId: specifiedCharacter,
-            characterName: character.speaker.speakerName,
+            characterName: character.speaker?.speakerName || character.characterId,
             currentStyle: {
                 styleId: selectedStyle.styleId.toString(),
                 styleName: selectedStyle.styleName,
-                personality: selectedStyle.personality,
-                speakingStyle: selectedStyle.speaking_style
+                personality: character.personality,
+                speakingStyle: character.speakingStyle
             },
             speakerConfig: {
-                speakerId: configData.speakerId,
-                styleId: configData.styleId
+                speakerId: character.speaker?.speakerId || '',
+                styleId: selectedStyle.styleId
             },
             greeting: character.greeting || ''
         };
@@ -437,27 +433,26 @@ export class OperatorManager {
         }
         
         // 保存されたスタイル情報を使用するか、デフォルトを選択
-        let selectedStyle: StyleWithMetadata;
+        let selectedStyle: Style;
         if (styleId !== undefined && styleName) {
             // 保存されたスタイルを検索
-            const styles = Object.values(character.availableStyles);
+            const styles = character.speaker?.styles || [];
             selectedStyle = styles.find(s => s.styleId === styleId) || this.characterInfoService.selectStyle(character);
         } else {
             selectedStyle = this.characterInfoService.selectStyle(character);
         }
         
-        const configData = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
         
         return {
             characterId,
-            characterName: character.speaker.speakerName,
+            characterName: character.speaker?.speakerName || character.characterId,
             currentStyle: {
                 styleId: selectedStyle.styleId.toString(),
                 styleName: selectedStyle.styleName,
-                personality: selectedStyle.personality,
-                speakingStyle: selectedStyle.speaking_style
+                personality: character.personality,
+                speakingStyle: character.speakingStyle
             },
-            message: `現在のオペレータ: ${character.speaker.speakerName} (${characterId}) - ${selectedStyle.styleName}`
+            message: `現在のオペレータ: ${character.speaker?.speakerName || character.characterId} (${characterId}) - ${selectedStyle.styleName}`
         };
     }
 
