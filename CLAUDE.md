@@ -29,7 +29,14 @@ npm run test:e2e
 
 **詳細**: `docs/development-tips.md#プロジェクト構成` を参照
 
-### 統合アーキテクチャ (2025年8月更新)
+### 統合アーキテクチャ (2025年9月更新)
+
+#### 主要な型定義
+- **Speaker**: COEIROINKの声の単位（純粋な音声モデル）
+- **Character**: Speakerに性格や口調の情報を付与したもの
+- **VoiceConfig**: 音声合成に必要な最小限の情報（Speaker + selectedStyleId）
+
+詳細: `docs/voice-architecture.md` を参照
 
 #### OperatorManager統合構造
 ```
@@ -43,6 +50,7 @@ OperatorManager (統合管理クラス)
 - **OperatorStateManager**: OperatorManagerに統合
 - **VoiceSelectionService**: CharacterInfoServiceに名前変更
 - **FileOperationManager**: 汎用期限付きKVストレージ `FileOperationManager<T>` に再設計
+- **音声処理**: string型のCharacterIdを入力層でVoiceConfigに変換
 
 ### Queue統一実装アーキテクチャ
 
@@ -92,6 +100,7 @@ node dist/mcp-debug/cli.js --timeout 10000 dist/mcp/server.js -- --debug
 - `docs/mcp-debug-guide.md` - MCPデバッグ環境
 
 ### 音声・システム
+- `docs/voice-architecture.md` - 音声アーキテクチャ仕様書 🆕
 - `docs/audio-streaming-guide.md` - 音声ストリーミング機能
 - `docs/parallel-generation-system.md` - 並行チャンク生成システム
 - `docs/voice-provider-system.md` - VoiceProviderシステム

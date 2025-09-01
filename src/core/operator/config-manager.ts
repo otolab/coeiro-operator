@@ -8,9 +8,7 @@ import { constants } from 'fs';
 import { join } from 'path';
 import { BUILTIN_CHARACTER_CONFIGS, SPEAKER_NAME_TO_ID_MAP } from './character-defaults.js';
 import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
-import { getVoiceProvider, type VoiceInfo } from '../environment/voice-provider.js';
-
-// VoiceInfo型は voice-provider.ts から import済み
+import { getSpeakerProvider, type SpeakerData } from '../environment/speaker-provider.js';
 
 export interface CharacterStyle {
     styleId: number;
@@ -28,7 +26,7 @@ export interface CharacterConfig {
     farewell: string;
     default_style: string;
     style_selection: string;
-    voice_id: string | null;
+    speaker_id: string | null;  // COEIROINKのspeakerUuid（voice_idから名称変更）
     available_styles: Record<string, CharacterStyle>;
     disabled?: boolean;
 }
@@ -48,7 +46,7 @@ export class ConfigManager {
     private operatorConfigFile: string;
     private coeiroinkConfigFile: string;
     private mergedConfig: MergedConfig | null = null; // マージ済み設定キャッシュ
-    private voiceProvider = getVoiceProvider(); // 音声プロバイダ
+    private speakerProvider = getSpeakerProvider(); // Speakerプロバイダ
 
     constructor(configDir: string) {
         this.configDir = configDir;
@@ -105,8 +103,8 @@ export class ConfigManager {
             const host = (connectionConfig.host as string) || (coeiroinkConfig.host as string) || CONNECTION_SETTINGS.DEFAULT_HOST;
             const port = (connectionConfig.port as string) || (coeiroinkConfig.port as string) || CONNECTION_SETTINGS.DEFAULT_PORT;
             
-            // 音声プロバイダの接続設定を更新
-            this.voiceProvider.updateConnection({ host, port });
+            // Speakerプロバイダの接続設定を更新
+            this.speakerProvider.updateConnection({ host, port });
         } catch (error) {
             console.warn(`接続設定更新エラー: ${(error as Error).message}`);
         }
@@ -162,39 +160,36 @@ export class ConfigManager {
         // 接続設定を更新
         await this.updateVoiceProviderConnection();
 
-        // 強制リフレッシュの場合はキャッシュをクリア
-        if (forceRefresh) {
-            this.voiceProvider.clearCache();
-        }
+        // 強制リフレッシュの場合（現在はキャッシュなしで常に最新データ）
 
         const userConfig = await this.readJsonFile<UserConfig>(this.operatorConfigFile, { characters: {} });
         const dynamicCharacters: Record<string, CharacterConfig> = {};
         
-        // 利用可能な音声フォントから動的設定を生成
-        const availableVoices = await this.voiceProvider.getVoicesForConfig();
+        // 利用可能なSpeakerから動的設定を生成
+        const availableSpeakers = await this.speakerProvider.getVoicesForConfig();
         
-        if (availableVoices.length > 0) {
-            for (const voice of availableVoices) {
-                const builtinConfig = BUILTIN_CHARACTER_CONFIGS[voice.id as keyof typeof BUILTIN_CHARACTER_CONFIGS] || {
-                    name: voice.name,
+        if (availableSpeakers.length > 0) {
+            for (const speaker of availableSpeakers) {
+                const builtinConfig = BUILTIN_CHARACTER_CONFIGS[speaker.id as keyof typeof BUILTIN_CHARACTER_CONFIGS] || {
+                    name: speaker.name,
                     personality: "丁寧で親しみやすい",
                     speaking_style: "標準的な口調",
-                    greeting: `こんにちは。${voice.name}です。`,
+                    greeting: `こんにちは。${speaker.name}です。`,
                     farewell: "お疲れさまでした。",
                     default_style: "normal",
                     style_selection: "default"
                 };
                 
-                // 基本設定に音声情報を追加（音声プロバイダの名前を優先）
+                // 基本設定にSpeaker情報を追加（Speakerプロバイダの名前を優先）
                 const characterConfig: CharacterConfig = {
                     ...builtinConfig,
-                    name: voice.name, // 音声プロバイダからの正確な名前を使用
-                    voice_id: voice.voice_id,
+                    name: speaker.name, // Speakerプロバイダからの正確な名前を使用
+                    speaker_id: speaker.speaker_id,
                     available_styles: {}
                 };
                 
                 // スタイル情報を追加
-                for (const style of voice.styles) {
+                for (const style of speaker.styles) {
                     // COEIROINKのスタイル名をそのままキーとして使用
                     const styleKey = style.name;
                     
@@ -206,14 +201,14 @@ export class ConfigManager {
                     };
                 }
                 
-                dynamicCharacters[voice.id] = characterConfig;
+                dynamicCharacters[speaker.id] = characterConfig;
             }
         } else {
-            // 音声フォントが取得できない場合、内蔵設定を使用
+            // Speakerが取得できない場合、内蔵設定を使用
             for (const [charId, builtinConfig] of Object.entries(BUILTIN_CHARACTER_CONFIGS)) {
                 dynamicCharacters[charId] = {
                     ...builtinConfig,
-                    voice_id: null, // 音声情報がない
+                    speaker_id: null, // Speaker情報がない
                     available_styles: {
                         normal: {
                             styleId: 0,
@@ -251,7 +246,7 @@ export class ConfigManager {
      * 設定をリフレッシュ（キャッシュクリア）
      */
     refreshConfig(): void {
-        this.voiceProvider.clearCache();
+        // キャッシュ削除後は不要
         this.mergedConfig = null;
     }
 

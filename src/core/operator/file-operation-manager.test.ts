@@ -97,7 +97,7 @@ describe('FileOperationManager', () => {
             const content = await readFile(configFile, 'utf8');
             const parsed = JSON.parse(content);
             
-            expect(parsed.voice?.default_voice_id).toBe('voice123');
+            expect(parsed.voice?.default_speaker_id).toBe('voice123');
             expect(parsed.voice?.default_style_id).toBe(42);
             expect(parsed.other_setting).toBe('value');
             
@@ -114,7 +114,7 @@ describe('FileOperationManager', () => {
             const content = await readFile(configFile, 'utf8');
             const parsed = JSON.parse(content);
             
-            expect(parsed.voice?.default_voice_id).toBe('voice456');
+            expect(parsed.voice?.default_speaker_id).toBe('voice456');
             expect(parsed.voice?.default_style_id).toBe(7);
             
             // 古い設定値が存在しないことを確認

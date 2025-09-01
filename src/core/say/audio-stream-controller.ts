@@ -5,7 +5,7 @@
 
 import { logger } from '../../utils/logger.js';
 import { ChunkGenerationManager, GenerationOptions } from './chunk-generation-manager.js';
-import type { Chunk, AudioResult, OperatorVoice } from './types.js';
+import type { Chunk, AudioResult, VoiceConfig } from './types.js';
 
 export interface StreamControllerOptions extends GenerationOptions {
     bufferAheadCount: number;          // 先読みチャンク数（デフォルト: 1）
@@ -18,10 +18,10 @@ export interface StreamControllerOptions extends GenerationOptions {
 export class AudioStreamController {
     private generationManager: ChunkGenerationManager;
     private options: StreamControllerOptions;
-    private synthesizeFunction: (chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number) => Promise<AudioResult>;
+    private synthesizeFunction: (chunk: Chunk, voiceConfig: VoiceConfig, speed: number) => Promise<AudioResult>;
 
     constructor(
-        synthesizeFunction: (chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number) => Promise<AudioResult>,
+        synthesizeFunction: (chunk: Chunk, voiceConfig: VoiceConfig, speed: number) => Promise<AudioResult>,
         options: Partial<StreamControllerOptions> = {}
     ) {
         this.synthesizeFunction = synthesizeFunction;
@@ -48,11 +48,11 @@ export class AudioStreamController {
      */
     async* synthesizeStream(
         chunks: Chunk[],
-        voiceInfo: string | OperatorVoice,
+        voiceConfig: VoiceConfig,
         speed: number
     ): AsyncGenerator<AudioResult> {
         // maxConcurrency=1なら逐次、2以上なら並行生成
-        yield* this.synthesizeStreamParallel(chunks, voiceInfo, speed);
+        yield* this.synthesizeStreamParallel(chunks, voiceConfig, speed);
     }
 
     /**
@@ -60,7 +60,7 @@ export class AudioStreamController {
      */
     private async* synthesizeStreamParallel(
         chunks: Chunk[],
-        voiceInfo: string | OperatorVoice,
+        voiceConfig: VoiceConfig,
         speed: number
     ): AsyncGenerator<AudioResult> {
         const mode = this.options.maxConcurrency === 1 ? '逐次' : '並行';
@@ -72,7 +72,7 @@ export class AudioStreamController {
 
         try {
             // 最初のチャンクは即座に開始
-            await this.generationManager.startGeneration(chunks[0], voiceInfo, speed);
+            await this.generationManager.startGeneration(chunks[0], voiceConfig, speed);
             
             let currentIndex = 0;
             
@@ -92,7 +92,7 @@ export class AudioStreamController {
                     for (let i = nextIndex; i < generateUpTo; i++) {
                         if (!this.generationManager.isInProgress(i) && 
                             !this.generationManager.isCompleted(i)) {
-                            await this.generationManager.startGeneration(chunks[i], voiceInfo, speed);
+                            await this.generationManager.startGeneration(chunks[i], voiceConfig, speed);
                         }
                     }
                 }

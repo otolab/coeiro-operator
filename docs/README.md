@@ -15,6 +15,7 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 ## 🎵 音声・オーディオシステム
 
 ### 基本機能
+- **[voice-architecture.md](voice-architecture.md)** - 音声アーキテクチャ仕様書（Speaker, Character, VoiceConfig）
 - **[audio-system.md](audio-system.md)** - 音声システム詳細仕様
 - **[speech-queue-system.md](speech-queue-system.md)** - SpeechQueue統一実装システム
 - **[audio-streaming-guide.md](audio-streaming-guide.md)** - 音声ストリーミング機能ガイド
@@ -55,6 +56,7 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 ## 📖 リファレンス
 
 ### アーキテクチャ・設計
+- **[voice-architecture.md](voice-architecture.md)** - 音声アーキテクチャ仕様書
 - **[operator-assignment-specification.md](operator-assignment-specification.md)** - オペレータ割り当て仕様
 - **[generic-file-operation-manager.md](generic-file-operation-manager.md)** - 汎用FileOperationManager<T>仕様
 
@@ -74,9 +76,10 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 3. [CHARACTERS.md](CHARACTERS.md) でキャラクター選択
 
 ### 🔧 カスタマイズしたい
-1. [configuration-options.md](configuration-options.md) で設定詳細確認
-2. [config-samples/](config-samples/) で設定例参照
-3. [audio-system.md](audio-system.md) で音声システム理解
+1. [voice-architecture.md](voice-architecture.md) で型定義を理解
+2. [configuration-options.md](configuration-options.md) で設定詳細確認
+3. [config-samples/](config-samples/) で設定例参照
+4. [audio-system.md](audio-system.md) で音声システム理解
 
 ### 🚀 開発に参加したい
 1. [development-tips.md](development-tips.md) で開発環境構築

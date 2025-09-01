@@ -9,10 +9,10 @@ import type {
     StreamConfig,
     Chunk,
     AudioResult,
-    OperatorVoice,
-    AudioConfig
+    AudioConfig,
+    VoiceConfig
 } from './types.js';
-import type { Style } from '../operator/character-info-service.js';
+import type { Style, Character } from '../operator/character-info-service.js';
 import { logger } from '../../utils/logger.js';
 import {
     SAMPLE_RATES,
@@ -20,7 +20,7 @@ import {
     PADDING_SETTINGS,
     SYNTHESIS_SETTINGS
 } from './constants.js';
-import { getVoiceProvider } from '../environment/voice-provider.js';
+import { getSpeakerProvider } from '../environment/speaker-provider.js';
 import { AudioStreamController, StreamControllerOptions } from './audio-stream-controller.js';
 
 // ストリーミング設定
@@ -35,13 +35,13 @@ const STREAM_CONFIG: StreamConfig = {
 
 export class AudioSynthesizer {
     private audioConfig: AudioConfig;
-    private voiceProvider = getVoiceProvider();
+    private speakerProvider = getSpeakerProvider();
     private streamController: AudioStreamController;
     
     constructor(private config: Config) {
         this.audioConfig = this.getAudioConfig();
         // 接続設定を更新
-        this.voiceProvider.updateConnection({
+        this.speakerProvider.updateConnection({
             host: this.config.connection.host,
             port: this.config.connection.port
         });
@@ -132,15 +132,16 @@ export class AudioSynthesizer {
      * サーバー接続確認
      */
     async checkServerConnection(): Promise<boolean> {
-        return await this.voiceProvider.checkConnection();
+        return await this.speakerProvider.checkConnection();
     }
 
     /**
      * 利用可能な音声一覧を取得
      */
     async listVoices(): Promise<void> {
-        await this.voiceProvider.logAvailableVoices();
+        await this.speakerProvider.logAvailableVoices();
     }
+
 
     /**
      * 句読点に基づくテキスト分割
@@ -370,60 +371,14 @@ export class AudioSynthesizer {
     /**
      * 単一チャンクの音声合成
      */
-    async synthesizeChunk(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<AudioResult> {
+    async synthesizeChunk(chunk: Chunk, voiceConfig: VoiceConfig, speed: number): Promise<AudioResult> {
         logger.log(`音声合成: チャンク${chunk.index} "${chunk.text.substring(0, 30)}${chunk.text.length > 30 ? '...' : ''}"`);
         
         const url = `http://${this.config.connection.host}:${this.config.connection.port}/v1/synthesis`;
         
-        // voiceInfoから音声IDとスタイルIDを取得
-        let voiceId: string;
-        let styleId = 0;
-        
-        if (typeof voiceInfo === 'object' && voiceInfo.voice_id) {
-            // 新しいアーキテクチャ: オペレータ情報付き
-            voiceId = voiceInfo.voice_id;
-            
-            // キャラクターのスタイル選択ロジックを適用
-            if (voiceInfo.character) {
-                const character = voiceInfo.character;
-                const availableStyles = Object.entries(character.available_styles || {})
-                    .filter(([_, style]) => !style.disabled);
-                
-                if (availableStyles.length > 0) {
-                    let selectedStyle: [string, Style] | undefined;
-                    switch (character.style_selection) {
-                        case 'default':
-                            selectedStyle = availableStyles.find(([id, _]) => id === character.default_style);
-                            break;
-                        case 'random':
-                            selectedStyle = availableStyles[Math.floor(Math.random() * availableStyles.length)];
-                            break;
-                        default:
-                            selectedStyle = availableStyles[0];
-                    }
-                    
-                    // フォールバック: default_styleが見つからない場合は最初のスタイルを使用
-                    if (!selectedStyle) {
-                        selectedStyle = availableStyles[0];
-                        logger.warn(`指定スタイルが見つからず最初のスタイルを使用: ${selectedStyle?.[0]}`);
-                    }
-                    
-                    styleId = selectedStyle?.[1].styleId || 0;
-                }
-            }
-        } else {
-            // 従来の形式: 音声IDのみ - 正しいstyleIDを取得する必要がある
-            voiceId = voiceInfo as string;
-            
-            // VoiceProviderから正しいstyleIDを取得
-            try {
-                styleId = await this.voiceProvider.getFirstStyleId(voiceId);
-            } catch (error) {
-                // API呼び出しが失敗した場合は0を使用（従来の動作）
-                logger.warn(`スタイルID取得失敗、styleId=0を使用: ${(error as Error).message}`);
-                styleId = 0;
-            }
-        }
+        // VoiceConfigから音声IDとスタイルIDを取得
+        const voiceId = voiceConfig.speaker.speakerId;
+        const styleId = voiceConfig.selectedStyleId;
 
         // 音切れ防止: 前後に無音パディングを追加（設定に基づく）
         let paddingMs = 0;
@@ -498,7 +453,7 @@ export class AudioSynthesizer {
     /**
      * ストリーミング音声合成（リファクタリング版）
      */
-    async* synthesizeStream(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): AsyncGenerator<AudioResult> {
+    async* synthesizeStream(text: string, voiceConfig: VoiceConfig, speed: number, chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'): AsyncGenerator<AudioResult> {
         logger.debug("=== SYNTHESIZE_STREAM DEBUG ===");
         logger.debug(`chunkMode parameter: ${chunkMode}`);
         logger.debug(`text length: ${text.length}`);
@@ -507,7 +462,7 @@ export class AudioSynthesizer {
         logger.debug(`Total chunks generated: ${chunks.length}`);
         
         // AudioStreamControllerを使用してストリーミング生成
-        yield* this.streamController.synthesizeStream(chunks, voiceId, speed);
+        yield* this.streamController.synthesizeStream(chunks, voiceConfig, speed);
         
         logger.debug("=== SYNTHESIZE_STREAM COMPLETE ===");
     }

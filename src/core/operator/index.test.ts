@@ -27,7 +27,7 @@ describe('OperatorManager', () => {
             host: 'localhost',
             port: '50032',
             voice: {
-                default_voice_id: 'test-voice-123',
+                default_speaker_id: 'test-voice-123',
                 rate: 200
             }
         };

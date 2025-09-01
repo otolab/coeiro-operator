@@ -16,7 +16,7 @@ interface PunctuationTestConfig {
     port: string;
   };
   voice: {
-    default_voice_id: string;
+    default_speaker_id: string;
     default_style_id: number;
     rate: number;
   };

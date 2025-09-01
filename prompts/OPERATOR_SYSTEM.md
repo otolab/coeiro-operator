@@ -66,7 +66,7 @@ Claude Desktop統合環境で利用可能：
 ### say-coeiroink
 macOS `say`コマンド互換の音声合成CLI
 - **基本使用**: `say-coeiroink "テキスト"`
-- **音声指定**: `say-coeiroink -v voice_id "テキスト"`
+- **音声指定**: `say-coeiroink -v speaker_id "テキスト"`
 - **話速指定**: `say-coeiroink -r 200 "テキスト"`
 - **ファイル出力**: `say-coeiroink -o output.wav "テキスト"`
 

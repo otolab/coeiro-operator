@@ -1,6 +1,6 @@
 /**
- * src/core/environment/voice-provider.ts: 音声環境情報プロバイダ
- * COEIROINKサーバーからの動的音声情報取得を一元管理
+ * src/core/environment/speaker-provider.ts: Speaker情報プロバイダ
+ * COEIROINKサーバーからの動的Speaker情報取得を一元管理
  */
 
 import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
@@ -16,10 +16,14 @@ export interface Speaker {
     styles: VoiceStyle[];
 }
 
-export interface VoiceInfo {
+/**
+ * SpeakerData: COEIROINKから取得したSpeaker情報をシステム内部で使用する形式に変換したもの
+ * ConfigManagerがCharacterを生成するための元データとして使用
+ */
+export interface SpeakerData {
     id: string;
     name: string;
-    voice_id: string;
+    speaker_id: string;
     styles: Array<{
         id: number;
         name: string;
@@ -33,14 +37,11 @@ export interface ConnectionConfig {
 }
 
 /**
- * 音声環境情報プロバイダクラス
- * COEIROINKサーバーからの音声情報取得を一元管理
+ * Speaker情報プロバイダクラス
+ * COEIROINKサーバーからのSpeaker情報取得を一元管理
  */
-export class VoiceProvider {
+export class SpeakerProvider {
     private connectionConfig: ConnectionConfig;
-    private cachedSpeakers: Speaker[] | null = null;
-    private lastFetchTime: number = 0;
-    private readonly CACHE_DURATION = 5 * 60 * 1000; // 5分間キャッシュ
 
     constructor(connectionConfig?: Partial<ConnectionConfig>) {
         this.connectionConfig = {
@@ -57,16 +58,6 @@ export class VoiceProvider {
             ...this.connectionConfig,
             ...config
         };
-        // 接続設定が変更されたらキャッシュをクリア
-        this.clearCache();
-    }
-
-    /**
-     * キャッシュをクリア
-     */
-    clearCache(): void {
-        this.cachedSpeakers = null;
-        this.lastFetchTime = 0;
     }
 
     /**
@@ -86,16 +77,9 @@ export class VoiceProvider {
     }
 
     /**
-     * 利用可能な音声一覧を取得（キャッシュ対応）
+     * 利用可能な音声一覧を取得
      */
     async getSpeakers(): Promise<Speaker[]> {
-        const now = Date.now();
-        
-        // キャッシュが有効な場合はキャッシュを返す
-        if (this.cachedSpeakers && (now - this.lastFetchTime) < this.CACHE_DURATION) {
-            return this.cachedSpeakers;
-        }
-
         const url = `http://${this.connectionConfig.host}:${this.connectionConfig.port}/v1/speakers`;
         
         try {
@@ -108,16 +92,10 @@ export class VoiceProvider {
             }
             
             const speakers = await response.json() as Speaker[];
-            
-            // キャッシュを更新
-            this.cachedSpeakers = speakers;
-            this.lastFetchTime = now;
-            
             return speakers;
         } catch (error) {
-            console.warn(`音声情報取得エラー: ${(error as Error).message}`);
-            // エラー時は空配列を返す（既存のキャッシュがあれば使用）
-            return this.cachedSpeakers || [];
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            throw new Error(`Failed to fetch speakers: ${errorMessage}`);
         }
     }
 
@@ -139,15 +117,15 @@ export class VoiceProvider {
     }
 
     /**
-     * ConfigManager用のVoiceInfo形式に変換
+     * ConfigManager用のSpeakerData形式に変換
      */
-    async getVoicesForConfig(): Promise<VoiceInfo[]> {
+    async getVoicesForConfig(): Promise<SpeakerData[]> {
         const speakers = await this.getSpeakers();
         
         return speakers.map(speaker => ({
             id: this.speakerNameToId(speaker.speakerName),
             name: speaker.speakerName,
-            voice_id: speaker.speakerUuid,
+            speaker_id: speaker.speakerUuid,
             styles: speaker.styles.map(style => ({
                 id: style.styleId,
                 name: style.styleName,
@@ -219,24 +197,24 @@ export class VoiceProvider {
 
 /**
  * シングルトンインスタンス
- * プロジェクト全体で共有される音声プロバイダ
+ * プロジェクト全体で共有されるSpeakerプロバイダ
  */
-let globalVoiceProvider: VoiceProvider | null = null;
+let globalSpeakerProvider: SpeakerProvider | null = null;
 
 /**
- * グローバル音声プロバイダを取得
+ * グローバルSpeakerプロバイダを取得
  * 設定ファイルから接続情報を読み込んで初期化
  */
-export function getVoiceProvider(connectionConfig?: Partial<ConnectionConfig>): VoiceProvider {
-    if (!globalVoiceProvider || connectionConfig) {
-        globalVoiceProvider = new VoiceProvider(connectionConfig);
+export function getSpeakerProvider(connectionConfig?: Partial<ConnectionConfig>): SpeakerProvider {
+    if (!globalSpeakerProvider || connectionConfig) {
+        globalSpeakerProvider = new SpeakerProvider(connectionConfig);
     }
-    return globalVoiceProvider;
+    return globalSpeakerProvider;
 }
 
 /**
- * 音声プロバイダをリセット（テスト用）
+ * Speakerプロバイダをリセット（テスト用）
  */
-export function resetVoiceProvider(): void {
-    globalVoiceProvider = null;
+export function resetSpeakerProvider(): void {
+    globalSpeakerProvider = null;
 }

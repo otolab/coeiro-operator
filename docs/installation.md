@@ -147,7 +147,7 @@ claude mcp test coeiro-operator
   },
   "voice": {
     "rate": 200,
-    "default_voice_id": "voice-uuid-here"
+    "default_speaker_id": "speaker-uuid-here"
   },
   "audio": {
     "latencyMode": "balanced",

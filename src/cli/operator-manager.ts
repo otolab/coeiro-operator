@@ -8,7 +8,7 @@
 import OperatorManager from '../core/operator/index.js';
 
 interface AssignResult {
-    operatorId: string;
+    characterId: string;  // キャラクターID（例: 'tsukuyomi'）
     characterName: string;
     currentStyle?: {
         styleId: string;
@@ -24,12 +24,12 @@ interface ReleaseResult {
 }
 
 interface StatusResult {
-    operatorId?: string;
+    characterId?: string;  // キャラクターID
     message: string;
 }
 
 interface ParsedArgs {
-    operatorId: string | null;
+    characterId: string | null;  // キャラクターID
     style: string | null;
 }
 
@@ -41,7 +41,7 @@ class OperatorManagerCLI {
     }
 
     private parseAssignArgs(args: string[]): ParsedArgs {
-        let operatorId: string | null = null;
+        let characterId: string | null = null;
         let style: string | null = null;
         
         for (let i = 0; i < args.length; i++) {
@@ -49,27 +49,27 @@ class OperatorManagerCLI {
             if (arg.startsWith('--style=')) {
                 style = arg.substring(8);
             } else if (!arg.startsWith('--')) {
-                operatorId = arg;
+                characterId = arg;
             }
         }
         
-        return { operatorId, style };
+        return { characterId, style };
     }
 
-    private async executeAssignment(operatorId: string | null, style: string | null): Promise<void> {
-        if (operatorId) {
-            const result: AssignResult = await this.manager.assignSpecificOperator(operatorId, style);
-            console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
+    private async executeAssignment(characterId: string | null, style: string | null): Promise<void> {
+        if (characterId) {
+            const result: AssignResult = await this.manager.assignSpecificOperator(characterId, style);
+            console.log(`オペレータ決定: ${result.characterName} (${result.characterId})`);
             if (result.currentStyle) {
                 console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
             }
         } else {
             const currentStatus: StatusResult = await this.manager.showCurrentOperator();
-            if (currentStatus.operatorId) {
+            if (currentStatus.characterId) {
                 console.log(currentStatus.message);
             } else {
                 const result: AssignResult = await this.manager.assignRandomOperator(style);
-                console.log(`オペレータ決定: ${result.characterName} (${result.operatorId})`);
+                console.log(`オペレータ決定: ${result.characterName} (${result.characterId})`);
                 if (result.currentStyle) {
                     console.log(`スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`);
                 }
@@ -125,8 +125,8 @@ class OperatorManagerCLI {
 
 
     async handleAssign(args: string[]): Promise<void> {
-        const { operatorId, style } = this.parseAssignArgs(args);
-        await this.executeAssignment(operatorId, style);
+        const { characterId, style } = this.parseAssignArgs(args);
+        await this.executeAssignment(characterId, style);
     }
 
     async handleRelease(): Promise<void> {

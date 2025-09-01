@@ -1,40 +1,81 @@
 /**
  * src/operator/character-info-service.ts: キャラクター情報管理サービス
  * キャラクター詳細情報、スタイル情報の取得を担当（読み込み専用）
+ * 
+ * 用語定義:
+ * - Speaker: COEIROINKの声の単位（音声モデル）
+ * - Style: Speakerの声のバリエーション（「れいせい」「おしとやか」など）
+ * - Character: Speakerに性格や口調の情報を付与したもの（defaultStyleなども持つ）
+ * - Operator: sessionId毎に割り当てられたCharacter
  */
 
-import { readFile, writeFile, access } from 'fs/promises';
-import { constants } from 'fs';
 import ConfigManager, { CharacterConfig, CharacterStyle } from './config-manager.js';
-import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
 
-// インターフェース定義
+/**
+ * Style: Speakerの声のバリエーション
+ * COEIROINKでは一つのSpeakerが複数のStyleを持つことができる
+ * 例: つくよみちゃんの「れいせい」「おしとやか」「げんき」
+ */
 export interface Style {
-    styleId: number;        // COEIROINK APIのスタイルID
-    styleName: string;      // COEIROINK APIのスタイル名（"のーまる", "裏"など）
-    personality: string;
-    speaking_style: string;
-    enabled: boolean;
-    disabled?: boolean;
+    styleId: number;        // COEIROINK APIのスタイルID（数値）
+    styleName: string;      // スタイル名（「れいせい」「おしとやか」など）
 }
 
+/**
+ * StyleWithMetadata: Styleにメタデータを付与したもの
+ * Character設定で定義されるスタイルごとの情報
+ */
+export interface StyleWithMetadata extends Style {
+    personality: string;    // このスタイルでの性格
+    speaking_style: string; // このスタイルでの話し方
+    enabled: boolean;       // 有効/無効フラグ
+    disabled?: boolean;     // 無効フラグ（後方互換性）
+}
+
+/**
+ * Speaker: COEIROINKの声の単位（純粋な音声モデル）
+ * COEIROINK APIから取得される情報を含む
+ * 音声合成時に必要な最小限の情報
+ */
 export interface Speaker {
-    speakerId: string;      // COEIROINK APIのspeakerUuidに対応
-    speakerName: string;    // COEIROINK APIのspeakerNameに対応
-    available_styles: Record<string, Style>;  // styleNameをキーとしたスタイル情報
-    style_selection: string;
-    default_style: string;  // デフォルトのstyleName
-    greeting?: string;
-    farewell?: string;
-    personality: string;
-    speaking_style: string;
+    speakerId: string;      // COEIROINK APIのspeakerUuid（UUID形式）
+    speakerName: string;    // COEIROINK APIのspeakerName（表示名）
+    styles: Style[];        // 利用可能なスタイル一覧（COEIROINK APIから）
+}
+
+/**
+ * Character: Speakerに性格や口調の情報を付与したもの
+ * 本システムで管理するキャラクター情報
+ * Speaker + 性格設定 + 挨拶 + スタイルメタデータ = Character
+ * オペレータ割り当て時に使用
+ */
+export interface Character {
+    characterId: string;                          // キャラクターID（'tsukuyomi' など）
+    speaker: Speaker;                             // COEIROINKのSpeaker情報（音声合成用）
+    availableStyles: Record<string, StyleWithMetadata>;  // 利用可能なスタイル（メタデータ付き）
+    styleSelection: 'default' | 'random';        // スタイル選択方法
+    defaultStyle: string;                        // デフォルトスタイル名
+    greeting?: string;                           // アサイン時の挨拶
+    farewell?: string;                           // 解放時の挨拶
+    personality: string;                         // キャラクターの基本性格
+    speakingStyle: string;                       // キャラクターの基本的な話し方
 }
 
 
-// CharacterConfigからSpeakerに変換するヘルパー関数
-function convertCharacterConfigToSpeaker(config: CharacterConfig): Speaker {
-    const availableStyles: Record<string, Style> = {};
+// CharacterConfigからCharacterに変換するヘルパー関数
+function convertCharacterConfigToCharacter(characterId: string, config: CharacterConfig): Character {
+    // COEIROINK APIから取得されるSpeaker情報
+    const speaker: Speaker = {
+        speakerId: config.speaker_id || '',
+        speakerName: config.name,
+        styles: Object.values(config.available_styles).map(style => ({
+            styleId: style.styleId,
+            styleName: style.styleName
+        }))
+    };
     
+    // スタイルにメタデータを付与
+    const availableStyles: Record<string, StyleWithMetadata> = {};
     for (const [styleKey, style] of Object.entries(config.available_styles)) {
         availableStyles[styleKey] = {
             styleId: style.styleId,
@@ -47,15 +88,15 @@ function convertCharacterConfigToSpeaker(config: CharacterConfig): Speaker {
     }
     
     return {
-        speakerId: config.voice_id || '',
-        speakerName: config.name,
-        available_styles: availableStyles,
-        style_selection: config.style_selection,
-        default_style: config.default_style,
+        characterId,
+        speaker,
+        availableStyles,
+        styleSelection: config.style_selection as 'default' | 'random',
+        defaultStyle: config.default_style,
         greeting: config.greeting,
         farewell: config.farewell,
         personality: config.personality,
-        speaking_style: config.speaking_style
+        speakingStyle: config.speaking_style
     };
 }
 
@@ -78,12 +119,12 @@ export class CharacterInfoService {
     /**
      * キャラクター情報を取得
      */
-    async getCharacterInfo(characterId: string): Promise<Speaker> {
+    async getCharacterInfo(characterId: string): Promise<Character> {
         if (!this.configManager) {
             throw new Error('CharacterInfoService is not initialized');
         }
         const config = await this.configManager.getCharacterConfig(characterId);
-        return convertCharacterConfigToSpeaker(config);
+        return convertCharacterConfigToCharacter(characterId, config);
     }
 
     /**
@@ -91,16 +132,16 @@ export class CharacterInfoService {
      * @param character キャラクター情報
      * @param specifiedStyle 指定されたスタイル名
      */
-    selectStyle(speaker: Speaker, specifiedStyle: string | null = null): Style {
-        const availableStyleEntries = Object.entries(speaker.available_styles || {})
+    selectStyle(character: Character, specifiedStyle: string | null = null): StyleWithMetadata {
+        const availableStyleEntries = Object.entries(character.availableStyles || {})
             .filter(([_, style]) => !style.disabled); // disabledフラグをチェック
         
         if (availableStyleEntries.length === 0) {
-            throw new Error(`スピーカー '${speaker.speakerName}' に利用可能なスタイルがありません`);
+            throw new Error(`キャラクター '${character.speaker.speakerName}' に利用可能なスタイルがありません`);
         }
         
-        // 明示的にスタイルが指定された場合はそれを優先
-        if (specifiedStyle) {
+        // 明示的にスタイルが指定された場合はそれを優先（空文字はデフォルトを意味する）
+        if (specifiedStyle && specifiedStyle !== '') {
             // styleNameで検索（日本語名）
             const requestedEntry = availableStyleEntries.find(([_, style]) => 
                 style.styleName === specifiedStyle
@@ -116,21 +157,16 @@ export class CharacterInfoService {
             throw new Error(errorMessage);
         }
         
-        switch (speaker.style_selection) {
+        switch (character.styleSelection) {
             case 'default':
                 // デフォルトスタイルを使用（キーで検索）
-                const defaultEntry = availableStyleEntries.find(([key, _]) => key === speaker.default_style);
+                const defaultEntry = availableStyleEntries.find(([key, _]) => key === character.defaultStyle);
                 return defaultEntry ? defaultEntry[1] : availableStyleEntries[0][1];
                 
             case 'random':
                 // ランダム選択
                 const randomIndex = Math.floor(Math.random() * availableStyleEntries.length);
                 return availableStyleEntries[randomIndex][1];
-                
-            case 'specified':
-                // 指定されたスタイル（今回は default と同じ扱い）
-                const specifiedEntry = availableStyleEntries.find(([key, _]) => key === speaker.default_style);
-                return specifiedEntry ? specifiedEntry[1] : availableStyleEntries[0][1];
                 
             default:
                 return availableStyleEntries[0][1];
@@ -147,94 +183,33 @@ export class CharacterInfoService {
         return await this.configManager.getGreetingPatterns();
     }
 
-    /**
-     * 音声設定を更新
-     */
-    async updateVoiceSetting(voiceId: string | null, styleId: number = 0): Promise<void> {
-        if (!this.coeiroinkConfigFile) {
-            throw new Error('CharacterInfoService is not initialized');
-        }
-        
-        try {
-            // デフォルト設定を生成
-            const defaultConfig = {
-                connection: {
-                    host: CONNECTION_SETTINGS.DEFAULT_HOST,
-                    port: CONNECTION_SETTINGS.DEFAULT_PORT
-                },
-                voice: {
-                    rate: 200,
-                    default_voice_id: DEFAULT_VOICE.ID
-                },
-                audio: {
-                    latencyMode: 'balanced',
-                    splitMode: 'punctuation',
-                    bufferSize: 1024
-                }
-            };
-            
-            const config = await this.readJsonFile(this.coeiroinkConfigFile, defaultConfig) as Record<string, unknown>;
-            
-            // 設定を更新
-            if (!config.voice) {
-                config.voice = {};
-            }
-            const voiceConfig = config.voice as Record<string, unknown>;
-            
-            if (voiceId) {
-                voiceConfig.default_voice_id = voiceId;
-            }
-            if (styleId !== undefined) {
-                voiceConfig.default_style_id = styleId;
-            }
-            
-            await this.writeJsonFile(this.coeiroinkConfigFile, config);
-        } catch (error) {
-            console.error(`音声設定更新エラー: ${(error as Error).message}`);
-        }
-    }
-    
-    /**
-     * JSONファイルを安全に読み込み
-     */
-    private async readJsonFile<T>(filePath: string, defaultValue: T = {} as T): Promise<T> {
-        try {
-            await access(filePath, constants.F_OK);
-            const content = await readFile(filePath, 'utf8');
-            return JSON.parse(content);
-        } catch (error) {
-            console.error(`ファイル読み込みエラー: ${filePath}, ${(error as Error).message}`);
-            return defaultValue;
-        }
-    }
-    
-    /**
-     * JSONファイルを安全に書き込み
-     */
-    private async writeJsonFile(filePath: string, data: unknown): Promise<void> {
-        await writeFile(filePath, JSON.stringify(data, null, 2), 'utf8');
-    }
+    // 削除: updateVoiceSettingメソッド
+    // CharacterInfoServiceは読み込み専用サービスとして設計されているため、
+    // 設定ファイルの更新機能は削除しました。
+    // 設定の更新が必要な場合は、ConfigManagerを通じて行ってください。
 
     /**
-     * 指定されたオペレータの詳細情報を取得してキャラクター変換
+     * 指定されたキャラクターIDからCharacter情報を取得
+     * オペレータ割り当て時に使用
      */
-    async getOperatorCharacterInfo(operatorId: string): Promise<Speaker> {
+    async getOperatorCharacterInfo(characterId: string): Promise<Character> {
         if (!this.configManager) {
             throw new Error('CharacterInfoService is not initialized');
         }
 
         try {
-            const config = await this.configManager.getCharacterConfig(operatorId);
-            return convertCharacterConfigToSpeaker(config);
+            const config = await this.configManager.getCharacterConfig(characterId);
+            return convertCharacterConfigToCharacter(characterId, config);
         } catch (error) {
-            throw new Error(`オペレータ '${operatorId}' は存在しないか無効です`);
+            throw new Error(`オペレータ '${characterId}' は存在しないか無効です`);
         }
     }
 
     /**
-     * スピーカーとスタイル情報から音声設定データを生成
+     * キャラクターとスタイル情報から音声設定データを生成
+     * COEIROINK API向けの設定データを作成
      */
-    generateVoiceConfigData(speaker: Speaker, selectedStyle: Style): {
+    generateVoiceConfigData(character: Character, selectedStyle: StyleWithMetadata): {
         speakerId: string;
         styleId: number;
         speakerInfo: {
@@ -245,10 +220,10 @@ export class CharacterInfoService {
         };
     } {
         return {
-            speakerId: speaker.speakerId,
+            speakerId: character.speaker.speakerId,
             styleId: selectedStyle.styleId,
             speakerInfo: {
-                speakerName: speaker.speakerName,
+                speakerName: character.speaker.speakerName,
                 styleName: selectedStyle.styleName,
                 personality: selectedStyle.personality,
                 speakingStyle: selectedStyle.speaking_style

@@ -266,7 +266,7 @@ export class FileOperationManager<T> {
                 },
                 voice: {
                     rate: 200,
-                    default_voice_id: DEFAULT_VOICE.ID
+                    default_speaker_id: DEFAULT_VOICE.ID
                 },
                 audio: {
                     latencyMode: 'balanced',
@@ -284,7 +284,7 @@ export class FileOperationManager<T> {
             const voiceConfig = config.voice as Record<string, unknown>;
             
             if (voiceId) {
-                voiceConfig.default_voice_id = voiceId;
+                voiceConfig.default_speaker_id = voiceId;
             }
             if (styleId !== undefined) {
                 voiceConfig.default_style_id = styleId;

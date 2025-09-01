@@ -176,7 +176,7 @@ describe('CharacterInfoService', () => {
             
             const config = await fileManager.readJsonFile(coeiroinkConfigFile, {}) as Record<string, unknown>;
             const voiceConfig = config.voice as Record<string, unknown>;
-            expect(voiceConfig?.default_voice_id).toBe('voice-123');
+            expect(voiceConfig?.default_speaker_id).toBe('voice-123');
             expect(voiceConfig?.default_style_id).toBe(42);
             
             // 古い設定値が削除されていることを確認

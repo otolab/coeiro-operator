@@ -3,7 +3,8 @@
  */
 
 import { AudioSynthesizer } from './audio-synthesizer.js';
-import type { Config, Chunk, OperatorVoice, AudioResult } from './types.js';
+import type { Config, Chunk, VoiceConfig, AudioResult } from './types.js';
+import type { Speaker } from '../operator/character-info-service.js';
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -353,35 +354,15 @@ describe('AudioSynthesizer', () => {
             );
         });
 
-        test('OperatorVoice形式で正常に合成できること', async () => {
-            const operatorVoice: OperatorVoice = {
-                voice_id: 'operator-voice-id',
-                character: {
-                    speakerId: 'operator-voice-id',
-                    speakerName: 'テストキャラクター',
-                    available_styles: {
-                        'style1': {
-                            styleId: 1,
-                            styleName: 'ハッピー',
-                            personality: '明るい',
-                            speaking_style: '元気',
-                            enabled: true,
-                            disabled: false
-                        },
-                        'style2': {
-                            styleId: 2,
-                            styleName: 'サッド',
-                            personality: '悲しい',
-                            speaking_style: '落ち着いた',
-                            enabled: false,
-                            disabled: true
-                        }
-                    },
-                    style_selection: 'default',
-                    default_style: 'style1',
-                    personality: '標準',
-                    speaking_style: '標準'
-                }
+        test('VoiceConfig形式で正常に合成できること', async () => {
+            const testSpeaker: Speaker = {
+                speakerId: 'operator-voice-id',
+                speakerName: 'Test Speaker',
+                styles: [{ styleId: 1, styleName: 'normal' }]
+            };
+            const voiceConfig: VoiceConfig = {
+                speaker: testSpeaker,
+                selectedStyleId: 1
             };
 
             const mockAudioBuffer = new ArrayBuffer(1000);
@@ -393,7 +374,7 @@ describe('AudioSynthesizer', () => {
 
             const result = await audioSynthesizer.synthesizeChunk(
                 mockChunk,
-                operatorVoice,
+                voiceConfig,
                 1.0
             );
 
@@ -403,44 +384,22 @@ describe('AudioSynthesizer', () => {
             const requestBody = JSON.parse(fetchCall[1].body);
             
             expect(requestBody.speakerUuid).toBe('operator-voice-id');
-            expect(requestBody.styleId).toBe(1); // 有効なスタイル
+            expect(requestBody.styleId).toBe(1);
         });
 
-        test('ランダムスタイル選択が正常に動作すること', async () => {
-            const operatorVoice: OperatorVoice = {
-                voice_id: 'operator-voice-id',
-                character: {
-                    speakerId: 'operator-voice-id',
-                    speakerName: 'テストキャラクター',
-                    available_styles: {
-                        'style1': { 
-                            styleId: 1, 
-                            styleName: 'スタイル1',
-                            personality: '標準',
-                            speaking_style: '標準',
-                            enabled: true,
-                            disabled: false 
-                        },
-                        'style2': { 
-                            styleId: 2, 
-                            styleName: 'スタイル2',
-                            personality: '標準',
-                            speaking_style: '標準',
-                            enabled: true,
-                            disabled: false 
-                        },
-                        'style3': { 
-                            styleId: 3, 
-                            styleName: 'スタイル3',
-                            personality: '標準',
-                            speaking_style: '標準',
-                            enabled: true,
-                            disabled: false 
-                        }
-                    },
-                    style_selection: 'random',
-                    default_style: 'style1',
-                    personality: '標準',
+        test('VoiceConfigで指定スタイルが正常に動作すること', async () => {
+            const testSpeaker: Speaker = {
+                speakerId: 'style-test-id',
+                speakerName: 'Test Speaker',
+                styles: [
+                    { styleId: 1, styleName: 'style1' },
+                    { styleId: 2, styleName: 'style2' },
+                    { styleId: 5, styleName: 'selected' }
+                ]
+            };
+            const voiceConfig: VoiceConfig = {
+                speaker: testSpeaker,
+                selectedStyleId: 5
                     speaking_style: '標準'
                 }
             };

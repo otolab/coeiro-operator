@@ -81,7 +81,7 @@ COEIRO Operatorの詳細な設定方法とカスタマイズオプションに�
 | `characters[id].style_selection` | ✓ | String | スタイル選択方法 (default/random) |
 | `characters[id].disabled` | ✓ | Boolean | キャラクターの無効化フラグ |
 
-**注意**: `voice_id`や`available_styles`は動的検出されるため設定不要です。
+**注意**: `speaker_id`や`available_styles`は動的検出されるため設定不要です。
 
 ### スタイル選択のカスタマイズ
 
@@ -129,7 +129,7 @@ MCPツールの`say`でスタイルを一時的に指定可能：
     "port": "50032"
   },
   "voice": {
-    "default_voice_id": "3c37646f-3881-5374-2a83-149267990abc",
+    "default_speaker_id": "3c37646f-3881-5374-2a83-149267990abc",
     "default_style_id": 0,
     "rate": 200
   },
@@ -171,7 +171,7 @@ MCPツールの`say`でスタイルを一時的に指定可能：
     "port": "50032"
   },
   "voice": {
-    "default_voice_id": "your-voice-id",
+    "default_speaker_id": "your-speaker-id",
     "rate": 200
   },
   "audio": {
@@ -197,7 +197,7 @@ MCPツールの`say`でスタイルを一時的に指定可能：
     "port": "50032"
   },
   "voice": {
-    "default_voice_id": "your-voice-id",
+    "default_speaker_id": "your-speaker-id",
     "rate": 180
   },
   "audio": {
@@ -222,7 +222,7 @@ MCPツールの`say`でスタイルを一時的に指定可能：
     "port": "50032"
   },
   "voice": {
-    "default_voice_id": "your-voice-id",
+    "default_speaker_id": "your-speaker-id",
     "rate": 200
   },
   "audio": {
