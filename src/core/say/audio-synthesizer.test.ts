@@ -357,21 +357,30 @@ describe('AudioSynthesizer', () => {
             const operatorVoice: OperatorVoice = {
                 voice_id: 'operator-voice-id',
                 character: {
-                    name: 'テストキャラクター',
+                    speakerId: 'operator-voice-id',
+                    speakerName: 'テストキャラクター',
                     available_styles: {
                         'style1': {
-                            disabled: false,
-                            style_id: 1,
-                            name: 'ハッピー'
+                            styleId: 1,
+                            styleName: 'ハッピー',
+                            personality: '明るい',
+                            speaking_style: '元気',
+                            enabled: true,
+                            disabled: false
                         },
                         'style2': {
-                            disabled: true,
-                            style_id: 2,
-                            name: 'サッド'
+                            styleId: 2,
+                            styleName: 'サッド',
+                            personality: '悲しい',
+                            speaking_style: '落ち着いた',
+                            enabled: false,
+                            disabled: true
                         }
                     },
                     style_selection: 'default',
-                    default_style: 'style1'
+                    default_style: 'style1',
+                    personality: '標準',
+                    speaking_style: '標準'
                 }
             };
 
@@ -401,14 +410,38 @@ describe('AudioSynthesizer', () => {
             const operatorVoice: OperatorVoice = {
                 voice_id: 'operator-voice-id',
                 character: {
-                    name: 'テストキャラクター',
+                    speakerId: 'operator-voice-id',
+                    speakerName: 'テストキャラクター',
                     available_styles: {
-                        'style1': { disabled: false, style_id: 1, name: 'スタイル1' },
-                        'style2': { disabled: false, style_id: 2, name: 'スタイル2' },
-                        'style3': { disabled: false, style_id: 3, name: 'スタイル3' }
+                        'style1': { 
+                            styleId: 1, 
+                            styleName: 'スタイル1',
+                            personality: '標準',
+                            speaking_style: '標準',
+                            enabled: true,
+                            disabled: false 
+                        },
+                        'style2': { 
+                            styleId: 2, 
+                            styleName: 'スタイル2',
+                            personality: '標準',
+                            speaking_style: '標準',
+                            enabled: true,
+                            disabled: false 
+                        },
+                        'style3': { 
+                            styleId: 3, 
+                            styleName: 'スタイル3',
+                            personality: '標準',
+                            speaking_style: '標準',
+                            enabled: true,
+                            disabled: false 
+                        }
                     },
                     style_selection: 'random',
-                    default_style: 'style1'
+                    default_style: 'style1',
+                    personality: '標準',
+                    speaking_style: '標準'
                 }
             };
 

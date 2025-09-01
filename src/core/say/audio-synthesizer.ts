@@ -12,6 +12,7 @@ import type {
     OperatorVoice,
     AudioConfig
 } from './types.js';
+import type { Style } from '../operator/character-info-service.js';
 import { logger } from '../../utils/logger.js';
 import {
     SAMPLE_RATES,
@@ -386,14 +387,13 @@ export class AudioSynthesizer {
             if (voiceInfo.character) {
                 const character = voiceInfo.character;
                 const availableStyles = Object.entries(character.available_styles || {})
-                    .filter(([_, style]) => !style.disabled)
-                    .map(([styleId, style]) => ({ styleId, ...style }));
+                    .filter(([_, style]) => !style.disabled);
                 
                 if (availableStyles.length > 0) {
-                    let selectedStyle: any;
+                    let selectedStyle: [string, Style] | undefined;
                     switch (character.style_selection) {
                         case 'default':
-                            selectedStyle = availableStyles.find(s => s.styleId === character.default_style);
+                            selectedStyle = availableStyles.find(([id, _]) => id === character.default_style);
                             break;
                         case 'random':
                             selectedStyle = availableStyles[Math.floor(Math.random() * availableStyles.length)];
@@ -405,10 +405,10 @@ export class AudioSynthesizer {
                     // フォールバック: default_styleが見つからない場合は最初のスタイルを使用
                     if (!selectedStyle) {
                         selectedStyle = availableStyles[0];
-                        logger.warn(`指定スタイルが見つからず最初のスタイルを使用: ${selectedStyle?.styleId}`);
+                        logger.warn(`指定スタイルが見つからず最初のスタイルを使用: ${selectedStyle?.[0]}`);
                     }
                     
-                    styleId = selectedStyle?.style_id || 0;
+                    styleId = selectedStyle?.[1].styleId || 0;
                 }
             }
         } else {

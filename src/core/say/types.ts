@@ -83,18 +83,12 @@ export interface AudioResult {
     latency: number;
 }
 
+// CharacterInfoServiceのSpeaker型を使用
+import type { Speaker } from '../operator/character-info-service.js';
+
 export interface OperatorVoice {
     voice_id: string;
-    character?: {
-        name: string;
-        available_styles?: Record<string, {
-            disabled?: boolean;
-            style_id: number;
-            name: string;
-        }>;
-        style_selection: string;
-        default_style: string;
-    };
+    character?: Speaker;
 }
 
 export type SpeechTaskType = 'speech' | 'warmup' | 'completion_wait';

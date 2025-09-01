@@ -132,7 +132,7 @@ async function assignOperator(
 interface CharacterForStyleExtraction {
   available_styles?: Record<string, {
     disabled?: boolean;
-    name: string;
+    styleName: string;
     personality: string;
     speaking_style: string;
   }>;
@@ -143,7 +143,7 @@ function extractStyleInfo(character: CharacterForStyleExtraction): StyleInfo[] {
     .filter(([_, style]) => !style.disabled)
     .map(([styleId, style]) => ({
       id: styleId,
-      name: style.name,
+      name: style.styleName,
       personality: style.personality,
       speakingStyle: style.speaking_style
     }));
@@ -209,7 +209,7 @@ async function getTargetCharacter(
 }
 
 interface CharacterForFormatting extends CharacterForStyleExtraction {
-  name: string;
+  speakerName: string;
   personality: string;
   speaking_style: string;
   style_selection: string;
@@ -217,7 +217,7 @@ interface CharacterForFormatting extends CharacterForStyleExtraction {
 }
 
 function formatStylesResult(character: CharacterForFormatting, availableStyles: StyleInfo[]): string {
-  let resultText = `🎭 ${character.name} のスタイル情報\n\n`;
+  let resultText = `🎭 ${character.speakerName} のスタイル情報\n\n`;
   
   resultText += `📋 基本情報:\n`;
   resultText += `   性格: ${character.personality}\n`;
@@ -249,7 +249,7 @@ function formatStylesResult(character: CharacterForFormatting, availableStyles: 
 
 // operator-manager操作ツール
 server.registerTool("operator_assign", {
-  description: "オペレータをランダム選択して割り当てます。アサイン後に現在のスタイルと利用可能な他のスタイル情報を表示します。スタイル切り替えはsayツールのstyleパラメータで可能です（例: say({message: \"テスト\", style: \"ura\"})）。ランダムスタイル選択キャラクターは次回アサイン時に異なるスタイルが選ばれる場合があります。",
+  description: "オペレータをランダム選択して割り当てます。アサイン後に現在のスタイルと利用可能な他のスタイル情報を表示します。スタイル切り替えはsayツールのstyleパラメータで日本語名を指定します（例: say({message: \"テスト\", style: \"ひそひそ\"})）。",
   inputSchema: {
     operator: z.string().optional().describe("指定するオペレータ名（英語表記、例: 'tsukuyomi', 'alma'など。省略時または空文字列時はランダム選択。日本語表記は無効）"),
     style: z.string().optional().describe("指定するスタイル名（例: 'normal', 'ura', 'sleepy'など。省略時はキャラクターのデフォルト設定に従う）")
@@ -354,7 +354,7 @@ server.registerTool("say", {
     message: z.string().describe("発話させるメッセージ（日本語）"),
     voice: z.string().optional().describe("音声ID（省略時はオペレータ設定を使用）"),
     rate: z.number().optional().describe("話速（WPM、デフォルト200）"),
-    style: z.string().optional().describe("スタイルID（オペレータのスタイル選択を上書き）")
+    style: z.string().optional().describe("スタイル名（日本語名をそのまま指定。例: ディアちゃんの場合 'のーまる', 'ひそひそ', 'セクシー'）")
   }
 }, async (args): Promise<ToolResponse> => {
   const { message, voice, rate, style } = args;
@@ -412,6 +412,30 @@ server.registerTool("say", {
       .catch(error => {
         logger.debug(`Operator reservation refresh failed: ${(error as Error).message} (not critical)`);
       });
+    
+    // スタイル検証（事前チェック）
+    if (style && currentOperator.operatorId) {
+      try {
+        const character = await operatorManager.getCharacterInfo(currentOperator.operatorId);
+        
+        // 利用可能なスタイルを取得
+        const availableStyles = Object.entries(character.available_styles || {})
+          .filter(([_, styleData]) => !styleData.disabled);
+        
+        // 指定されたスタイルが存在するか確認
+        const styleExists = availableStyles.some(([styleId, styleData]) => 
+          styleId === style || styleData.styleName === style
+        );
+        
+        if (!styleExists) {
+          const styleNames = availableStyles.map(([_, styleData]) => styleData.styleName);
+          throw new Error(`指定されたスタイル '${style}' が見つかりません。利用可能なスタイル: ${styleNames.join(', ')}`);
+        }
+      } catch (error) {
+        logger.error(`スタイル検証エラー: ${(error as Error).message}`);
+        throw error;
+      }
+    }
     
     // 設定情報をログ出力
     const config = await loadConfig();
@@ -583,7 +607,7 @@ server.registerTool("debug_logs", {
 
 // スタイル情報表示ツール
 server.registerTool("operator_styles", {
-  description: "現在のオペレータまたは指定したキャラクターの利用可能なスタイル一覧を表示します。キャラクターの基本情報、全スタイルの詳細（性格・話し方）、スタイル選択方法を確認できます。スタイル切り替えにはsayツールのstyleパラメータを使用してください。",
+  description: "現在のオペレータまたは指定したキャラクターの利用可能なスタイル一覧を表示します。キャラクターの基本情報、全スタイルの詳細（性格・話し方）、スタイル選択方法を確認できます。スタイル切り替えにはsayツールのstyleパラメータで日本語名を使用してください。",
   inputSchema: {
     character: z.string().optional().describe("キャラクターID（省略時は現在のオペレータのスタイル情報を表示）")
   }

@@ -13,8 +13,8 @@ import { getVoiceProvider, type VoiceInfo } from '../environment/voice-provider.
 // VoiceInfo型は voice-provider.ts から import済み
 
 export interface CharacterStyle {
-    name: string;
-    style_id: number;
+    styleId: number;
+    styleName: string;
     personality: string;
     speaking_style: string;
     disabled?: boolean;
@@ -199,8 +199,8 @@ export class ConfigManager {
                     const styleKey = style.name;
                     
                     characterConfig.available_styles[styleKey] = {
-                        name: style.name,
-                        style_id: style.style_id,
+                        styleId: style.style_id,
+                        styleName: style.name,
                         personality: builtinConfig.personality,
                         speaking_style: builtinConfig.speaking_style
                     };
@@ -216,8 +216,8 @@ export class ConfigManager {
                     voice_id: null, // 音声情報がない
                     available_styles: {
                         normal: {
-                            name: 'れいせい',
-                            style_id: 0,
+                            styleId: 0,
+                            styleName: 'れいせい',
                             personality: builtinConfig.personality,
                             speaking_style: builtinConfig.speaking_style
                         }

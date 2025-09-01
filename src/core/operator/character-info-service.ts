@@ -10,46 +10,45 @@ import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
 
 // インターフェース定義
 export interface Style {
-    styleId: string;
-    name: string;
+    styleId: number;        // COEIROINK APIのスタイルID
+    styleName: string;      // COEIROINK APIのスタイル名（"のーまる", "裏"など）
     personality: string;
     speaking_style: string;
-    style_id: number;
     enabled: boolean;
     disabled?: boolean;
 }
 
-export interface Character {
-    name: string;
-    voice_id: string | null;
-    available_styles: Record<string, Style>;
+export interface Speaker {
+    speakerId: string;      // COEIROINK APIのspeakerUuidに対応
+    speakerName: string;    // COEIROINK APIのspeakerNameに対応
+    available_styles: Record<string, Style>;  // styleNameをキーとしたスタイル情報
     style_selection: string;
-    default_style: string;
+    default_style: string;  // デフォルトのstyleName
     greeting?: string;
     farewell?: string;
     personality: string;
     speaking_style: string;
 }
 
-// CharacterConfigからCharacterに変換するヘルパー関数
-function convertCharacterConfigToCharacter(config: CharacterConfig): Character {
+
+// CharacterConfigからSpeakerに変換するヘルパー関数
+function convertCharacterConfigToSpeaker(config: CharacterConfig): Speaker {
     const availableStyles: Record<string, Style> = {};
     
-    for (const [styleId, style] of Object.entries(config.available_styles)) {
-        availableStyles[styleId] = {
-            styleId: styleId,
-            name: style.name,
+    for (const [styleKey, style] of Object.entries(config.available_styles)) {
+        availableStyles[styleKey] = {
+            styleId: style.styleId,
+            styleName: style.styleName,
             personality: style.personality,
             speaking_style: style.speaking_style,
-            style_id: style.style_id,
             enabled: !style.disabled,
             disabled: style.disabled
         };
     }
     
     return {
-        name: config.name,
-        voice_id: config.voice_id,
+        speakerId: config.voice_id || '',
+        speakerName: config.name,
         available_styles: availableStyles,
         style_selection: config.style_selection,
         default_style: config.default_style,
@@ -79,57 +78,62 @@ export class CharacterInfoService {
     /**
      * キャラクター情報を取得
      */
-    async getCharacterInfo(characterId: string): Promise<Character> {
+    async getCharacterInfo(characterId: string): Promise<Speaker> {
         if (!this.configManager) {
             throw new Error('CharacterInfoService is not initialized');
         }
         const config = await this.configManager.getCharacterConfig(characterId);
-        return convertCharacterConfigToCharacter(config);
+        return convertCharacterConfigToSpeaker(config);
     }
 
     /**
      * スタイルを選択
+     * @param character キャラクター情報
+     * @param specifiedStyle 指定されたスタイル名
      */
-    selectStyle(character: Character, specifiedStyle: string | null = null): Style {
-        const availableStyles = Object.entries(character.available_styles || {})
-            .filter(([_, style]) => !style.disabled) // disabledフラグをチェック
-            .map(([styleId, style]) => ({ ...style, styleId }));
+    selectStyle(speaker: Speaker, specifiedStyle: string | null = null): Style {
+        const availableStyleEntries = Object.entries(speaker.available_styles || {})
+            .filter(([_, style]) => !style.disabled); // disabledフラグをチェック
         
-        if (availableStyles.length === 0) {
-            throw new Error(`キャラクター '${character.name}' に利用可能なスタイルがありません`);
+        if (availableStyleEntries.length === 0) {
+            throw new Error(`スピーカー '${speaker.speakerName}' に利用可能なスタイルがありません`);
         }
         
         // 明示的にスタイルが指定された場合はそれを優先
         if (specifiedStyle) {
-            const requestedStyle = availableStyles.find(s => 
-                s.styleId === specifiedStyle || 
-                s.name === specifiedStyle ||
-                s.styleId.toString() === specifiedStyle
+            // styleNameで検索（日本語名）
+            const requestedEntry = availableStyleEntries.find(([_, style]) => 
+                style.styleName === specifiedStyle
             );
-            if (requestedStyle) {
-                return requestedStyle;
+            
+            if (requestedEntry) {
+                return requestedEntry[1];
             }
-            // 指定されたスタイルが見つからない場合は警告ログを出力してデフォルト処理に続行
-            console.warn(`指定されたスタイル '${specifiedStyle}' が見つかりません。デフォルト選択を使用します。`);
+            
+            // 指定されたスタイルが見つからない場合はエラー
+            const availableStyleNames = availableStyleEntries.map(([_, style]) => style.styleName);
+            const errorMessage = `指定されたスタイル '${specifiedStyle}' が見つかりません。利用可能なスタイル: ${availableStyleNames.join(', ')}`;
+            throw new Error(errorMessage);
         }
         
-        switch (character.style_selection) {
+        switch (speaker.style_selection) {
             case 'default':
-                // デフォルトスタイルを使用
-                const defaultStyle = availableStyles.find(s => s.styleId === character.default_style);
-                return defaultStyle || availableStyles[0];
+                // デフォルトスタイルを使用（キーで検索）
+                const defaultEntry = availableStyleEntries.find(([key, _]) => key === speaker.default_style);
+                return defaultEntry ? defaultEntry[1] : availableStyleEntries[0][1];
                 
             case 'random':
                 // ランダム選択
-                return availableStyles[Math.floor(Math.random() * availableStyles.length)];
+                const randomIndex = Math.floor(Math.random() * availableStyleEntries.length);
+                return availableStyleEntries[randomIndex][1];
                 
             case 'specified':
                 // 指定されたスタイル（今回は default と同じ扱い）
-                const specifiedStyleFromConfig = availableStyles.find(s => s.styleId === character.default_style);
-                return specifiedStyleFromConfig || availableStyles[0];
+                const specifiedEntry = availableStyleEntries.find(([key, _]) => key === speaker.default_style);
+                return specifiedEntry ? specifiedEntry[1] : availableStyleEntries[0][1];
                 
             default:
-                return availableStyles[0];
+                return availableStyleEntries[0][1];
         }
     }
 
@@ -214,42 +218,38 @@ export class CharacterInfoService {
     /**
      * 指定されたオペレータの詳細情報を取得してキャラクター変換
      */
-    async getOperatorCharacterInfo(operatorId: string): Promise<Character> {
+    async getOperatorCharacterInfo(operatorId: string): Promise<Speaker> {
         if (!this.configManager) {
             throw new Error('CharacterInfoService is not initialized');
         }
 
         try {
             const config = await this.configManager.getCharacterConfig(operatorId);
-            return convertCharacterConfigToCharacter(config);
+            return convertCharacterConfigToSpeaker(config);
         } catch (error) {
             throw new Error(`オペレータ '${operatorId}' は存在しないか無効です`);
         }
     }
 
     /**
-     * キャラクターとスタイル情報を含む音声設定データを生成
+     * スピーカーとスタイル情報から音声設定データを生成
      */
-    generateVoiceConfigData(character: Character, selectedStyle: Style): {
-        voiceConfig: {
-            voiceId: string;
-            styleId: number;
-        };
-        styleInfo: {
-            styleId: string;
+    generateVoiceConfigData(speaker: Speaker, selectedStyle: Style): {
+        speakerId: string;
+        styleId: number;
+        speakerInfo: {
+            speakerName: string;
             styleName: string;
             personality: string;
             speakingStyle: string;
         };
     } {
         return {
-            voiceConfig: {
-                voiceId: character.voice_id || '',
-                styleId: selectedStyle.style_id
-            },
-            styleInfo: {
-                styleId: selectedStyle.styleId,
-                styleName: selectedStyle.name,
+            speakerId: speaker.speakerId,
+            styleId: selectedStyle.styleId,
+            speakerInfo: {
+                speakerName: speaker.speakerName,
+                styleName: selectedStyle.styleName,
                 personality: selectedStyle.personality,
                 speakingStyle: selectedStyle.speaking_style
             }
@@ -265,6 +265,7 @@ export class CharacterInfoService {
         }
         return await this.configManager.getAvailableCharacterIds();
     }
+    
 }
 
 export default CharacterInfoService;

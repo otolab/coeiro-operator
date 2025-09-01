@@ -2,7 +2,7 @@
  * src/operator/character-info-service.test.ts: CharacterInfoServiceテスト
  */
 
-import { CharacterInfoService, Character, Style } from './character-info-service.js';
+import { CharacterInfoService, Speaker, Style } from './character-info-service.js';
 import FileOperationManager from './file-operation-manager.js';
 import ConfigManager, { CharacterConfig } from './config-manager.js';
 import { writeFile, mkdir } from 'fs/promises';
@@ -28,20 +28,20 @@ describe('CharacterInfoService', () => {
         voice_id: 'test-voice-123',
         available_styles: {
             normal: {
-                name: 'ノーマル',
-                style_id: 0,
+                styleId: 0,
+                styleName: 'ノーマル',
                 personality: '明るくて元気',
                 speaking_style: 'フレンドリー'
             },
             happy: {
-                name: 'ハッピー',
-                style_id: 1,
+                styleId: 1,
+                styleName: 'ハッピー',
                 personality: 'とても明るい',
                 speaking_style: '楽しげ'
             },
             sad: {
-                name: 'サッド',
-                style_id: 2,
+                styleId: 2,
+                styleName: 'サッド',
                 personality: '少し落ち込んだ',
                 speaking_style: '静か',
                 disabled: true // 無効化されたスタイル
@@ -83,8 +83,8 @@ describe('CharacterInfoService', () => {
             
             const character = await characterInfoService.getCharacterInfo('test-character');
             
-            expect(character.name).toBe('テストキャラクター');
-            expect(character.voice_id).toBe('test-voice-123');
+            expect(character.speakerName).toBe('テストキャラクター');
+            expect(character.speakerId).toBe('test-voice-123');
             expect(character.greeting).toBe('こんにちは！');
             expect(character.available_styles).toHaveProperty('normal');
             expect(character.available_styles).toHaveProperty('happy');
@@ -92,14 +92,14 @@ describe('CharacterInfoService', () => {
         });
 
         test('初期化されていない場合はエラー', async () => {
-            const uninitializedService = new VoiceSelectionService(fileManager);
+            const uninitializedService = new CharacterInfoService();
             
-            await expect(uninitializedService.getCharacterInfo('test')).rejects.toThrow('VoiceSelectionService is not initialized');
+            await expect(uninitializedService.getCharacterInfo('test')).rejects.toThrow('CharacterInfoService is not initialized');
         });
     });
 
     describe('selectStyle', () => {
-        let testCharacter: Character;
+        let testCharacter: Speaker;
 
         beforeEach(async () => {
             vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
@@ -109,42 +109,31 @@ describe('CharacterInfoService', () => {
         test('デフォルトスタイルを正しく選択する', () => {
             const selectedStyle = characterInfoService.selectStyle(testCharacter);
             
-            expect(selectedStyle.styleId).toBe('normal');
-            expect(selectedStyle.name).toBe('ノーマル');
-            expect(selectedStyle.style_id).toBe(0);
+            expect(selectedStyle.styleName).toBe('ノーマル');
+            expect(selectedStyle.styleId).toBe(0);
         });
 
         test('指定されたスタイルを正しく選択する', () => {
-            const selectedStyle = characterInfoService.selectStyle(testCharacter, 'happy');
+            const selectedStyle = characterInfoService.selectStyle(testCharacter, 'ハッピー');
             
-            expect(selectedStyle.styleId).toBe('happy');
-            expect(selectedStyle.name).toBe('ハッピー');
-            expect(selectedStyle.style_id).toBe(1);
+            expect(selectedStyle.styleName).toBe('ハッピー');
+            expect(selectedStyle.styleId).toBe(1);
         });
 
         test('スタイル名で指定できる', () => {
             const selectedStyle = characterInfoService.selectStyle(testCharacter, 'ハッピー');
             
-            expect(selectedStyle.styleId).toBe('happy');
-            expect(selectedStyle.name).toBe('ハッピー');
+            expect(selectedStyle.styleName).toBe('ハッピー');
+            expect(selectedStyle.styleId).toBe(1);
         });
 
-        test('無効なスタイルを指定した場合はデフォルトを使用', () => {
-            const consoleSpy = vi.spyOn(console, 'warn').mockImplementation();
-            
-            const selectedStyle = characterInfoService.selectStyle(testCharacter, 'invalid-style');
-            
-            expect(selectedStyle.styleId).toBe('normal'); // デフォルト
-            expect(consoleSpy).toHaveBeenCalledWith('指定されたスタイル \'invalid-style\' が見つかりません。デフォルト選択を使用します。');
-            
-            consoleSpy.mockRestore();
+        test('無効なスタイルを指定した場合はエラー', () => {
+            expect(() => characterInfoService.selectStyle(testCharacter, 'invalid-style')).toThrow('指定されたスタイル');
         });
 
         test('disabledなスタイルは選択されない', () => {
-            // sadスタイルは無効化されているので選択肢に含まれない
-            const selectedStyle = characterInfoService.selectStyle(testCharacter, 'sad');
-            
-            expect(selectedStyle.styleId).toBe('normal'); // デフォルトが選択される
+            // サッドスタイルは無効化されているので選択肢に含まれない
+            expect(() => characterInfoService.selectStyle(testCharacter, 'サッド')).toThrow('指定されたスタイル');
         });
 
         test('ランダム選択モードで動作する', async () => {
@@ -157,8 +146,8 @@ describe('CharacterInfoService', () => {
             
             const selectedStyle = characterInfoService.selectStyle(randomCharacter);
             
-            // ランダムなので、利用可能なスタイル（normal, happy）のいずれかが選択される
-            expect(['normal', 'happy']).toContain(selectedStyle.styleId);
+            // ランダムなので、利用可能なスタイル（styleId: 0 または 1）のいずれかが選択される
+            expect([0, 1]).toContain(selectedStyle.styleId);
         });
 
         test('利用可能なスタイルがない場合はエラー', async () => {
@@ -166,8 +155,8 @@ describe('CharacterInfoService', () => {
                 ...mockCharacterConfig,
                 available_styles: {
                     disabled_style: {
-                        name: '無効スタイル',
-                        style_id: 0,
+                        styleId: 0,
+                        styleName: '無効スタイル',
                         personality: 'テスト',
                         speaking_style: 'テスト',
                         disabled: true
@@ -177,7 +166,7 @@ describe('CharacterInfoService', () => {
             vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(noStyleCharacterConfig);
             const noStyleCharacter = await characterInfoService.getCharacterInfo('no-style-character');
             
-            expect(() => characterInfoService.selectStyle(noStyleCharacter)).toThrow('キャラクター \'テストキャラクター\' に利用可能なスタイルがありません');
+            expect(() => characterInfoService.selectStyle(noStyleCharacter)).toThrow('スピーカー \'テストキャラクター\' に利用可能なスタイルがありません');
         });
     });
 
@@ -196,9 +185,9 @@ describe('CharacterInfoService', () => {
         });
 
         test('初期化されていない場合はエラー', async () => {
-            const uninitializedService = new VoiceSelectionService(fileManager);
+            const uninitializedService = new CharacterInfoService();
             
-            await expect(uninitializedService.updateVoiceSetting('voice', 1)).rejects.toThrow('coeiroinkConfigFile is not initialized');
+            await expect(uninitializedService.updateVoiceSetting('voice', 1)).rejects.toThrow('CharacterInfoService is not initialized');
         });
     });
 
@@ -206,16 +195,16 @@ describe('CharacterInfoService', () => {
         test('音声設定データを正しく生成する', async () => {
             vi.spyOn(configManager, 'getCharacterConfig').mockResolvedValue(mockCharacterConfig);
             const character = await characterInfoService.getCharacterInfo('test-character');
-            const selectedStyle = characterInfoService.selectStyle(character, 'happy');
+            const selectedStyle = characterInfoService.selectStyle(character, 'ハッピー');
             
             const configData = characterInfoService.generateVoiceConfigData(character, selectedStyle);
             
-            expect(configData.voiceConfig.voiceId).toBe('test-voice-123');
-            expect(configData.voiceConfig.styleId).toBe(1);
-            expect(configData.styleInfo.styleId).toBe('happy');
-            expect(configData.styleInfo.styleName).toBe('ハッピー');
-            expect(configData.styleInfo.personality).toBe('とても明るい');
-            expect(configData.styleInfo.speakingStyle).toBe('楽しげ');
+            expect(configData.speakerId).toBe('test-voice-123');
+            expect(configData.styleId).toBe(1);
+            expect(configData.speakerInfo.speakerName).toBe('テストキャラクター');
+            expect(configData.speakerInfo.styleName).toBe('ハッピー');
+            expect(configData.speakerInfo.personality).toBe('とても明るい');
+            expect(configData.speakerInfo.speakingStyle).toBe('楽しげ');
         });
     });
 
@@ -225,8 +214,8 @@ describe('CharacterInfoService', () => {
             
             const character = await characterInfoService.getOperatorCharacterInfo('operator1');
             
-            expect(character.name).toBe('テストキャラクター');
-            expect(character.voice_id).toBe('test-voice-123');
+            expect(character.speakerName).toBe('テストキャラクター');
+            expect(character.speakerId).toBe('test-voice-123');
         });
 
         test('存在しないオペレータの場合はエラー', async () => {

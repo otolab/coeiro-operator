@@ -211,9 +211,9 @@ export class SayCoeiroink {
 
             const character = await this.operatorManager.getCharacterInfo(currentStatus.operatorId);
             
-            if (character && character.voice_id) {
+            if (character && character.speakerId) {
                 return {
-                    voice_id: character.voice_id,
+                    voice_id: character.speakerId,
                     character: character
                 };
             }
@@ -359,7 +359,7 @@ export class SayCoeiroink {
             // 1. operator-manager から現在のオペレータの音声を取得
             const operatorVoice = await this.getCurrentOperatorVoice();
             if (operatorVoice) {
-                logger.info(`オペレータ音声を使用: ${operatorVoice.character?.name || 'Unknown'} (voice_id: ${operatorVoice.voice_id})`);
+                logger.info(`オペレータ音声を使用: ${operatorVoice.character?.speakerName || 'Unknown'} (voice_id: ${operatorVoice.voice_id})`);
                 selectedVoice = operatorVoice;
             } else if (allowFallback) {
                 // 2. フォールバック: 設定ファイルのデフォルト音声を使用（CLIのみ）
@@ -389,23 +389,32 @@ export class SayCoeiroink {
         }
 
         const character = voice.character;
+        
+        // スタイルの存在確認
         const specifiedStyle = Object.entries(character.available_styles || {})
-            .find(([styleId, styleData]) => styleId === style && !styleData.disabled);
+            .find(([styleId, styleData]) => 
+                (styleId === style || styleData.styleName === style) && !styleData.disabled
+            );
         
         if (specifiedStyle) {
             // 指定されたスタイルが有効な場合、一時的にキャラクターの設定を上書き
             const modifiedCharacter = {
                 ...character,
                 style_selection: 'specified',
-                default_style: style
+                default_style: specifiedStyle[0]  // styleId
             };
             return {
                 ...voice,
                 character: modifiedCharacter
             };
         } else {
-            logger.warn(`指定されたスタイル '${style}' は利用できません。デフォルトスタイルを使用します。`);
-            return voice;
+            // スタイルが見つからない場合はエラーを投げる
+            const availableStyles = Object.entries(character.available_styles || {})
+                .filter(([_, styleData]) => !styleData.disabled)
+                .map(([_, styleData]) => styleData.styleName);
+            const errorMessage = `指定されたスタイル '${style}' が見つかりません。利用可能なスタイル: ${availableStyles.join(', ')}`;
+            logger.error(errorMessage);
+            throw new Error(errorMessage);
         }
     }
 

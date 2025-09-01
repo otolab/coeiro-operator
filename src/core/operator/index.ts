@@ -12,7 +12,7 @@ import { spawn } from 'child_process';
 import ConfigManager, { CharacterConfig, CharacterStyle } from './config-manager.js';
 import FileOperationManager from './file-operation-manager.js';
 import { hostname } from 'os';
-import CharacterInfoService, { Character, Style } from './character-info-service.js';
+import CharacterInfoService, { Speaker, Style } from './character-info-service.js';
 
 // CharacterInfoServiceからインポートされた型を使用
 
@@ -163,17 +163,19 @@ export class OperatorManager {
 
 
     /**
-     * キャラクター情報を取得
+     * スピーカー情報を取得
      */
-    async getCharacterInfo(characterId: string): Promise<Character> {
+    async getCharacterInfo(characterId: string): Promise<Speaker> {
         return await this.characterInfoService.getCharacterInfo(characterId);
     }
 
     /**
      * スタイルを選択
+     * @param speaker スピーカー情報
+     * @param specifiedStyle 指定されたスタイル名
      */
-    selectStyle(character: Character, specifiedStyle: string | null = null): Style {
-        return this.characterInfoService.selectStyle(character, specifiedStyle);
+    selectStyle(speaker: Speaker, specifiedStyle: string | null = null): Style {
+        return this.characterInfoService.selectStyle(speaker, specifiedStyle);
     }
 
     /**
@@ -228,7 +230,7 @@ export class OperatorManager {
         const success = await this.dataStore.remove();
         
         // お別れの挨拶情報を取得
-        let character: Character | null = null;
+        let character: Speaker | null = null;
         try {
             character = await this.characterInfoService.getCharacterInfo(operatorId);
         } catch {
@@ -237,7 +239,7 @@ export class OperatorManager {
         
         return {
             operatorId,
-            characterName: character?.name || operatorId,
+            characterName: character?.speakerName || operatorId,
             farewell: character?.farewell || ''
         };
     }
@@ -319,7 +321,7 @@ export class OperatorManager {
         }
 
         // キャラクター情報を取得
-        let character: Character;
+        let character: Speaker;
         try {
             character = await this.characterInfoService.getOperatorCharacterInfo(specifiedOperator);
         } catch (error) {
@@ -333,14 +335,22 @@ export class OperatorManager {
             if (currentOperatorId === specifiedOperator) {
                 const selectedStyle = this.characterInfoService.selectStyle(character, style);
                 
-                const { voiceConfig, styleInfo } = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
+                const configData = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
                 
                 return {
                     operatorId: specifiedOperator,
-                    characterName: character.name,
-                    currentStyle: styleInfo,
-                    voiceConfig,
-                    message: `現在のオペレータ: ${character.name} (${specifiedOperator})`
+                    characterName: character.speakerName,
+                    currentStyle: {
+                        styleId: selectedStyle.styleName,
+                        styleName: configData.speakerInfo.styleName,
+                        personality: configData.speakerInfo.personality,
+                        speakingStyle: configData.speakerInfo.speakingStyle
+                    },
+                    voiceConfig: {
+                        voiceId: configData.speakerId,
+                        styleId: configData.styleId
+                    },
+                    message: `現在のオペレータ: ${character.speakerName} (${specifiedOperator})`
                 };
             }
             
@@ -360,15 +370,23 @@ export class OperatorManager {
         const selectedStyle = this.characterInfoService.selectStyle(character, style);
         
         // 音声設定を更新
-        await this.characterInfoService.updateVoiceSetting(character.voice_id, selectedStyle.style_id);
+        await this.characterInfoService.updateVoiceSetting(character.speakerId, selectedStyle.styleId);
         
-        const { voiceConfig, styleInfo } = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
+        const configData = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
         
         return {
             operatorId: specifiedOperator,
-            characterName: character.name,
-            currentStyle: styleInfo,
-            voiceConfig,
+            characterName: character.speakerName,
+            currentStyle: {
+                styleId: selectedStyle.styleName,
+                styleName: configData.speakerInfo.styleName,
+                personality: configData.speakerInfo.personality,
+                speakingStyle: configData.speakerInfo.speakingStyle
+            },
+            voiceConfig: {
+                voiceId: configData.speakerId,
+                styleId: configData.styleId
+            },
             greeting: character.greeting || ''
         };
     }
@@ -397,7 +415,7 @@ export class OperatorManager {
             };
         }
         
-        let character: Character;
+        let character: Speaker;
         try {
             character = await this.characterInfoService.getCharacterInfo(operatorId);
         } catch (error) {
@@ -409,13 +427,18 @@ export class OperatorManager {
         
         const selectedStyle = this.characterInfoService.selectStyle(character);
         
-        const { styleInfo } = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
+        const configData = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
         
         return {
             operatorId,
-            characterName: character.name,
-            currentStyle: styleInfo,
-            message: `現在のオペレータ: ${character.name} (${operatorId}) - ${selectedStyle.name}`
+            characterName: character.speakerName,
+            currentStyle: {
+                styleId: selectedStyle.styleName,
+                styleName: configData.speakerInfo.styleName,
+                personality: configData.speakerInfo.personality,
+                speakingStyle: configData.speakerInfo.speakingStyle
+            },
+            message: `現在のオペレータ: ${character.speakerName} (${operatorId}) - ${selectedStyle.styleName}`
         };
     }
 
