@@ -111,14 +111,13 @@ node dist/mcp-debug/cli.js --timeout 10000 dist/mcp/server.js -- --debug
 1. **コード修正** (特にSpeechQueue関連)
 2. **ビルド**: `npm run build`
 3. **テスト**: APIレスポンス構造変更確認 (`result.taskId` vs 従来の `result.mode`)
-4. **MCPサーバー再起動**（下記コマンド）
-5. **Claude Codeでツール動作確認**
-
-### MCPサーバー再起動コマンド
-```bash
-claude mcp remove coeiro-operator -s local
-claude mcp add coeiro-operator ./dist/mcp/server.js
-```
+4. **mcp-debugでテスト** → 詳細は[mcp-debug-guide.md](docs/mcp-debug-guide.md)参照：
+   ```bash
+   # 特定のツールをテスト
+   echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト"}},"id":1}' | \
+     node dist/mcp-debug/cli.js --timeout 3000 dist/mcp/server.js
+   ```
+5. **動作確認後、必要に応じてClaude Codeで最終確認**
 
 ### テスト時の注意点
 - 統合テストではAPIレスポンス構造が `{ success, taskId }` に変更

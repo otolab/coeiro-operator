@@ -191,9 +191,8 @@ DEBUG=mcp* coeiro-operator
 
 **再登録**
 ```bash
-# MCP削除・再登録
-claude mcp remove coeiro-operator
-claude mcp add coeiro-operator coeiro-operator
+# mcp-debugでMCPサーバーをテスト
+node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
 
 # 設定確認
 claude mcp test coeiro-operator

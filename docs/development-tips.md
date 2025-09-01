@@ -316,12 +316,13 @@ npm run test:e2e
 # 【詳細確認】シェルベースのテスト
 ./scripts/test-mcp-debug.sh
 
-# 3. 音声再生確認（デバッグモード）
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト音声です。"}},"id":1}' | node dist/mcp/server.js --debug
+# 3. mcp-debugでのテスト（推奨）
+# 詳細は docs/mcp-debug-guide.md 参照
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト音声です。"}},"id":1}' | \
+  node dist/mcp-debug/cli.js --timeout 5000 dist/mcp/server.js
 
-# 4. 最終確認：MCPサーバー再起動してClaude Codeでテスト
-claude mcp remove coeiro-operator
-claude mcp add coeiro-operator
+# 4. インタラクティブモードでの対話的テスト
+node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
 ```
 
 #### ⚠️ 非推奨：Claude Code起動中のMCPツール
