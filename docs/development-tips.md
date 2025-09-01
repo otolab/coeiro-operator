@@ -317,12 +317,12 @@ npm run test:e2e
 ./scripts/test-mcp-debug.sh
 
 # 3. mcp-debugでのテスト（推奨）
-# 詳細は docs/mcp-debug-guide.md 参照
+# 詳細は docs/mcp-debug-guide.md, docs/mcp-debug/ 参照
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト音声です。"}},"id":1}' | \
-  node dist/mcp-debug/cli.js --timeout 5000 dist/mcp/server.js
+  node dist/mcp-debug/cli.js dist/mcp/server.js
 
 # 4. インタラクティブモードでの対話的テスト
-node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
+node dist/mcp-debug/cli.js --interactive dist/mcp/server.js
 ```
 
 #### ⚠️ 非推奨：Claude Code起動中のMCPツール
