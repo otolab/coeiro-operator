@@ -1,71 +1,36 @@
 #!/usr/bin/env node
 /**
  * MCP Debug CLI
- * テスト対象サーバーを内部から制御するデバッグ環境のCLIインターフェース
- * 
- * Usage: mcp-debug <target-server-code>.ts [options]
+ * MCPサーバーのデバッグ・テストツール
  */
 
 import { createInterface } from 'readline';
 import path from 'path';
 import { promises as fs } from 'fs';
-import { TargetServerWrapper } from './wrapper/target-server-wrapper.js';
-import { ModuleReloader } from './wrapper/module-reloader.js';
-import { ControlHandler } from './control/handler.js';
-import { OutputManager } from './output/manager.js';
-import { DebugLogManager, LoggerPresets } from './logger/index.js';
+import { MCPDebugClient } from './core/mcp-debug-client.js';
+import { MCPServerState } from './core/state-manager.js';
 
 interface CLIOptions {
   targetServerPath: string;
   debugMode: boolean;
-  autoReload: boolean;
-  watchPath?: string;
-  configPath?: string;
   interactive: boolean;
   help: boolean;
   timeout: number;
-  commandTimeout: number;
+  requestTimeout: number;
   childArgs: string[];
 }
 
 class MCPDebugCLI {
-  private options: CLIOptions;
-  private wrapper?: TargetServerWrapper;
-  private reloader?: ModuleReloader;
-  private controlHandler?: ControlHandler;
-  private outputManager?: OutputManager;
-  private logManager: DebugLogManager;
+  private client?: MCPDebugClient;
   private readline?: any;
   private isShuttingDown = false;
-  private timeoutHandlers: Set<NodeJS.Timeout> = new Set();
 
-  constructor(options: CLIOptions) {
-    this.options = options;
-    this.logManager = DebugLogManager.getInstance();
-    this.setupLogging();
-  }
-
-  private setupLogging(): void {
-    if (this.options.debugMode) {
-      LoggerPresets.debug();
-    } else {
-      LoggerPresets.mcpServerWithAccumulation();
-    }
-
-    const logger = this.logManager.getLogger('cli');
-    logger.info('MCP Debug CLI initialized', {
-      targetServerPath: this.options.targetServerPath,
-      debugMode: this.options.debugMode,
-      autoReload: this.options.autoReload
-    });
-  }
+  constructor(private options: CLIOptions) {}
 
   /**
    * CLIを起動
    */
   async start(): Promise<void> {
-    const logger = this.logManager.getLogger('cli');
-
     try {
       // ヘルプ表示
       if (this.options.help) {
@@ -76,23 +41,29 @@ class MCPDebugCLI {
       // ターゲットサーバーパスの検証
       await this.validateTargetServer();
 
-      // コンポーネントを初期化
-      await this.initializeComponents();
+      // MCPクライアントを初期化
+      this.client = new MCPDebugClient({
+        serverPath: this.options.targetServerPath,
+        args: this.options.childArgs,
+        timeout: this.options.timeout,
+        requestTimeout: this.options.requestTimeout,
+        debug: this.options.debugMode
+      });
 
-      // ターゲットサーバーを起動
-      await this.startTargetServer();
+      // MCPサーバーを起動・初期化
+      console.error(`🚀 Starting MCP server: ${this.options.targetServerPath}`);
+      await this.client.start();
+      console.error('✅ MCP server initialized and ready');
 
-      // インタラクティブモードの場合はREPLを開始
+      // インタラクティブモードまたは非インタラクティブモード
       if (this.options.interactive) {
         await this.startInteractiveMode();
       } else {
-        // 非インタラクティブモードでは標準入力からコマンドを待機
         await this.startNonInteractiveMode();
       }
 
     } catch (error) {
-      logger.error('Failed to start MCP Debug CLI', error);
-      console.error(`Error: ${(error as Error).message}`);
+      console.error(`❌ Error: ${(error as Error).message}`);
       process.exit(1);
     }
   }
@@ -109,13 +80,11 @@ class MCPDebugCLI {
         throw new Error(`Target server path is not a file: ${fullPath}`);
       }
 
-      // .ts または .js ファイルかチェック
       const ext = path.extname(fullPath);
       if (!['.ts', '.js', '.mjs'].includes(ext)) {
         throw new Error(`Target server must be a .ts, .js, or .mjs file: ${fullPath}`);
       }
 
-      // パスを絶対パスに更新
       this.options.targetServerPath = fullPath;
 
     } catch (error) {
@@ -127,123 +96,14 @@ class MCPDebugCLI {
   }
 
   /**
-   * コンポーネントを初期化
-   */
-  private async initializeComponents(): Promise<void> {
-    const logger = this.logManager.getLogger('cli');
-
-    // 出力管理を初期化
-    this.outputManager = new OutputManager({
-      enableDebugOutput: this.options.debugMode,
-      enableMcpOutput: true,
-      enableControlOutput: true
-    });
-
-    // ターゲットサーバーラッパーを初期化
-    this.wrapper = new TargetServerWrapper({
-      serverPath: this.options.targetServerPath,
-      debugMode: this.options.debugMode,
-      enableControlCommands: true,
-      interceptStdio: true,
-      childArgs: this.options.childArgs,
-      timeout: this.options.timeout
-    });
-
-    // モジュールリローダーを初期化（オプション）
-    if (this.options.autoReload) {
-      this.reloader = new ModuleReloader({
-        autoReload: true,
-        watchExtensions: ['.ts', '.js', '.mjs', '.json'],
-        excludeDirs: ['node_modules', '.git', 'dist', 'build'],
-        debounceMs: 300
-      });
-
-      // リロードイベントリスナーを設定
-      this.reloader.onReload((event) => {
-        if (event.success) {
-          logger.info('Module reloaded', { 
-            type: event.type, 
-            filePath: event.filePath 
-          });
-          
-          if (this.options.interactive) {
-            console.log(`\n📦 Module reloaded: ${event.filePath}`);
-            this.showPrompt();
-          }
-        } else {
-          logger.error('Module reload failed', { 
-            type: event.type, 
-            filePath: event.filePath, 
-            error: event.error 
-          });
-          
-          if (this.options.interactive) {
-            console.log(`\n❌ Reload failed: ${event.error?.message}`);
-            this.showPrompt();
-          }
-        }
-      });
-    }
-
-    // 制御ハンドラーを初期化
-    this.controlHandler = new ControlHandler();
-    
-    // ターゲットサーバー制御を設定
-    this.controlHandler.setTargetServerControl(this.wrapper, this.reloader);
-
-    // ラッパーに制御ハンドラーを設定
-    this.wrapper.setControlHandler(this.controlHandler);
-
-    logger.info('Components initialized successfully');
-  }
-
-  /**
-   * ターゲットサーバーを起動
-   */
-  private async startTargetServer(): Promise<void> {
-    const logger = this.logManager.getLogger('cli');
-
-    if (!this.wrapper) {
-      throw new Error('Wrapper not initialized');
-    }
-
-    logger.info('Starting target server...');
-    console.log(`🚀 Starting target server: ${this.options.targetServerPath}`);
-
-    // タイムアウト付きでサーバー起動
-    const startupPromise = this.wrapper.startTargetServer();
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      const timeoutId = setTimeout(() => {
-        reject(new Error(`Target server startup timed out after ${this.options.timeout}ms`));
-      }, this.options.timeout);
-      this.timeoutHandlers.add(timeoutId);
-    });
-
-    try {
-      await Promise.race([startupPromise, timeoutPromise]);
-    } catch (error) {
-      logger.error('Target server startup failed or timed out', error);
-      throw error;
-    }
-
-    // ファイル監視を開始（オプション）
-    if (this.reloader) {
-      const watchPath = this.options.watchPath || path.dirname(this.options.targetServerPath);
-      await this.reloader.startWatching(watchPath);
-      console.log(`👀 Watching for changes: ${watchPath}`);
-    }
-
-    console.log('✅ Target server started successfully');
-    console.log('📋 Type "CTRL:help" for available commands');
-  }
-
-  /**
    * インタラクティブモードを開始
    */
   private async startInteractiveMode(): Promise<void> {
     console.log('\n🎮 Interactive mode enabled');
-    console.log('💡 Use CTRL:target:* commands to control the target server');
-    console.log('💡 Use CTRL:help for full command list\n');
+    console.log('💡 Enter JSON-RPC requests or use shortcuts:');
+    console.log('  status  - Show server state');
+    console.log('  tools   - List available tools');
+    console.log('  exit    - Quit the CLI\n');
 
     this.readline = createInterface({
       input: process.stdin,
@@ -252,7 +112,7 @@ class MCPDebugCLI {
     });
 
     this.readline.on('line', async (input: string) => {
-      await this.handleInput(input.trim());
+      await this.handleInteractiveInput(input.trim());
       this.showPrompt();
     });
 
@@ -268,15 +128,31 @@ class MCPDebugCLI {
    * 非インタラクティブモードを開始
    */
   private async startNonInteractiveMode(): Promise<void> {
-    console.log('📡 Non-interactive mode - waiting for input on stdin');
-
     const readline = createInterface({
       input: process.stdin,
       output: process.stdout
     });
 
-    readline.on('line', async (input: string) => {
-      await this.handleInput(input.trim());
+    let inputBuffer = '';
+    
+    readline.on('line', async (line: string) => {
+      inputBuffer += line + '\n';
+      
+      // 完全なJSONオブジェクトかチェック
+      try {
+        const message = JSON.parse(inputBuffer);
+        inputBuffer = '';
+        
+        // JSON-RPCリクエストを処理
+        await this.handleNonInteractiveInput(message);
+        
+      } catch (error) {
+        // JSONが不完全な場合は次の行を待つ
+        if (!(error instanceof SyntaxError)) {
+          console.error('Error parsing input:', error);
+          inputBuffer = '';
+        }
+      }
     });
 
     readline.on('close', () => {
@@ -285,17 +161,18 @@ class MCPDebugCLI {
   }
 
   /**
-   * 入力を処理
+   * インタラクティブモードの入力を処理
    */
-  private async handleInput(input: string): Promise<void> {
-    if (!input) {
+  private async handleInteractiveInput(input: string): Promise<void> {
+    if (!input) return;
+
+    if (!this.client) {
+      console.log('❌ Client not initialized');
       return;
     }
 
-    const logger = this.logManager.getLogger('cli');
-
     try {
-      // 特別なコマンドをチェック
+      // ショートカットコマンド
       switch (input.toLowerCase()) {
         case 'exit':
         case 'quit':
@@ -303,99 +180,119 @@ class MCPDebugCLI {
           await this.shutdown();
           return;
 
+        case 'status':
+          console.log(`📊 Server State: ${this.client.getState()}`);
+          console.log(`   Ready: ${this.client.isReady()}`);
+          console.log(`   Pending Requests: ${this.client.getPendingRequestCount()}`);
+          return;
+
+        case 'tools':
+          const capabilities = this.client.getServerCapabilities();
+          if (capabilities?.tools) {
+            console.log('🔧 Available Tools:');
+            for (const [name, schema] of Object.entries(capabilities.tools)) {
+              console.log(`   - ${name}`);
+            }
+          } else {
+            console.log('No tools available');
+          }
+          return;
+
         case 'clear':
           console.clear();
           return;
-
-        case 'status':
-          input = 'CTRL:target:status';
-          break;
-
-        case 'restart':
-          input = 'CTRL:target:restart';
-          break;
-
-        case 'help':
-          input = 'CTRL:help';
-          break;
       }
 
-      // 制御コマンドかチェック
-      if (input.startsWith('CTRL:')) {
-        if (!this.controlHandler) {
-          throw new Error('Control handler not available');
-        }
-
-        // タイムアウト付きでコマンド実行
-        const commandPromise = this.controlHandler.handleInput(input);
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          const timeoutId = setTimeout(() => {
-            reject(new Error(`Command timed out after ${this.options.commandTimeout}ms: ${input}`));
-          }, this.options.commandTimeout);
-          this.timeoutHandlers.add(timeoutId);
-        });
-
-        let response;
-        try {
-          response = await Promise.race([commandPromise, timeoutPromise]);
-        } catch (error) {
-          if ((error as Error).message.includes('timed out')) {
-            logger.warn('Command execution timed out', { command: input, timeout: this.options.commandTimeout });
-            console.log(`⏰ Command timed out after ${this.options.commandTimeout}ms: ${input}`);
-            return;
-          }
-          throw error;
-        }
-        
-        // 特別なコマンドの処理
-        if (input === 'CTRL:help') {
-          console.log('\n' + this.controlHandler.getHelp() + '\n');
-          console.log('Additional shortcuts:');
-          console.log('  status  -> CTRL:target:status');
-          console.log('  restart -> CTRL:target:restart');
-          console.log('  help    -> CTRL:help');
-          console.log('  clear   -> clear screen');
-          console.log('  exit    -> quit the CLI\n');
-          return;
-        }
-
-        // 結果を表示
-        this.displayResponse(response);
-      } else {
-        // 制御コマンドでない場合は、直接子プロセスに転送
-        if (this.wrapper) {
-          try {
-            this.wrapper.sendInput(input);
-          } catch (error) {
-            logger.error('Failed to send input to child process', error);
-            console.log(`❌ Failed to send input to target server: ${(error as Error).message}`);
+      // JSON-RPCリクエストとして処理
+      try {
+        const request = JSON.parse(input);
+        const response = await this.processRequest(request);
+        console.log(JSON.stringify(response, null, 2));
+      } catch (parseError) {
+        // JSONでない場合はツール呼び出しと仮定
+        if (input.includes('(')) {
+          const match = input.match(/^(\w+)\((.*)\)$/);
+          if (match) {
+            const [, toolName, argsStr] = match;
+            const args = argsStr ? JSON.parse(argsStr) : {};
+            const result = await this.client.callTool(toolName, args);
+            console.log(JSON.stringify(result, null, 2));
           }
         } else {
-          console.log('❓ Unknown command. Type "help" for available commands.');
+          console.log('❓ Invalid input. Enter JSON-RPC request or use shortcuts.');
         }
       }
 
     } catch (error) {
-      logger.error('Error handling input', error);
       console.log(`❌ Error: ${(error as Error).message}`);
     }
   }
 
   /**
-   * 制御応答を表示
+   * 非インタラクティブモードの入力を処理
    */
-  private displayResponse(response: any): void {
-    const icon = response.status === 'success' ? '✅' : '❌';
-    console.log(`\n${icon} ${response.command}: ${response.message}`);
-    
-    if (response.data) {
-      if (typeof response.data === 'string') {
-        console.log(response.data);
-      } else {
-        console.log(JSON.stringify(response.data, null, 2));
-      }
+  private async handleNonInteractiveInput(message: any): Promise<void> {
+    if (!this.client) {
+      const error = {
+        jsonrpc: '2.0',
+        error: {
+          code: -32603,
+          message: 'Client not initialized'
+        },
+        id: message.id || null
+      };
+      console.log(JSON.stringify(error));
+      return;
     }
-    console.log();
+
+    try {
+      const response = await this.processRequest(message);
+      console.log(JSON.stringify(response));
+    } catch (error) {
+      const errorResponse = {
+        jsonrpc: '2.0',
+        error: {
+          code: -32603,
+          message: (error as Error).message
+        },
+        id: message.id || null
+      };
+      console.log(JSON.stringify(errorResponse));
+    }
+  }
+
+  /**
+   * JSON-RPCリクエストを処理
+   */
+  private async processRequest(request: any): Promise<any> {
+    if (!this.client) {
+      throw new Error('Client not initialized');
+    }
+
+    // メソッドに応じて処理
+    const { method, params, id } = request;
+
+    let result;
+    
+    switch (method) {
+      case 'tools/call':
+        result = await this.client.callTool(params.name, params.arguments);
+        break;
+        
+      case 'tools/list':
+        const capabilities = this.client.getServerCapabilities();
+        result = { tools: Object.keys(capabilities?.tools || {}) };
+        break;
+        
+      default:
+        result = await this.client.sendRequest(method, params);
+    }
+
+    return {
+      jsonrpc: '2.0',
+      result,
+      id: id || null
+    };
   }
 
   /**
@@ -412,65 +309,33 @@ class MCPDebugCLI {
    */
   private showHelp(): void {
     console.log(`
-MCP Debug CLI - Target Server Control Interface
+MCP Debug CLI - MCP Server Debugging Tool
 
 Usage: mcp-debug [options] <target-server-file> [-- <child-options>...]
 
 Arguments:
-  target-server-file      Path to the target MCP server file (.js files recommended)
+  target-server-file      Path to the target MCP server file
 
 Options:
   --debug, -d             Enable debug mode with verbose logging
-  --auto-reload, -r       Enable automatic module reloading on file changes
-  --watch-path <path>     Custom path to watch for changes (default: server file directory)
-  --config <path>         Custom config file path
   --interactive, -i       Start in interactive mode (default: true if TTY)
-  --timeout <ms>          Child process lifetime timeout in milliseconds (default: 30000)
-  --command-timeout <ms>  Control command timeout in milliseconds (default: 10000)
+  --timeout <ms>          Process startup timeout (default: 30000)
+  --request-timeout <ms>  Request timeout (default: 10000)
   --help, -h             Show this help message
 
 Child Options:
-  Options after '--' are passed to the target server child process
+  Options after '--' are passed to the target server
 
 Examples:
-  # Basic usage
-  mcp-debug dist/mcp/server.js
+  # Basic usage (non-interactive)
+  echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":1}' | \\
+    mcp-debug dist/mcp/server.js
   
-  # With debug mode and extended timeout
-  mcp-debug --debug --timeout 60000 dist/mcp/server.js
+  # Interactive mode
+  mcp-debug --interactive dist/mcp/server.js
   
-  # Auto-reload with child options
-  mcp-debug --auto-reload dist/mcp/server.js -- --debug
-  
-  # mcp-debug timeout vs child timeout
-  mcp-debug --timeout 10000 dist/mcp-debug/test/echo-server.js -- --timeout 5000
-  
-  # Interactive mode with child options
-  mcp-debug --interactive dist/mcp/server.js -- --config custom-config.json
-
-Control Commands (available during runtime):
-  CTRL:target:status      - Get target server status
-  CTRL:target:restart     - Restart target server
-  CTRL:target:reload      - Reload and restart target server
-  CTRL:target:watch:start - Start file watching
-  CTRL:target:watch:stop  - Stop file watching
-  CTRL:help              - Show all available commands
-
-Interactive Shortcuts:
-  status                 - Show target server status
-  restart                - Restart target server
-  help                   - Show help
-  clear                  - Clear screen
-  exit/quit/q           - Exit the CLI
-
-Timeout Settings:
-  --timeout              - How long to allow child process to run (default: 30s)
-                          Controls the lifetime of the target server process
-  --command-timeout      - How long to wait for control commands (default: 10s)
-                          Controls mcp-debug internal command timeouts
-  
-Child options after '--' can include their own --timeout which controls 
-the target server's internal timeouts (e.g., tool execution timeouts).
+  # Debug mode with child options
+  mcp-debug --debug dist/mcp/server.js -- --config custom.json
     `);
   }
 
@@ -478,43 +343,20 @@ the target server's internal timeouts (e.g., tool execution timeouts).
    * シャットダウン処理
    */
   private async shutdown(): Promise<void> {
-    if (this.isShuttingDown) {
-      return;
-    }
-
+    if (this.isShuttingDown) return;
+    
     this.isShuttingDown = true;
-    const logger = this.logManager.getLogger('cli');
 
     try {
-      logger.info('Shutting down MCP Debug CLI...');
-
-      // 全てのタイムアウトハンドラーをクリア
-      this.timeoutHandlers.forEach(timeoutId => {
-        clearTimeout(timeoutId);
-      });
-      this.timeoutHandlers.clear();
-
       if (this.readline) {
         this.readline.close();
       }
 
-      if (this.reloader) {
-        await this.reloader.cleanup();
+      if (this.client) {
+        await this.client.cleanup();
       }
 
-      if (this.wrapper) {
-        await this.wrapper.shutdown();
-      }
-
-      if (this.outputManager) {
-        this.outputManager.shutdown();
-      }
-
-      await this.logManager.shutdown();
-
-      logger.info('MCP Debug CLI shutdown completed');
       process.exit(0);
-
     } catch (error) {
       console.error('Error during shutdown:', error);
       process.exit(1);
@@ -526,7 +368,7 @@ the target server's internal timeouts (e.g., tool execution timeouts).
    */
   setupSignalHandlers(): void {
     const gracefulShutdown = (signal: string) => {
-      console.log(`\n📡 Received ${signal}, shutting down gracefully...`);
+      console.error(`\n📡 Received ${signal}, shutting down gracefully...`);
       this.shutdown();
     };
 
@@ -553,11 +395,10 @@ function parseArguments(): CLIOptions {
   const options: CLIOptions = {
     targetServerPath: '',
     debugMode: false,
-    autoReload: false,
     interactive: process.stdout.isTTY,
     help: false,
-    timeout: 30000, // 30秒デフォルト
-    commandTimeout: 10000, // 10秒デフォルト
+    timeout: 30000,
+    requestTimeout: 10000,
     childArgs: []
   };
 
@@ -575,19 +416,6 @@ function parseArguments(): CLIOptions {
       case '--debug':
       case '-d':
         options.debugMode = true;
-        break;
-
-      case '--auto-reload':
-      case '-r':
-        options.autoReload = true;
-        break;
-
-      case '--watch-path':
-        options.watchPath = mcpDebugArgs[++i];
-        break;
-
-      case '--config':
-        options.configPath = mcpDebugArgs[++i];
         break;
 
       case '--interactive':
@@ -608,13 +436,13 @@ function parseArguments(): CLIOptions {
         options.timeout = timeoutValue;
         break;
 
-      case '--command-timeout':
-        const commandTimeoutValue = parseInt(mcpDebugArgs[++i], 10);
-        if (isNaN(commandTimeoutValue) || commandTimeoutValue <= 0) {
-          console.error('Error: --command-timeout must be a positive number');
+      case '--request-timeout':
+        const requestTimeoutValue = parseInt(mcpDebugArgs[++i], 10);
+        if (isNaN(requestTimeoutValue) || requestTimeoutValue <= 0) {
+          console.error('Error: --request-timeout must be a positive number');
           process.exit(1);
         }
-        options.commandTimeout = commandTimeoutValue;
+        options.requestTimeout = requestTimeoutValue;
         break;
 
       case '--help':

@@ -13,7 +13,7 @@ mcp-debugは、MCPサーバーの開発・デバッグ・テストを支援す�
 ```bash
 # 正しい初期化シーケンスの検証
 echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}}},"id":1}' | \
-  node dist/mcp-debug/cli-v2.js --debug dist/mcp/server.js
+  node dist/mcp-debug/cli.js --debug dist/mcp/server.js
 ```
 
 検証項目：
@@ -28,7 +28,7 @@ echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-1
 
 ```bash
 # 複数のリクエストを送信してID相関を確認
-cat << 'EOF' | node dist/mcp-debug/cli-v2.js dist/mcp/server.js
+cat << 'EOF' | node dist/mcp-debug/cli.js dist/mcp/server.js
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"tool1","arguments":{}},"id":100}
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"tool2","arguments":{}},"id":200}
 EOF
@@ -45,7 +45,7 @@ EOF
 
 ```bash
 # インタラクティブモードで状態を確認
-node dist/mcp-debug/cli-v2.js --interactive dist/mcp/server.js
+node dist/mcp-debug/cli.js --interactive dist/mcp/server.js
 
 > status  # 現在の状態を表示
 > tools   # 利用可能なツール一覧
@@ -63,7 +63,7 @@ Uninitialized → Initializing → Ready → Processing → Ready
 ```bash
 # 存在しないメソッド
 echo '{"jsonrpc":"2.0","method":"invalid_method","params":{},"id":1}' | \
-  node dist/mcp-debug/cli-v2.js dist/mcp/server.js
+  node dist/mcp-debug/cli.js dist/mcp/server.js
 ```
 
 期待される結果：
@@ -84,7 +84,7 @@ echo '{"jsonrpc":"2.0","method":"invalid_method","params":{},"id":1}' | \
 
 ```bash
 # 5秒でタイムアウト
-node dist/mcp-debug/cli-v2.js \
+node dist/mcp-debug/cli.js \
   --request-timeout 5000 \
   dist/mcp/server.js
 ```
@@ -100,7 +100,7 @@ node dist/mcp-debug/cli-v2.js \
 
 ```bash
 # 複数ツールの同時実行
-cat test-batch.json | node dist/mcp-debug/cli-v2.js dist/mcp/server.js
+cat test-batch.json | node dist/mcp-debug/cli.js dist/mcp/server.js
 ```
 
 test-batch.json:
@@ -117,7 +117,7 @@ test-batch.json:
 ```bash
 # ストリーミング出力の確認
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"長いテキスト..."}},"id":1}' | \
-  node dist/mcp-debug/cli-v2.js --debug dist/mcp/server.js
+  node dist/mcp-debug/cli.js --debug dist/mcp/server.js
 ```
 
 検証項目：
@@ -146,15 +146,15 @@ node dist/mcp-debug/test/echo-server.js --debug
 ```bash
 # 1. 正常系テスト
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello"}},"id":1}' | \
-  node dist/mcp-debug/cli-v2.js dist/mcp-debug/test/echo-server.js
+  node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js
 
 # 2. 遅延テスト
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"delay","arguments":{"ms":2000}},"id":2}' | \
-  node dist/mcp-debug/cli-v2.js --request-timeout 5000 dist/mcp-debug/test/echo-server.js
+  node dist/mcp-debug/cli.js --request-timeout 5000 dist/mcp-debug/test/echo-server.js
 
 # 3. エラーテスト
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"error","arguments":{"message":"Test error"}},"id":3}' | \
-  node dist/mcp-debug/cli-v2.js dist/mcp-debug/test/echo-server.js
+  node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js
 ```
 
 ## デバッグモード
@@ -163,7 +163,7 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"error","arguments
 
 ```bash
 # --debugフラグで詳細ログを出力
-node dist/mcp-debug/cli-v2.js --debug dist/mcp/server.js
+node dist/mcp-debug/cli.js --debug dist/mcp/server.js
 ```
 
 出力内容：
@@ -176,11 +176,11 @@ node dist/mcp-debug/cli-v2.js --debug dist/mcp/server.js
 
 ```bash
 # 状態遷移のみ表示
-node dist/mcp-debug/cli-v2.js --debug dist/mcp/server.js 2>&1 | \
+node dist/mcp-debug/cli.js --debug dist/mcp/server.js 2>&1 | \
   grep "State transition"
 
 # エラーのみ表示
-node dist/mcp-debug/cli-v2.js --debug dist/mcp/server.js 2>&1 | \
+node dist/mcp-debug/cli.js --debug dist/mcp/server.js 2>&1 | \
   grep "Error"
 ```
 
@@ -198,7 +198,7 @@ echo "Testing MCP Server..."
 
 # 1. Initialize test
 INIT_RESULT=$(echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}}},"id":1}' | \
-  timeout 5 node dist/mcp-debug/cli-v2.js dist/mcp/server.js 2>/dev/null)
+  timeout 5 node dist/mcp-debug/cli.js dist/mcp/server.js 2>/dev/null)
 
 if ! echo "$INIT_RESULT" | jq -e '.result.capabilities' > /dev/null; then
   echo "❌ Initialization failed"
@@ -207,7 +207,7 @@ fi
 
 # 2. Tool execution test
 TOOL_RESULT=$(echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":2}' | \
-  timeout 5 node dist/mcp-debug/cli-v2.js dist/mcp/server.js 2>/dev/null)
+  timeout 5 node dist/mcp-debug/cli.js dist/mcp/server.js 2>/dev/null)
 
 if ! echo "$TOOL_RESULT" | jq -e '.result' > /dev/null; then
   echo "❌ Tool execution failed"
@@ -242,7 +242,7 @@ jobs:
 # 100回のリクエストを送信して統計を取得
 for i in {1..100}; do
   time echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"test"}},"id":'$i'}' | \
-    node dist/mcp-debug/cli-v2.js dist/mcp/server.js 2>/dev/null
+    node dist/mcp-debug/cli.js dist/mcp/server.js 2>/dev/null
 done | awk '{sum+=$1; count++} END {print "Average:", sum/count, "seconds"}'
 ```
 
@@ -250,7 +250,7 @@ done | awk '{sum+=$1; count++} END {print "Average:", sum/count, "seconds"}'
 
 ```bash
 # プロセスのメモリ使用量を監視
-node dist/mcp-debug/cli-v2.js --interactive dist/mcp/server.js &
+node dist/mcp-debug/cli.js --interactive dist/mcp/server.js &
 PID=$!
 
 while kill -0 $PID 2>/dev/null; do
@@ -281,11 +281,11 @@ done
 2. **ログレベルの調整**
    ```bash
    # 最大詳細度でログ出力
-   COEIRO_DEBUG=true node dist/mcp-debug/cli-v2.js --debug dist/mcp/server.js
+   COEIRO_DEBUG=true node dist/mcp-debug/cli.js --debug dist/mcp/server.js
    ```
 
 3. **プロトコルトレース**
    ```bash
    # すべての通信をファイルに記録
-   node dist/mcp-debug/cli-v2.js dist/mcp/server.js 2>protocol.log
+   node dist/mcp-debug/cli.js dist/mcp/server.js 2>protocol.log
    ```

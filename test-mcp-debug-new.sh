@@ -1,7 +1,7 @@
 #!/bin/bash
 
-echo "=== MCP Debug v2 Test Script ==="
-echo "Testing new architecture with proper MCP protocol handling"
+echo "=== MCP Debug Test Script ==="
+echo "Testing MCP protocol handling with proper architecture"
 echo
 
 # Build the project first
@@ -17,8 +17,8 @@ cat > /tmp/test-request-v2.json << 'EOF'
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello from v2!"}},"id":1}
 EOF
 
-echo "Sending request to echo server via mcp-debug-v2..."
-timeout 5 sh -c 'cat /tmp/test-request-v2.json | node dist/mcp-debug/cli-v2.js dist/mcp-debug/test/echo-server.js' > /tmp/test-output-v2.txt 2>/tmp/test-error-v2.txt
+echo "Sending request to echo server via mcp-debug..."
+timeout 5 sh -c 'cat /tmp/test-request-v2.json | node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js' > /tmp/test-output-v2.txt 2>/tmp/test-error-v2.txt
 
 echo "Response:"
 cat /tmp/test-output-v2.txt | jq '.' 2>/dev/null || cat /tmp/test-output-v2.txt
@@ -38,7 +38,7 @@ cat > /tmp/test-request-v2-2.json << 'EOF'
 EOF
 
 echo "Sending operator_status request..."
-timeout 5 sh -c 'cat /tmp/test-request-v2-2.json | node dist/mcp-debug/cli-v2.js --debug dist/mcp/server.js 2>/tmp/test-error-v2-2.txt' > /tmp/test-output-v2-2.txt
+timeout 5 sh -c 'cat /tmp/test-request-v2-2.json | node dist/mcp-debug/cli.js --debug dist/mcp/server.js 2>/tmp/test-error-v2-2.txt' > /tmp/test-output-v2-2.txt
 
 echo "Response:"
 cat /tmp/test-output-v2-2.txt | jq '.result.content[0].text' -r 2>/dev/null | head -20 || echo "Failed to extract result"
@@ -52,7 +52,7 @@ fi
 echo
 echo "=== Test 3: Interactive Mode Test (Manual) ==="
 echo "To test interactive mode, run:"
-echo "  node dist/mcp-debug/cli-v2.js --interactive dist/mcp/server.js"
+echo "  node dist/mcp-debug/cli.js --interactive dist/mcp/server.js"
 echo
 echo "Then try these commands:"
 echo "  status"
@@ -61,15 +61,15 @@ echo "  operator_status()"
 echo "  exit"
 
 echo
-echo "=== Comparison with Old Implementation ==="
+echo "=== Architecture Features ==="
 echo
-echo "Old mcp-debug issues:"
+echo "Previous issues (resolved):"
 echo "  ❌ Arbitrary 1-second wait for initialization"
 echo "  ❌ No request/response correlation"
 echo "  ❌ Fire-and-forget pattern"
 echo "  ❌ Mixed concerns between process and protocol"
 echo
-echo "New mcp-debug-v2 improvements:"
+echo "Current implementation features:"
 echo "  ✅ Proper MCP initialization sequence"
 echo "  ✅ Request/response correlation with IDs"
 echo "  ✅ State machine for server lifecycle"

@@ -37,13 +37,13 @@ mcp-debugの内部設計と実装詳細：
 ```bash
 # MCPサーバーのテスト（非インタラクティブ）
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"tool_name","arguments":{}},"id":1}' | \
-  node dist/mcp-debug/cli-v2.js dist/mcp/server.js
+  node dist/mcp-debug/cli.js dist/mcp/server.js
 
 # インタラクティブモード
-node dist/mcp-debug/cli-v2.js --interactive dist/mcp/server.js
+node dist/mcp-debug/cli.js --interactive dist/mcp/server.js
 
 # デバッグモード
-node dist/mcp-debug/cli-v2.js --debug dist/mcp/server.js
+node dist/mcp-debug/cli.js --debug dist/mcp/server.js
 ```
 
 ### Echo Serverでの練習
@@ -51,7 +51,7 @@ node dist/mcp-debug/cli-v2.js --debug dist/mcp/server.js
 ```bash
 # Echo Serverでプロトコルの動作を確認
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"Hello"}},"id":1}' | \
-  node dist/mcp-debug/cli-v2.js dist/mcp-debug/test/echo-server.js
+  node dist/mcp-debug/cli.js dist/mcp-debug/test/echo-server.js
 ```
 
 ## 🎯 開発者向け情報
@@ -97,7 +97,7 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments"
 
 1. **デバッグログの確認**
    ```bash
-   node dist/mcp-debug/cli-v2.js --debug dist/mcp/server.js 2>debug.log
+   node dist/mcp-debug/cli.js --debug dist/mcp/server.js 2>debug.log
    ```
 
 2. **状態遷移の追跡**
