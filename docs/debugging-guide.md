@@ -146,8 +146,9 @@ operator-manager status
 # 詳細ログ付き
 COEIRO_DEBUG=true operator-manager status
 
-# ファイル直接確認
-cat ~/.coeiro-operator/active-operators.json | jq '.'
+# セッション状態の確認（一時ファイル）
+hostname_clean=$(hostname | sed 's/[^a-zA-Z0-9]/_/g')
+cat /tmp/coeiroink-operators-${hostname_clean}.json | jq '.'
 ```
 
 ### オペレータ割り当てデバッグ
@@ -210,8 +211,9 @@ npm ls speaker
 
 **診断**:
 ```bash
-# アクティブオペレータ確認
-cat ~/.coeiro-operator/active-operators.json | jq '.operatorAssignments'
+# アクティブオペレータ確認（一時ファイル）
+hostname_clean=$(hostname | sed 's/[^a-zA-Z0-9]/_/g')
+cat /tmp/coeiroink-operators-${hostname_clean}.json | jq '.sessions'
 
 # 全クリア
 operator-manager clear

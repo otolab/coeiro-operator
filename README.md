@@ -88,7 +88,7 @@ say-coeiroink --buffer-size 256 "低レイテンシ再生"            # バッ�
 
 - **セッション単位の管理**: 各端末のTERM_SESSION_IDで識別し、端末ごとに独立したオペレータを割り当て
 - **排他制御**: 1つのオペレータは同時に1つの端末でのみ使用可能
-- **スタイル永続化**: 割り当て時のスタイル指定が保存され、以降の音声出力で自動的に使用
+- **スタイル保持**: 割り当て時のスタイル指定がセッション期間中（最大4時間）保持
 - **自動解放**: デフォルト4時間で未使用のアサインは自動解放
 
 ```bash
@@ -129,8 +129,10 @@ operator-manager clear                               # 全クリア
 ```
 ~/.coeiro-operator/
 ├── coeiroink-config.json      # COEIROINK・音声設定
-├── operator-config.json       # オペレータ管理設定
-└── active-operators.json      # 利用状況管理（自動生成）
+└── operator-config.json       # オペレータ管理設定
+
+/tmp/
+└── coeiroink-operators-<hostname>.json  # セッション状態（一時保存、最大4時間）
 ```
 
 ### 基本設定例

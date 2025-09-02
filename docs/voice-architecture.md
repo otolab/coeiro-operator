@@ -119,8 +119,8 @@ export interface OperatorSession {
 
 **特徴:**
 - 端末セッション（TERM_SESSION_ID）単位で管理
-- スタイル指定が永続化され、次回使用時も保持
-- タイムアウト機能（デフォルト4時間）
+- スタイル指定がセッション期間中（最大4時間）保持
+- タイムアウト機能（デフォルト4時間）で自動解放
 - 排他制御により同一キャラクターの重複使用を防止
 
 ### 5. VoiceConfig（音声設定）
@@ -152,7 +152,7 @@ export interface VoiceConfig {
 
 2. **オペレータセッション保存値**
    - `operator-manager assign --style=<スタイル名>`で保存された値
-   - セッション期間中は永続化
+   - セッション期間中（最大4時間）は保持
 
 3. **キャラクターのデフォルト**
    - Character定義の`defaultStyle`
@@ -204,11 +204,12 @@ AudioSynthesizer.synthesize(VoiceConfig)
     └→ COEIROINK API呼び出し
 ```
 
-## 💾 データ永続化
+## 💾 データ保存
 
 ### OperatorSession（オペレータセッション）
 
-**保存場所:** `~/.coeiro-operator/active-operators.json`
+**保存場所:** `/tmp/coeiroink-operators-<hostname>.json`  
+**保存期間:** 最大4時間（タイムアウト後自動削除）
 
 ```json
 {
@@ -222,6 +223,8 @@ AudioSynthesizer.synthesize(VoiceConfig)
   }
 }
 ```
+
+**注意:** これは一時的なセッション情報であり、タイムアウト後やシステム再起動時には失われます。
 
 ### Character設定
 
