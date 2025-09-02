@@ -95,6 +95,7 @@ export class MCPDebugClient {
    * プロセス出力を処理
    */
   private handleProcessOutput(data: string): void {
+    
     this.messageBuffer += data;
     
     // 改行で分割してメッセージを処理
@@ -107,15 +108,20 @@ export class MCPDebugClient {
       try {
         const message = JSON.parse(line) as MCPMessage;
         
+        // デバッグモードの場合、受信したメッセージをログ出力
+        if (this.options.debug) {
+          console.error('[MCP Debug] Raw message received:', JSON.stringify(message));
+        }
+        
         // MCPメッセージとして処理
         this.protocolHandler.handleMessage(message);
         
         // デバッグモードの場合、処理されたメッセージをログ出力
         if (this.options.debug) {
           if ('id' in message) {
-            console.error('[MCP Debug] Response received:', { id: message.id });
+            console.error('[MCP Debug] Response processed:', { id: message.id });
           } else if ('method' in message) {
-            console.error('[MCP Debug] Notification received:', message.method);
+            console.error('[MCP Debug] Notification processed:', message.method);
           }
         }
       } catch (error) {

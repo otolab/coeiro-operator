@@ -35,6 +35,7 @@ export interface IMCPProtocolHandler {
 export class MCPProtocolHandler implements IMCPProtocolHandler {
   private outputHandler?: (data: string) => void;
   private serverCapabilities?: any;
+  private nextRequestId = 1; // 連番ID管理用
   
   constructor(
     private stateManager: IMCPStateManager,
@@ -69,8 +70,8 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
       // サーバー機能を保存
       this.serverCapabilities = response.capabilities;
       
-      // initialized 通知を送信
-      this.sendNotification('initialized', {});
+      // initialized 通知を送信（仕様に従いnotifications/initializedを使用）
+      this.sendNotification('notifications/initialized');
       
       // 状態をREADYに遷移
       this.stateManager.transitionTo(MCPServerState.READY);
@@ -87,8 +88,13 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
    * リクエストを送信
    */
   async sendRequest(method: string, params?: any, timeout?: number): Promise<any> {
-    // ID生成はRequestTrackerに委譲すべきだが、簡単のため直接生成
-    const id = Date.now() + Math.random();
+    // 連番IDを使用（整数のみ、デバッグしやすい）
+    const id = this.nextRequestId++;
+    
+    // IDが大きくなりすぎないように、必要に応じてリセット
+    if (this.nextRequestId > 1000000) {
+      this.nextRequestId = 1;
+    }
     
     const message: MCPMessage = {
       jsonrpc: '2.0',

@@ -58,9 +58,14 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
     return new Promise((resolve, reject) => {
       // 子プロセスを起動
       const args = this.options.args || [];
+      
       this.childProcess = spawn('node', [this.options.serverPath, ...args], {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, ...this.options.env },
+        env: { 
+          ...process.env, 
+          NODE_NO_WARNINGS: '1',  // Node.js警告を抑制
+          ...this.options.env 
+        },
         cwd: this.options.cwd
       });
 
@@ -75,8 +80,11 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
       // 標準出力の処理
       if (this.childProcess.stdout) {
         this.childProcess.stdout.on('data', (data) => {
-          this.emit('stdout', data.toString());
+          const output = data.toString();
+          this.emit('stdout', output);
         });
+      } else {
+        console.error('[ProcessManager] WARNING: No stdout stream available!');
       }
 
       // 標準エラー出力の処理
@@ -200,6 +208,7 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
       throw new Error('Process is not running or stdin is not available');
     }
     
+    // stdinにデータを書き込み（改行は既にdataに含まれている）
     this.childProcess.stdin.write(data);
   }
 
