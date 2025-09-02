@@ -281,7 +281,7 @@ done
 2. **ログレベルの調整**
    ```bash
    # 最大詳細度でログ出力
-   COEIRO_DEBUG=true node dist/mcp-debug/cli.js --debug dist/mcp/server.js
+   node dist/mcp-debug/cli.js --debug dist/mcp/server.js
    ```
 
 3. **プロトコルトレース**

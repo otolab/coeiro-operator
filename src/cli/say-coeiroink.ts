@@ -231,7 +231,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // メイン実行関数
 async function main(): Promise<void> {
     // デバッグモード判定
-    const isDebugMode = process.argv.includes('--debug') || process.env.COEIRO_DEBUG === 'true';
+    const isDebugMode = process.argv.includes('--debug');
     
     // CLIモードでは通常ログレベル（info）を使用、デバッグモードではdebugレベル
     if (isDebugMode) {
