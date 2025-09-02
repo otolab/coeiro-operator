@@ -212,8 +212,28 @@ export class SayCoeiroink {
             const character = await this.operatorManager.getCharacterInfo(currentStatus.characterId);
             
             if (character && character.speaker && character.speaker.speakerId) {
-                // スタイル選択処理（styleNameが指定されていればそれを使用）
-                const selectedStyle = this.operatorManager.selectStyle(character, styleName);
+                // 保存されたセッション情報からスタイルを取得
+                const session = await this.operatorManager.getCurrentOperatorSession();
+                let selectedStyle: any;
+                
+                if (styleName) {
+                    // 明示的にスタイルが指定された場合はそれを使用
+                    selectedStyle = this.operatorManager.selectStyle(character, styleName);
+                } else if (session?.styleId !== undefined) {
+                    // セッションに保存されたスタイルIDがある場合はそれを使用
+                    const savedStyle = character.speaker.styles.find(s => s.styleId === session.styleId);
+                    if (savedStyle) {
+                        selectedStyle = savedStyle;
+                        logger.debug(`保存されたスタイルを使用: ${savedStyle.styleName} (ID:${savedStyle.styleId})`);
+                    } else {
+                        // 保存されたスタイルが見つからない場合はデフォルトを使用
+                        selectedStyle = this.operatorManager.selectStyle(character, null);
+                    }
+                } else {
+                    // セッション情報がない場合はデフォルトスタイルを使用
+                    selectedStyle = this.operatorManager.selectStyle(character, null);
+                }
+                
                 return {
                     speaker: character.speaker,
                     selectedStyleId: selectedStyle.styleId
@@ -462,7 +482,10 @@ export class SayCoeiroink {
             // オペレータから音声を取得（スタイル指定も渡す）
             const operatorVoice = await this.getCurrentVoiceConfig(resolvedOptions.style);
             if (operatorVoice) {
-                logger.info(`オペレータ音声を使用: ${operatorVoice.speaker.speakerName}`);
+                // スタイル情報を取得して詳細ログ出力
+                const selectedStyle = operatorVoice.speaker.styles.find(s => s.styleId === operatorVoice.selectedStyleId);
+                const styleName = selectedStyle?.styleName || `ID:${operatorVoice.selectedStyleId}`;
+                logger.info(`オペレータ音声を使用: ${operatorVoice.speaker.speakerName} (スタイル: ${styleName})`);
                 voiceConfig = operatorVoice;
             } else if (resolvedOptions.allowFallback) {
                 // CLIのみ: デフォルトキャラクターを使用
@@ -477,9 +500,15 @@ export class SayCoeiroink {
             // string型の場合はCharacterIdとして解決
             logger.info(`キャラクター解決: ${resolvedOptions.voice}`);
             voiceConfig = await this.resolveCharacterToConfig(resolvedOptions.voice, resolvedOptions.style);
+            const selectedStyle = voiceConfig.speaker.styles.find(s => s.styleId === voiceConfig.selectedStyleId);
+            const styleName = selectedStyle?.styleName || `ID:${voiceConfig.selectedStyleId}`;
+            logger.info(`  → ${voiceConfig.speaker.speakerName} (スタイル: ${styleName})`);
         } else {
             // すでにVoiceConfig型の場合はそのまま使用
             voiceConfig = resolvedOptions.voice;
+            const selectedStyle = voiceConfig.speaker.styles.find(s => s.styleId === voiceConfig.selectedStyleId);
+            const styleName = selectedStyle?.styleName || `ID:${voiceConfig.selectedStyleId}`;
+            logger.info(`VoiceConfig使用: ${voiceConfig.speaker.speakerName} (スタイル: ${styleName})`);
         }
         
         // サーバー接続確認
