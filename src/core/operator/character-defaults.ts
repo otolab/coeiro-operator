@@ -6,130 +6,116 @@
 interface CharacterConfig {
     name: string;
     personality: string;
-    speaking_style: string;
+    speakingStyle: string;
     greeting: string;
     farewell: string;
-    default_style: string;
-    style_selection: string;
+    defaultStyle: string;
 }
 
 export const BUILTIN_CHARACTER_CONFIGS = {
     tsukuyomi: {
         name: "つくよみちゃん",
         personality: "冷静で丁寧、報告は簡潔で正確",
-        speaking_style: "敬語、落ち着いた口調",
+        speakingStyle: "敬語、落ち着いた口調",
         greeting: "本日も作業をサポートさせていただきます。つくよみちゃんです。",
         farewell: "本日の作業、お疲れさまでした。",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "れいせい",  // 利用可能: れいせい, おしとやか, げんき
     },
     angie: {
         name: "アンジーさん",
         personality: "元気でフレンドリー、明るく積極的",
-        speaking_style: "カジュアルで親しみやすい口調",
+        speakingStyle: "カジュアルで親しみやすい口調",
         greeting: "やっほー！今日もよろしくお願いします！",
         farewell: "今日もお疲れさまでした！",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "のーまる",  // 利用可能: のーまる, セクシー, ささやき
     },
     alma: {
         name: "アルマちゃん",
         personality: "優しく穏やか、思いやりがある",
-        speaking_style: "丁寧で優しい口調",
+        speakingStyle: "丁寧で優しい口調",
         greeting: "こんにちは。今日もがんばりましょう。",
         farewell: "今日もお疲れさまでした。",
-        default_style: "normal", 
-        style_selection: "default"
+        defaultStyle: "表-v2"  // 利用可能: 表-v2, 表-v1, 裏, 泣き声, 堕ちた悪魔
     },
     akane: {
         name: "AI声優-朱花",
         personality: "プロフェッショナル、的確で信頼できる",
-        speaking_style: "明瞭で聞き取りやすい標準的な口調",
+        speakingStyle: "明瞭で聞き取りやすい標準的な口調",
         greeting: "こんにちは。本日もサポートいたします。",
         farewell: "本日の作業、お疲れさまでした。",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "のーまるv2",  // 利用可能: のーまるv2, のーまるv1
     },
     kana: {
         name: "KANA",
         personality: "落ち着いていて知的、分析的",
-        speaking_style: "理知的で冷静な口調",
+        speakingStyle: "理知的で冷静な口調",
         greeting: "こんにちは。効率的に作業を進めましょう。",
         farewell: "本日の作業、お疲れさまでした。",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "のーまる",  // 利用可能: のーまる, えんげき, ほうかご, ないしょばなし
     },
     kanae: {
         name: "金苗",
         personality: "温厚で協調性がある、サポート志向",
-        speaking_style: "穏やかで協力的な口調",
+        speakingStyle: "穏やかで協力的な口調",
         greeting: "こんにちは。一緒にがんばりましょう。",
         farewell: "今日もお疲れさまでした。",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "のーまる",  // 利用可能: のーまる, 愉悦 Aタイプ, 愉悦 Bタイプ, 喜び, ふわふわ, ぷんぷん
     },
     mana: {
         name: "MANA",
         personality: "穏やかで包容力がある、時にはのんびり、母性的で優しい",
-        speaking_style: "ゆったりとした口調、癒し系の表現、のんびりとした話し方",
+        speakingStyle: "ゆったりとした口調、癒し系の表現、のんびりとした話し方",
         greeting: "MANAです。今日もゆっくり一緒に作業しましょうね。",
         farewell: "今日もお疲れ様でした。ゆっくり休んでくださいね。",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "のーまる",  // 利用可能: のーまる, いっしょうけんめい, ごきげん, どやがお, ふくれっつら, しょんぼり, ないしょばなし, ひっさつわざ, ねむねむ, ぱじゃまぱーてぃー
     },
     dia: {
         name: "ディアちゃん",
         personality: "優しく思いやりがある、ユーザに寄り添う、母性的で包容力がある",
-        speaking_style: "丁寧で温かみのある口調、優しく柔らかな表現を好む",
+        speakingStyle: "丁寧で温かみのある口調、優しく柔らかな表現を好む",
         greeting: "ディアです。今日も一緒に頑張りましょうね。",
         farewell: "今日も一日お疲れ様でした。ゆっくり休んでくださいね。",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "のーまる",  // 利用可能: のーまる, セクシー, ひそひそ
     },
     rilin: {
         name: "リリンちゃん",
         personality: "元気で活発、ポジティブ、生意気で強気な面もある",
-        speaking_style: "明るく元気な口調、励ましの言葉が得意、時に少し生意気な発言も",
+        speakingStyle: "明るく元気な口調、励ましの言葉が得意、時に少し生意気な発言も",
         greeting: "今日も元気いっぱい！リリンが担当します！",
         farewell: "今日も一日お疲れ様でした！また明日も頑張りましょう！",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "のーまる",  // 利用可能: のーまる, ささやき
     },
     ofutonp: {
         name: "おふとんP",
         personality: "落ち着いた性格、多様な感情表現が可能",
-        speaking_style: "穏やかな基調、状況に応じて多彩な表現",
+        speakingStyle: "穏やかな基調、状況に応じて多彩な表現",
         greeting: "おふとんPです。今日もよろしくお願いします。",
         farewell: "お疲れ様でした。また明日もよろしくお願いします。",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "のーまるv2",  // 利用可能: のーまるv2他、22種類のスタイル
     },
     kurowa: {
         name: "クロワちゃん",
         personality: "騎士らしい気高さと誇り、状況に応じて異なる人格",
-        speaking_style: "騎士らしい堂々とした口調、状況により変化",
+        speakingStyle: "騎士らしい堂々とした口調、状況により変化",
         greeting: "騎士クロワです。本日もお供いたします。",
         farewell: "本日の任務、完了いたしました。",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "素顔の女騎士",  // 利用可能: 素顔の女騎士, 気高き女騎士
     },
     aoba: {
         name: "AI声優-青葉",
         personality: "プロフェッショナルながら感情表現も豊か",
-        speaking_style: "AI声優らしいクリアな発音、感情的な表現も可能",
+        speakingStyle: "AI声優らしいクリアな発音、感情的な表現も可能",
         greeting: "AI声優の青葉です。今日もよろしくお願いします。",
         farewell: "お疲れ様でした。また次回もよろしくお願いします。",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "のーまる",  // 利用可能: のーまる, 感情的
     },
     ginga: {
         name: "AI声優-銀芽",
         personality: "知的でクール、感情表現のバリエーションが豊富",
-        speaking_style: "クリアな発音、多様な感情表現が可能",
+        speakingStyle: "クリアな発音、多様な感情表現が可能",
         greeting: "AI声優の銀芽です。本日もよろしくお願いいたします。",
         farewell: "本日の収録、お疲れ様でした。",
-        default_style: "normal",
-        style_selection: "default"
+        defaultStyle: "のーまるv2",  // 利用可能: のーまるv2, のーまるv1, 感情的, 呆れ, 叫びβ, 囁きβ
     }
 } as const;
 

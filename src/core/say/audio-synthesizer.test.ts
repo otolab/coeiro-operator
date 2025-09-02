@@ -3,7 +3,8 @@
  */
 
 import { AudioSynthesizer } from './audio-synthesizer.js';
-import type { Config, Chunk, OperatorVoice, AudioResult } from './types.js';
+import type { Config, Chunk, VoiceConfig, AudioResult } from './types.js';
+import type { Speaker } from '../operator/character-info-service.js';
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 
@@ -353,26 +354,15 @@ describe('AudioSynthesizer', () => {
             );
         });
 
-        test('OperatorVoice形式で正常に合成できること', async () => {
-            const operatorVoice: OperatorVoice = {
-                voice_id: 'operator-voice-id',
-                character: {
-                    name: 'テストキャラクター',
-                    available_styles: {
-                        'style1': {
-                            disabled: false,
-                            style_id: 1,
-                            name: 'ハッピー'
-                        },
-                        'style2': {
-                            disabled: true,
-                            style_id: 2,
-                            name: 'サッド'
-                        }
-                    },
-                    style_selection: 'default',
-                    default_style: 'style1'
-                }
+        test('VoiceConfig形式で正常に合成できること', async () => {
+            const testSpeaker: Speaker = {
+                speakerId: 'operator-voice-id',
+                speakerName: 'Test Speaker',
+                styles: [{ styleId: 1, styleName: 'normal' }]
+            };
+            const voiceConfig: VoiceConfig = {
+                speaker: testSpeaker,
+                selectedStyleId: 1
             };
 
             const mockAudioBuffer = new ArrayBuffer(1000);
@@ -384,7 +374,7 @@ describe('AudioSynthesizer', () => {
 
             const result = await audioSynthesizer.synthesizeChunk(
                 mockChunk,
-                operatorVoice,
+                voiceConfig,
                 1.0
             );
 
@@ -394,21 +384,23 @@ describe('AudioSynthesizer', () => {
             const requestBody = JSON.parse(fetchCall[1].body);
             
             expect(requestBody.speakerUuid).toBe('operator-voice-id');
-            expect(requestBody.styleId).toBe(1); // 有効なスタイル
+            expect(requestBody.styleId).toBe(1);
         });
 
-        test('ランダムスタイル選択が正常に動作すること', async () => {
-            const operatorVoice: OperatorVoice = {
-                voice_id: 'operator-voice-id',
-                character: {
-                    name: 'テストキャラクター',
-                    available_styles: {
-                        'style1': { disabled: false, style_id: 1, name: 'スタイル1' },
-                        'style2': { disabled: false, style_id: 2, name: 'スタイル2' },
-                        'style3': { disabled: false, style_id: 3, name: 'スタイル3' }
-                    },
-                    style_selection: 'random',
-                    default_style: 'style1'
+        test('VoiceConfigで指定スタイルが正常に動作すること', async () => {
+            const testSpeaker: Speaker = {
+                speakerId: 'style-test-id',
+                speakerName: 'Test Speaker',
+                styles: [
+                    { styleId: 1, styleName: 'style1' },
+                    { styleId: 2, styleName: 'style2' },
+                    { styleId: 5, styleName: 'selected' }
+                ]
+            };
+            const voiceConfig: VoiceConfig = {
+                speaker: testSpeaker,
+                selectedStyleId: 5
+                    speaking_style: '標準'
                 }
             };
 
@@ -632,11 +624,21 @@ describe('AudioSynthesizer', () => {
             const chunks = audioSynthesizer.splitTextIntoChunks(longText);
             expect(chunks.length).toBeGreaterThanOrEqual(1);
             
+            // VoiceConfig を作成
+            const voiceConfig: VoiceConfig = {
+                speaker: {
+                    speakerId: 'test-speaker-1',
+                    speakerName: 'テストキャラクター',
+                    styles: [{ styleId: 0, styleName: 'ノーマル' }]
+                },
+                selectedStyleId: 0
+            };
+            
             // 各チャンクの合成
             for (const chunk of chunks) {
                 const result = await audioSynthesizer.synthesizeChunk(
                     chunk,
-                    'test-speaker-1',
+                    voiceConfig,
                     1.0
                 );
                 

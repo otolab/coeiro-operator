@@ -4,6 +4,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { SayCoeiroink, loadConfig } from "../core/say/index.js";
 import { OperatorManager } from "../core/operator/index.js";
+import type { Character } from "../core/operator/character-info-service.js";
 import { logger, LoggerPresets } from "../utils/logger.js";
 
 interface StyleInfo {
@@ -14,7 +15,7 @@ interface StyleInfo {
 }
 
 interface AssignResult {
-  operatorId: string;
+  characterId: string;
   characterName: string;
   currentStyle?: {
     styleId: string;
@@ -88,24 +89,34 @@ try {
   const config = await loadConfig(configPath);
   sayCoeiroink = new SayCoeiroink(config);
   
+  logger.info("Initializing SayCoeiroink...");
   await sayCoeiroink.initialize();
+  logger.info("Building dynamic config...");
   await sayCoeiroink.buildDynamicConfig();
   
+  logger.info("Initializing OperatorManager...");
   operatorManager = new OperatorManager();
   await operatorManager.initialize();
   
   logger.info("SayCoeiroink and OperatorManager initialized successfully");
 } catch (error) {
   logger.error("Failed to initialize services:", (error as Error).message);
+  logger.error("Error stack:", (error as Error).stack);
   logger.warn("Using fallback configuration...");
   
   // フォールバック設定で初期化
-  sayCoeiroink = new SayCoeiroink();
-  await sayCoeiroink.initialize();
-  await sayCoeiroink.buildDynamicConfig();
-  
-  operatorManager = new OperatorManager();
-  await operatorManager.initialize();
+  try {
+    sayCoeiroink = new SayCoeiroink();
+    await sayCoeiroink.initialize();
+    await sayCoeiroink.buildDynamicConfig();
+    
+    operatorManager = new OperatorManager();
+    await operatorManager.initialize();
+    logger.info("Fallback initialization completed");
+  } catch (fallbackError) {
+    logger.error("Fallback initialization also failed:", (fallbackError as Error).message);
+    throw fallbackError;
+  }
 }
 
 // Utility functions for operator assignment
@@ -129,23 +140,13 @@ async function assignOperator(
   }
 }
 
-interface CharacterForStyleExtraction {
-  available_styles?: Record<string, {
-    disabled?: boolean;
-    name: string;
-    personality: string;
-    speaking_style: string;
-  }>;
-}
-
-function extractStyleInfo(character: CharacterForStyleExtraction): StyleInfo[] {
-  return Object.entries(character.available_styles || {})
-    .filter(([_, style]) => !style.disabled)
-    .map(([styleId, style]) => ({
-      id: styleId,
-      name: style.name,
-      personality: style.personality,
-      speakingStyle: style.speaking_style
+function extractStyleInfo(character: Character): StyleInfo[] {
+  return (character.speaker?.styles || [])
+    .map(style => ({
+      id: style.styleId.toString(),
+      name: style.styleName,
+      personality: character.personality,
+      speakingStyle: character.speakingStyle
     }));
 }
 
@@ -153,7 +154,7 @@ function formatAssignmentResult(
   assignResult: AssignResult, 
   availableStyles: StyleInfo[]
 ): string {
-  let resultText = `${assignResult.characterName} (${assignResult.operatorId}) をアサインしました。\n\n`;
+  let resultText = `${assignResult.characterName} (${assignResult.characterId}) をアサインしました。\n\n`;
   
   if (assignResult.currentStyle) {
     resultText += `📍 現在のスタイル: ${assignResult.currentStyle.styleName}\n`;
@@ -185,7 +186,7 @@ function formatAssignmentResult(
 async function getTargetCharacter(
   manager: OperatorManager, 
   characterId?: string
-): Promise<{ character: CharacterForFormatting; characterId: string }> {
+): Promise<{ character: Character; characterId: string }> {
   if (characterId) {
     try {
       const character = await manager.getCharacterInfo(characterId);
@@ -195,40 +196,31 @@ async function getTargetCharacter(
     }
   } else {
     const currentOperator = await manager.showCurrentOperator();
-    if (!currentOperator.operatorId) {
+    if (!currentOperator.characterId) {
       throw new Error('現在オペレータが割り当てられていません。まず operator_assign を実行してください。');
     }
     
-    const character = await manager.getCharacterInfo(currentOperator.operatorId);
+    const character = await manager.getCharacterInfo(currentOperator.characterId);
     if (!character) {
-      throw new Error(`現在のオペレータ '${currentOperator.operatorId}' のキャラクター情報が見つかりません`);
+      throw new Error(`現在のオペレータ '${currentOperator.characterId}' のキャラクター情報が見つかりません`);
     }
     
-    return { character, characterId: currentOperator.operatorId };
+    return { character, characterId: currentOperator.characterId };
   }
 }
 
-interface CharacterForFormatting extends CharacterForStyleExtraction {
-  name: string;
-  personality: string;
-  speaking_style: string;
-  style_selection: string;
-  default_style: string;
-}
-
-function formatStylesResult(character: CharacterForFormatting, availableStyles: StyleInfo[]): string {
-  let resultText = `🎭 ${character.name} のスタイル情報\n\n`;
+function formatStylesResult(character: Character, availableStyles: StyleInfo[]): string {
+  let resultText = `🎭 ${character.speaker?.speakerName || character.characterId} のスタイル情報\n\n`;
   
   resultText += `📋 基本情報:\n`;
   resultText += `   性格: ${character.personality}\n`;
-  resultText += `   話し方: ${character.speaking_style}\n`;
-  resultText += `   スタイル選択方法: ${character.style_selection}\n`;
-  resultText += `   デフォルトスタイル: ${character.default_style}\n\n`;
+  resultText += `   話し方: ${character.speakingStyle}\n`;
+  resultText += `   デフォルトスタイル: ${character.defaultStyle}\n\n`;
   
   if (availableStyles.length > 0) {
     resultText += `🎨 利用可能なスタイル (${availableStyles.length}種類):\n`;
     availableStyles.forEach((style, index) => {
-      const isDefault = style.id === character.default_style;
+      const isDefault = style.id === character.defaultStyle;
       const marker = isDefault ? '★ ' : `${index + 1}. `;
       resultText += `${marker}${style.id}: ${style.name}\n`;
       resultText += `   性格: ${style.personality}\n`;
@@ -249,7 +241,7 @@ function formatStylesResult(character: CharacterForFormatting, availableStyles: 
 
 // operator-manager操作ツール
 server.registerTool("operator_assign", {
-  description: "オペレータをランダム選択して割り当てます。アサイン後に現在のスタイルと利用可能な他のスタイル情報を表示します。スタイル切り替えはsayツールのstyleパラメータで可能です（例: say({message: \"テスト\", style: \"ura\"})）。ランダムスタイル選択キャラクターは次回アサイン時に異なるスタイルが選ばれる場合があります。",
+  description: "オペレータをランダム選択して割り当てます。アサイン後に現在のスタイルと利用可能な他のスタイル情報を表示します。スタイル切り替えはsayツールのstyleパラメータで日本語名を指定します（例: say({message: \"テスト\", style: \"ひそひそ\"})）。",
   inputSchema: {
     operator: z.string().optional().describe("指定するオペレータ名（英語表記、例: 'tsukuyomi', 'alma'など。省略時または空文字列時はランダム選択。日本語表記は無効）"),
     style: z.string().optional().describe("指定するスタイル名（例: 'normal', 'ura', 'sleepy'など。省略時はキャラクターのデフォルト設定に従う）")
@@ -263,13 +255,13 @@ server.registerTool("operator_assign", {
   try {
     const assignResult = await assignOperator(operatorManager, operator, style);
     logger.info("オペレータアサイン成功", { 
-      operatorId: assignResult.operatorId, 
+      characterId: assignResult.characterId, 
       characterName: assignResult.characterName 
     });
-    const character = await operatorManager.getCharacterInfo(assignResult.operatorId);
+    const character = await operatorManager.getCharacterInfo(assignResult.characterId);
     
     if (!character) {
-      throw new Error(`キャラクター情報が見つかりません: ${assignResult.operatorId}`);
+      throw new Error(`キャラクター情報が見つかりません: ${assignResult.characterId}`);
     }
     
     const availableStyles = extractStyleInfo(character);
@@ -354,7 +346,7 @@ server.registerTool("say", {
     message: z.string().describe("発話させるメッセージ（日本語）"),
     voice: z.string().optional().describe("音声ID（省略時はオペレータ設定を使用）"),
     rate: z.number().optional().describe("話速（WPM、デフォルト200）"),
-    style: z.string().optional().describe("スタイルID（オペレータのスタイル選択を上書き）")
+    style: z.string().optional().describe("スタイル名（日本語名をそのまま指定。例: ディアちゃんの場合 'のーまる', 'ひそひそ', 'セクシー'）")
   }
 }, async (args): Promise<ToolResponse> => {
   const { message, voice, rate, style } = args;
@@ -369,7 +361,7 @@ server.registerTool("say", {
     
     // Issue #58: オペレータ未アサイン時の再アサイン促進メッセージ
     const currentOperator = await operatorManager.showCurrentOperator();
-    if (!currentOperator.operatorId) {
+    if (!currentOperator.characterId) {
       // 利用可能なオペレータを取得
       let availableOperators: string[] = [];
       try {
@@ -404,14 +396,35 @@ server.registerTool("say", {
     operatorManager.refreshOperatorReservation()
       .then(refreshSuccess => {
         if (refreshSuccess) {
-          logger.debug(`Operator reservation refreshed for: ${currentOperator.operatorId}`);
+          logger.debug(`Operator reservation refreshed for: ${currentOperator.characterId}`);
         } else {
-          logger.debug(`Could not refresh operator reservation for: ${currentOperator.operatorId} (not critical)`);
+          logger.debug(`Could not refresh operator reservation for: ${currentOperator.characterId} (not critical)`);
         }
       })
       .catch(error => {
         logger.debug(`Operator reservation refresh failed: ${(error as Error).message} (not critical)`);
       });
+    
+    // スタイル検証（事前チェック）
+    if (style && currentOperator.characterId) {
+      try {
+        const character = await operatorManager.getCharacterInfo(currentOperator.characterId);
+        
+        // 利用可能なスタイルを取得
+        const availableStyles = character.speaker?.styles || [];
+        
+        // 指定されたスタイルが存在するか確認
+        const styleExists = availableStyles.some(s => s.styleName === style);
+        
+        if (!styleExists) {
+          const styleNames = availableStyles.map(s => s.styleName);
+          throw new Error(`指定されたスタイル '${style}' が見つかりません。利用可能なスタイル: ${styleNames.join(', ')}`);
+        }
+      } catch (error) {
+        logger.error(`スタイル検証エラー: ${(error as Error).message}`);
+        throw error;
+      }
+    }
     
     // 設定情報をログ出力
     const config = await loadConfig();
@@ -436,7 +449,7 @@ server.registerTool("say", {
     speechPromise
       .then(result => {
         logger.debug(`Result: ${JSON.stringify(result)}`);
-        const modeInfo = `発声完了 - オペレータ: ${currentOperator.operatorId}, タスクID: ${result.taskId}`;
+        const modeInfo = `発声完了 - オペレータ: ${currentOperator.characterId}, タスクID: ${result.taskId}`;
         logger.info(modeInfo);
       })
       .catch(error => {
@@ -446,7 +459,7 @@ server.registerTool("say", {
     logger.debug("=== SAY TOOL DEBUG END ===");
     
     // 即座にレスポンスを返す（音声合成の完了を待たない）
-    const responseText = `音声合成を開始しました - オペレータ: ${currentOperator.operatorId}`;
+    const responseText = `音声合成を開始しました - オペレータ: ${currentOperator.characterId}`;
     
     return {
       content: [{
@@ -583,7 +596,7 @@ server.registerTool("debug_logs", {
 
 // スタイル情報表示ツール
 server.registerTool("operator_styles", {
-  description: "現在のオペレータまたは指定したキャラクターの利用可能なスタイル一覧を表示します。キャラクターの基本情報、全スタイルの詳細（性格・話し方）、スタイル選択方法を確認できます。スタイル切り替えにはsayツールのstyleパラメータを使用してください。",
+  description: "現在のオペレータまたは指定したキャラクターの利用可能なスタイル一覧を表示します。キャラクターの基本情報、全スタイルの詳細（性格・話し方）、スタイル選択方法を確認できます。スタイル切り替えにはsayツールのstyleパラメータで日本語名を使用してください。",
   inputSchema: {
     character: z.string().optional().describe("キャラクターID（省略時は現在のオペレータのスタイル情報を表示）")
   }
@@ -591,7 +604,7 @@ server.registerTool("operator_styles", {
   const { character } = args || {};
   
   try {
-    let targetCharacter: CharacterForFormatting;
+    let targetCharacter: Character;
     let targetCharacterId: string;
     
     if (character) {
@@ -605,15 +618,15 @@ server.registerTool("operator_styles", {
     } else {
       // 現在のオペレータの情報を取得
       const currentOperator = await operatorManager.showCurrentOperator();
-      if (!currentOperator.operatorId) {
+      if (!currentOperator.characterId) {
         throw new Error('現在オペレータが割り当てられていません。まず operator_assign を実行してください。');
       }
       
-      targetCharacter = await operatorManager.getCharacterInfo(currentOperator.operatorId);
-      targetCharacterId = currentOperator.operatorId;
+      targetCharacter = await operatorManager.getCharacterInfo(currentOperator.characterId);
+      targetCharacterId = currentOperator.characterId;
       
       if (!targetCharacter) {
-        throw new Error(`現在のオペレータ '${currentOperator.operatorId}' のキャラクター情報が見つかりません`);
+        throw new Error(`現在のオペレータ '${currentOperator.characterId}' のキャラクター情報が見つかりません`);
       }
     }
     
@@ -724,11 +737,6 @@ server.registerTool("parallel_generation_control", {
 // サーバーの起動
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
-  
-  // デバッグ時はMCPメッセージをログに出力（connect前に設定）
-  transport.onmessage = (message) => {
-    logger.debug(`Received MCP message: ${JSON.stringify(message)}`);
-  };
   
   logger.info("Say COEIROINK MCP Server starting...");
   await server.connect(transport);

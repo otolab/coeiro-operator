@@ -4,11 +4,11 @@
  */
 
 import { logger } from '../../utils/logger.js';
-import type { Chunk, AudioResult, OperatorVoice } from './types.js';
+import type { Chunk, AudioResult, VoiceConfig } from './types.js';
 
 export interface GenerationTask {
     chunk: Chunk;
-    voiceInfo: string | OperatorVoice;
+    voiceConfig: VoiceConfig;
     speed: number;
     startTime: number;
     promise: Promise<AudioResult>;
@@ -27,11 +27,11 @@ export class ChunkGenerationManager {
     private activeTasks: Map<number, GenerationTask> = new Map();
     private completedResults: Map<number, AudioResult> = new Map();
     private options: GenerationOptions;
-    private synthesizeFunction: (chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number) => Promise<AudioResult>;
+    private synthesizeFunction: (chunk: Chunk, voiceConfig: VoiceConfig, speed: number) => Promise<AudioResult>;
     private firstChunkCompleted: boolean = false; // 初回チャンク完了フラグ
 
     constructor(
-        synthesizeFunction: (chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number) => Promise<AudioResult>,
+        synthesizeFunction: (chunk: Chunk, voiceConfig: VoiceConfig, speed: number) => Promise<AudioResult>,
         options: Partial<GenerationOptions> = {}
     ) {
         this.synthesizeFunction = synthesizeFunction;
@@ -46,7 +46,7 @@ export class ChunkGenerationManager {
     /**
      * チャンクの生成を開始（並行制御あり）
      */
-    async startGeneration(chunk: Chunk, voiceInfo: string | OperatorVoice, speed: number): Promise<void> {
+    async startGeneration(chunk: Chunk, voiceConfig: VoiceConfig, speed: number): Promise<void> {
         // 初回ポーズ機能: 初回チャンク完了まで後続チャンクの生成を待機
         if (this.options.pauseUntilFirstComplete && chunk.index > 0 && !this.firstChunkCompleted) {
             logger.debug(`チャンク${chunk.index}: 初回チャンク完了まで生成をポーズ`);
@@ -61,10 +61,10 @@ export class ChunkGenerationManager {
         // 新しい生成タスクを開始
         const task: GenerationTask = {
             chunk,
-            voiceInfo,
+            voiceConfig,
             speed,
             startTime: Date.now(),
-            promise: this.synthesizeFunction(chunk, voiceInfo, speed)
+            promise: this.synthesizeFunction(chunk, voiceConfig, speed)
         };
 
         this.activeTasks.set(chunk.index, task);

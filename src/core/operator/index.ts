@@ -9,39 +9,46 @@ import { mkdir, stat, unlink, access } from 'fs/promises';
 import { constants } from 'fs';
 import { join } from 'path';
 import { spawn } from 'child_process';
-import ConfigManager, { CharacterConfig, CharacterStyle } from './config-manager.js';
+import ConfigManager, { CharacterConfig } from './config-manager.js';
 import FileOperationManager from './file-operation-manager.js';
 import { hostname } from 'os';
-import CharacterInfoService, { Character, Style } from './character-info-service.js';
+import CharacterInfoService, { Character, Speaker, Style } from './character-info-service.js';
+
+// セッション情報（キャラクターとスタイルの組み合わせ）
+interface CharacterSession {
+    characterId: string;  // キャラクターID（例: 'tsukuyomi'）
+    styleId?: number;     // スタイルID（例: 0, 1, 2）
+    styleName?: string;   // スタイル名（例: 'れいせい'）
+}
 
 // CharacterInfoServiceからインポートされた型を使用
 
 interface AssignResult {
-    operatorId: string;
-    characterName: string;
+    characterId: string;      // キャラクターID（例: 'tsukuyomi'）  
+    characterName: string;    // キャラクター表示名（例: 'つくよみちゃん'）
     currentStyle: {
         styleId: string;
         styleName: string;
         personality: string;
         speakingStyle: string;
     };
-    voiceConfig: {
-        voiceId: string;
-        styleId: number;
+    speakerConfig: {         // COEIROINK API用の設定
+        speakerId: string;    // COEIROINKのスピーカーUUID
+        styleId: number;      // COEIROINKのスタイルID
     };
     greeting?: string;
     message?: string;
 }
 
 interface ReleaseResult {
-    operatorId: string;
-    characterName: string;
+    characterId: string;      // キャラクターID
+    characterName: string;    // キャラクター表示名
     farewell: string;
 }
 
 interface StatusResult {
-    operatorId?: string;
-    characterName?: string;
+    characterId?: string;     // キャラクターID
+    characterName?: string;   // キャラクター表示名
     currentStyle?: {
         styleId: string;
         styleName: string;
@@ -96,7 +103,7 @@ export class OperatorManager {
     private configDir: string | null = null;
     private coeiroinkConfigFile: string | null = null;
     private configManager: ConfigManager | null = null;
-    private dataStore: FileOperationManager<string>;
+    private dataStore: FileOperationManager<CharacterSession>;
     private characterInfoService: CharacterInfoService;
 
     constructor() {
@@ -107,7 +114,7 @@ export class OperatorManager {
         const filePath = `/tmp/coeiroink-operators-${hostnameClean}.json`;
         
         // デフォルト4時間のタイムアウトでFileOperationManagerを初期化
-        this.dataStore = new FileOperationManager<string>(filePath, this.sessionId);
+        this.dataStore = new FileOperationManager<CharacterSession>(filePath, this.sessionId);
         this.characterInfoService = new CharacterInfoService();
     }
 
@@ -131,7 +138,7 @@ export class OperatorManager {
             const hostnameClean = hostname().replace(/[^a-zA-Z0-9]/g, '_');
             const filePath = `/tmp/coeiroink-operators-${hostnameClean}.json`;
             
-            this.dataStore = new FileOperationManager<string>(filePath, this.sessionId, timeoutMs);
+            this.dataStore = new FileOperationManager<CharacterSession>(filePath, this.sessionId, timeoutMs);
         } catch (error) {
             console.warn('OperatorManager initialization warning:', (error as Error).message);
             // 初期化に失敗してもデフォルト設定で続行
@@ -171,6 +178,8 @@ export class OperatorManager {
 
     /**
      * スタイルを選択
+     * @param character キャラクター情報
+     * @param specifiedStyle 指定されたスタイル名
      */
     selectStyle(character: Character, specifiedStyle: string | null = null): Style {
         return this.characterInfoService.selectStyle(character, specifiedStyle);
@@ -193,25 +202,25 @@ export class OperatorManager {
 
         const allOperators = await this.configManager.getAvailableCharacterIds();
         const otherAssignments = await this.dataStore.getOtherEntries();
-        const busyOperators = otherAssignments ? Object.values(otherAssignments) : [];
+        const busyCharacters = otherAssignments ? Object.values(otherAssignments).map(session => session.characterId) : [];
         
-        const availableOperators = allOperators.filter(op => !busyOperators.includes(op));
+        const availableCharacters = allOperators.filter(op => !busyCharacters.includes(op));
         
         return {
-            available: availableOperators,
-            busy: busyOperators
+            available: availableCharacters,
+            busy: busyCharacters
         };
     }
 
     /**
      * オペレータを予約
      */
-    async reserveOperator(operatorId: string): Promise<boolean> {
+    async reserveOperator(characterId: string, styleId?: number, styleName?: string): Promise<boolean> {
         try {
-            await this.dataStore.store(operatorId);
+            await this.dataStore.store({ characterId, styleId, styleName });
             return true;
         } catch (error) {
-            throw new Error(`オペレータ ${operatorId} の予約に失敗しました: ${(error as Error).message}`);
+            throw new Error(`オペレータ ${characterId} の予約に失敗しました: ${(error as Error).message}`);
         }
     }
 
@@ -219,25 +228,27 @@ export class OperatorManager {
      * オペレータを返却
      */
     async releaseOperator(): Promise<ReleaseResult> {
-        const operatorId = await this.getCurrentOperatorId();
+        const operatorSession = await this.getCurrentOperatorSession();
         
-        if (!operatorId) {
+        if (!operatorSession) {
             throw new Error('このセッションにはオペレータが割り当てられていません');
         }
+        
+        const characterId = operatorSession.characterId;
         
         const success = await this.dataStore.remove();
         
         // お別れの挨拶情報を取得
         let character: Character | null = null;
         try {
-            character = await this.characterInfoService.getCharacterInfo(operatorId);
+            character = await this.characterInfoService.getCharacterInfo(characterId);
         } catch {
             character = null;
         }
         
         return {
-            operatorId,
-            characterName: character?.name || operatorId,
+            characterId,
+            characterName: character?.speaker?.speakerName || characterId,
             farewell: character?.farewell || ''
         };
     }
@@ -254,6 +265,14 @@ export class OperatorManager {
      * 現在のセッションに割り当てられたオペレータIDを取得
      */
     async getCurrentOperatorId(): Promise<string | null> {
+        const session = await this.dataStore.restore();
+        return session ? session.characterId : null;
+    }
+    
+    /**
+     * 現在のセッション情報を取得
+     */
+    async getCurrentOperatorSession(): Promise<CharacterSession | null> {
         return this.dataStore.restore();
     }
 
@@ -266,11 +285,11 @@ export class OperatorManager {
     }
 
     /**
-     * 指定されたオペレータが利用中かチェック（全セッション対象）
+     * 指定されたキャラクターが利用中かチェック（全セッション対象）
      */
-    async isOperatorBusy(operatorId: string): Promise<boolean> {
+    async isOperatorBusy(characterId: string): Promise<boolean> {
         const result = await this.getAvailableOperators();
-        return !result.available.includes(operatorId);
+        return !result.available.includes(characterId);
     }
 
     /**
@@ -278,13 +297,13 @@ export class OperatorManager {
      */
     async silentReleaseCurrentOperator(): Promise<string | null> {
         try {
-            const currentOperatorId = await this.getCurrentOperatorId();
-            if (!currentOperatorId) {
+            const currentSession = await this.getCurrentOperatorSession();
+            if (!currentSession) {
                 return null;
             }
 
             await this.dataStore.remove();
-            return currentOperatorId;
+            return currentSession.characterId;
         } catch {
             return null;
         }
@@ -301,17 +320,17 @@ export class OperatorManager {
         }
         
         // ランダム選択
-        const selectedOperator = result.available[Math.floor(Math.random() * result.available.length)];
+        const selectedCharacter = result.available[Math.floor(Math.random() * result.available.length)];
         
-        return await this.assignSpecificOperator(selectedOperator, style);
+        return await this.assignSpecificOperator(selectedCharacter, style);
     }
 
     /**
      * 指定されたオペレータを詳細情報付きでアサイン
      */
-    async assignSpecificOperator(specifiedOperator: string, style: string | null = null): Promise<AssignResult> {
-        if (!specifiedOperator) {
-            throw new Error('オペレータIDを指定してください');
+    async assignSpecificOperator(specifiedCharacter: string, style: string | null = null): Promise<AssignResult> {
+        if (!specifiedCharacter) {
+            throw new Error('キャラクターIDを指定してください');
         }
         
         if (!this.configManager) {
@@ -321,26 +340,32 @@ export class OperatorManager {
         // キャラクター情報を取得
         let character: Character;
         try {
-            character = await this.characterInfoService.getOperatorCharacterInfo(specifiedOperator);
+            character = await this.characterInfoService.getOperatorCharacterInfo(specifiedCharacter);
         } catch (error) {
             throw error; // CharacterInfoServiceで適切なエラーメッセージが設定される
         }
         
         // 既存のオペレータがいる場合は自動的にリリース（交代処理）
-        const currentOperatorId = await this.getCurrentOperatorId();
-        if (currentOperatorId) {
-            // 同じオペレータが指定された場合は何もしない
-            if (currentOperatorId === specifiedOperator) {
+        const currentCharacterId = await this.getCurrentOperatorId();
+        if (currentCharacterId) {
+            // 同じキャラクターが指定された場合は何もしない
+            if (currentCharacterId === specifiedCharacter) {
                 const selectedStyle = this.characterInfoService.selectStyle(character, style);
                 
-                const { voiceConfig, styleInfo } = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
-                
                 return {
-                    operatorId: specifiedOperator,
-                    characterName: character.name,
-                    currentStyle: styleInfo,
-                    voiceConfig,
-                    message: `現在のオペレータ: ${character.name} (${specifiedOperator})`
+                    characterId: specifiedCharacter,
+                    characterName: character.speaker?.speakerName || character.characterId,
+                    currentStyle: {
+                        styleId: selectedStyle.styleId.toString(),
+                        styleName: selectedStyle.styleName,
+                        personality: character.personality,
+                        speakingStyle: character.speakingStyle
+                    },
+                    speakerConfig: {
+                        speakerId: character.speaker?.speakerId || '',
+                        styleId: selectedStyle.styleId
+                    },
+                    message: `現在のオペレータ: ${character.speaker?.speakerName || character.characterId} (${specifiedCharacter})`
                 };
             }
             
@@ -349,36 +374,34 @@ export class OperatorManager {
         }
         
         // 仕様書準拠: 統一された時間切れクリーンアップ付きで他セッション利用状況をチェック
-        if (await this.isOperatorBusy(specifiedOperator)) {
-            throw new Error(`オペレータ '${specifiedOperator}' は既に他のセッションで利用中です`);
+        if (await this.isOperatorBusy(specifiedCharacter)) {
+            throw new Error(`オペレータ '${specifiedCharacter}' は既に他のセッションで利用中です`);
         }
-        
-        // オペレータを予約
-        await this.reserveOperator(specifiedOperator);
         
         // スタイルを選択
         const selectedStyle = this.characterInfoService.selectStyle(character, style);
         
-        // 音声設定を更新
-        await this.characterInfoService.updateVoiceSetting(character.voice_id, selectedStyle.style_id);
+        // キャラクターを予約（スタイル情報も含めて）
+        await this.reserveOperator(specifiedCharacter, selectedStyle.styleId, selectedStyle.styleName);
         
-        const { voiceConfig, styleInfo } = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
         
         return {
-            operatorId: specifiedOperator,
-            characterName: character.name,
-            currentStyle: styleInfo,
-            voiceConfig,
+            characterId: specifiedCharacter,
+            characterName: character.speaker?.speakerName || character.characterId,
+            currentStyle: {
+                styleId: selectedStyle.styleId.toString(),
+                styleName: selectedStyle.styleName,
+                personality: character.personality,
+                speakingStyle: character.speakingStyle
+            },
+            speakerConfig: {
+                speakerId: character.speaker?.speakerId || '',
+                styleId: selectedStyle.styleId
+            },
             greeting: character.greeting || ''
         };
     }
 
-    /**
-     * 音声設定を更新
-     */
-    async updateVoiceSetting(voiceId: string | null, styleId: number = 0): Promise<void> {
-        return await this.characterInfoService.updateVoiceSetting(voiceId, styleId);
-    }
 
     /**
      * 現在のオペレータ情報表示
@@ -389,33 +412,47 @@ export class OperatorManager {
             throw new Error('Manager is not initialized');
         }
 
-        // 仕様書準拠: getCurrentOperatorId()が時間切れチェックと自動解放を実行
-        const operatorId = await this.getCurrentOperatorId();
-        if (!operatorId) {
+        // 仕様書準拠: getCurrentOperatorSession()が時間切れチェックと自動解放を実行
+        const operatorSession = await this.getCurrentOperatorSession();
+        if (!operatorSession) {
             return {
                 message: 'オペレータは割り当てられていません'
             };
         }
         
+        const { characterId, styleId, styleName } = operatorSession;
+        
         let character: Character;
         try {
-            character = await this.characterInfoService.getCharacterInfo(operatorId);
+            character = await this.characterInfoService.getCharacterInfo(characterId);
         } catch (error) {
             return {
-                operatorId,
-                message: `現在のオペレータ: ${operatorId} (キャラクター情報なし)`
+                characterId,
+                message: `現在のオペレータ: ${characterId} (キャラクター情報なし)`
             };
         }
         
-        const selectedStyle = this.characterInfoService.selectStyle(character);
+        // 保存されたスタイル情報を使用するか、デフォルトを選択
+        let selectedStyle: Style;
+        if (styleId !== undefined && styleName) {
+            // 保存されたスタイルを検索
+            const styles = character.speaker?.styles || [];
+            selectedStyle = styles.find(s => s.styleId === styleId) || this.characterInfoService.selectStyle(character);
+        } else {
+            selectedStyle = this.characterInfoService.selectStyle(character);
+        }
         
-        const { styleInfo } = this.characterInfoService.generateVoiceConfigData(character, selectedStyle);
         
         return {
-            operatorId,
-            characterName: character.name,
-            currentStyle: styleInfo,
-            message: `現在のオペレータ: ${character.name} (${operatorId}) - ${selectedStyle.name}`
+            characterId,
+            characterName: character.speaker?.speakerName || character.characterId,
+            currentStyle: {
+                styleId: selectedStyle.styleId.toString(),
+                styleName: selectedStyle.styleName,
+                personality: character.personality,
+                speakingStyle: character.speakingStyle
+            },
+            message: `現在のオペレータ: ${character.speaker?.speakerName || character.characterId} (${characterId}) - ${selectedStyle.styleName}`
         };
     }
 
@@ -424,8 +461,8 @@ export class OperatorManager {
      * Issue #58: sayコマンド実行時の動的タイムアウト延長
      */
     async refreshOperatorReservation(): Promise<boolean> {
-        const operatorId = await this.getCurrentOperatorId();
-        if (!operatorId) {
+        const operatorSession = await this.getCurrentOperatorSession();
+        if (!operatorSession) {
             return false; // オペレータが割り当てられていない
         }
         

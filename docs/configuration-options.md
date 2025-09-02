@@ -25,7 +25,7 @@ COEIRO Operatorの音声合成システムは、詳細な設定によりパフ�
     "port": "50032"
   },
   "voice": {
-    "default_voice_id": "voice-uuid-here",
+    "default_speaker_id": "speaker-uuid-here",
     "default_style_id": 0,
     "rate": 200
   },
@@ -68,7 +68,7 @@ COEIROINK音声合成サーバーへの接続を設定します。
 ```json
 {
   "voice": {
-    "default_voice_id": "3c37646f-3881-5374-2a83-149267990abc",
+    "default_speaker_id": "3c37646f-3881-5374-2a83-149267990abc",
     "default_style_id": 0,
     "rate": 200
   }
@@ -77,7 +77,7 @@ COEIROINK音声合成サーバーへの接続を設定します。
 
 | 設定項目 | 型 | デフォルト | 説明 |
 |----------|----|-----------|----- |
-| `default_voice_id` | string | - | デフォルトで使用する音声のUUID |
+| `default_speaker_id` | string | - | デフォルトで使用するスピーカーのUUID |
 | `default_style_id` | number | - | デフォルトで使用するスタイルID |
 | `rate` | number | `200` | 話速（WPM: Words Per Minute） |
 
@@ -482,7 +482,7 @@ v2.1.0以前の設定形式も引き続きサポートされます。新形式�
 {
   "host": "localhost",
   "port": "50032",
-  "voice_id": "voice-uuid-here",
+  "speaker_id": "speaker-uuid-here",
   "style_id": 0,
   "rate": 200,
   "defaultBufferSize": 1024,
@@ -504,7 +504,7 @@ v2.1.0以前の設定形式も引き続きサポートされます。新形式�
     "port": "50032"
   },
   "voice": {
-    "default_voice_id": "your-voice-id",
+    "default_speaker_id": "your-speaker-id",
     "rate": 180
   },
   "audio": {
@@ -523,7 +523,7 @@ v2.1.0以前の設定形式も引き続きサポートされます。新形式�
     "port": "50032"
   },
   "voice": {
-    "default_voice_id": "your-voice-id",
+    "default_speaker_id": "your-speaker-id",
     "rate": 200
   },
   "audio": {
@@ -548,7 +548,7 @@ v2.1.0以前の設定形式も引き続きサポートされます。新形式�
     "port": "50032"
   },
   "voice": {
-    "default_voice_id": "your-voice-id",
+    "default_speaker_id": "your-speaker-id",
     "rate": 200
   },
   "audio": {

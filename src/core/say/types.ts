@@ -4,7 +4,7 @@
 
 export interface Config {
     connection: ConnectionConfig;
-    voice: VoiceConfig;
+    voice: VoiceSettings;
     audio: AudioConfig;
 }
 
@@ -13,9 +13,9 @@ export interface ConnectionConfig {
     port: string;
 }
 
-export interface VoiceConfig {
-    default_voice_id?: string;
-    default_style_id?: number;
+export interface VoiceSettings {
+    defaultSpeakerId?: string;
+    defaultStyleId?: number;
     rate: number;  // 話速（WPM）
 }
 
@@ -83,18 +83,16 @@ export interface AudioResult {
     latency: number;
 }
 
-export interface OperatorVoice {
-    voice_id: string;
-    character?: {
-        name: string;
-        available_styles?: Record<string, {
-            disabled?: boolean;
-            style_id: number;
-            name: string;
-        }>;
-        style_selection: string;
-        default_style: string;
-    };
+// CharacterInfoServiceのCharacter型を使用
+import type { Character, Speaker } from '../operator/character-info-service.js';
+
+/**
+ * VoiceConfig: 音声合成に必要な最小限の情報
+ * Speaker情報と選択されたスタイルIDを含む
+ */
+export interface VoiceConfig {
+    speaker: Speaker;       // COEIROINKのSpeaker情報
+    selectedStyleId: number; // 選択されたスタイルID
 }
 
 export type SpeechTaskType = 'speech' | 'warmup' | 'completion_wait';
@@ -111,7 +109,7 @@ export interface SpeechTask {
 }
 
 export interface SynthesizeOptions {
-    voice?: string | OperatorVoice | null;
+    voice?: string | VoiceConfig | null;
     rate?: number;
     outputFile?: string | null;
     style?: string;

@@ -8,39 +8,33 @@ import { constants } from 'fs';
 import { join } from 'path';
 import { BUILTIN_CHARACTER_CONFIGS, SPEAKER_NAME_TO_ID_MAP } from './character-defaults.js';
 import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
-import { getVoiceProvider, type VoiceInfo } from '../environment/voice-provider.js';
-
-// VoiceInfo型は voice-provider.ts から import済み
-
-export interface CharacterStyle {
-    name: string;
-    style_id: number;
-    personality: string;
-    speaking_style: string;
-    disabled?: boolean;
-}
+import { getSpeakerProvider, type SpeakerData } from '../environment/speaker-provider.js';
 
 export interface CharacterConfig {
     name: string;
     personality: string;
-    speaking_style: string;
+    speakingStyle: string;
     greeting: string;
     farewell: string;
-    default_style: string;
-    style_selection: string;
-    voice_id: string | null;
-    available_styles: Record<string, CharacterStyle>;
+    defaultStyle: string;
+    speakerId: string | null;  // COEIROINKのspeakerUuid
     disabled?: boolean;
 }
 
+interface CharacterSettings {
+    assignmentStrategy?: 'random';  // オペレータ割り当て戦略（現在はrandomのみ実装）
+}
+
 interface UserConfig {
-    characters: Record<string, Partial<CharacterConfig>>;
+    characters?: Record<string, Partial<CharacterConfig>>;
     operatorTimeout?: number; // ミリ秒単位のタイムアウト期間
+    characterSettings?: CharacterSettings;  // グローバルなキャラクター動作設定
 }
 
 interface MergedConfig {
     characters: Record<string, CharacterConfig>;
     operatorTimeout: number; // ミリ秒単位のタイムアウト期間
+    characterSettings: CharacterSettings;  // グローバルなキャラクター動作設定
 }
 
 export class ConfigManager {
@@ -48,7 +42,7 @@ export class ConfigManager {
     private operatorConfigFile: string;
     private coeiroinkConfigFile: string;
     private mergedConfig: MergedConfig | null = null; // マージ済み設定キャッシュ
-    private voiceProvider = getVoiceProvider(); // 音声プロバイダ
+    private speakerProvider = getSpeakerProvider(); // Speakerプロバイダ
 
     constructor(configDir: string) {
         this.configDir = configDir;
@@ -105,8 +99,8 @@ export class ConfigManager {
             const host = (connectionConfig.host as string) || (coeiroinkConfig.host as string) || CONNECTION_SETTINGS.DEFAULT_HOST;
             const port = (connectionConfig.port as string) || (coeiroinkConfig.port as string) || CONNECTION_SETTINGS.DEFAULT_PORT;
             
-            // 音声プロバイダの接続設定を更新
-            this.voiceProvider.updateConnection({ host, port });
+            // Speakerプロバイダの接続設定を更新
+            this.speakerProvider.updateConnection({ host, port });
         } catch (error) {
             console.warn(`接続設定更新エラー: ${(error as Error).message}`);
         }
@@ -162,66 +156,47 @@ export class ConfigManager {
         // 接続設定を更新
         await this.updateVoiceProviderConnection();
 
-        // 強制リフレッシュの場合はキャッシュをクリア
-        if (forceRefresh) {
-            this.voiceProvider.clearCache();
-        }
+        // 強制リフレッシュの場合（現在はキャッシュなしで常に最新データ）
 
-        const userConfig = await this.readJsonFile<UserConfig>(this.operatorConfigFile, { characters: {} });
+        const userConfig = await this.readJsonFile<UserConfig>(this.operatorConfigFile, { characters: {}, characterSettings: {} });
         const dynamicCharacters: Record<string, CharacterConfig> = {};
         
-        // 利用可能な音声フォントから動的設定を生成
-        const availableVoices = await this.voiceProvider.getVoicesForConfig();
+        // 利用可能なSpeakerから動的設定を生成
+        const availableSpeakers = await this.speakerProvider.getVoicesForConfig();
         
-        if (availableVoices.length > 0) {
-            for (const voice of availableVoices) {
-                const builtinConfig = BUILTIN_CHARACTER_CONFIGS[voice.id as keyof typeof BUILTIN_CHARACTER_CONFIGS] || {
-                    name: voice.name,
+        if (availableSpeakers.length > 0) {
+            for (const speaker of availableSpeakers) {
+                const builtinConfig = BUILTIN_CHARACTER_CONFIGS[speaker.id as keyof typeof BUILTIN_CHARACTER_CONFIGS] || {
+                    name: speaker.name,
                     personality: "丁寧で親しみやすい",
-                    speaking_style: "標準的な口調",
-                    greeting: `こんにちは。${voice.name}です。`,
+                    speakingStyle: "標準的な口調",
+                    greeting: `こんにちは。${speaker.name}です。`,
                     farewell: "お疲れさまでした。",
-                    default_style: "normal",
-                    style_selection: "default"
+                    defaultStyle: "normal"
                 };
                 
-                // 基本設定に音声情報を追加（音声プロバイダの名前を優先）
+                // 基本設定にSpeaker情報を追加
                 const characterConfig: CharacterConfig = {
                     ...builtinConfig,
-                    name: voice.name, // 音声プロバイダからの正確な名前を使用
-                    voice_id: voice.voice_id,
-                    available_styles: {}
+                    name: speaker.name, // Speakerプロバイダからの正確な名前を使用
+                    speakerId: speaker.speakerId
                 };
                 
-                // スタイル情報を追加
-                for (const style of voice.styles) {
-                    // COEIROINKのスタイル名をそのままキーとして使用
-                    const styleKey = style.name;
-                    
-                    characterConfig.available_styles[styleKey] = {
-                        name: style.name,
-                        style_id: style.style_id,
-                        personality: builtinConfig.personality,
-                        speaking_style: builtinConfig.speaking_style
-                    };
+                // デフォルトスタイルがスタイル一覧に存在するか確認
+                // 存在しない場合は最初のスタイルをデフォルトに
+                if (speaker.styles.length > 0 && 
+                    !speaker.styles.find(s => s.name === builtinConfig.defaultStyle)) {
+                    characterConfig.defaultStyle = speaker.styles[0].name;
                 }
                 
-                dynamicCharacters[voice.id] = characterConfig;
+                dynamicCharacters[speaker.id] = characterConfig;
             }
         } else {
-            // 音声フォントが取得できない場合、内蔵設定を使用
+            // Speakerが取得できない場合、内蔵設定を使用
             for (const [charId, builtinConfig] of Object.entries(BUILTIN_CHARACTER_CONFIGS)) {
                 dynamicCharacters[charId] = {
                     ...builtinConfig,
-                    voice_id: null, // 音声情報がない
-                    available_styles: {
-                        normal: {
-                            name: 'れいせい',
-                            style_id: 0,
-                            personality: builtinConfig.personality,
-                            speaking_style: builtinConfig.speaking_style
-                        }
-                    }
+                    speakerId: null // Speaker情報がない
                 };
             }
         }
@@ -229,19 +204,56 @@ export class ConfigManager {
         // ユーザー設定でオーバーライド（disabledフラグ対応）
         const mergedCharacters: Record<string, CharacterConfig> = {};
         for (const [charId, charConfig] of Object.entries(dynamicCharacters)) {
-            const userCharConfig = userConfig.characters[charId] || {};
+            const userCharConfig = userConfig.characters?.[charId] || {};
             
             // disabledフラグがtrueの場合はスキップ
-            if (userCharConfig.disabled) {
+            if (userCharConfig.disabled === true) {
                 continue;
             }
             
             mergedCharacters[charId] = this.deepMerge(charConfig, userCharConfig);
         }
         
+        // ユーザー設定に存在するが動的設定にないキャラクターもチェック（手動追加対応）
+        if (userConfig.characters) {
+            for (const [charId, userCharConfig] of Object.entries(userConfig.characters)) {
+                if (!dynamicCharacters[charId] && !userCharConfig.disabled) {
+                    // 内蔵設定があるか確認
+                    const builtinConfig = BUILTIN_CHARACTER_CONFIGS[charId as keyof typeof BUILTIN_CHARACTER_CONFIGS];
+                    
+                    if (builtinConfig) {
+                        // 内蔵設定がある場合はそれをベースに使用
+                        mergedCharacters[charId] = this.deepMerge({
+                            ...builtinConfig,
+                            speakerId: null
+                        }, userCharConfig);
+                    } else if (userCharConfig.speakerId) {
+                        // 新規カスタムキャラクター（speakerIdが必須）
+                        const defaultConfig: CharacterConfig = {
+                            name: userCharConfig.name || charId,
+                            personality: userCharConfig.personality || "カスタムキャラクター",
+                            speakingStyle: userCharConfig.speakingStyle || "標準的な口調",
+                            greeting: userCharConfig.greeting || `こんにちは。${userCharConfig.name || charId}です。`,
+                            farewell: userCharConfig.farewell || "お疲れさまでした。",
+                            defaultStyle: userCharConfig.defaultStyle || "normal",
+                            speakerId: userCharConfig.speakerId,
+                            disabled: false
+                        };
+                        mergedCharacters[charId] = this.deepMerge(defaultConfig, userCharConfig);
+                    } else {
+                        // speakerIdがない新規キャラクターはエラーログを出して無視
+                        console.error(`[ConfigManager] キャラクター '${charId}' の作成に失敗: speakerIdが必須です`);
+                    }
+                }
+            }
+        }
+        
         this.mergedConfig = {
             characters: mergedCharacters,
-            operatorTimeout: userConfig.operatorTimeout || 4 * 60 * 60 * 1000 // デフォルト4時間
+            operatorTimeout: userConfig.operatorTimeout || 4 * 60 * 60 * 1000, // デフォルト4時間
+            characterSettings: {
+                assignmentStrategy: userConfig.characterSettings?.assignmentStrategy || 'random',
+            }
         };
         
         return this.mergedConfig;
@@ -251,7 +263,7 @@ export class ConfigManager {
      * 設定をリフレッシュ（キャッシュクリア）
      */
     refreshConfig(): void {
-        this.voiceProvider.clearCache();
+        // キャッシュ削除後は不要
         this.mergedConfig = null;
     }
 

@@ -7,6 +7,7 @@ import { readFile, access, mkdir } from 'fs/promises';
 import { constants } from 'fs';
 import { join } from 'path';
 import { OperatorManager } from '../operator/index.js';
+import type { Character, Speaker } from '../operator/character-info-service.js';
 import { SpeechQueue } from './speech-queue.js';
 import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
@@ -28,7 +29,6 @@ import type {
     StreamConfig,
     Chunk,
     AudioResult,
-    OperatorVoice,
     SpeechTask,
     SynthesizeOptions,
     SynthesizeResult
@@ -44,7 +44,7 @@ const DEFAULT_CONFIG: Config = {
     },
     voice: {
         rate: SYNTHESIS_SETTINGS.DEFAULT_RATE,
-        default_voice_id: DEFAULT_VOICE.ID  // つくよみちゃん「れいせい」（COEIROINKデフォルト）
+        defaultSpeakerId: DEFAULT_VOICE.ID  // つくよみちゃん「れいせい」（COEIROINKデフォルト）
     },
     audio: {
         latencyMode: 'balanced',
@@ -201,20 +201,22 @@ export class SayCoeiroink {
         return await this.speechQueue.enqueueWarmup();
     }
 
-    async getCurrentOperatorVoice(): Promise<OperatorVoice | null> {
+    async getCurrentVoiceConfig(): Promise<VoiceConfig | null> {
         try {
             const currentStatus = await this.operatorManager.showCurrentOperator();
             
-            if (!currentStatus.operatorId) {
+            if (!currentStatus.characterId) {
                 return null;
             }
 
-            const character = await this.operatorManager.getCharacterInfo(currentStatus.operatorId);
+            const character = await this.operatorManager.getCharacterInfo(currentStatus.characterId);
             
-            if (character && character.voice_id) {
+            if (character && character.speaker && character.speaker.speakerId) {
+                // スタイル選択処理
+                const selectedStyle = this.operatorManager.selectStyle(character, null);
                 return {
-                    voice_id: character.voice_id,
-                    character: character
+                    speaker: character.speaker,
+                    selectedStyleId: selectedStyle.styleId
                 };
             }
 
@@ -222,6 +224,36 @@ export class SayCoeiroink {
         } catch (error) {
             logger.error(`オペレータ音声取得エラー: ${(error as Error).message}`);
             return null;
+        }
+    }
+
+    /**
+     * CharacterIdからVoiceConfigを生成
+     * CharacterのdefaultStyleを使用してVoiceConfigを作成
+     */
+    private async resolveCharacterToConfig(characterId: string, styleName?: string | null): Promise<VoiceConfig> {
+        try {
+            // CharacterInfoServiceからCharacter情報を取得
+            const character = await this.operatorManager.getCharacterInfo(characterId);
+            
+            if (!character) {
+                throw new Error(`Character not found: ${characterId}`);
+            }
+            
+            if (!character.speaker) {
+                throw new Error(`Character '${characterId}' has no speaker information`);
+            }
+            
+            // スタイル選択（styleNameが指定されていればそれを使用、そうでなければdefaultStyle）
+            const selectedStyle = this.operatorManager.selectStyle(character, styleName);
+            
+            return {
+                speaker: character.speaker,
+                selectedStyleId: selectedStyle.styleId
+            };
+        } catch (error) {
+            logger.error(`Character解決エラー: ${(error as Error).message}`);
+            throw new Error(`Failed to resolve character '${characterId}': ${(error as Error).message}`);
         }
     }
 
@@ -239,10 +271,10 @@ export class SayCoeiroink {
     }
 
 
-    async streamSynthesizeAndPlay(text: string, voiceId: string | OperatorVoice, speed: number, chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation', bufferSize?: number): Promise<void> {
+    async streamSynthesizeAndPlay(text: string, voiceConfig: VoiceConfig, speed: number, chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation', bufferSize?: number): Promise<void> {
         // 真のストリーミング再生：ジェネレータを直接AudioPlayerに渡す
         await this.audioPlayer.playStreamingAudio(
-            this.audioSynthesizer.synthesizeStream(text, voiceId, speed, chunkMode),
+            this.audioSynthesizer.synthesizeStream(text, voiceConfig, speed, chunkMode),
             bufferSize
         );
     }
@@ -323,7 +355,7 @@ export class SayCoeiroink {
 
     // オプション解析とデバッグログ出力
     private resolveAndLogOptions(options: SynthesizeOptions): {
-        voice: string | OperatorVoice | null;
+        voice: string | VoiceConfig | null;
         rate: number;
         outputFile: string | null;
         style: string | null;
@@ -351,63 +383,6 @@ export class SayCoeiroink {
         return resolved;
     }
 
-    // 音声選択の優先順位処理とフォールバック
-    private async selectVoiceWithFallback(voice: string | OperatorVoice | null, allowFallback: boolean): Promise<string | OperatorVoice> {
-        let selectedVoice: string | OperatorVoice | null = voice;
-        
-        if (!selectedVoice) {
-            // 1. operator-manager から現在のオペレータの音声を取得
-            const operatorVoice = await this.getCurrentOperatorVoice();
-            if (operatorVoice) {
-                logger.info(`オペレータ音声を使用: ${operatorVoice.character?.name || 'Unknown'} (voice_id: ${operatorVoice.voice_id})`);
-                selectedVoice = operatorVoice;
-            } else if (allowFallback) {
-                // 2. フォールバック: 設定ファイルのデフォルト音声を使用（CLIのみ）
-                const fallbackVoiceId = this.config.voice?.default_voice_id || DEFAULT_VOICE.ID;
-                logger.info(`フォールバック音声を使用: ${fallbackVoiceId}`);
-                selectedVoice = fallbackVoiceId;
-            } else {
-                // MCPの場合はオペレータが必要
-                logger.error('オペレータが割り当てられておらず、フォールバックも無効です');
-                throw new Error('オペレータが割り当てられていません。まず operator_assign を実行してください。');
-            }
-        }
-
-        // 音声が取得できない場合は最後のフォールバック
-        if (!selectedVoice) {
-            logger.error('音声が選択できませんでした');
-            throw new Error('音声が指定されておらず、オペレータも割り当てられていません');
-        }
-
-        return selectedVoice;
-    }
-
-    // スタイル明示的指定の処理
-    private applyStyleIfSpecified(voice: string | OperatorVoice, style: string | null): string | OperatorVoice {
-        if (!style || typeof voice !== 'object' || !voice.character) {
-            return voice;
-        }
-
-        const character = voice.character;
-        const specifiedStyle = Object.entries(character.available_styles || {})
-            .find(([styleId, styleData]) => styleId === style && !styleData.disabled);
-        
-        if (specifiedStyle) {
-            // 指定されたスタイルが有効な場合、一時的にキャラクターの設定を上書き
-            const modifiedCharacter = {
-                ...character,
-                style_selection: 'specified',
-                default_style: style
-            };
-            return {
-                ...voice,
-                character: modifiedCharacter
-            };
-        } else {
-            logger.warn(`指定されたスタイル '${style}' は利用できません。デフォルトスタイルを使用します。`);
-            return voice;
-        }
-    }
 
     // サーバー接続確認
     private async validateServerConnection(): Promise<void> {
@@ -422,7 +397,7 @@ export class SayCoeiroink {
     // ファイル出力処理
     private async processFileOutput(
         text: string, 
-        voice: string | OperatorVoice, 
+        voiceConfig: VoiceConfig, 
         speed: number, 
         chunkMode: any, 
         outputFile: string
@@ -431,7 +406,7 @@ export class SayCoeiroink {
         
         // ストリーミング合成してファイルに保存
         const audioChunks: ArrayBuffer[] = [];
-        for await (const audioResult of this.audioSynthesizer.synthesizeStream(text, voice, speed, chunkMode)) {
+        for await (const audioResult of this.audioSynthesizer.synthesizeStream(text, voiceConfig, speed, chunkMode)) {
             audioChunks.push(audioResult.audioBuffer);
         }
         
@@ -453,7 +428,7 @@ export class SayCoeiroink {
     // ストリーミング再生処理
     private async processStreamingOutput(
         text: string, 
-        voice: string | OperatorVoice, 
+        voiceConfig: VoiceConfig, 
         speed: number, 
         chunkMode: any, 
         bufferSize: number
@@ -468,7 +443,7 @@ export class SayCoeiroink {
         
         logger.info('音声ストリーミング再生開始...');
         logger.debug(`About to call streamSynthesizeAndPlay with chunkMode: ${chunkMode}`);
-        await this.streamSynthesizeAndPlay(text, voice, speed, chunkMode, bufferSize);
+        await this.streamSynthesizeAndPlay(text, voiceConfig, speed, chunkMode, bufferSize);
         logger.info('音声ストリーミング再生完了');
         return { success: true, mode: 'streaming' };
     }
@@ -480,11 +455,32 @@ export class SayCoeiroink {
         // オプション解析とデバッグログ出力
         const resolvedOptions = this.resolveAndLogOptions(options);
         
-        // 音声選択処理
-        const selectedVoice = await this.selectVoiceWithFallback(resolvedOptions.voice, resolvedOptions.allowFallback);
+        // 音声設定の決定（VoiceConfigに統一）
+        let voiceConfig: VoiceConfig;
         
-        // スタイル処理
-        const finalVoice = this.applyStyleIfSpecified(selectedVoice, resolvedOptions.style);
+        if (!resolvedOptions.voice) {
+            // オペレータから音声を取得
+            const operatorVoice = await this.getCurrentVoiceConfig();
+            if (operatorVoice) {
+                logger.info(`オペレータ音声を使用: ${operatorVoice.speaker.speakerName}`);
+                voiceConfig = operatorVoice;
+            } else if (resolvedOptions.allowFallback) {
+                // CLIのみ: デフォルトキャラクターを使用
+                const defaultCharacterId = this.config.voice?.defaultSpeakerId || DEFAULT_VOICE.ID;
+                logger.info(`デフォルトキャラクターを使用: ${defaultCharacterId}`);
+                voiceConfig = await this.resolveCharacterToConfig(defaultCharacterId, resolvedOptions.style);
+            } else {
+                // MCP: オペレータが必須
+                throw new Error('オペレータが割り当てられていません。まず operator_assign を実行してください。');
+            }
+        } else if (typeof resolvedOptions.voice === 'string') {
+            // string型の場合はCharacterIdとして解決
+            logger.info(`キャラクター解決: ${resolvedOptions.voice}`);
+            voiceConfig = await this.resolveCharacterToConfig(resolvedOptions.voice, resolvedOptions.style);
+        } else {
+            // すでにVoiceConfig型の場合はそのまま使用
+            voiceConfig = resolvedOptions.voice;
+        }
         
         // サーバー接続確認
         await this.validateServerConnection();
@@ -493,9 +489,9 @@ export class SayCoeiroink {
         
         // 出力モードに応じた処理
         if (resolvedOptions.outputFile) {
-            return await this.processFileOutput(text, finalVoice, speed, resolvedOptions.chunkMode, resolvedOptions.outputFile);
+            return await this.processFileOutput(text, voiceConfig, speed, resolvedOptions.chunkMode, resolvedOptions.outputFile);
         } else {
-            return await this.processStreamingOutput(text, finalVoice, speed, resolvedOptions.chunkMode, resolvedOptions.bufferSize);
+            return await this.processStreamingOutput(text, voiceConfig, speed, resolvedOptions.chunkMode, resolvedOptions.bufferSize);
         }
     }
 

@@ -5,7 +5,7 @@
     "port": "50032"
   },
   "voice": {
-    "default_voice_id": "3c37646f-3881-5374-2a83-149267990abc",
+    "default_speaker_id": "3c37646f-3881-5374-2a83-149267990abc",
     "rate": 200
   },
   "audio": {
