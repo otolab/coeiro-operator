@@ -67,6 +67,7 @@ say-coeiroink [options] "テキスト"
 -r rate                      話速設定（WPM）
 -o outfile                   出力ファイル指定（WAV形式）
 -f file                      ファイル入力（-で標準入力）
+--style style                音声スタイル指定（例: のーまる、セクシー）
 --chunk-mode mode            テキスト分割モード（punctuation|none|small|medium|large）
 --buffer-size size           バッファサイズ（256-4096+）
 -h                           ヘルプ表示
@@ -76,6 +77,7 @@ say-coeiroink "こんにちは"                                    # 基本使�
 say-coeiroink -v "?"                                        # 音声一覧表示
 say-coeiroink -r 150 "ゆっくり話します"                        # 話速調整
 say-coeiroink -o output.wav "保存テスト"                       # ファイル出力
+say-coeiroink --style "セクシー" "別のスタイルで話します"        # スタイル指定
 say-coeiroink --chunk-mode none "長文を分割せずに読み上げ"      # 分割モード指定
 say-coeiroink --buffer-size 256 "低レイテンシ再生"            # バッファサイズ指定
 ```
@@ -86,6 +88,7 @@ say-coeiroink --buffer-size 256 "低レイテンシ再生"            # バッ�
 
 - **セッション単位の管理**: 各端末のTERM_SESSION_IDで識別し、端末ごとに独立したオペレータを割り当て
 - **排他制御**: 1つのオペレータは同時に1つの端末でのみ使用可能
+- **スタイル永続化**: 割り当て時のスタイル指定が保存され、以降の音声出力で自動的に使用
 - **自動解放**: デフォルト4時間で未使用のアサインは自動解放
 
 ```bash
