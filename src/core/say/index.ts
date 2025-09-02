@@ -201,7 +201,7 @@ export class SayCoeiroink {
         return await this.speechQueue.enqueueWarmup();
     }
 
-    async getCurrentVoiceConfig(): Promise<VoiceConfig | null> {
+    async getCurrentVoiceConfig(styleName?: string | null): Promise<VoiceConfig | null> {
         try {
             const currentStatus = await this.operatorManager.showCurrentOperator();
             
@@ -212,8 +212,8 @@ export class SayCoeiroink {
             const character = await this.operatorManager.getCharacterInfo(currentStatus.characterId);
             
             if (character && character.speaker && character.speaker.speakerId) {
-                // スタイル選択処理
-                const selectedStyle = this.operatorManager.selectStyle(character, null);
+                // スタイル選択処理（styleNameが指定されていればそれを使用）
+                const selectedStyle = this.operatorManager.selectStyle(character, styleName);
                 return {
                     speaker: character.speaker,
                     selectedStyleId: selectedStyle.styleId
@@ -459,8 +459,8 @@ export class SayCoeiroink {
         let voiceConfig: VoiceConfig;
         
         if (!resolvedOptions.voice) {
-            // オペレータから音声を取得
-            const operatorVoice = await this.getCurrentVoiceConfig();
+            // オペレータから音声を取得（スタイル指定も渡す）
+            const operatorVoice = await this.getCurrentVoiceConfig(resolvedOptions.style);
             if (operatorVoice) {
                 logger.info(`オペレータ音声を使用: ${operatorVoice.speaker.speakerName}`);
                 voiceConfig = operatorVoice;
