@@ -624,11 +624,21 @@ describe('AudioSynthesizer', () => {
             const chunks = audioSynthesizer.splitTextIntoChunks(longText);
             expect(chunks.length).toBeGreaterThanOrEqual(1);
             
+            // VoiceConfig を作成
+            const voiceConfig: VoiceConfig = {
+                speaker: {
+                    speakerId: 'test-speaker-1',
+                    speakerName: 'テストキャラクター',
+                    styles: [{ styleId: 0, styleName: 'ノーマル' }]
+                },
+                selectedStyleId: 0
+            };
+            
             // 各チャンクの合成
             for (const chunk of chunks) {
                 const result = await audioSynthesizer.synthesizeChunk(
                     chunk,
-                    'test-speaker-1',
+                    voiceConfig,
                     1.0
                 );
                 

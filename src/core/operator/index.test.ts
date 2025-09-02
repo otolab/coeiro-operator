@@ -38,16 +38,15 @@ describe('OperatorManager', () => {
                 'test-operator-1': {
                     name: 'テストオペレータ1',
                     personality: 'テスト用',
-                    speaking_style: 'フレンドリー',
-                    voice_id: 'test-voice-1',
-                    default_style: 'normal',
-                    style_selection: 'default',
-                    available_styles: {
+                    speakingStyle: 'フレンドリー',
+                    speakerId: 'test-voice-1',
+                    defaultStyle: 'normal',
+                    styles: {
                         normal: {
-                            name: 'ノーマル',
+                            styleName: 'ノーマル',
                             personality: '普通',
-                            speaking_style: '標準',
-                            style_id: 0,
+                            speakingStyle: '標準',
+                            styleId: 0,
                             disabled: false
                         }
                     }
@@ -55,16 +54,15 @@ describe('OperatorManager', () => {
                 'test-operator-2': {
                     name: 'テストオペレータ2',
                     personality: 'テスト用2',
-                    speaking_style: 'クール',
-                    voice_id: 'test-voice-2',
-                    default_style: 'cool',
-                    style_selection: 'default',
-                    available_styles: {
+                    speakingStyle: 'クール',
+                    speakerId: 'test-voice-2',
+                    defaultStyle: 'cool',
+                    styles: {
                         cool: {
-                            name: 'クール',
+                            styleName: 'クール',
                             personality: 'クール',
-                            speaking_style: '冷静',
-                            style_id: 1,
+                            speakingStyle: '冷静',
+                            styleId: 1,
                             disabled: false
                         }
                     }
@@ -144,24 +142,16 @@ describe('OperatorManager', () => {
             
             // オペレータ解放
             const releaseResult = await operatorManager.releaseOperator();
-            expect(releaseResult.operatorId).toBe('tsukuyomi');
+            expect(releaseResult.characterId).toBe('tsukuyomi');
         });
     });
 
     describe('音声・キャラクター機能', () => {
-        test('音声設定更新が動作する', async () => {
-            // 音声設定更新（エラーが発生しないことを確認）
-            await operatorManager.updateVoiceSetting('test-voice', 1);
-            
-            // エラーが発生しないことを確認
-            expect(true).toBe(true);
-        });
-
         test('キャラクター情報取得が動作する', async () => {
             try {
                 // 実際に設定されているキャラクターIDで確認
                 const characterInfo = await operatorManager.getCharacterInfo('tsukuyomi');
-                expect(characterInfo.name).toBeDefined();
+                expect(characterInfo.characterId).toBeDefined();
             } catch (error) {
                 // モック環境でのエラーは許容
                 expect(error).toBeDefined();
@@ -271,7 +261,9 @@ describe('OperatorManager', () => {
         test('統一ファイルシステムが正常に動作する', async () => {
             // 統一ファイルシステムの動作確認（利用可能オペレータ取得で間接的にテスト）
             const operators = await operatorManager.getAvailableOperators();
-            expect(Array.isArray(operators)).toBe(true);
+            expect(operators).toBeDefined();
+            expect(Array.isArray(operators.available)).toBe(true);
+            expect(Array.isArray(operators.busy)).toBe(true);
         });
 
         test('内部状態管理が正常に動作する', async () => {
@@ -281,11 +273,14 @@ describe('OperatorManager', () => {
         });
 
         test('キャラクター情報サービスが正常に動作する', async () => {
-            // updateVoiceSetting の動作確認（CharacterInfoService経由）
-            await operatorManager.updateVoiceSetting('test-voice', 5);
-            
-            // エラーが発生しないことを確認
-            expect(true).toBe(true);
+            // CharacterInfoServiceからのキャラクター情報取得を確認
+            try {
+                const characterInfo = await operatorManager.getCharacterInfo('test-operator-1');
+                expect(characterInfo).toBeDefined();
+            } catch (error) {
+                // モック環境でのエラーは許容
+                expect(error).toBeDefined();
+            }
         });
     });
 });

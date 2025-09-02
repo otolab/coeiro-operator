@@ -44,7 +44,7 @@ const DEFAULT_CONFIG: Config = {
     },
     voice: {
         rate: SYNTHESIS_SETTINGS.DEFAULT_RATE,
-        default_speaker_id: DEFAULT_VOICE.ID  // つくよみちゃん「れいせい」（COEIROINKデフォルト）
+        defaultSpeakerId: DEFAULT_VOICE.ID  // つくよみちゃん「れいせい」（COEIROINKデフォルト）
     },
     audio: {
         latencyMode: 'balanced',
@@ -466,7 +466,7 @@ export class SayCoeiroink {
                 voiceConfig = operatorVoice;
             } else if (resolvedOptions.allowFallback) {
                 // CLIのみ: デフォルトキャラクターを使用
-                const defaultCharacterId = this.config.voice?.default_speaker_id || DEFAULT_VOICE.ID;
+                const defaultCharacterId = this.config.voice?.defaultSpeakerId || DEFAULT_VOICE.ID;
                 logger.info(`デフォルトキャラクターを使用: ${defaultCharacterId}`);
                 voiceConfig = await this.resolveCharacterToConfig(defaultCharacterId, resolvedOptions.style);
             } else {

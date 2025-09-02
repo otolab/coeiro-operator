@@ -23,11 +23,11 @@ export interface Speaker {
 export interface SpeakerData {
     id: string;
     name: string;
-    speaker_id: string;
+    speakerId: string;
     styles: Array<{
         id: number;
         name: string;
-        style_id: number;
+        styleId: number;
     }>;
 }
 
@@ -125,11 +125,11 @@ export class SpeakerProvider {
         return speakers.map(speaker => ({
             id: this.speakerNameToId(speaker.speakerName),
             name: speaker.speakerName,
-            speaker_id: speaker.speakerUuid,
+            speakerId: speaker.speakerUuid,
             styles: speaker.styles.map(style => ({
                 id: style.styleId,
                 name: style.styleName,
-                style_id: style.styleId
+                styleId: style.styleId
             }))
         }));
     }

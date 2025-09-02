@@ -89,24 +89,34 @@ try {
   const config = await loadConfig(configPath);
   sayCoeiroink = new SayCoeiroink(config);
   
+  logger.info("Initializing SayCoeiroink...");
   await sayCoeiroink.initialize();
+  logger.info("Building dynamic config...");
   await sayCoeiroink.buildDynamicConfig();
   
+  logger.info("Initializing OperatorManager...");
   operatorManager = new OperatorManager();
   await operatorManager.initialize();
   
   logger.info("SayCoeiroink and OperatorManager initialized successfully");
 } catch (error) {
   logger.error("Failed to initialize services:", (error as Error).message);
+  logger.error("Error stack:", (error as Error).stack);
   logger.warn("Using fallback configuration...");
   
   // フォールバック設定で初期化
-  sayCoeiroink = new SayCoeiroink();
-  await sayCoeiroink.initialize();
-  await sayCoeiroink.buildDynamicConfig();
-  
-  operatorManager = new OperatorManager();
-  await operatorManager.initialize();
+  try {
+    sayCoeiroink = new SayCoeiroink();
+    await sayCoeiroink.initialize();
+    await sayCoeiroink.buildDynamicConfig();
+    
+    operatorManager = new OperatorManager();
+    await operatorManager.initialize();
+    logger.info("Fallback initialization completed");
+  } catch (fallbackError) {
+    logger.error("Fallback initialization also failed:", (fallbackError as Error).message);
+    throw fallbackError;
+  }
 }
 
 // Utility functions for operator assignment
@@ -727,11 +737,6 @@ server.registerTool("parallel_generation_control", {
 // サーバーの起動
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
-  
-  // デバッグ時はMCPメッセージをログに出力（connect前に設定）
-  transport.onmessage = (message) => {
-    logger.debug(`Received MCP message: ${JSON.stringify(message)}`);
-  };
   
   logger.info("Say COEIROINK MCP Server starting...");
   await server.connect(transport);

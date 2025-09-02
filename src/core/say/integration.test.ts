@@ -8,9 +8,17 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { writeFile, readFile, unlink } from 'fs/promises';
 import Speaker from 'speaker';
+import { OperatorManager } from '../operator/index.js';
+import type { Character, Speaker as SpeakerType } from '../operator/character-info-service.js';
 
 // モックの設定
 global.fetch = vi.fn();
+vi.mock('../operator/index.js', () => ({
+    OperatorManager: vi.fn().mockImplementation(() => ({
+        initialize: vi.fn(),
+        getCharacterInfo: vi.fn()
+    }))
+}));
 vi.mock('speaker', () => ({
     default: vi.fn()
 }));
@@ -43,9 +51,51 @@ const MockSpeaker = Speaker as any;
 describe('Say Integration Tests', () => {
     let sayCoeiroink: SayCoeiroink;
     let tempDir: string;
+    let mockOperatorManager: any;
 
     beforeEach(async () => {
         tempDir = join(tmpdir(), `say-integration-test-${Date.now()}`);
+        
+        // OperatorManagerモックの設定
+        mockOperatorManager = {
+            initialize: vi.fn(),
+            getCharacterInfo: vi.fn().mockImplementation((characterId: string) => {
+                // test-speaker-1をCharacterIdとして扱い、Character情報を返す
+                if (characterId === 'test-speaker-1' || characterId === 'test-voice' || characterId === '3c37646f-3881-5374-2a83-149267990abc' || characterId === 'custom-voice-id') {
+                    const testCharacter: Character = {
+                        characterId: characterId,
+                        speaker: {
+                            speakerId: 'test-speaker-uuid',
+                            speakerName: 'テストスピーカー1',
+                            styles: [
+                                { styleId: 0, styleName: 'ノーマル' },
+                                { styleId: 1, styleName: 'ハッピー' }
+                            ]
+                        },
+                        defaultStyle: 'ノーマル',
+                        greeting: 'こんにちは',
+                        farewell: 'さようなら',
+                        personality: 'テスト性格',
+                        speakingStyle: 'テスト話し方'
+                    };
+                    return Promise.resolve(testCharacter);
+                }
+                throw new Error(`Character not found: ${characterId}`);
+            }),
+            selectStyle: vi.fn().mockImplementation((character: Character, specifiedStyle?: string) => {
+                // デフォルトスタイルを返す
+                return character.speaker?.styles[0] || { styleId: 0, styleName: 'ノーマル' };
+            }),
+            showCurrentOperator: vi.fn().mockImplementation(() => {
+                // 現在のオペレータが存在しない場合のモック
+                return Promise.resolve({
+                    message: 'オペレータは割り当てられていません'
+                });
+            })
+        };
+        
+        // OperatorManagerのモックを設定
+        (OperatorManager as any).mockImplementation(() => mockOperatorManager);
         
         // Speakerモックを設定
         const mockSpeakerInstance = {

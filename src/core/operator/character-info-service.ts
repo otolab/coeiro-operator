@@ -10,6 +10,7 @@
  */
 
 import ConfigManager, { CharacterConfig } from './config-manager.js';
+import { getSpeakerProvider } from '../environment/speaker-provider.js';
 
 /**
  * Style: Speakerの声のバリエーション
@@ -49,24 +50,55 @@ export interface Character {
 
 
 // CharacterConfigからCharacterに変換するヘルパー関数
-// Speaker情報はAPIから取得されるため、ここでは生成しない
-function convertCharacterConfigToCharacter(characterId: string, config: CharacterConfig): Character {
-    // Speaker情報は後からAPI経由で取得される
-    // config.speaker_idはSpeakerとの紐付けに使用
-    const speaker: Speaker | null = config.speaker_id ? {
-        speakerId: config.speaker_id,
-        speakerName: config.name,
-        styles: [] // APIから取得されるまで空
-    } : null;
+// Speaker情報はAPIから取得されるため、非同期処理が必要
+async function convertCharacterConfigToCharacter(characterId: string, config: CharacterConfig): Promise<Character> {
+    let speaker: Speaker | null = null;
+    
+    if (config.speakerId) {
+        // SpeakerProviderからスタイル情報を取得
+        const speakerProvider = getSpeakerProvider();
+        try {
+            const speakers = await speakerProvider.getSpeakers();
+            const apiSpeaker = speakers.find(s => s.speakerUuid === config.speakerId);
+            
+            if (apiSpeaker) {
+                speaker = {
+                    speakerId: config.speakerId,
+                    speakerName: apiSpeaker.speakerName,
+                    styles: apiSpeaker.styles.map(style => ({
+                        styleId: style.styleId,
+                        styleName: style.styleName,
+                        personality: '', // APIからは取得できないため空
+                        speakingStyle: '', // APIからは取得できないため空
+                        disabled: false
+                    }))
+                };
+            } else {
+                // APIから見つからない場合、基本情報のみ設定
+                speaker = {
+                    speakerId: config.speakerId,
+                    speakerName: config.name,
+                    styles: []
+                };
+            }
+        } catch (error) {
+            // APIエラーの場合、基本情報のみ設定
+            speaker = {
+                speakerId: config.speakerId,
+                speakerName: config.name,
+                styles: []
+            };
+        }
+    }
     
     return {
         characterId,
         speaker,
-        defaultStyle: config.default_style,
+        defaultStyle: config.defaultStyle,
         greeting: config.greeting || '',
         farewell: config.farewell || '',
         personality: config.personality,
-        speakingStyle: config.speaking_style
+        speakingStyle: config.speakingStyle
     };
 }
 
@@ -94,7 +126,7 @@ export class CharacterInfoService {
             throw new Error('CharacterInfoService is not initialized');
         }
         const config = await this.configManager.getCharacterConfig(characterId);
-        return convertCharacterConfigToCharacter(characterId, config);
+        return await convertCharacterConfigToCharacter(characterId, config);
     }
 
     /**
@@ -159,7 +191,7 @@ export class CharacterInfoService {
 
         try {
             const config = await this.configManager.getCharacterConfig(characterId);
-            return convertCharacterConfigToCharacter(characterId, config);
+            return await convertCharacterConfigToCharacter(characterId, config);
         } catch (error) {
             throw new Error(`オペレータ '${characterId}' は存在しないか無効です`);
         }
