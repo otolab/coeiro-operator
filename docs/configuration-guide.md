@@ -34,6 +34,9 @@ COEIRO Operatorの詳細な設定方法とカスタマイズオプションに�
 
 ```json
 {
+  "characterSettings": {
+    "assignmentStrategy": "random"
+  },
   "characters": {
     "tsukuyomi": {
       "greeting": "カスタマイズされた挨拶メッセージ"
@@ -49,16 +52,19 @@ COEIRO Operatorの詳細な設定方法とカスタマイズオプションに�
 
 ```json
 {
+  "operatorTimeout": 14400000,
+  "characterSettings": {
+    "assignmentStrategy": "random"
+  },
   "characters": {
     "tsukuyomi": {
       "personality": "カスタマイズされた性格設定",
-      "speaking_style": "カスタマイズされた話し方",
+      "speakingStyle": "カスタマイズされた話し方",
       "greeting": "カスタマイズされた挨拶",
       "farewell": "カスタマイズされたお別れ"
     },
     "angie": {
-      "greeting": "元気いっぱいで今日もよろしく！",
-      "style_selection": "random"
+      "greeting": "元気いっぱいで今日もよろしく！"
     },
     "mana": {
       "disabled": true
@@ -71,35 +77,43 @@ COEIRO Operatorの詳細な設定方法とカスタマイズオプションに�
 
 | 項目 | カスタマイズ可能 | 型 | 説明 |
 |------|------|----|----|
+| `operatorTimeout` | ✓ | Number | オペレータ予約タイムアウト（ミリ秒、デフォルト4時間） |
+| `characterSettings` | ✓ | Object | グローバルなキャラクター動作設定 |
+| `characterSettings.assignmentStrategy` | ✓ | String | オペレータ割り当て戦略 (現在はrandomのみ) |
 | `characters` | ✓ | Object | キャラクター設定のオーバーライド |
 | `characters[id].name` | ✓ | String | 表示名（通常は変更不要） |
 | `characters[id].personality` | ✓ | String | 性格設定（MCP出力時に表示） |
-| `characters[id].speaking_style` | ✓ | String | 話し方の特徴（MCP出力時に表示） |
+| `characters[id].speakingStyle` | ✓ | String | 話し方の特徴（MCP出力時に表示） |
 | `characters[id].greeting` | ✓ | String | アサイン時の挨拶メッセージ |
 | `characters[id].farewell` | ✓ | String | 解放時のお別れメッセージ |
-| `characters[id].default_style` | ✓ | String | デフォルトスタイルID |
-| `characters[id].style_selection` | ✓ | String | スタイル選択方法 (default/random) |
+| `characters[id].defaultStyle` | ✓ | String | デフォルトスタイル名 |
 | `characters[id].disabled` | ✓ | Boolean | キャラクターの無効化フラグ |
 
-**注意**: `speaker_id`や`available_styles`は動的検出されるため設定不要です。
+**注意**: 
+- `speakerId`は動的検出されるため通常は設定不要です（新規キャラクター作成時のみ必須）
 
-### スタイル選択のカスタマイズ
+### 新規キャラクターの作成
 
-キャラクターごとにスタイル選択方法を設定可能：
+COEIROINKの音声ライブラリに対応する新規キャラクターを定義できます：
 
 ```json
 {
   "characters": {
-    "tsukuyomi": {
-      "style_selection": "random",
-      "default_style": "normal"
+    "my_custom_character": {
+      "name": "カスタムキャラクター",
+      "speakerId": "d1143ac1-c486-4273-92ef-a30938d01b91",  // 必須: COEIROINKのspeakerUuid
+      "personality": "独自の性格設定",
+      "speakingStyle": "独自の話し方",
+      "greeting": "カスタム挨拶メッセージ",
+      "farewell": "カスタムお別れメッセージ",
+      "defaultStyle": "のーまる"
     }
   }
 }
 ```
 
-- **default**: デフォルトスタイルを常に使用
-- **random**: 利用可能なスタイルからランダム選択
+**重要**: 新規キャラクター作成時は`speakerId`（COEIROINKのspeakerUuid）が必須です。  
+利用可能なspeakerIdは`http://localhost:50032/v1/speakers`で確認できます。
 
 ### 一時的なスタイル指定
 

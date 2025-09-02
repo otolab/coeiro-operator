@@ -14,8 +14,8 @@ export interface ConnectionConfig {
 }
 
 export interface VoiceSettings {
-    default_speaker_id?: string;
-    default_style_id?: number;
+    defaultSpeakerId?: string;
+    defaultStyleId?: number;
     rate: number;  // 話速（WPM）
 }
 

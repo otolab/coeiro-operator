@@ -13,22 +13,28 @@ import { getSpeakerProvider, type SpeakerData } from '../environment/speaker-pro
 export interface CharacterConfig {
     name: string;
     personality: string;
-    speaking_style: string;
+    speakingStyle: string;
     greeting: string;
     farewell: string;
-    default_style: string;
-    speaker_id: string | null;  // COEIROINKのspeakerUuid
+    defaultStyle: string;
+    speakerId: string | null;  // COEIROINKのspeakerUuid
     disabled?: boolean;
 }
 
+interface CharacterSettings {
+    assignmentStrategy?: 'random';  // オペレータ割り当て戦略（現在はrandomのみ実装）
+}
+
 interface UserConfig {
-    characters: Record<string, Partial<CharacterConfig>>;
+    characters?: Record<string, Partial<CharacterConfig>>;
     operatorTimeout?: number; // ミリ秒単位のタイムアウト期間
+    characterSettings?: CharacterSettings;  // グローバルなキャラクター動作設定
 }
 
 interface MergedConfig {
     characters: Record<string, CharacterConfig>;
     operatorTimeout: number; // ミリ秒単位のタイムアウト期間
+    characterSettings: CharacterSettings;  // グローバルなキャラクター動作設定
 }
 
 export class ConfigManager {
@@ -152,7 +158,7 @@ export class ConfigManager {
 
         // 強制リフレッシュの場合（現在はキャッシュなしで常に最新データ）
 
-        const userConfig = await this.readJsonFile<UserConfig>(this.operatorConfigFile, { characters: {} });
+        const userConfig = await this.readJsonFile<UserConfig>(this.operatorConfigFile, { characters: {}, characterSettings: {} });
         const dynamicCharacters: Record<string, CharacterConfig> = {};
         
         // 利用可能なSpeakerから動的設定を生成
@@ -163,24 +169,24 @@ export class ConfigManager {
                 const builtinConfig = BUILTIN_CHARACTER_CONFIGS[speaker.id as keyof typeof BUILTIN_CHARACTER_CONFIGS] || {
                     name: speaker.name,
                     personality: "丁寧で親しみやすい",
-                    speaking_style: "標準的な口調",
+                    speakingStyle: "標準的な口調",
                     greeting: `こんにちは。${speaker.name}です。`,
                     farewell: "お疲れさまでした。",
-                    default_style: "normal"
+                    defaultStyle: "normal"
                 };
                 
                 // 基本設定にSpeaker情報を追加
                 const characterConfig: CharacterConfig = {
                     ...builtinConfig,
                     name: speaker.name, // Speakerプロバイダからの正確な名前を使用
-                    speaker_id: speaker.speaker_id
+                    speakerId: speaker.speakerId
                 };
                 
                 // デフォルトスタイルがスタイル一覧に存在するか確認
                 // 存在しない場合は最初のスタイルをデフォルトに
                 if (speaker.styles.length > 0 && 
-                    !speaker.styles.find(s => s.name === builtinConfig.default_style)) {
-                    characterConfig.default_style = speaker.styles[0].name;
+                    !speaker.styles.find(s => s.name === builtinConfig.defaultStyle)) {
+                    characterConfig.defaultStyle = speaker.styles[0].name;
                 }
                 
                 dynamicCharacters[speaker.id] = characterConfig;
@@ -190,7 +196,7 @@ export class ConfigManager {
             for (const [charId, builtinConfig] of Object.entries(BUILTIN_CHARACTER_CONFIGS)) {
                 dynamicCharacters[charId] = {
                     ...builtinConfig,
-                    speaker_id: null // Speaker情報がない
+                    speakerId: null // Speaker情報がない
                 };
             }
         }
@@ -198,19 +204,56 @@ export class ConfigManager {
         // ユーザー設定でオーバーライド（disabledフラグ対応）
         const mergedCharacters: Record<string, CharacterConfig> = {};
         for (const [charId, charConfig] of Object.entries(dynamicCharacters)) {
-            const userCharConfig = userConfig.characters[charId] || {};
+            const userCharConfig = userConfig.characters?.[charId] || {};
             
             // disabledフラグがtrueの場合はスキップ
-            if (userCharConfig.disabled) {
+            if (userCharConfig.disabled === true) {
                 continue;
             }
             
             mergedCharacters[charId] = this.deepMerge(charConfig, userCharConfig);
         }
         
+        // ユーザー設定に存在するが動的設定にないキャラクターもチェック（手動追加対応）
+        if (userConfig.characters) {
+            for (const [charId, userCharConfig] of Object.entries(userConfig.characters)) {
+                if (!dynamicCharacters[charId] && !userCharConfig.disabled) {
+                    // 内蔵設定があるか確認
+                    const builtinConfig = BUILTIN_CHARACTER_CONFIGS[charId as keyof typeof BUILTIN_CHARACTER_CONFIGS];
+                    
+                    if (builtinConfig) {
+                        // 内蔵設定がある場合はそれをベースに使用
+                        mergedCharacters[charId] = this.deepMerge({
+                            ...builtinConfig,
+                            speakerId: null
+                        }, userCharConfig);
+                    } else if (userCharConfig.speakerId) {
+                        // 新規カスタムキャラクター（speakerIdが必須）
+                        const defaultConfig: CharacterConfig = {
+                            name: userCharConfig.name || charId,
+                            personality: userCharConfig.personality || "カスタムキャラクター",
+                            speakingStyle: userCharConfig.speakingStyle || "標準的な口調",
+                            greeting: userCharConfig.greeting || `こんにちは。${userCharConfig.name || charId}です。`,
+                            farewell: userCharConfig.farewell || "お疲れさまでした。",
+                            defaultStyle: userCharConfig.defaultStyle || "normal",
+                            speakerId: userCharConfig.speakerId,
+                            disabled: false
+                        };
+                        mergedCharacters[charId] = this.deepMerge(defaultConfig, userCharConfig);
+                    } else {
+                        // speakerIdがない新規キャラクターはエラーログを出して無視
+                        console.error(`[ConfigManager] キャラクター '${charId}' の作成に失敗: speakerIdが必須です`);
+                    }
+                }
+            }
+        }
+        
         this.mergedConfig = {
             characters: mergedCharacters,
-            operatorTimeout: userConfig.operatorTimeout || 4 * 60 * 60 * 1000 // デフォルト4時間
+            operatorTimeout: userConfig.operatorTimeout || 4 * 60 * 60 * 1000, // デフォルト4時間
+            characterSettings: {
+                assignmentStrategy: userConfig.characterSettings?.assignmentStrategy || 'random',
+            }
         };
         
         return this.mergedConfig;
