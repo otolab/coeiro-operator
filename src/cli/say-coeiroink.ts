@@ -18,6 +18,7 @@ interface ParsedOptions {
     inputFile: string;
     outputFile: string;
     text: string;
+    style?: string;
     chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
     bufferSize: number;
 }
@@ -32,7 +33,7 @@ class SayCoeiroinkCLI {
     }
 
     async showUsage(): Promise<void> {
-        console.log(`Usage: say-coeiroink [-v voice] [-r rate] [-o outfile] [-f file | text] [-s] [--chunk-mode mode] [--buffer-size size]
+        console.log(`Usage: say-coeiroink [-v voice] [-r rate] [-o outfile] [-f file | text] [--style style] [--chunk-mode mode] [--buffer-size size]
 
 低レイテンシストリーミング音声合成・再生（macOS sayコマンド互換）
 
@@ -41,6 +42,7 @@ Options:
     -r rate            Speech rate in words per minute (default: ${this.config.voice.rate})
     -o outfile         Write audio to file instead of playing (WAV format)
     -f file            Read text from file (use '-' for stdin)
+    --style style      Specify voice style (e.g., 'のーまる', 'セクシー')
     --chunk-mode mode  Text splitting mode: punctuation|none|small|medium|large (default: punctuation)
     --buffer-size size Audio buffer size in bytes: ${BUFFER_SIZES.MIN}-${BUFFER_SIZES.MAX} (default: ${BUFFER_SIZES.DEFAULT})
     -h                 Show this help
@@ -124,6 +126,11 @@ Examples:
                     break;
                 
                 
+                case '--style':
+                    options.style = args[i + 1];
+                    i++;
+                    break;
+                
                 case '--chunk-mode':
                     const chunkMode = args[i + 1];
                     if (!['none', 'small', 'medium', 'large', 'punctuation'].includes(chunkMode)) {
@@ -197,6 +204,7 @@ Examples:
             voice: options.voice || null,
             rate: options.rate,
             outputFile: options.outputFile || null,
+            style: options.style || undefined,
             chunkMode: options.chunkMode,
             bufferSize: options.bufferSize
         });
@@ -223,7 +231,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // メイン実行関数
 async function main(): Promise<void> {
     // デバッグモード判定
-    const isDebugMode = process.argv.includes('--debug') || process.env.COEIRO_DEBUG === 'true';
+    const isDebugMode = process.argv.includes('--debug');
     
     // CLIモードでは通常ログレベル（info）を使用、デバッグモードではdebugレベル
     if (isDebugMode) {

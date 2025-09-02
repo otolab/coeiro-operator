@@ -8,15 +8,10 @@ MCPサーバーにはデバッグモードが組み込まれており、分割�
 
 以下のいずれかの方法でデバッグモードを有効化できます：
 
-1. **コマンドライン引数**:
-   ```bash
-   node dist/mcp/server.js --debug
-   ```
-
-2. **環境変数**:
-   ```bash
-   COEIRO_DEBUG=true node dist/mcp/server.js
-   ```
+コマンドライン引数でデバッグモードを有効化：
+```bash
+node dist/mcp/server.js --debug
+```
 
 デバッグモードでは、標準出力に詳細なログが出力され、すべてのログレベル（debug、verbose含む）が蓄積されます。通常のMCPモードではMCP規格準拠のため標準出力にエラーのみが出力され、蓄積はinfo以上のログに限定されます。
 

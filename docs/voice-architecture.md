@@ -6,6 +6,36 @@ COEIRO Operatorにおける音声関連の型定義と概念の詳細説明
 
 COEIRO Operatorは、COEIROINKの音声合成機能を拡張し、キャラクター性や性格を付与した音声オペレータシステムを提供します。このドキュメントでは、システムの中核となる型定義とその関係性について説明します。
 
+## 🎯 階層構造と概念
+
+### 音声システムの4層構造
+
+```
+┌─────────────────────────────────────────────┐
+│              Operator（オペレータ）            │
+│  - セッション単位で管理される音声キャラクター    │
+│  - スタイル指定の保存・永続化                  │
+└────────────────────┬────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────┐
+│             Character（キャラクター）          │
+│  - Speakerに性格・口調を付与                  │
+│  - デフォルトスタイルの定義                    │
+└────────────────────┬────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────┐
+│              Speaker（スピーカー）             │
+│  - COEIROINKの純粋な音声モデル                │
+│  - 複数のStyleを保持                          │
+└────────────────────┬────────────────────────┘
+                     │
+┌────────────────────▼────────────────────────┐
+│             VoiceConfig（音声設定）            │
+│  - 実際の音声合成に使用される最終設定          │
+│  - Speaker + 選択されたStyle                  │
+└─────────────────────────────────────────────┘
+```
+
 ## 🎯 主要な型定義
 
 ### 1. Speaker（音声モデル）
@@ -37,7 +67,9 @@ export interface Speaker {
  */
 export interface Style {
     styleId: number;        // COEIROINK APIのstyleId
-    styleName: string;      // スタイル名（例: "のーまる", "あんぬい"）
+    styleName: string;      // スタイル名（例: "のーまる", "セクシー"）
+    personality?: string;   // スタイル特有の性格（オプション）
+    speakingStyle?: string; // スタイル特有の話し方（オプション）
 }
 ```
 
@@ -54,14 +86,13 @@ export interface Style {
  * ユーザーとのインタラクションに必要な全情報を含む
  */
 export interface Character {
-    id: string;                    // キャラクター識別子
-    name: string;                  // キャラクター名
-    personality: string;           // 性格設定
-    speaking_style: string;        // 話し方の特徴
-    greeting: string;             // 挨拶メッセージ
-    farewell: string;             // 別れの挨拶
-    defaultStyle: string;         // デフォルトスタイル名
-    speaker: Speaker | null;      // 関連付けられたSpeaker情報
+    characterId: string;           // キャラクター識別子
+    speaker: Speaker | null;       // 関連付けられたSpeaker情報
+    defaultStyle: string;          // デフォルトスタイル名
+    greeting: string;              // 挨拶メッセージ
+    farewell: string;              // 別れの挨拶
+    personality: string;           // 基本性格設定
+    speakingStyle: string;         // 基本的な話し方
 }
 ```
 
@@ -69,8 +100,30 @@ export interface Character {
 - Speakerに人格・性格を付与したもの
 - ユーザーフレンドリーな設定情報を含む
 - デフォルトのスタイル選択を含む
+- 設定ファイルで定義・カスタマイズ可能
 
-### 4. VoiceConfig（音声設定）
+### 4. Operator（オペレータ）
+
+```typescript
+/**
+ * Operator: セッション管理されるCharacterインスタンス
+ * 端末セッションごとに割り当てられ、スタイル選択が永続化される
+ */
+export interface OperatorSession {
+    characterId: string;           // 割り当てられたキャラクターID
+    styleId?: number;              // 保存されたスタイルID
+    styleName?: string;            // 保存されたスタイル名
+    assignedAt: number;            // 割り当て時刻（タイムスタンプ）
+}
+```
+
+**特徴:**
+- 端末セッション（TERM_SESSION_ID）単位で管理
+- スタイル指定がセッション期間中（最大4時間）保持
+- タイムアウト機能（デフォルト4時間）で自動解放
+- 排他制御により同一キャラクターの重複使用を防止
+
+### 5. VoiceConfig（音声設定）
 
 ```typescript
 /**
@@ -86,98 +139,152 @@ export interface VoiceConfig {
 **特徴:**
 - 実際の音声合成処理で使用される最終的な設定
 - AudioSynthesizerが受け取る唯一の音声情報型
-- CharacterからdefaultStyleを使用して生成される
+- CharacterとOperatorの設定を統合して生成
+
+## 🔄 スタイル選択の優先順位
+
+スタイルは以下の優先順位で決定されます：
+
+1. **明示的な指定** (最優先)
+   - CLIの`--style`オプション
+   - MCPツールの`style`パラメータ
+   - APIの`style`引数
+
+2. **オペレータセッション保存値**
+   - `operator-manager assign --style=<スタイル名>`で保存された値
+   - セッション期間中（最大4時間）は保持
+
+3. **キャラクターのデフォルト**
+   - Character定義の`defaultStyle`
+   - 設定ファイルでカスタマイズ可能
+
+4. **最初のスタイル** (フォールバック)
+   - Speakerのstyles配列の最初の要素
+
+### スタイル選択フローの例
+
+```
+ユーザー: say-coeiroink --style "セクシー" "テスト"
+    ↓
+1. 明示的指定あり → "セクシー"を使用 ✓
+
+ユーザー: say-coeiroink "テスト"  # スタイル指定なし
+    ↓
+1. 明示的指定なし
+2. オペレータセッション確認
+   → 保存されたstyleId: 121 (セクシー) あり
+   → "セクシー"を使用 ✓
+
+ユーザー: operator-manager release → assign angie
+ユーザー: say-coeiroink "テスト"
+    ↓
+1. 明示的指定なし
+2. オペレータセッション確認 → styleIdなし
+3. CharacterのdefaultStyle → "のーまる"を使用 ✓
+```
 
 ## 🔄 型の変換フロー
 
 ```
-ユーザー入力
+ユーザー入力（CharacterId + オプションのスタイル指定）
     ↓
-CharacterId (string)
+OperatorManager.assignOperator()
+    ├→ Character取得 (CharacterInfoService)
+    ├→ スタイル選択・検証
+    └→ OperatorSession作成（スタイル保存）
     ↓
-Character取得 (CharacterInfoService)
+音声合成時
+    ├→ getCurrentVoiceConfig()
+    │   ├→ OperatorSession取得
+    │   ├→ Character情報取得
+    │   └→ スタイル決定（優先順位に従う）
+    └→ VoiceConfig生成
     ↓
-VoiceConfig生成 (Speaker + selectedStyleId)
-    ↓
-音声合成 (AudioSynthesizer)
+AudioSynthesizer.synthesize(VoiceConfig)
+    └→ COEIROINK API呼び出し
 ```
 
-### 変換の詳細
+## 💾 データ保存
 
-1. **ユーザー入力 → CharacterId**
-   - CLIコマンドやMCPツールからCharacterIdを受け取る
-   - 例: `"tsukuyomi"`, `"alma"`
+### OperatorSession（オペレータセッション）
 
-2. **CharacterId → Character**
-   - CharacterInfoServiceからCharacter情報を取得
-   - ConfigManagerの設定とCOEIROINKサーバーの情報を統合
+**保存場所:** `/tmp/coeiroink-operators-<hostname>.json`  
+**保存期間:** 最大4時間（タイムアウト後自動削除）
 
-3. **Character → VoiceConfig**
-   - CharacterのdefaultStyleまたは指定されたスタイルを使用
-   - Speaker情報とstyleIdを組み合わせてVoiceConfigを生成
+```json
+{
+  "sessions": {
+    "terminal_session_123": {
+      "characterId": "angie",
+      "styleId": 121,
+      "styleName": "セクシー",
+      "assignedAt": 1698123456789
+    }
+  }
+}
+```
 
-4. **VoiceConfig → 音声合成**
-   - AudioSynthesizerがVoiceConfigのみを受け取る
-   - 純粋な音声合成処理に必要な情報のみを使用
+**注意:** これは一時的なセッション情報であり、タイムアウト後やシステム再起動時には失われます。
 
-## 🏗️ アーキテクチャの利点
+### Character設定
 
-### 1. 責任の分離
-- **Speaker**: 音声モデルの技術的情報
-- **Character**: ユーザー体験とインタラクション
-- **VoiceConfig**: 音声合成の実行情報
+**保存場所:** `~/.coeiro-operator/operator-config.json`
 
-### 2. 型安全性
-- string型のIDが深い層まで伝播しない
-- 各層で適切な型を使用
-- コンパイル時の型チェックで誤りを防止
-
-### 3. 拡張性
-- 新しいSpeakerの追加が容易
-- Character設定のカスタマイズが独立
-- スタイル選択ロジックの変更が局所的
-
-### 4. パフォーマンス
-- 不要なAPI呼び出しの削減
-- 入力層での一度の変換で完了
-- キャッシュの複雑性を排除
-
-## 🔌 統合ポイント
-
-### ConfigManager
-- COEIROINKサーバーから動的にSpeaker情報を取得
-- ユーザー設定でCharacterをカスタマイズ
-- Speaker情報とCharacter設定を統合
-
-### CharacterInfoService
-- Character情報の管理と取得
-- スタイル選択ロジックの実装
-- defaultStyleの管理
-
-### OperatorManager
-- セッション単位のCharacter割り当て
-- オペレータの状態管理
-- CharacterとSessionの関連付け
+```json
+{
+  "characters": {
+    "angie": {
+      "defaultStyle": "のーまる",
+      "greeting": "カスタム挨拶",
+      "personality": "カスタム性格"
+    }
+  }
+}
+```
 
 ## 📝 実装例
 
-### CharacterIdからVoiceConfigへの変換
+### オペレータ割り当て時のスタイル保存
 
 ```typescript
-// index.ts内の実装
-private async resolveCharacterToConfig(
-    characterId: string, 
-    styleName?: string | null
-): Promise<VoiceConfig> {
-    // CharacterInfoServiceからCharacter情報を取得
-    const character = await this.operatorManager.getCharacterInfo(characterId);
+// OperatorManager.assignSpecificOperator()
+async assignSpecificOperator(characterId: string, style: string | null = null) {
+    // Character情報取得
+    const character = await this.characterInfoService.getCharacterInfo(characterId);
     
-    if (!character || !character.speaker) {
-        throw new Error(`Character '${characterId}' not found or has no speaker`);
+    // スタイル選択
+    const selectedStyle = this.characterInfoService.selectStyle(character, style);
+    
+    // セッションに保存（スタイル情報を含む）
+    await this.reserveOperator(characterId, selectedStyle.styleId, selectedStyle.styleName);
+    
+    return {
+        characterId,
+        currentStyle: selectedStyle,
+        // ...
+    };
+}
+```
+
+### 音声合成時のスタイル解決
+
+```typescript
+// SayCoeiroink.getCurrentVoiceConfig()
+async getCurrentVoiceConfig(styleName?: string | null): Promise<VoiceConfig | null> {
+    const session = await this.operatorManager.getCurrentOperatorSession();
+    const character = await this.operatorManager.getCharacterInfo(session.characterId);
+    
+    let selectedStyle;
+    if (styleName) {
+        // 1. 明示的指定を優先
+        selectedStyle = this.selectStyle(character, styleName);
+    } else if (session?.styleId) {
+        // 2. セッション保存値を使用
+        selectedStyle = character.speaker.styles.find(s => s.styleId === session.styleId);
+    } else {
+        // 3. デフォルトスタイルを使用
+        selectedStyle = this.selectStyle(character, null);
     }
-    
-    // スタイル選択（指定があればそれを、なければdefaultStyle）
-    const selectedStyle = this.operatorManager.selectStyle(character, styleName);
     
     return {
         speaker: character.speaker,
@@ -186,36 +293,47 @@ private async resolveCharacterToConfig(
 }
 ```
 
-### 音声合成の実行
+## 🎮 使用例
 
-```typescript
-// AudioSynthesizer内の実装
-async synthesizeChunk(
-    chunk: Chunk, 
-    voiceConfig: VoiceConfig, 
-    speed: number
-): Promise<AudioResult> {
-    // VoiceConfigから必要な情報を取得
-    const voiceId = voiceConfig.speaker.speakerId;
-    const styleId = voiceConfig.selectedStyleId;
-    
-    // COEIROINK APIを呼び出し
-    const synthesisParam = {
-        text: chunk.text,
-        speakerUuid: voiceId,
-        styleId: styleId,
-        speedScale: speed,
-        // ... その他のパラメータ
-    };
-    
-    // 音声合成を実行
-    // ...
-}
+### CLI使用例
+
+```bash
+# オペレータ割り当て（スタイル指定あり）
+operator-manager assign angie --style=セクシー
+
+# スタイルが保存され、以降のコマンドで使用される
+say-coeiroink "このメッセージはセクシースタイルで再生"
+
+# 明示的な指定で一時的に上書き
+say-coeiroink --style "のーまる" "このメッセージだけ通常スタイル"
+
+# 再び保存されたスタイルが使用される
+say-coeiroink "またセクシースタイルに戻る"
 ```
+
+### MCP使用例
+
+```javascript
+// オペレータ割り当て
+await operator_assign({ operator: "angie", style: "セクシー" });
+
+// スタイルが保存され、以降の呼び出しで使用
+await say({ message: "セクシースタイルで話すよ" });
+
+// 明示的な指定で一時的に上書き
+await say({ message: "通常スタイルで話すよ", style: "のーまる" });
+```
+
+## 🔧 設定とカスタマイズ
+
+詳細な設定方法については以下のドキュメントを参照：
+
+- [設定ガイド](configuration-guide.md) - 基本設定とカスタマイズ
+- [キャラクター詳細](CHARACTERS.md) - 各キャラクターの詳細情報
+- [オペレータ仕様](operator-assignment-specification.md) - オペレータ管理の詳細
 
 ## 📚 関連ドキュメント
 
-- [CharacterInfoService仕様](./character-info-service.md)
-- [VoiceProviderシステム](./voice-provider-system.md)
-- [設定ガイド](./configuration-guide.md)
-- [キャラクター一覧](./CHARACTERS.md)
+- [README.md](../README.md) - プロジェクト概要
+- [開発Tips](development-tips.md) - 開発者向け情報
+- [テストガイド](testing-guide.md) - テスト方法

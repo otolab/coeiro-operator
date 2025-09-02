@@ -211,10 +211,10 @@ npm run test:coeiro-e2e
 ##### デバッグログによる動作検証
 ```bash
 # 詳細ログ付きでMCPサーバーを起動
-COEIRO_DEBUG=true node dist/mcp/server.js --debug
+node dist/mcp/server.js --debug
 
 # 分割モード動作の確認（ログで "Using punctuation-based splitting" を確認）
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"これは最初の文です。これは二番目の文です。"}},"id":1}' | COEIRO_DEBUG=true node dist/mcp/server.js --debug
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"これは最初の文です。これは二番目の文です。"}},"id":1}' | node dist/mcp/server.js --debug
 ```
 
 #### 音声合成テストコマンド例
@@ -249,7 +249,7 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"parallel_generation_control","arguments":{"maxConcurrency":3}},"id":6}' | node dist/mcp/server.js
 
 # ログレベル変更（デバッグモード）
-COEIRO_DEBUG=true node dist/mcp/server.js
+node dist/mcp/server.js --debug
 
 # 設定状況確認
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_logs","arguments":{"action":"stats"}},"id":7}' | node dist/mcp/server.js

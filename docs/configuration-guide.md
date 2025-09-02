@@ -86,7 +86,7 @@ COEIRO Operatorの詳細な設定方法とカスタマイズオプションに�
 | `characters[id].speakingStyle` | ✓ | String | 話し方の特徴（MCP出力時に表示） |
 | `characters[id].greeting` | ✓ | String | アサイン時の挨拶メッセージ |
 | `characters[id].farewell` | ✓ | String | 解放時のお別れメッセージ |
-| `characters[id].defaultStyle` | ✓ | String | デフォルトスタイル名 |
+| `characters[id].defaultStyle` | ✓ | String | デフォルトスタイル名（スタイル未指定時のデフォルト） |
 | `characters[id].disabled` | ✓ | Boolean | キャラクターの無効化フラグ |
 
 **注意**: 
@@ -349,6 +349,61 @@ EOF
 - **JSON形式**: 正しいJSON形式を維持（構文エラー防止）
 - **キャラクター無効化**: `disabled: true`で特定キャラクターを無効化可能
 - **部分設定**: 必要な項目のみオーバーライド可能（全項目定義は不要）
+
+## スタイル管理と永続化
+
+### スタイル選択の優先順位
+
+音声合成時のスタイルは以下の優先順位で決定されます：
+
+1. **明示的な指定** (最優先)
+   - CLIの`--style`オプション: `say-coeiroink --style "セクシー" "テキスト"`
+   - MCPツールの`style`パラメータ: `say({ message: "テキスト", style: "セクシー" })`
+
+2. **オペレータセッション保存値**
+   - `operator-manager assign --style=<スタイル名>`で保存された値
+   - セッション期間中（最大4時間）は永続化
+
+3. **キャラクターのデフォルト**
+   - Character定義の`defaultStyle`（`operator-config.json`でカスタマイズ可能）
+
+4. **最初のスタイル** (フォールバック)
+   - Speakerのstyles配列の最初の要素
+
+### スタイル永続化の仕組み
+
+オペレータ割り当て時にスタイルを指定すると、そのスタイルがセッションに保存されます：
+
+```bash
+# スタイル付きでオペレータを割り当て
+operator-manager assign angie --style=セクシー
+
+# 以降、スタイル指定なしでもセクシースタイルが使用される
+say-coeiroink "このメッセージはセクシースタイルで再生"
+
+# 明示的な指定で一時的に上書き
+say-coeiroink --style "のーまる" "このメッセージだけ通常スタイル"
+
+# 再び保存されたスタイルが使用される
+say-coeiroink "またセクシースタイルに戻る"
+```
+
+### active-operators.json（セッション状態）
+
+**保存場所**: `~/.coeiro-operator/active-operators.json`
+
+```json
+{
+  "sessions": {
+    "terminal_session_123": {
+      "characterId": "angie",
+      "styleId": 121,          // 保存されたスタイルID
+      "styleName": "セクシー",   // 保存されたスタイル名
+      "assignedAt": 1698123456789
+    }
+  }
+}
+```
 
 ### キャラクター利用について
 
