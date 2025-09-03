@@ -810,24 +810,18 @@ server.registerTool("parallel_generation_control", {
 server.registerTool("dictionary_register", {
   description: "COEIROINKのユーザー辞書に単語を登録します。専門用語や固有名詞の読み方を正確に制御できます。",
   inputSchema: {
-    words: z.array(z.object({
-      word: z.string().describe("登録する単語（半角英数字も可、自動で全角変換されます）"),
-      yomi: z.string().describe("読み方（全角カタカナ）"),
-      accent: z.number().describe("アクセント位置（0:平板型、1以上:該当モーラが高い）"),
-      numMoras: z.number().describe("モーラ数（カタカナの音節数）")
-    })).optional().describe("登録する単語の配列（省略時はデフォルト辞書を登録）"),
-    preset: z.enum(["default", "technical", "characters", "all"]).optional()
-      .describe("プリセット辞書の選択（default:技術用語、characters:キャラ名、all:全て）"),
-    persist: z.boolean().optional().describe("登録した辞書を永続化するか（デフォルト: true）"),
-    host: z.string().optional().describe("COEIROINKサーバーのホスト（デフォルト: localhost）"),
-    port: z.union([z.string(), z.number()]).optional().describe("COEIROINKサーバーのポート（デフォルト: 50032）")
+    word: z.string().describe("登録する単語（半角英数字も可、自動で全角変換されます）"),
+    yomi: z.string().describe("読み方（全角カタカナ）"),
+    accent: z.number().describe("アクセント位置（0:平板型、1以上:該当モーラが高い）"),
+    numMoras: z.number().describe("モーラ数（カタカナの音節数）")
   }
 }, async (args): Promise<ToolResponse> => {
-  const { words, preset = "default", persist = true, host, port } = args;
+  const { word, yomi, accent, numMoras } = args;
   
   try {
-    // DictionaryClientのインスタンス作成
-    const client = new DictionaryClient({ host, port });
+    // 設定から接続情報を取得
+    const config = await loadConfig();
+    const client = new DictionaryClient(config?.connection);
     
     // 接続確認
     const isConnected = await client.checkConnection();
@@ -836,88 +830,51 @@ server.registerTool("dictionary_register", {
         content: [{
           type: "text",
           text: "❌ COEIROINKサーバーに接続できません。\n" +
-                "サーバーが起動していることを確認してください。\n" +
-                `接続先: http://${host || 'localhost'}:${port || '50032'}`
+                "サーバーが起動していることを確認してください。"
         }]
       };
     }
     
-    // 登録する単語を決定
-    let wordsToRegister: DictionaryWord[] = [];
+    // 単語を登録
+    const newWord: DictionaryWord = { word, yomi, accent, numMoras };
     
-    if (words && words.length > 0) {
-      // カスタム単語が指定された場合
-      wordsToRegister = words;
-    } else {
-      // プリセット辞書を使用
-      switch (preset) {
-        case "technical":
-        case "default":
-          wordsToRegister = DEFAULT_TECHNICAL_WORDS;
-          break;
-        case "characters":
-          wordsToRegister = CHARACTER_NAME_WORDS;
-          break;
-        case "all":
-          wordsToRegister = [...DEFAULT_TECHNICAL_WORDS, ...CHARACTER_NAME_WORDS];
-          break;
+    // 既存の辞書を読み込み
+    let existingWords: DictionaryWord[] = [];
+    try {
+      const savedDictionary = await dictionaryPersistenceManager.load();
+      if (savedDictionary) {
+        existingWords = savedDictionary.customWords || [];
       }
+    } catch (error) {
+      logger.warn(`既存辞書の読み込みに失敗: ${(error as Error).message}`);
     }
     
-    if (wordsToRegister.length === 0) {
-      return {
-        content: [{
-          type: "text",
-          text: "⚠️ 登録する単語がありません。"
-        }]
-      };
-    }
+    // 重複チェック（同じ単語があれば上書き）
+    const updatedWords = existingWords.filter(w => w.word !== word);
+    updatedWords.push(newWord);
     
-    // 辞書登録実行
-    const result = await client.registerWords(wordsToRegister);
+    // すべての辞書（デフォルト＋カスタム）を登録
+    const allWords = [...DEFAULT_TECHNICAL_WORDS, ...CHARACTER_NAME_WORDS, ...updatedWords];
+    const result = await client.registerWords(allWords);
     
     if (result.success) {
-      // 永続化処理
-      if (persist) {
-        try {
-          // カスタム単語のみを保存（プリセットは設定で管理）
-          const customWordsToSave = (words && words.length > 0) ? words : [];
-          const includeDefaults = preset === "all" || preset === "default" || preset === "technical" || preset === "characters";
-          
-          await dictionaryPersistenceManager.save(customWordsToSave, includeDefaults);
-          logger.info(`辞書データを永続化しました: カスタム${customWordsToSave.length}個、デフォルト含む=${includeDefaults}`);
-        } catch (error) {
-          logger.warn(`辞書の永続化に失敗しました: ${(error as Error).message}`);
-        }
-      }
-      
-      // 登録内容の詳細を表示
-      let detailText = "📝 登録された単語:\n";
-      detailText += "─".repeat(60) + "\n";
-      detailText += "単語\t\t読み方\t\tアクセント\tモーラ数\n";
-      detailText += "─".repeat(60) + "\n";
-      
-      for (const word of wordsToRegister) {
-        const paddedWord = word.word.padEnd(16);
-        const paddedYomi = word.yomi.padEnd(16);
-        detailText += `${paddedWord}${paddedYomi}${word.accent}\t\t${word.numMoras}\n`;
-      }
-      detailText += "─".repeat(60);
-      
-      let persistMessage = "";
-      if (persist) {
-        persistMessage = "\n✅ 辞書データを永続化しました（次回起動時に自動登録されます）\n";
+      // 永続化処理（カスタム単語のみ保存）
+      try {
+        await dictionaryPersistenceManager.save(updatedWords, true);
+        logger.info(`辞書に単語を追加: ${word} → ${yomi}`);
+      } catch (error) {
+        logger.warn(`辞書の永続化に失敗しました: ${(error as Error).message}`);
       }
       
       return {
         content: [{
           type: "text",
-          text: `✅ ${result.registeredCount}個の単語を辞書に登録しました\n\n` +
-                detailText + persistMessage + "\n\n" +
-                "⚠️ 注意事項:\n" +
-                "• 登録した辞書はCOEIROINK再起動時にリセットされます\n" +
-                "• 全角で登録された単語は半角入力にも適用されます\n" +
-                "• 永続化した辞書は次回起動時に自動的に登録されます"
+          text: `✅ 単語を辞書に登録しました\n\n` +
+                `単語: ${word}\n` +
+                `読み方: ${yomi}\n` +
+                `アクセント: ${accent}\n` +
+                `モーラ数: ${numMoras}\n\n` +
+                `💾 辞書データは永続化され、次回起動時に自動登録されます。`
         }]
       };
     } else {
