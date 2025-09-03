@@ -18,6 +18,7 @@ import {
   DEFAULT_TECHNICAL_WORDS,
   CHARACTER_NAME_WORDS 
 } from '../core/dictionary/dictionary-client.js';
+import { DictionaryPersistenceManager } from '../core/dictionary/dictionary-persistence.js';
 
 const program = new Command();
 
@@ -36,6 +37,8 @@ program
   .option('--list', 'デフォルト辞書の内容を表示')
   .option('--export <path>', 'デフォルト辞書をJSONファイルにエクスポート')
   .option('--test <word>', '指定した単語の韻律解析をテスト')
+  .option('--persist', '辞書データを永続化する（デフォルト: true）', true)
+  .option('--no-persist', '辞書データを永続化しない')
   .parse(process.argv);
 
 const options = program.opts();
@@ -177,6 +180,22 @@ async function main() {
   if (result.success) {
     console.log(`✅ ${result.registeredCount}個の単語を登録しました\n`);
     
+    // 永続化処理
+    if (options.persist) {
+      try {
+        const persistenceManager = new DictionaryPersistenceManager();
+        
+        // カスタム単語のみを保存（プリセットは設定で管理）
+        const customWordsToSave = options.word ? wordsToRegister : [];
+        const includeDefaults = options.preset === 'all' || options.preset === 'technical' || options.preset === 'characters';
+        
+        await persistenceManager.save(customWordsToSave, includeDefaults);
+        console.log('💾 辞書データを永続化しました（次回起動時に自動登録されます）\n');
+      } catch (error: any) {
+        console.warn(`⚠️ 辞書の永続化に失敗しました: ${error.message}\n`);
+      }
+    }
+    
     // 登録内容を表示
     console.log('登録された単語:');
     console.log('─'.repeat(60));
@@ -193,7 +212,11 @@ async function main() {
     console.log('\n⚠️ 注意事項:');
     console.log('• 登録した辞書はCOEIROINK再起動時にリセットされます');
     console.log('• 全角で登録された単語は半角入力にも適用されます');
-    console.log('• 永続的な登録が必要な場合は管理画面をご利用ください');
+    if (options.persist) {
+      console.log('• 永続化した辞書は次回起動時に自動的に登録されます');
+    } else {
+      console.log('• 永続的な登録が必要な場合は --persist オプションを使用してください');
+    }
   } else {
     console.error(`❌ 辞書登録に失敗しました: ${result.error}`);
     process.exit(1);
