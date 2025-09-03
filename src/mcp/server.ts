@@ -6,6 +6,7 @@ import { SayCoeiroink, loadConfig } from "../core/say/index.js";
 import { OperatorManager } from "../core/operator/index.js";
 import type { Character } from "../core/operator/character-info-service.js";
 import { logger, LoggerPresets } from "../utils/logger.js";
+import { DictionaryService } from "../core/dictionary/dictionary-service.js";
 
 interface StyleInfo {
   id: string;
@@ -84,6 +85,7 @@ logger.info("Initializing COEIRO Operator services...");
 
 let sayCoeiroink: SayCoeiroink;
 let operatorManager: OperatorManager;
+let dictionaryService: DictionaryService;
 
 try {
   const config = await loadConfig(configPath);
@@ -98,7 +100,11 @@ try {
   operatorManager = new OperatorManager();
   await operatorManager.initialize();
   
-  logger.info("SayCoeiroink and OperatorManager initialized successfully");
+  logger.info("Initializing Dictionary...");
+  dictionaryService = new DictionaryService(config?.connection);
+  await dictionaryService.initialize();
+  
+  logger.info("SayCoeiroink, OperatorManager and Dictionary initialized successfully");
 } catch (error) {
   logger.error("Failed to initialize services:", (error as Error).message);
   logger.error("Error stack:", (error as Error).stack);
@@ -112,6 +118,9 @@ try {
     
     operatorManager = new OperatorManager();
     await operatorManager.initialize();
+    
+    dictionaryService = new DictionaryService();
+    await dictionaryService.initialize();
     logger.info("Fallback initialization completed");
   } catch (fallbackError) {
     logger.error("Fallback initialization also failed:", (fallbackError as Error).message);
@@ -740,6 +749,61 @@ server.registerTool("parallel_generation_control", {
     
   } catch (error) {
     throw new Error(`並行生成制御エラー: ${(error as Error).message}`);
+  }
+});
+
+// 辞書登録ツール
+server.registerTool("dictionary_register", {
+  description: "COEIROINKのユーザー辞書に単語を登録します。専門用語や固有名詞の読み方を正確に制御できます。",
+  inputSchema: {
+    word: z.string().describe("登録する単語（半角英数字も可、自動で全角変換されます）"),
+    yomi: z.string().describe("読み方（全角カタカナ）"),
+    accent: z.number().describe("アクセント位置（0:平板型、1以上:該当モーラが高い）"),
+    numMoras: z.number().describe("モーラ数（カタカナの音節数）")
+  }
+}, async (args): Promise<ToolResponse> => {
+  const { word, yomi, accent, numMoras } = args;
+  
+  try {
+    // 接続確認
+    const isConnected = await dictionaryService.checkConnection();
+    if (!isConnected) {
+      return {
+        content: [{
+          type: "text",
+          text: "❌ COEIROINKサーバーに接続できません。\n" +
+                "サーバーが起動していることを確認してください。"
+        }]
+      };
+    }
+    
+    // 単語を登録（DictionaryServiceが永続化まで処理）
+    const success = await dictionaryService.addWord({ word, yomi, accent, numMoras });
+    
+    if (success) {
+      return {
+        content: [{
+          type: "text",
+          text: `✅ 単語を辞書に登録しました\n\n` +
+                `単語: ${word}\n` +
+                `読み方: ${yomi}\n` +
+                `アクセント: ${accent}\n` +
+                `モーラ数: ${numMoras}\n\n` +
+                `💾 辞書データは永続化され、次回起動時に自動登録されます。`
+        }]
+      };
+    } else {
+      return {
+        content: [{
+          type: "text",
+          text: `❌ 辞書登録に失敗しました`
+        }]
+      };
+    }
+    
+  } catch (error) {
+    logger.error(`Dictionary registration error:`, error);
+    throw new Error(`辞書登録エラー: ${(error as Error).message}`);
   }
 });
 

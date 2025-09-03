@@ -121,6 +121,7 @@ operator-manager clear                               # 全クリア
 - `operator_styles` - キャラクタースタイル一覧表示
 - `say` - 音声出力（ストリーミング再生・並行生成対応）
 - `parallel_generation_control` - 並行生成設定の動的制御
+- `dictionary_register` - ユーザー辞書に単語を登録（永続化対応）
 
 ## 設定・カスタマイズ
 
