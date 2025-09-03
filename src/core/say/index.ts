@@ -3,9 +3,9 @@
  * MCPサーバから直接呼び出し可能なモジュール
  */
 
-import { readFile, access, mkdir } from 'fs/promises';
+import { readFile, access } from 'fs/promises';
 import { constants } from 'fs';
-import { join } from 'path';
+import { getConfigDir, getConfigPath } from '../common/config-paths.js';
 import { OperatorManager } from '../operator/index.js';
 import type { Character, Speaker } from '../operator/character-info-service.js';
 import { SpeechQueue } from './speech-queue.js';
@@ -13,7 +13,6 @@ import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
 import { logger } from '../../utils/logger.js';
 import {
-    DEFAULT_VOICE,
     CONNECTION_SETTINGS,
     SAMPLE_RATES,
     BUFFER_SIZES,
@@ -42,9 +41,10 @@ const DEFAULT_CONFIG: Config = {
         host: CONNECTION_SETTINGS.DEFAULT_HOST,
         port: CONNECTION_SETTINGS.DEFAULT_PORT
     },
-    voice: {
+    operator: {
         rate: SYNTHESIS_SETTINGS.DEFAULT_RATE,
-        defaultSpeakerId: DEFAULT_VOICE.ID  // つくよみちゃん「れいせい」（COEIROINKデフォルト）
+        timeout: 14400000,  // 4時間
+        assignmentStrategy: 'random' as const
     },
     audio: {
         latencyMode: 'balanced',
@@ -56,7 +56,8 @@ const DEFAULT_CONFIG: Config = {
             bufferAheadCount: 1,      // 先読みチャンク数
             pauseUntilFirstComplete: true // 初回チャンク完了まで並行生成をポーズ（レイテンシ改善、デフォルト有効）
         }
-    }
+    },
+    characters: {}
 };
 
 // ストリーミング設定
@@ -69,40 +70,6 @@ const STREAM_CONFIG: StreamConfig = {
     preloadChunks: STREAM_SETTINGS.PRELOAD_CHUNKS
 };
 
-/**
- * 設定ディレクトリを決定（ホームディレクトリベース）
- */
-async function getConfigDir(): Promise<string> {
-    // ホームディレクトリの ~/.coeiro-operator/ を優先
-    const homeDir = join(process.env.HOME || process.env.USERPROFILE || '~', '.coeiro-operator');
-    
-    try {
-        await mkdir(homeDir, { recursive: true });
-        return homeDir;
-    } catch {
-        // フォールバック: 作業ディレクトリの .coeiroink/
-        const workDir = join(process.cwd(), '.coeiroink');
-        try {
-            await mkdir(workDir, { recursive: true });
-            return workDir;
-        } catch {
-            // 最終フォールバック: /tmp/coeiroink-mcp-shared/
-            const tmpDir = '/tmp/coeiroink-mcp-shared';
-            try {
-                await mkdir(tmpDir, { recursive: true });
-            } catch {}
-            return tmpDir;
-        }
-    }
-}
-
-/**
- * 設定ファイルのパスを取得
- */
-async function getConfigPath(filename: string): Promise<string> {
-    const configDir = await getConfigDir();
-    return join(configDir, filename);
-}
 
 
 /**
@@ -110,7 +77,7 @@ async function getConfigPath(filename: string): Promise<string> {
  */
 export async function loadConfig(configFile: string | null = null): Promise<Config> {
     if (!configFile) {
-        configFile = await getConfigPath('coeiroink-config.json');
+        configFile = await getConfigPath('config.json');
     }
     
     try {
@@ -385,7 +352,7 @@ export class SayCoeiroink {
     } {
         const resolved = {
             voice: options.voice || null,
-            rate: options.rate || this.config.voice?.rate || 200,
+            rate: options.rate || this.config.operator.rate,
             outputFile: options.outputFile || null,
             style: options.style || null,
             chunkMode: options.chunkMode || this.config.audio?.splitMode || 'punctuation',
@@ -488,8 +455,8 @@ export class SayCoeiroink {
                 logger.info(`オペレータ音声を使用: ${operatorVoice.speaker.speakerName} (スタイル: ${styleName})`);
                 voiceConfig = operatorVoice;
             } else if (resolvedOptions.allowFallback) {
-                // CLIのみ: デフォルトキャラクターを使用
-                const defaultCharacterId = this.config.voice?.defaultSpeakerId || DEFAULT_VOICE.ID;
+                // CLIのみ: デフォルトキャラクターを使用（つくよみちゃん）
+                const defaultCharacterId = 'tsukuyomi';
                 logger.info(`デフォルトキャラクターを使用: ${defaultCharacterId}`);
                 voiceConfig = await this.resolveCharacterToConfig(defaultCharacterId, resolvedOptions.style);
             } else {

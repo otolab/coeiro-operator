@@ -3,7 +3,7 @@
  * COEIROINKサーバーからの動的Speaker情報取得を一元管理
  */
 
-import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
+import { CONNECTION_SETTINGS } from '../say/constants.js';
 
 export interface VoiceStyle {
     styleId: number;
@@ -16,20 +16,6 @@ export interface Speaker {
     styles: VoiceStyle[];
 }
 
-/**
- * SpeakerData: COEIROINKから取得したSpeaker情報をシステム内部で使用する形式に変換したもの
- * ConfigManagerがCharacterを生成するための元データとして使用
- */
-export interface SpeakerData {
-    id: string;
-    name: string;
-    speakerId: string;
-    styles: Array<{
-        id: number;
-        name: string;
-        styleId: number;
-    }>;
-}
 
 export interface ConnectionConfig {
     host: string;
@@ -113,25 +99,14 @@ export class SpeakerProvider {
      */
     async getFirstStyleId(voiceId: string): Promise<number> {
         const styles = await this.getVoiceStyles(voiceId);
-        return styles.length > 0 ? styles[0].styleId : DEFAULT_VOICE.STYLE_ID;
+        return styles.length > 0 ? styles[0].styleId : 0; // デフォルトスタイルID
     }
 
     /**
-     * ConfigManager用のSpeakerData形式に変換
+     * 全Speakerを取得（エイリアス）
      */
-    async getVoicesForConfig(): Promise<SpeakerData[]> {
-        const speakers = await this.getSpeakers();
-        
-        return speakers.map(speaker => ({
-            id: this.speakerNameToId(speaker.speakerName),
-            name: speaker.speakerName,
-            speakerId: speaker.speakerUuid,
-            styles: speaker.styles.map(style => ({
-                id: style.styleId,
-                name: style.styleName,
-                styleId: style.styleId
-            }))
-        }));
+    async getAllSpeakers(): Promise<Speaker[]> {
+        return await this.getSpeakers();
     }
 
     /**

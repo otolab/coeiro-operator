@@ -9,7 +9,8 @@
  * - Operator: sessionId毎に割り当てられたCharacter
  */
 
-import ConfigManager, { CharacterConfig } from './config-manager.js';
+import ConfigManager from './config-manager.js';
+import { CharacterConfig } from './character-defaults.js';
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
 
 /**
@@ -67,10 +68,7 @@ async function convertCharacterConfigToCharacter(characterId: string, config: Ch
                     speakerName: apiSpeaker.speakerName,
                     styles: apiSpeaker.styles.map(style => ({
                         styleId: style.styleId,
-                        styleName: style.styleName,
-                        personality: '', // APIからは取得できないため空
-                        speakingStyle: '', // APIからは取得できないため空
-                        disabled: false
+                        styleName: style.styleName
                     }))
                 };
             } else {
@@ -121,11 +119,14 @@ export class CharacterInfoService {
     /**
      * キャラクター情報を取得
      */
-    async getCharacterInfo(characterId: string): Promise<Character> {
+    async getCharacterInfo(characterId: string): Promise<Character | null> {
         if (!this.configManager) {
             throw new Error('CharacterInfoService is not initialized');
         }
         const config = await this.configManager.getCharacterConfig(characterId);
+        if (!config) {
+            return null;
+        }
         return await convertCharacterConfigToCharacter(characterId, config);
     }
 
@@ -169,10 +170,12 @@ export class CharacterInfoService {
      * 挨拶パターンを自動抽出
      */
     async extractGreetingPatterns(): Promise<string[]> {
+        // ConfigManagerにgetGreetingPatternsメソッドがないため、空配列を返す
+        // 将来的に実装する場合は、ConfigManagerに適切なメソッドを追加する
         if (!this.configManager) {
             throw new Error('CharacterInfoService is not initialized');
         }
-        return await this.configManager.getGreetingPatterns();
+        return [];
     }
 
     // 削除: updateVoiceSettingメソッド
@@ -184,13 +187,16 @@ export class CharacterInfoService {
      * 指定されたキャラクターIDからCharacter情報を取得
      * オペレータ割り当て時に使用
      */
-    async getOperatorCharacterInfo(characterId: string): Promise<Character> {
+    async getOperatorCharacterInfo(characterId: string): Promise<Character | null> {
         if (!this.configManager) {
             throw new Error('CharacterInfoService is not initialized');
         }
 
         try {
             const config = await this.configManager.getCharacterConfig(characterId);
+            if (!config) {
+                return null;
+            }
             return await convertCharacterConfigToCharacter(characterId, config);
         } catch (error) {
             throw new Error(`オペレータ '${characterId}' は存在しないか無効です`);

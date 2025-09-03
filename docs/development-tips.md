@@ -350,6 +350,20 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":
 
 Jest E2Eテストにより、開発効率が大幅に向上し、自動化されたテストで品質を保証できます。
 
+## ユーティリティスクリプト
+
+### scripts/ディレクトリのツール
+
+```bash
+# COEIROINKから利用可能なスピーカー情報を取得
+node scripts/get-speakers.js
+
+# ダウンロード可能なスピーカー一覧を取得
+node scripts/get-downloadable-speakers.js
+```
+
+これらのスクリプトはCOEIROINK APIから情報を取得して、キャラクター設定の開発に役立ちます。
+
 ## その他の開発テクニック
 
 ### ビルドとテストの自動化

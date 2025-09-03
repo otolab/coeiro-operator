@@ -39,7 +39,7 @@ class SayCoeiroinkCLI {
 
 Options:
     -v voice           Specify voice (voice ID or name, use '?' to list available voices)
-    -r rate            Speech rate in words per minute (default: ${this.config.voice.rate})
+    -r rate            Speech rate in words per minute (default: ${this.config.operator.rate})
     -o outfile         Write audio to file instead of playing (WAV format)
     -f file            Read text from file (use '-' for stdin)
     --style style      Specify voice style (e.g., 'のーまる', 'セクシー')
@@ -81,7 +81,7 @@ Examples:
     private async parseArguments(args: string[]): Promise<ParsedOptions> {
         const options: ParsedOptions = {
             voice: process.env.COEIROINK_VOICE || '',
-            rate: this.config.voice.rate,
+            rate: this.config.operator.rate,
             inputFile: '',
             outputFile: '',
             text: '',

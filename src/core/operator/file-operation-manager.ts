@@ -5,7 +5,6 @@
 
 import { readFile, writeFile, stat, unlink, rename, access } from 'fs/promises';
 import { constants } from 'fs';
-import { DEFAULT_VOICE, CONNECTION_SETTINGS } from '../say/constants.js';
 
 // 期限付きストレージ構造
 export interface TimedStorage<T> {
@@ -249,52 +248,6 @@ export class FileOperationManager<T> {
         });
     }
 
-    /**
-     * 音声設定を更新（従来の互換性メソッド）
-     */
-    async updateVoiceSetting(
-        coeiroinkConfigFile: string, 
-        voiceId: string | null, 
-        styleId: number = 0
-    ): Promise<void> {
-        try {
-            // デフォルト設定を生成
-            const defaultConfig = {
-                connection: {
-                    host: CONNECTION_SETTINGS.DEFAULT_HOST,
-                    port: CONNECTION_SETTINGS.DEFAULT_PORT
-                },
-                voice: {
-                    rate: 200,
-                    default_speaker_id: DEFAULT_VOICE.ID
-                },
-                audio: {
-                    latencyMode: 'balanced',
-                    splitMode: 'punctuation',
-                    bufferSize: 1024
-                }
-            };
-            
-            const config = await this.readJsonFile(coeiroinkConfigFile, defaultConfig) as Record<string, unknown>;
-            
-            // 設定を更新
-            if (!config.voice) {
-                config.voice = {};
-            }
-            const voiceConfig = config.voice as Record<string, unknown>;
-            
-            if (voiceId) {
-                voiceConfig.default_speaker_id = voiceId;
-            }
-            if (styleId !== undefined) {
-                voiceConfig.default_style_id = styleId;
-            }
-            
-            await this.writeJsonFile(coeiroinkConfigFile, config);
-        } catch (error) {
-            console.error(`音声設定更新エラー: ${(error as Error).message}`);
-        }
-    }
 }
 
 export default FileOperationManager;

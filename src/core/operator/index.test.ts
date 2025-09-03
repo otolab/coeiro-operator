@@ -22,54 +22,43 @@ describe('OperatorManager', () => {
         const configSubDir = join(tempDir, '.coeiro-operator');
         await mkdir(configSubDir, { recursive: true });
         
-        // 設定ファイルのモックを作成
-        const coeiroinkConfig = {
-            host: 'localhost',
-            port: '50032',
-            voice: {
-                default_speaker_id: 'test-voice-123',
-                rate: 200
-            }
-        };
-        await writeFile(join(configSubDir, 'coeiroink-config.json'), JSON.stringify(coeiroinkConfig), 'utf8');
-        
-        const operatorConfig = {
+        // 統一設定ファイルのモックを作成
+        const config = {
+            connection: {
+                host: 'localhost',
+                port: '50032'
+            },
+            operator: {
+                rate: 200,
+                timeout: 14400000,
+                assignmentStrategy: 'random'
+            },
+            audio: {
+                latencyMode: 'balanced',
+                splitMode: 'punctuation'
+            },
             characters: {
                 'test-operator-1': {
                     name: 'テストオペレータ1',
                     personality: 'テスト用',
                     speakingStyle: 'フレンドリー',
-                    speakerId: 'test-voice-1',
+                    greeting: 'こんにちは',
+                    farewell: 'さようなら',
                     defaultStyle: 'normal',
-                    styles: {
-                        normal: {
-                            styleName: 'ノーマル',
-                            personality: '普通',
-                            speakingStyle: '標準',
-                            styleId: 0,
-                            disabled: false
-                        }
-                    }
+                    speakerId: 'test-voice-1'
                 },
                 'test-operator-2': {
                     name: 'テストオペレータ2',
                     personality: 'テスト用2',
                     speakingStyle: 'クール',
-                    speakerId: 'test-voice-2',
+                    greeting: 'やあ',
+                    farewell: 'またね',
                     defaultStyle: 'cool',
-                    styles: {
-                        cool: {
-                            styleName: 'クール',
-                            personality: 'クール',
-                            speakingStyle: '冷静',
-                            styleId: 1,
-                            disabled: false
-                        }
-                    }
+                    speakerId: 'test-voice-2'
                 }
             }
         };
-        await writeFile(join(configSubDir, 'operator-config.json'), JSON.stringify(operatorConfig), 'utf8');
+        await writeFile(join(configSubDir, 'config.json'), JSON.stringify(config), 'utf8');
         
         operatorManager = new OperatorManager();
         
