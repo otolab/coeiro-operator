@@ -5,14 +5,12 @@
  * キャラクター:スタイル単位での管理とMCP情報提供に対応
  */
 
-import { mkdir, stat, unlink, access } from 'fs/promises';
-import { constants } from 'fs';
 import { join } from 'path';
-import { spawn } from 'child_process';
-import ConfigManager, { CharacterConfig } from './config-manager.js';
+import ConfigManager from './config-manager.js';
 import FileOperationManager from './file-operation-manager.js';
 import { hostname } from 'os';
 import CharacterInfoService, { Character, Speaker, Style } from './character-info-service.js';
+import { getConfigDir } from '../common/config-paths.js';
 
 // セッション情報（キャラクターとスタイルの組み合わせ）
 interface CharacterSession {
@@ -58,32 +56,6 @@ interface StatusResult {
     message: string;
 }
 
-/**
- * 設定ディレクトリを決定（ホームディレクトリベース）
- */
-async function getConfigDir(): Promise<string> {
-    // ホームディレクトリの ~/.coeiro-operator/ を優先
-    const homeDir = join(process.env.HOME || process.env.USERPROFILE || '~', '.coeiro-operator');
-    
-    try {
-        await mkdir(homeDir, { recursive: true });
-        return homeDir;
-    } catch {
-        // フォールバック: 作業ディレクトリの .coeiroink/
-        const workDir = join(process.cwd(), '.coeiroink');
-        try {
-            await mkdir(workDir, { recursive: true });
-            return workDir;
-        } catch {
-            // 最終フォールバック: /tmp/coeiroink-mcp-shared/
-            const tmpDir = '/tmp/coeiroink-mcp-shared';
-            try {
-                await mkdir(tmpDir, { recursive: true });
-            } catch {}
-            return tmpDir;
-        }
-    }
-}
 
 /**
  * セッションIDを取得
@@ -172,7 +144,7 @@ export class OperatorManager {
     /**
      * キャラクター情報を取得
      */
-    async getCharacterInfo(characterId: string): Promise<Character> {
+    async getCharacterInfo(characterId: string): Promise<Character | null> {
         return await this.characterInfoService.getCharacterInfo(characterId);
     }
 
@@ -242,6 +214,9 @@ export class OperatorManager {
         let character: Character | null = null;
         try {
             character = await this.characterInfoService.getCharacterInfo(characterId);
+            if (!character) {
+                character = null;
+            }
         } catch {
             character = null;
         }
@@ -338,9 +313,12 @@ export class OperatorManager {
         }
 
         // キャラクター情報を取得
-        let character: Character;
+        let character: Character | null;
         try {
             character = await this.characterInfoService.getOperatorCharacterInfo(specifiedCharacter);
+            if (!character) {
+                throw new Error(`オペレータ '${specifiedCharacter}' は存在しないか無効です`);
+            }
         } catch (error) {
             throw error; // CharacterInfoServiceで適切なエラーメッセージが設定される
         }
@@ -422,9 +400,15 @@ export class OperatorManager {
         
         const { characterId, styleId, styleName } = operatorSession;
         
-        let character: Character;
+        let character: Character | null;
         try {
             character = await this.characterInfoService.getCharacterInfo(characterId);
+            if (!character) {
+                return {
+                    characterId,
+                    message: `現在のオペレータ: ${characterId} (キャラクター情報なし)`
+                };
+            }
         } catch (error) {
             return {
                 characterId,

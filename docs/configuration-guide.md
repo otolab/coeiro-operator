@@ -20,8 +20,8 @@ COEIRO Operatorの詳細な設定方法とカスタマイズオプションに�
 ```
 
 ### 設定の優先順位
-1. **内蔵デフォルト設定** (基盤): 13キャラクターの内蔵設定
-2. **動的音声検出** (自動): COEIROINKサーバーから音声情報取得
+1. **内蔵デフォルト設定** (基盤): 13キャラクターの内蔵設定（speakerIdで識別）
+2. **動的音声検出** (自動): COEIROINKサーバーから音声情報取得（speakerIdでマッチング）
 3. **ユーザー設定** (カスタマイズ): `~/.coeiro-operator/operator-config.json`
 
 ## オペレータ設定（キャラクター管理）
@@ -90,30 +90,36 @@ COEIRO Operatorの詳細な設定方法とカスタマイズオプションに�
 | `characters[id].disabled` | ✓ | Boolean | キャラクターの無効化フラグ |
 
 **注意**: 
-- `speakerId`は動的検出されるため通常は設定不要です（新規キャラクター作成時のみ必須）
+- キャラクターIDは`tsukuyomi`のような識別子で、内蔵キャラクターは固定です
+- 各キャラクターは`speakerId`（UUID）でCOEIROINKのSpeakerと紐付けられます
+- 起動時に利用可能なspeakerIdを持つキャラクターのみが有効になります
 
-### 新規キャラクターの作成
+### キャラクターとSpeakerの関係
 
-COEIROINKの音声ライブラリに対応する新規キャラクターを定義できます：
+- **キャラクターID**: `tsukuyomi`, `angie`など、オペレータ指定に使用する識別子
+- **speakerId**: COEIROINKのSpeaker UUID（音声を特定）
+- **マッチング**: 起動時にspeakerIdでCOEIROINKのSpeakerと自動マッチング
+- **利用可能性**: COEIROINKで利用可能なspeakerのみがオペレータ候補となる
 
-```json
-{
-  "characters": {
-    "my_custom_character": {
-      "name": "カスタムキャラクター",
-      "speakerId": "d1143ac1-c486-4273-92ef-a30938d01b91",  // 必須: COEIROINKのspeakerUuid
-      "personality": "独自の性格設定",
-      "speakingStyle": "独自の話し方",
-      "greeting": "カスタム挨拶メッセージ",
-      "farewell": "カスタムお別れメッセージ",
-      "defaultStyle": "のーまる"
-    }
-  }
-}
-```
+### 利用可能なキャラクターID一覧
 
-**重要**: 新規キャラクター作成時は`speakerId`（COEIROINKのspeakerUuid）が必須です。  
-利用可能なspeakerIdは`http://localhost:50032/v1/speakers`で確認できます。
+| キャラクターID | 表示名 | speakerId |
+|------|------|------|
+| tsukuyomi | つくよみちゃん | 3c37646f-3881-5374-2a83-149267990abc |
+| angie | アンジーさん | cc213e6d-d847-45b5-a1df-415744c890f2 |
+| alma | アルマちゃん | c97966b1-d80c-04f5-aba5-d30a92843b59 |
+| akane | AI声優-朱花 | d1143ac1-c486-4273-92ef-a30938d01b91 |
+| kana | KANA | 297a5b91-f88a-6951-5841-f1e648b2e594 |
+| kanae | AI声優-金苗 | d41bcbd9-f4a9-4e10-b000-7a431568dd01 |
+| mana | MANA | 292ea286-3d5f-f1cc-157c-66462a6a9d08 |
+| dia | ディアちゃん | b28bb401-bc43-c9c7-77e4-77a2bbb4b283 |
+| rilin | リリンちゃん | cb11bdbd-78fc-4f16-b528-a400bae1782d |
+| ofutonp | おふとんP | a60ebf6c-626a-7ce6-5d69-c92bf2a1a1d0 |
+| kurowa | クロワちゃん | cc1153b4-d20c-46dd-a308-73ca38c0e85a |
+| aoba | AI声優-青葉 | d219f5ab-a50b-4d99-a26a-a9fc213e9100 |
+| ginga | AI声優-銀芽 | d312d0fb-d38d-434e-825d-cbcbfd105ad0 |
+
+**利用可能なspeakerIdの確認**: `http://localhost:50032/v1/speakers`
 
 ### 一時的なスタイル指定
 

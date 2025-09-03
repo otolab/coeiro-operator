@@ -190,6 +190,9 @@ async function getTargetCharacter(
   if (characterId) {
     try {
       const character = await manager.getCharacterInfo(characterId);
+      if (!character) {
+        throw new Error(`キャラクター '${characterId}' が見つかりません`);
+      }
       return { character, characterId };
     } catch (error) {
       throw new Error(`キャラクター '${characterId}' が見つかりません`);
@@ -409,6 +412,9 @@ server.registerTool("say", {
     if (style && currentOperator.characterId) {
       try {
         const character = await operatorManager.getCharacterInfo(currentOperator.characterId);
+        if (!character) {
+          throw new Error(`キャラクター情報が取得できません`);
+        }
         
         // 利用可能なスタイルを取得
         const availableStyles = character.speaker?.styles || [];
@@ -604,13 +610,16 @@ server.registerTool("operator_styles", {
   const { character } = args || {};
   
   try {
-    let targetCharacter: Character;
+    let targetCharacter: Character | null;
     let targetCharacterId: string;
     
     if (character) {
       // 指定されたキャラクターの情報を取得
       try {
         targetCharacter = await operatorManager.getCharacterInfo(character);
+        if (!targetCharacter) {
+          throw new Error(`キャラクター '${character}' が見つかりません`);
+        }
         targetCharacterId = character;
       } catch (error) {
         throw new Error(`キャラクター '${character}' が見つかりません`);

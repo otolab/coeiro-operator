@@ -4,19 +4,18 @@
 
 export interface Config {
     connection: ConnectionConfig;
-    voice: VoiceSettings;
     audio: AudioConfig;
+    operator: {
+        rate: number;       // 話速（WPM）
+        timeout: number;
+        assignmentStrategy: 'random';
+    };
+    characters: Record<string, any>;
 }
 
 export interface ConnectionConfig {
     host: string;
     port: string;
-}
-
-export interface VoiceSettings {
-    defaultSpeakerId?: string;
-    defaultStyleId?: number;
-    rate: number;  // 話速（WPM）
 }
 
 export interface AudioConfig {
