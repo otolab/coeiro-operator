@@ -31,9 +31,6 @@ export const DEFAULT_TECHNICAL_WORDS: DictionaryWord[] = [
     { word: 'JSON', yomi: 'ジェイソン', accent: 1, numMoras: 4 },
     { word: 'CLI', yomi: 'シーエルアイ', accent: 0, numMoras: 6 },
     { word: 'GUI', yomi: 'ジーユーアイ', accent: 0, numMoras: 6 },
-    
-    // プロジェクト固有
-    { word: 'KARTE', yomi: 'カルテ', accent: 1, numMoras: 3 },
 ];
 
 /**

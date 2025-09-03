@@ -9,6 +9,19 @@ COEIRO Operatorは辞書データの永続化と自動登録機能を提供し�
 - **永続化**: 登録した辞書を`~/.coeiro-operator/user-dictionary.json`に保存
 - **自動登録**: MCPサーバー起動時に保存された辞書を自動的に登録
 - **半角英数字の自動変換**: API制限を回避して半角英数字も登録可能
+- **デフォルト辞書**: 技術用語とキャラクター名を事前定義
+
+### デフォルト辞書の内容
+
+#### 技術用語
+- **音声合成**: COEIRO（コエイロ）、COEIROINK（コエイロインク）
+- **AI関連**: Claude（クロード）、Anthropic（アンソロピック）、ChatGPT（チャットジーピーティー）
+- **開発ツール**: GitHub（ギットハブ）、TypeScript（タイプスクリプト）、Node.js（ノードジェイエス）、npm（エヌピーエム）
+- **プロトコル**: MCP（エムシーピー）、API（エーピーアイ）、JSON（ジェイソン）、CLI（シーエルアイ）、GUI（ジーユーアイ）
+
+#### キャラクター名
+- つくよみちゃん（ツクヨミチャン）
+- アンジー、アルマ、ディア、リリン、クロワ
 
 ## 概要
 
@@ -71,7 +84,7 @@ dictionary-register
 dictionary-register --preset all
 
 # カスタム単語を登録
-dictionary-register --word KARTE --yomi カルテ --accent 1 --moras 3
+dictionary-register --word Redis --yomi レディス --accent 1 --moras 4
 
 # カスタム辞書ファイルから登録
 dictionary-register --file my-dictionary.json
@@ -82,20 +95,24 @@ dictionary-register --test "COEIRO"
 
 ### MCPツール
 
-Claude CodeのMCPツールから辞書を登録できます：
+Claude CodeのMCPツールから単語を簡単に登録できます。登録した単語は自動的に永続化され、次回起動時に復元されます。
 
 ```javascript
-// デフォルト辞書を登録（永続化）
-dictionary_register({ preset: "all" })
-
-// カスタム単語を登録
+// 単語を登録（自動的に永続化）
 dictionary_register({
-  words: [
-    { word: "KARTE", yomi: "カルテ", accent: 1, numMoras: 3 }
-  ],
-  persist: true  // 永続化（デフォルト: true）
+  word: "Redis",
+  yomi: "レディス",
+  accent: 1,      // 1番目のモーラ（「れ」）が高い
+  numMoras: 4     // レ・ディ・ス = 4モーラ
 })
 ```
+
+#### MCPツールの特徴
+- **単一単語の登録**: 一度に1つの単語を登録（シンプルなインターフェース）
+- **自動永続化**: 登録した単語は自動的に保存される
+- **重複管理**: 同じ単語を再登録すると自動的に上書き更新
+- **設定の自動取得**: COEIROINKサーバーの接続情報は設定ファイルから自動取得
+- **統合管理**: デフォルト辞書（技術用語・キャラクター名）とカスタム辞書を統合して管理
 
 ## API直接使用例
 
