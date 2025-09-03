@@ -6,9 +6,7 @@ import { SayCoeiroink, loadConfig } from "../core/say/index.js";
 import { OperatorManager } from "../core/operator/index.js";
 import type { Character } from "../core/operator/character-info-service.js";
 import { logger, LoggerPresets } from "../utils/logger.js";
-import { DictionaryClient, DictionaryWord } from "../core/dictionary/dictionary-client.js";
-import { DictionaryPersistenceManager } from "../core/dictionary/dictionary-persistence.js";
-import { DEFAULT_TECHNICAL_WORDS, CHARACTER_NAME_WORDS } from "../core/dictionary/default-dictionaries.js";
+import { DictionaryService } from "../core/dictionary/dictionary-service.js";
 
 interface StyleInfo {
   id: string;
@@ -87,7 +85,7 @@ logger.info("Initializing COEIRO Operator services...");
 
 let sayCoeiroink: SayCoeiroink;
 let operatorManager: OperatorManager;
-let dictionaryPersistenceManager: DictionaryPersistenceManager;
+let dictionaryService: DictionaryService;
 
 try {
   const config = await loadConfig(configPath);
@@ -103,61 +101,8 @@ try {
   await operatorManager.initialize();
   
   logger.info("Initializing Dictionary...");
-  dictionaryPersistenceManager = new DictionaryPersistenceManager();
-  
-  // 保存された辞書データを自動登録
-  try {
-    const savedDictionary = await dictionaryPersistenceManager.load();
-    if (savedDictionary) {
-      const dictionaryClient = new DictionaryClient();
-      const isConnected = await dictionaryClient.checkConnection();
-      
-      if (isConnected) {
-        let wordsToRegister: DictionaryWord[] = [];
-        
-        // デフォルト辞書を含める設定の場合
-        if (savedDictionary.includeDefaults) {
-          wordsToRegister = [...DEFAULT_TECHNICAL_WORDS, ...CHARACTER_NAME_WORDS];
-        }
-        
-        // カスタム単語を追加
-        if (savedDictionary.customWords && savedDictionary.customWords.length > 0) {
-          wordsToRegister = [...wordsToRegister, ...savedDictionary.customWords];
-        }
-        
-        if (wordsToRegister.length > 0) {
-          const result = await dictionaryClient.registerWords(wordsToRegister);
-          if (result.success) {
-            logger.info(`自動辞書登録: ${result.registeredCount}個の単語を登録しました`);
-          } else {
-            logger.warn(`自動辞書登録に失敗: ${result.error}`);
-          }
-        }
-      } else {
-        logger.warn("COEIROINKサーバーに接続できないため、辞書の自動登録をスキップしました");
-      }
-    } else {
-      logger.info("保存された辞書データがありません。初回起動時はデフォルト辞書を登録します");
-      
-      // 初回起動時はデフォルト辞書を登録して保存
-      const dictionaryClient = new DictionaryClient();
-      const isConnected = await dictionaryClient.checkConnection();
-      
-      if (isConnected) {
-        const defaultWords = [...DEFAULT_TECHNICAL_WORDS, ...CHARACTER_NAME_WORDS];
-        const result = await dictionaryClient.registerWords(defaultWords);
-        
-        if (result.success) {
-          logger.info(`デフォルト辞書を登録: ${result.registeredCount}個の単語`);
-          // 永続化
-          await dictionaryPersistenceManager.save([], true);
-          logger.info("辞書設定を保存しました");
-        }
-      }
-    }
-  } catch (error) {
-    logger.warn(`辞書の自動登録中にエラーが発生しました: ${(error as Error).message}`);
-  }
+  dictionaryService = new DictionaryService(config?.connection);
+  await dictionaryService.initialize();
   
   logger.info("SayCoeiroink, OperatorManager and Dictionary initialized successfully");
 } catch (error) {
@@ -174,7 +119,8 @@ try {
     operatorManager = new OperatorManager();
     await operatorManager.initialize();
     
-    dictionaryPersistenceManager = new DictionaryPersistenceManager();
+    dictionaryService = new DictionaryService();
+    await dictionaryService.initialize();
     logger.info("Fallback initialization completed");
   } catch (fallbackError) {
     logger.error("Fallback initialization also failed:", (fallbackError as Error).message);
@@ -819,12 +765,8 @@ server.registerTool("dictionary_register", {
   const { word, yomi, accent, numMoras } = args;
   
   try {
-    // 設定から接続情報を取得
-    const config = await loadConfig();
-    const client = new DictionaryClient(config?.connection);
-    
     // 接続確認
-    const isConnected = await client.checkConnection();
+    const isConnected = await dictionaryService.checkConnection();
     if (!isConnected) {
       return {
         content: [{
@@ -835,37 +777,10 @@ server.registerTool("dictionary_register", {
       };
     }
     
-    // 単語を登録
-    const newWord: DictionaryWord = { word, yomi, accent, numMoras };
+    // 単語を登録（DictionaryServiceが永続化まで処理）
+    const success = await dictionaryService.addWord({ word, yomi, accent, numMoras });
     
-    // 既存の辞書を読み込み
-    let existingWords: DictionaryWord[] = [];
-    try {
-      const savedDictionary = await dictionaryPersistenceManager.load();
-      if (savedDictionary) {
-        existingWords = savedDictionary.customWords || [];
-      }
-    } catch (error) {
-      logger.warn(`既存辞書の読み込みに失敗: ${(error as Error).message}`);
-    }
-    
-    // 重複チェック（同じ単語があれば上書き）
-    const updatedWords = existingWords.filter(w => w.word !== word);
-    updatedWords.push(newWord);
-    
-    // すべての辞書（デフォルト＋カスタム）を登録
-    const allWords = [...DEFAULT_TECHNICAL_WORDS, ...CHARACTER_NAME_WORDS, ...updatedWords];
-    const result = await client.registerWords(allWords);
-    
-    if (result.success) {
-      // 永続化処理（カスタム単語のみ保存）
-      try {
-        await dictionaryPersistenceManager.save(updatedWords, true);
-        logger.info(`辞書に単語を追加: ${word} → ${yomi}`);
-      } catch (error) {
-        logger.warn(`辞書の永続化に失敗しました: ${(error as Error).message}`);
-      }
-      
+    if (success) {
       return {
         content: [{
           type: "text",
@@ -881,7 +796,7 @@ server.registerTool("dictionary_register", {
       return {
         content: [{
           type: "text",
-          text: `❌ 辞書登録に失敗しました\n\nエラー: ${result.error}`
+          text: `❌ 辞書登録に失敗しました`
         }]
       };
     }

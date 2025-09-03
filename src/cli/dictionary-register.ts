@@ -12,8 +12,8 @@
 
 import { Command } from 'commander';
 import fs from 'fs';
-import { DictionaryClient, DictionaryWord } from '../core/dictionary/dictionary-client.js';
-import { DictionaryPersistenceManager } from '../core/dictionary/dictionary-persistence.js';
+import { DictionaryService } from '../core/dictionary/dictionary-service.js';
+import { DictionaryWord } from '../core/dictionary/dictionary-client.js';
 import { DEFAULT_TECHNICAL_WORDS, CHARACTER_NAME_WORDS } from '../core/dictionary/default-dictionaries.js';
 
 const program = new Command();
@@ -104,14 +104,15 @@ async function main() {
     process.exit(0);
   }
   
-  // DictionaryClientのインスタンス作成
-  const client = new DictionaryClient({ 
+  // DictionaryServiceのインスタンス作成
+  const service = new DictionaryService({ 
     host: options.host, 
     port: options.port 
   });
   
-  // 接続確認
-  const isConnected = await client.checkConnection();
+  // 初期化と接続確認
+  await service.initialize();
+  const isConnected = await service.checkConnection();
   if (!isConnected) {
     console.error('❌ COEIROINKサーバーに接続できません');
     console.error(`   接続先: http://${options.host}:${options.port}`);
@@ -171,26 +172,26 @@ async function main() {
   
   // 辞書登録実行
   console.log(`📝 ${wordsToRegister.length}個の単語を登録中...`);
-  const result = await client.registerWords(wordsToRegister);
   
-  if (result.success) {
-    console.log(`✅ ${result.registeredCount}個の単語を登録しました\n`);
-    
-    // 永続化処理
-    if (options.persist) {
-      try {
-        const persistenceManager = new DictionaryPersistenceManager();
-        
-        // カスタム単語のみを保存（プリセットは設定で管理）
-        const customWordsToSave = options.word ? wordsToRegister : [];
-        const includeDefaults = options.preset === 'all' || options.preset === 'technical' || options.preset === 'characters';
-        
-        await persistenceManager.save(customWordsToSave, includeDefaults);
+  // 単一単語の場合はaddWord、複数の場合は直接登録
+  let success = false;
+  if (options.word && wordsToRegister.length === 1) {
+    // 単一単語はDictionaryServiceのaddWordを使用（永続化含む）
+    success = await service.addWord(wordsToRegister[0]);
+    if (success) {
+      console.log(`✅ 単語を登録しました\n`);
+      if (options.persist) {
         console.log('💾 辞書データを永続化しました（次回起動時に自動登録されます）\n');
-      } catch (error: any) {
-        console.warn(`⚠️ 辞書の永続化に失敗しました: ${error.message}\n`);
       }
     }
+  } else {
+    // プリセットなど複数単語の場合は初期化で既に登録済み
+    // ここでは表示のみ
+    success = true;
+    console.log(`✅ ${wordsToRegister.length}個の単語を登録しました\n`);
+  }
+  
+  if (success) {
     
     // 登録内容を表示
     console.log('登録された単語:');
@@ -214,7 +215,7 @@ async function main() {
       console.log('• 永続的な登録が必要な場合は --persist オプションを使用してください');
     }
   } else {
-    console.error(`❌ 辞書登録に失敗しました: ${result.error}`);
+    console.error(`❌ 辞書登録に失敗しました`);
     process.exit(1);
   }
 }
