@@ -3,7 +3,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { DictionaryClient, DictionaryWord, DEFAULT_TECHNICAL_WORDS, CHARACTER_NAME_WORDS } from './dictionary-client.js';
+import { DictionaryClient, DictionaryWord } from './dictionary-client.js';
+import { DEFAULT_TECHNICAL_WORDS, CHARACTER_NAME_WORDS } from './default-dictionaries.js';
 
 // fetch のモック
 global.fetch = vi.fn();

@@ -6,13 +6,9 @@ import { SayCoeiroink, loadConfig } from "../core/say/index.js";
 import { OperatorManager } from "../core/operator/index.js";
 import type { Character } from "../core/operator/character-info-service.js";
 import { logger, LoggerPresets } from "../utils/logger.js";
-import { 
-  DictionaryClient, 
-  DictionaryWord,
-  DEFAULT_TECHNICAL_WORDS,
-  CHARACTER_NAME_WORDS 
-} from "../core/dictionary/dictionary-client.js";
+import { DictionaryClient, DictionaryWord } from "../core/dictionary/dictionary-client.js";
 import { DictionaryPersistenceManager } from "../core/dictionary/dictionary-persistence.js";
+import { DEFAULT_TECHNICAL_WORDS, CHARACTER_NAME_WORDS } from "../core/dictionary/default-dictionaries.js";
 
 interface StyleInfo {
   id: string;
