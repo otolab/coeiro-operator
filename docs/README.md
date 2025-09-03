@@ -29,6 +29,7 @@ COEIRO Operatorの包括的なドキュメント集です。目的別に整理�
 ### 設定ガイド
 - **[configuration-guide.md](configuration-guide.md)** - 設定・カスタマイズ完全ガイド
 - **[configuration-options.md](configuration-options.md)** - 設定オプション詳細リファレンス
+- **[user-dictionary-guide.md](user-dictionary-guide.md)** - ユーザー辞書登録ガイド（単語の読み方・アクセント設定）
 
 ### 設定サンプル
 - **[config-samples/](config-samples/)** - 用途別設定ファイルサンプル

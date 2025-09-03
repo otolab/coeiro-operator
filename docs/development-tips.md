@@ -360,6 +360,9 @@ node scripts/get-speakers.js
 
 # ダウンロード可能なスピーカー一覧を取得
 node scripts/get-downloadable-speakers.js
+
+# ユーザー辞書に単語を登録（読み方・アクセント設定）
+node scripts/register-words.js
 ```
 
 これらのスクリプトはCOEIROINK APIから情報を取得して、キャラクター設定の開発に役立ちます。

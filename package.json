@@ -6,7 +6,8 @@
   "bin": {
     "coeiro-operator": "./dist/mcp/server.js",
     "operator-manager": "./scripts/operator-manager",
-    "say-coeiroink": "./scripts/say-coeiroink"
+    "say-coeiroink": "./scripts/say-coeiroink",
+    "dictionary-register": "./dist/cli/dictionary-register.js"
   },
   "scripts": {
     "start": "node dist/mcp/server.js",
@@ -37,6 +38,8 @@
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
+    "@types/commander": "^2.12.0",
+    "commander": "^14.0.0",
     "dsp.js": "^1.0.1",
     "echogarden": "^2.9.0",
     "node-libsamplerate": "^1.0.0",

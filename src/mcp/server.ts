@@ -6,6 +6,13 @@ import { SayCoeiroink, loadConfig } from "../core/say/index.js";
 import { OperatorManager } from "../core/operator/index.js";
 import type { Character } from "../core/operator/character-info-service.js";
 import { logger, LoggerPresets } from "../utils/logger.js";
+import { 
+  DictionaryClient, 
+  DictionaryWord,
+  DEFAULT_TECHNICAL_WORDS,
+  CHARACTER_NAME_WORDS 
+} from "../core/dictionary/dictionary-client.js";
+import { DictionaryPersistenceManager } from "../core/dictionary/dictionary-persistence.js";
 
 interface StyleInfo {
   id: string;
@@ -84,6 +91,7 @@ logger.info("Initializing COEIRO Operator services...");
 
 let sayCoeiroink: SayCoeiroink;
 let operatorManager: OperatorManager;
+let dictionaryPersistenceManager: DictionaryPersistenceManager;
 
 try {
   const config = await loadConfig(configPath);
@@ -98,7 +106,64 @@ try {
   operatorManager = new OperatorManager();
   await operatorManager.initialize();
   
-  logger.info("SayCoeiroink and OperatorManager initialized successfully");
+  logger.info("Initializing Dictionary...");
+  dictionaryPersistenceManager = new DictionaryPersistenceManager();
+  
+  // 保存された辞書データを自動登録
+  try {
+    const savedDictionary = await dictionaryPersistenceManager.load();
+    if (savedDictionary) {
+      const dictionaryClient = new DictionaryClient();
+      const isConnected = await dictionaryClient.checkConnection();
+      
+      if (isConnected) {
+        let wordsToRegister: DictionaryWord[] = [];
+        
+        // デフォルト辞書を含める設定の場合
+        if (savedDictionary.includeDefaults) {
+          wordsToRegister = [...DEFAULT_TECHNICAL_WORDS, ...CHARACTER_NAME_WORDS];
+        }
+        
+        // カスタム単語を追加
+        if (savedDictionary.customWords && savedDictionary.customWords.length > 0) {
+          wordsToRegister = [...wordsToRegister, ...savedDictionary.customWords];
+        }
+        
+        if (wordsToRegister.length > 0) {
+          const result = await dictionaryClient.registerWords(wordsToRegister);
+          if (result.success) {
+            logger.info(`自動辞書登録: ${result.registeredCount}個の単語を登録しました`);
+          } else {
+            logger.warn(`自動辞書登録に失敗: ${result.error}`);
+          }
+        }
+      } else {
+        logger.warn("COEIROINKサーバーに接続できないため、辞書の自動登録をスキップしました");
+      }
+    } else {
+      logger.info("保存された辞書データがありません。初回起動時はデフォルト辞書を登録します");
+      
+      // 初回起動時はデフォルト辞書を登録して保存
+      const dictionaryClient = new DictionaryClient();
+      const isConnected = await dictionaryClient.checkConnection();
+      
+      if (isConnected) {
+        const defaultWords = [...DEFAULT_TECHNICAL_WORDS, ...CHARACTER_NAME_WORDS];
+        const result = await dictionaryClient.registerWords(defaultWords);
+        
+        if (result.success) {
+          logger.info(`デフォルト辞書を登録: ${result.registeredCount}個の単語`);
+          // 永続化
+          await dictionaryPersistenceManager.save([], true);
+          logger.info("辞書設定を保存しました");
+        }
+      }
+    }
+  } catch (error) {
+    logger.warn(`辞書の自動登録中にエラーが発生しました: ${(error as Error).message}`);
+  }
+  
+  logger.info("SayCoeiroink, OperatorManager and Dictionary initialized successfully");
 } catch (error) {
   logger.error("Failed to initialize services:", (error as Error).message);
   logger.error("Error stack:", (error as Error).stack);
@@ -112,6 +177,8 @@ try {
     
     operatorManager = new OperatorManager();
     await operatorManager.initialize();
+    
+    dictionaryPersistenceManager = new DictionaryPersistenceManager();
     logger.info("Fallback initialization completed");
   } catch (fallbackError) {
     logger.error("Fallback initialization also failed:", (fallbackError as Error).message);
@@ -740,6 +807,135 @@ server.registerTool("parallel_generation_control", {
     
   } catch (error) {
     throw new Error(`並行生成制御エラー: ${(error as Error).message}`);
+  }
+});
+
+// 辞書登録ツール
+server.registerTool("dictionary_register", {
+  description: "COEIROINKのユーザー辞書に単語を登録します。専門用語や固有名詞の読み方を正確に制御できます。",
+  inputSchema: {
+    words: z.array(z.object({
+      word: z.string().describe("登録する単語（半角英数字も可、自動で全角変換されます）"),
+      yomi: z.string().describe("読み方（全角カタカナ）"),
+      accent: z.number().describe("アクセント位置（0:平板型、1以上:該当モーラが高い）"),
+      numMoras: z.number().describe("モーラ数（カタカナの音節数）")
+    })).optional().describe("登録する単語の配列（省略時はデフォルト辞書を登録）"),
+    preset: z.enum(["default", "technical", "characters", "all"]).optional()
+      .describe("プリセット辞書の選択（default:技術用語、characters:キャラ名、all:全て）"),
+    persist: z.boolean().optional().describe("登録した辞書を永続化するか（デフォルト: true）"),
+    host: z.string().optional().describe("COEIROINKサーバーのホスト（デフォルト: localhost）"),
+    port: z.union([z.string(), z.number()]).optional().describe("COEIROINKサーバーのポート（デフォルト: 50032）")
+  }
+}, async (args): Promise<ToolResponse> => {
+  const { words, preset = "default", persist = true, host, port } = args;
+  
+  try {
+    // DictionaryClientのインスタンス作成
+    const client = new DictionaryClient({ host, port });
+    
+    // 接続確認
+    const isConnected = await client.checkConnection();
+    if (!isConnected) {
+      return {
+        content: [{
+          type: "text",
+          text: "❌ COEIROINKサーバーに接続できません。\n" +
+                "サーバーが起動していることを確認してください。\n" +
+                `接続先: http://${host || 'localhost'}:${port || '50032'}`
+        }]
+      };
+    }
+    
+    // 登録する単語を決定
+    let wordsToRegister: DictionaryWord[] = [];
+    
+    if (words && words.length > 0) {
+      // カスタム単語が指定された場合
+      wordsToRegister = words;
+    } else {
+      // プリセット辞書を使用
+      switch (preset) {
+        case "technical":
+        case "default":
+          wordsToRegister = DEFAULT_TECHNICAL_WORDS;
+          break;
+        case "characters":
+          wordsToRegister = CHARACTER_NAME_WORDS;
+          break;
+        case "all":
+          wordsToRegister = [...DEFAULT_TECHNICAL_WORDS, ...CHARACTER_NAME_WORDS];
+          break;
+      }
+    }
+    
+    if (wordsToRegister.length === 0) {
+      return {
+        content: [{
+          type: "text",
+          text: "⚠️ 登録する単語がありません。"
+        }]
+      };
+    }
+    
+    // 辞書登録実行
+    const result = await client.registerWords(wordsToRegister);
+    
+    if (result.success) {
+      // 永続化処理
+      if (persist) {
+        try {
+          // カスタム単語のみを保存（プリセットは設定で管理）
+          const customWordsToSave = (words && words.length > 0) ? words : [];
+          const includeDefaults = preset === "all" || preset === "default" || preset === "technical" || preset === "characters";
+          
+          await dictionaryPersistenceManager.save(customWordsToSave, includeDefaults);
+          logger.info(`辞書データを永続化しました: カスタム${customWordsToSave.length}個、デフォルト含む=${includeDefaults}`);
+        } catch (error) {
+          logger.warn(`辞書の永続化に失敗しました: ${(error as Error).message}`);
+        }
+      }
+      
+      // 登録内容の詳細を表示
+      let detailText = "📝 登録された単語:\n";
+      detailText += "─".repeat(60) + "\n";
+      detailText += "単語\t\t読み方\t\tアクセント\tモーラ数\n";
+      detailText += "─".repeat(60) + "\n";
+      
+      for (const word of wordsToRegister) {
+        const paddedWord = word.word.padEnd(16);
+        const paddedYomi = word.yomi.padEnd(16);
+        detailText += `${paddedWord}${paddedYomi}${word.accent}\t\t${word.numMoras}\n`;
+      }
+      detailText += "─".repeat(60);
+      
+      let persistMessage = "";
+      if (persist) {
+        persistMessage = "\n✅ 辞書データを永続化しました（次回起動時に自動登録されます）\n";
+      }
+      
+      return {
+        content: [{
+          type: "text",
+          text: `✅ ${result.registeredCount}個の単語を辞書に登録しました\n\n` +
+                detailText + persistMessage + "\n\n" +
+                "⚠️ 注意事項:\n" +
+                "• 登録した辞書はCOEIROINK再起動時にリセットされます\n" +
+                "• 全角で登録された単語は半角入力にも適用されます\n" +
+                "• 永続化した辞書は次回起動時に自動的に登録されます"
+        }]
+      };
+    } else {
+      return {
+        content: [{
+          type: "text",
+          text: `❌ 辞書登録に失敗しました\n\nエラー: ${result.error}`
+        }]
+      };
+    }
+    
+  } catch (error) {
+    logger.error(`Dictionary registration error:`, error);
+    throw new Error(`辞書登録エラー: ${(error as Error).message}`);
   }
 });
 
