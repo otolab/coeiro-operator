@@ -230,7 +230,7 @@ export class AudioPlayer {
         resolve();
       });
 
-      streamSpeaker.on('error', error => {
+      streamSpeaker.on('error', (error: Error) => {
         logger.error(`ストリームスピーカーエラー: ${error.message}`);
         reject(new Error(`音声再生エラー: ${error.message}`));
       });
@@ -483,7 +483,7 @@ export class AudioPlayer {
         resolve();
       });
 
-      speaker.once('error', error => {
+      speaker.once('error', (error: Error) => {
         logger.error(`Speaker再生エラー: ${error.message}`);
         reject(error);
       });
