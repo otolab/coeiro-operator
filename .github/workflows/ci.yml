@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  test:
+    name: Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        node-version: [18.x, 20.x]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Type check
+        run: npm run type-check
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Run E2E tests (Unix)
+        if: runner.os != 'Windows'
+        run: npm run test:e2e
+        env:
+          COEIRO_TEST_MODE: true
+          COEIROINK_OPERATOR_CONFIG_PATH: /tmp/test-operator-config.json
+      
+      - name: Run E2E tests (Windows)
+        if: runner.os == 'Windows'
+        run: npm run test:e2e
+        env:
+          COEIRO_TEST_MODE: true
+          COEIROINK_OPERATOR_CONFIG_PATH: ${{ runner.temp }}/test-operator-config.json
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run ESLint
+        run: npm run lint
+        continue-on-error: true # 一時的にエラーを許容（lintコマンドがない場合）
+      
+      - name: Check formatting
+        run: npx prettier --check "src/**/*.{ts,js,json,md}"
+        continue-on-error: true # 一時的にエラーを許容
+
+  build-artifacts:
+    name: Build Artifacts
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build production
+        run: npm run build
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Run tests with coverage
+        run: npm run test:coverage || npm test -- --coverage
+        continue-on-error: true # カバレッジコマンドがない場合は通常のテストを実行
+      
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
