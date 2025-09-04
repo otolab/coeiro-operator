@@ -66,13 +66,14 @@ describe('Say Integration Tests', () => {
           characterId === 'test-speaker-1' ||
           characterId === 'test-voice' ||
           characterId === '3c37646f-3881-5374-2a83-149267990abc' ||
-          characterId === 'custom-voice-id'
+          characterId === 'custom-voice-id' ||
+          characterId === 'tsukuyomi'  // デフォルトキャラクターを追加
         ) {
           const testCharacter: Character = {
             characterId: characterId,
             speaker: {
               speakerId: 'test-speaker-uuid',
-              speakerName: 'テストスピーカー1',
+              speakerName: characterId === 'tsukuyomi' ? 'つくよみちゃん' : 'テストスピーカー1',
               styles: [
                 { styleId: 0, styleName: 'ノーマル' },
                 { styleId: 1, styleName: 'ハッピー' },
