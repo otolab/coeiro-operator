@@ -127,7 +127,9 @@ export class SpeakerProvider {
         `Error: Cannot connect to COEIROINK server at http://${this.connectionConfig.host}:${this.connectionConfig.port}`
       );
       console.error('Make sure the server is running.');
-      throw error;
+      // デバッグ用メソッドなので、エラーが発生してもプログラムを停止させない
+      console.log('Available voices:');
+      // エラー時は何も表示しない（エラーメッセージは既に出力済み）
     }
   }
 

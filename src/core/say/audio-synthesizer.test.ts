@@ -312,17 +312,16 @@ describe('AudioSynthesizer', () => {
     test('文字列音声IDで正常に合成できること', async () => {
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      // speakersエンドポイントのモック
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => [
-          {
-            speakerUuid: 'test-voice-id',
-            speakerName: 'テストキャラクター',
-            styles: [{ styleId: 0, styleName: 'ノーマル' }],
-          },
-        ],
-      });
+      // 文字列IDからVoiceConfigを作成
+      const testSpeaker: Speaker = {
+        speakerId: 'test-voice-id',
+        speakerName: 'テストキャラクター',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      };
+      const voiceConfig: VoiceConfig = {
+        speaker: testSpeaker,
+        selectedStyleId: 0,
+      };
 
       // synthesisエンドポイントのモック
       (global.fetch as any).mockResolvedValueOnce({
@@ -330,7 +329,7 @@ describe('AudioSynthesizer', () => {
         arrayBuffer: async () => mockAudioBuffer,
       });
 
-      const result = await audioSynthesizer.synthesizeChunk(mockChunk, 'test-voice-id', 1.0);
+      const result = await audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0);
 
       expect(result).toEqual({
         chunk: mockChunk,
@@ -387,7 +386,6 @@ describe('AudioSynthesizer', () => {
       const voiceConfig: VoiceConfig = {
         speaker: testSpeaker,
         selectedStyleId: 5,
-        speaking_style: '標準',
       };
 
       const mockAudioBuffer = new ArrayBuffer(1000);
@@ -397,20 +395,26 @@ describe('AudioSynthesizer', () => {
         arrayBuffer: async () => mockAudioBuffer,
       });
 
-      // ランダム性をテストするため複数回実行
-      const styleIds = new Set();
-      for (let i = 0; i < 10; i++) {
-        await audioSynthesizer.synthesizeChunk(mockChunk, operatorVoice, 1.0);
-        const fetchCall = (global.fetch as any).mock.calls[i];
-        const requestBody = JSON.parse(fetchCall[1].body);
-        styleIds.add(requestBody.styleId);
-      }
+      // 音声合成を実行
+      await audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0);
+      const fetchCall = (global.fetch as any).mock.calls[0];
+      const requestBody = JSON.parse(fetchCall[1].body);
 
-      // 複数のスタイルIDが使用されていることを確認（確率的に）
-      expect(styleIds.size).toBeGreaterThanOrEqual(1);
+      // 指定したスタイルIDが使用されていることを確認
+      expect(requestBody.styleId).toBe(5);
     });
 
     test('APIエラー時に適切なエラーを投げること', async () => {
+      const testSpeaker: Speaker = {
+        speakerId: 'test-voice-id',
+        speakerName: 'テストキャラクター',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      };
+      const voiceConfig: VoiceConfig = {
+        speaker: testSpeaker,
+        selectedStyleId: 0,
+      };
+
       // speakersエンドポイントのモック
       (global.fetch as any).mockResolvedValueOnce({
         ok: false,
@@ -418,21 +422,27 @@ describe('AudioSynthesizer', () => {
         statusText: 'Internal Server Error',
       });
 
-      const result = await audioSynthesizer.synthesizeChunk(mockChunk, 'test-voice-id', 1.0);
-
-      // エラー情報が適切に設定されることを確認
-      expect(result).toBeDefined();
-      expect(result.chunk).toEqual(mockChunk);
+      await expect(
+        audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0)
+      ).rejects.toThrow('チャンク0合成エラー');
     });
 
     test('ネットワークエラー時に適切なエラーを投げること', async () => {
+      const testSpeaker: Speaker = {
+        speakerId: 'test-voice-id',
+        speakerName: 'テストキャラクター',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      };
+      const voiceConfig: VoiceConfig = {
+        speaker: testSpeaker,
+        selectedStyleId: 0,
+      };
+
       (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
 
-      const result = await audioSynthesizer.synthesizeChunk(mockChunk, 'test-voice-id', 1.0);
-
-      // エラーハンドリングが適切に行われることを確認
-      expect(result).toBeDefined();
-      expect(result.chunk).toEqual(mockChunk);
+      await expect(
+        audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0)
+      ).rejects.toThrow('チャンク0合成エラー');
     });
   });
 
@@ -441,21 +451,24 @@ describe('AudioSynthesizer', () => {
       const text = 'こんにちは';
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      // speakersエンドポイントのモック
+      const testSpeaker: Speaker = {
+        speakerId: 'test-voice-id',
+        speakerName: 'テストキャラクター',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      };
+      const voiceConfig: VoiceConfig = {
+        speaker: testSpeaker,
+        selectedStyleId: 0,
+      };
+
+      // synthesisエンドポイントのモック
       (global.fetch as any).mockResolvedValue({
         ok: true,
-        json: async () => [
-          {
-            speakerUuid: 'test-voice-id',
-            speakerName: 'テストキャラクター',
-            styles: [{ styleId: 0, styleName: 'ノーマル' }],
-          },
-        ],
         arrayBuffer: async () => mockAudioBuffer,
       });
 
       const results: AudioResult[] = [];
-      for await (const result of audioSynthesizer.synthesizeStream(text, 'test-voice-id', 1.0)) {
+      for await (const result of audioSynthesizer.synthesizeStream(text, voiceConfig, 1.0)) {
         results.push(result);
       }
 
@@ -477,22 +490,25 @@ describe('AudioSynthesizer', () => {
       const longText = 'a'.repeat(150); // 複数チャンクに分割される
       const mockAudioBuffer = new ArrayBuffer(1000);
 
+      const testSpeaker: Speaker = {
+        speakerId: 'test-voice-id',
+        speakerName: 'テストキャラクター',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      };
+      const voiceConfig: VoiceConfig = {
+        speaker: testSpeaker,
+        selectedStyleId: 0,
+      };
+
       (global.fetch as any).mockResolvedValue({
         ok: true,
-        json: async () => [
-          {
-            speakerUuid: 'test-voice-id',
-            speakerName: 'テストキャラクター',
-            styles: [{ styleId: 0, styleName: 'ノーマル' }],
-          },
-        ],
         arrayBuffer: async () => mockAudioBuffer,
       });
 
       const results: AudioResult[] = [];
       for await (const result of audioSynthesizer.synthesizeStream(
         longText,
-        'test-voice-id',
+        voiceConfig,
         1.0
       )) {
         results.push(result);
@@ -511,6 +527,16 @@ describe('AudioSynthesizer', () => {
     });
 
     test('空のテキストで空のストリームが返されること', async () => {
+      const testSpeaker: Speaker = {
+        speakerId: 'test-voice-id',
+        speakerName: 'テストキャラクター',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      };
+      const voiceConfig: VoiceConfig = {
+        speaker: testSpeaker,
+        selectedStyleId: 0,
+      };
+
       (global.fetch as any).mockResolvedValue({
         ok: true,
         json: async () => [],
@@ -518,7 +544,7 @@ describe('AudioSynthesizer', () => {
       });
 
       const results: AudioResult[] = [];
-      for await (const result of audioSynthesizer.synthesizeStream('', 'test-voice-id', 1.0)) {
+      for await (const result of audioSynthesizer.synthesizeStream('', voiceConfig, 1.0)) {
         results.push(result);
       }
 
@@ -532,20 +558,23 @@ describe('AudioSynthesizer', () => {
       const text = 'あ';
       const mockAudioBuffer = new ArrayBuffer(100);
 
+      const testSpeaker: Speaker = {
+        speakerId: 'test-voice-id',
+        speakerName: 'テストキャラクター',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      };
+      const voiceConfig: VoiceConfig = {
+        speaker: testSpeaker,
+        selectedStyleId: 0,
+      };
+
       (global.fetch as any).mockResolvedValue({
         ok: true,
-        json: async () => [
-          {
-            speakerUuid: 'test-voice-id',
-            speakerName: 'テストキャラクター',
-            styles: [{ styleId: 0, styleName: 'ノーマル' }],
-          },
-        ],
         arrayBuffer: async () => mockAudioBuffer,
       });
 
       const results: AudioResult[] = [];
-      for await (const result of audioSynthesizer.synthesizeStream(text, 'test-voice-id', 1.0)) {
+      for await (const result of audioSynthesizer.synthesizeStream(text, voiceConfig, 1.0)) {
         results.push(result);
       }
 
@@ -558,20 +587,23 @@ describe('AudioSynthesizer', () => {
       const text = 'こんにちは！？😊🎵';
       const mockAudioBuffer = new ArrayBuffer(1000);
 
+      const testSpeaker: Speaker = {
+        speakerId: 'test-voice-id',
+        speakerName: 'テストキャラクター',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      };
+      const voiceConfig: VoiceConfig = {
+        speaker: testSpeaker,
+        selectedStyleId: 0,
+      };
+
       (global.fetch as any).mockResolvedValue({
         ok: true,
-        json: async () => [
-          {
-            speakerUuid: 'test-voice-id',
-            speakerName: 'テストキャラクター',
-            styles: [{ styleId: 0, styleName: 'ノーマル' }],
-          },
-        ],
         arrayBuffer: async () => mockAudioBuffer,
       });
 
       const results: AudioResult[] = [];
-      for await (const result of audioSynthesizer.synthesizeStream(text, 'test-voice-id', 1.0)) {
+      for await (const result of audioSynthesizer.synthesizeStream(text, voiceConfig, 1.0)) {
         results.push(result);
       }
 
@@ -583,20 +615,23 @@ describe('AudioSynthesizer', () => {
       const text = '12345';
       const mockAudioBuffer = new ArrayBuffer(1000);
 
+      const testSpeaker: Speaker = {
+        speakerId: 'test-voice-id',
+        speakerName: 'テストキャラクター',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      };
+      const voiceConfig: VoiceConfig = {
+        speaker: testSpeaker,
+        selectedStyleId: 0,
+      };
+
       (global.fetch as any).mockResolvedValue({
         ok: true,
-        json: async () => [
-          {
-            speakerUuid: 'test-voice-id',
-            speakerName: 'テストキャラクター',
-            styles: [{ styleId: 0, styleName: 'ノーマル' }],
-          },
-        ],
         arrayBuffer: async () => mockAudioBuffer,
       });
 
       const results: AudioResult[] = [];
-      for await (const result of audioSynthesizer.synthesizeStream(text, 'test-voice-id', 1.0)) {
+      for await (const result of audioSynthesizer.synthesizeStream(text, voiceConfig, 1.0)) {
         results.push(result);
       }
 
@@ -652,15 +687,18 @@ describe('AudioSynthesizer', () => {
       const longText = 'あ'.repeat(1000); // 多数のチャンクに分割される
       const mockAudioBuffer = new ArrayBuffer(100);
 
+      const testSpeaker: Speaker = {
+        speakerId: 'test-voice-id',
+        speakerName: 'テストキャラクター',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      };
+      const voiceConfig: VoiceConfig = {
+        speaker: testSpeaker,
+        selectedStyleId: 0,
+      };
+
       (global.fetch as any).mockResolvedValue({
         ok: true,
-        json: async () => [
-          {
-            speakerUuid: 'test-voice-id',
-            speakerName: 'テストキャラクター',
-            styles: [{ styleId: 0, styleName: 'ノーマル' }],
-          },
-        ],
         arrayBuffer: async () => mockAudioBuffer,
       });
 
@@ -669,7 +707,7 @@ describe('AudioSynthesizer', () => {
 
       for await (const result of audioSynthesizer.synthesizeStream(
         longText,
-        'test-voice-id',
+        voiceConfig,
         1.0
       )) {
         results.push(result);

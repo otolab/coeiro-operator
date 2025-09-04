@@ -27,18 +27,8 @@ export default defineConfig({
       'coverage/**'
     ],
 
-    // カバレッジ設定
-    coverage: {
-      provider: 'v8',
-      include: [
-        'src/**/*.ts'
-      ],
-      exclude: [
-        'src/**/*.test.ts',
-        'src/**/*.d.ts'
-      ],
-      reportsDirectory: 'coverage/coeiro-operator'
-    },
+    // カバレッジはデフォルトで無効（CI環境でのみ有効化）
+    // test:coverageコマンドまたはvitest.coverage.config.tsを使用
 
     // ESM設定（Vitestはネイティブ対応）
     globals: true

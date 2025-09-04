@@ -269,17 +269,57 @@ export class AudioPlayer {
    * リサンプリング用Transform streamを作成
    */
   private createResampleTransform(): Transform {
-    // リサンプリングは無効化（node-libsamplerateを使用しない）
-    if (this.synthesisRate !== this.playbackRate) {
-      logger.warn(
-        `リサンプリングが必要ですが無効化されています: ${this.synthesisRate}Hz → ${this.playbackRate}Hz`
-      );
+    // サンプルレートが同じ場合はパススルー
+    if (this.synthesisRate === this.playbackRate) {
+      return new Transform({
+        transform(chunk, encoding, callback) {
+          callback(null, chunk);
+        },
+      });
     }
+
+    // 簡易的な線形補間によるリサンプリング実装
+    const ratio = this.playbackRate / this.synthesisRate;
+    logger.log(`リサンプリング: ${this.synthesisRate}Hz → ${this.playbackRate}Hz (比率: ${ratio})`);
     
-    // パススルー変換を返す
+    let carryOverSample: number | null = null;
+    
     return new Transform({
-      transform(chunk, encoding, callback) {
-        callback(null, chunk);
+      transform: (chunk, encoding, callback) => {
+        try {
+          const inputBuffer = Buffer.from(chunk);
+          const inputSamples = new Int16Array(inputBuffer.buffer, inputBuffer.byteOffset, inputBuffer.length / 2);
+          
+          // 出力サンプル数を計算
+          const outputLength = Math.floor(inputSamples.length * ratio);
+          const outputSamples = new Int16Array(outputLength);
+          
+          // 線形補間によるリサンプリング
+          for (let i = 0; i < outputLength; i++) {
+            const srcIndex = i / ratio;
+            const srcIndexInt = Math.floor(srcIndex);
+            const fraction = srcIndex - srcIndexInt;
+            
+            if (srcIndexInt < inputSamples.length - 1) {
+              // 線形補間
+              const sample1 = inputSamples[srcIndexInt];
+              const sample2 = inputSamples[srcIndexInt + 1];
+              outputSamples[i] = Math.round(sample1 * (1 - fraction) + sample2 * fraction);
+            } else if (srcIndexInt < inputSamples.length) {
+              // 最後のサンプル
+              outputSamples[i] = inputSamples[srcIndexInt];
+            } else {
+              // パディング（無音）
+              outputSamples[i] = 0;
+            }
+          }
+          
+          const outputBuffer = Buffer.from(outputSamples.buffer);
+          callback(null, outputBuffer);
+        } catch (error) {
+          logger.error(`リサンプリングエラー: ${(error as Error).message}`);
+          callback(error instanceof Error ? error : new Error(String(error)));
+        }
       },
     });
   }
