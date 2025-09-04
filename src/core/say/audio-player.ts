@@ -7,7 +7,6 @@ import { writeFile } from 'fs/promises';
 import * as Echogarden from 'echogarden';
 // @ts-ignore - dsp.jsには型定義がない
 import DSP from 'dsp.js';
-// @ts-ignore - speakerには型定義がない
 import Speaker from 'speaker';
 import { Transform } from 'stream';
 import type { AudioResult, Chunk, Config, AudioConfig } from './types.js';
