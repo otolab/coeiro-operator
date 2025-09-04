@@ -1,7 +1,7 @@
 /**
  * Integration Tests for MCP Debug Environment
  * MCPデバッグ環境の統合テスト
- * 
+ *
  * 要件仕様の検証：
  * 1. 連続JSONオブジェクトの処理が安定している
  * 2. MCP/Control/Debug/Error出力が正しく分離される
@@ -37,7 +37,7 @@ class IntegrationTestRunner {
     mcpResponses: [],
     controlResponses: [],
     debugMessages: [],
-    errorMessages: []
+    errorMessages: [],
   };
 
   async runAllTests(): Promise<TestResult[]> {
@@ -66,7 +66,6 @@ class IntegrationTestRunner {
 
       // 追加テスト: エラー処理
       results.push(await this.testErrorHandling());
-
     } finally {
       await this.stopServer();
     }
@@ -77,15 +76,15 @@ class IntegrationTestRunner {
 
   private async startEchoServer(): Promise<void> {
     const serverPath = path.join(path.dirname(__filename), 'echo-server.js');
-    
+
     console.log('🚀 Starting echo server...');
-    
+
     this.serverProcess = spawn('node', [serverPath, '--debug'], {
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     this.setupOutputCapture();
-    
+
     // サーバー起動待機
     await this.waitForServerReady();
     console.log('✅ Echo server started\n');
@@ -94,14 +93,14 @@ class IntegrationTestRunner {
   private setupOutputCapture(): void {
     if (!this.serverProcess) return;
 
-    this.serverProcess.stdout?.on('data', (data) => {
+    this.serverProcess.stdout?.on('data', data => {
       const output = data.toString();
       this.output.stdout.push(output);
-      
+
       // 出力タイプ別に分類
       output.split('\n').forEach((line: string) => {
         if (!line.trim()) return;
-        
+
         if (line.startsWith('CTRL_RESPONSE:')) {
           try {
             this.output.controlResponses.push(line);
@@ -114,17 +113,21 @@ class IntegrationTestRunner {
       });
     });
 
-    this.serverProcess.stderr?.on('data', (data) => {
+    this.serverProcess.stderr?.on('data', data => {
       const output = data.toString();
       this.output.stderr.push(output);
-      
+
       // デバッグメッセージとエラーメッセージを分類
       output.split('\n').forEach((line: string) => {
         if (!line.trim()) return;
-        
+
         if (line.includes('DEBUG:')) {
           this.output.debugMessages.push(line);
-        } else if (line.includes('ERROR') || line.includes('Error') || line.includes('Test error:')) {
+        } else if (
+          line.includes('ERROR') ||
+          line.includes('Error') ||
+          line.includes('Test error:')
+        ) {
           this.output.errorMessages.push(line);
         }
       });
@@ -154,7 +157,7 @@ class IntegrationTestRunner {
     if (this.serverProcess) {
       console.log('\n🔄 Stopping server...');
       this.serverProcess.kill('SIGTERM');
-      
+
       await new Promise(resolve => {
         if (this.serverProcess) {
           this.serverProcess.on('close', resolve);
@@ -163,7 +166,7 @@ class IntegrationTestRunner {
           resolve(undefined);
         }
       });
-      
+
       this.serverProcess = undefined;
     }
   }
@@ -172,7 +175,7 @@ class IntegrationTestRunner {
     if (!this.serverProcess) {
       throw new Error('Server not running');
     }
-    
+
     this.serverProcess.stdin?.write(command + '\n');
     await new Promise(resolve => setTimeout(resolve, 100)); // 処理待機
   }
@@ -184,7 +187,7 @@ class IntegrationTestRunner {
       mcpResponses: [],
       controlResponses: [],
       debugMessages: [],
-      errorMessages: []
+      errorMessages: [],
     };
   }
 
@@ -195,7 +198,7 @@ class IntegrationTestRunner {
 
     try {
       console.log('📋 Testing continuous JSON processing...');
-      
+
       // 連続でJSONリクエストを送信
       const requests = [
         '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05"},"id":1}',
@@ -203,7 +206,7 @@ class IntegrationTestRunner {
         '{"jsonrpc":"2.0","method":"tools/list","params":{},"id":3}',
         '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"test1"}},"id":4}',
         '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"test2"}},"id":5}',
-        '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_info","arguments":{"type":"stats"}},"id":6}'
+        '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_info","arguments":{"type":"stats"}},"id":6}',
       ];
 
       for (const request of requests) {
@@ -227,7 +230,7 @@ class IntegrationTestRunner {
           success: true,
           message: `Successfully processed ${requests.length} consecutive JSON requests`,
           duration: Date.now() - startTime,
-          details: { receivedIds, totalResponses: this.output.mcpResponses.length }
+          details: { receivedIds, totalResponses: this.output.mcpResponses.length },
         };
       } else {
         return {
@@ -235,16 +238,19 @@ class IntegrationTestRunner {
           success: false,
           message: `Failed to process all requests. Received: ${receivedIds.length}/${expectedIds.length}, Errors: ${hasErrors}`,
           duration: Date.now() - startTime,
-          details: { receivedIds, expectedIds, errors: this.output.mcpResponses.filter(r => r.error) }
+          details: {
+            receivedIds,
+            expectedIds,
+            errors: this.output.mcpResponses.filter(r => r.error),
+          },
         };
       }
-
     } catch (error) {
       return {
         name: 'Continuous JSON Processing',
         success: false,
         message: `Test failed: ${(error as Error).message}`,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -259,10 +265,18 @@ class IntegrationTestRunner {
 
       // 各チャネルにテストメッセージを送信
       await this.sendCommand('CTRL:status');
-      await this.sendCommand('{"jsonrpc":"2.0","method":"tools/call","params":{"name":"test_output","arguments":{"channel":"mcp","message":"test-mcp"}},"id":10}');
-      await this.sendCommand('{"jsonrpc":"2.0","method":"tools/call","params":{"name":"test_output","arguments":{"channel":"control","message":"test-control"}},"id":11}');
-      await this.sendCommand('{"jsonrpc":"2.0","method":"tools/call","params":{"name":"test_output","arguments":{"channel":"debug","message":"test-debug"}},"id":12}');
-      await this.sendCommand('{"jsonrpc":"2.0","method":"tools/call","params":{"name":"test_output","arguments":{"channel":"error","message":"test-error"}},"id":13}');
+      await this.sendCommand(
+        '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"test_output","arguments":{"channel":"mcp","message":"test-mcp"}},"id":10}'
+      );
+      await this.sendCommand(
+        '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"test_output","arguments":{"channel":"control","message":"test-control"}},"id":11}'
+      );
+      await this.sendCommand(
+        '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"test_output","arguments":{"channel":"debug","message":"test-debug"}},"id":12}'
+      );
+      await this.sendCommand(
+        '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"test_output","arguments":{"channel":"error","message":"test-error"}},"id":13}'
+      );
 
       await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -272,29 +286,29 @@ class IntegrationTestRunner {
       const hasDebugOutput = this.output.debugMessages.some(m => m.includes('test-debug'));
       const hasErrorOutput = this.output.errorMessages.some(m => m.includes('test-error'));
 
-      const allChannelsWorking = hasControlResponse && hasMcpResponse && hasDebugOutput && hasErrorOutput;
+      const allChannelsWorking =
+        hasControlResponse && hasMcpResponse && hasDebugOutput && hasErrorOutput;
 
       return {
         name: 'Output Channel Separation',
         success: allChannelsWorking,
-        message: allChannelsWorking ? 
-          'All output channels working correctly' : 
-          'Some output channels not working properly',
+        message: allChannelsWorking
+          ? 'All output channels working correctly'
+          : 'Some output channels not working properly',
         duration: Date.now() - startTime,
         details: {
           control: hasControlResponse,
           mcp: hasMcpResponse,
           debug: hasDebugOutput,
-          error: hasErrorOutput
-        }
+          error: hasErrorOutput,
+        },
       };
-
     } catch (error) {
       return {
         name: 'Output Channel Separation',
         success: false,
         message: `Test failed: ${(error as Error).message}`,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -326,25 +340,24 @@ class IntegrationTestRunner {
       return {
         name: 'Process Management',
         success: allCommandsWorking,
-        message: allCommandsWorking ? 
-          'All process management commands working' : 
-          'Some process management commands failed',
+        message: allCommandsWorking
+          ? 'All process management commands working'
+          : 'Some process management commands failed',
         duration: Date.now() - startTime,
         details: {
           status: statusOk,
           health: healthOk,
           mode: modeOk,
           logs: logsOk,
-          totalResponses: this.output.controlResponses.length
-        }
+          totalResponses: this.output.controlResponses.length,
+        },
       };
-
     } catch (error) {
       return {
         name: 'Process Management',
         success: false,
         message: `Test failed: ${(error as Error).message}`,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -357,8 +370,12 @@ class IntegrationTestRunner {
       console.log('📋 Testing log accumulation...');
 
       // ログを生成する操作を実行
-      await this.sendCommand('{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_info","arguments":{"type":"logs"}},"id":20}');
-      await this.sendCommand('{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_info","arguments":{"type":"stats"}},"id":21}');
+      await this.sendCommand(
+        '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_info","arguments":{"type":"logs"}},"id":20}'
+      );
+      await this.sendCommand(
+        '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_info","arguments":{"type":"stats"}},"id":21}'
+      );
 
       await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -372,24 +389,24 @@ class IntegrationTestRunner {
       return {
         name: 'Log Accumulation',
         success: !!(hasLogEntries && hasStats),
-        message: hasLogEntries && hasStats ? 
-          'Log accumulation working correctly' : 
-          'Log accumulation not working properly',
+        message:
+          hasLogEntries && hasStats
+            ? 'Log accumulation working correctly'
+            : 'Log accumulation not working properly',
         duration: Date.now() - startTime,
         details: {
           hasLogEntries,
           hasStats,
           logResponse: logResponse?.result?.content?.[0]?.text?.substring(0, 100),
-          statsResponse: statsResponse?.result?.content?.[0]?.text?.substring(0, 100)
-        }
+          statsResponse: statsResponse?.result?.content?.[0]?.text?.substring(0, 100),
+        },
       };
-
     } catch (error) {
       return {
         name: 'Log Accumulation',
         success: false,
         message: `Test failed: ${(error as Error).message}`,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -405,10 +422,10 @@ class IntegrationTestRunner {
       // 様々な制御コマンドをテスト
       const commands = [
         'CTRL:status',
-        'CTRL:health', 
+        'CTRL:health',
         'CTRL:logs:stats',
         'CTRL:mode:test',
-        'CTRL:invalid_command' // 無効なコマンドもテスト
+        'CTRL:invalid_command', // 無効なコマンドもテスト
       ];
 
       for (const cmd of commands) {
@@ -419,7 +436,9 @@ class IntegrationTestRunner {
 
       // レスポンス数とエラーハンドリングをチェック
       const responseCount = this.output.controlResponses.length;
-      const hasErrorResponse = this.output.controlResponses.some(r => r.includes('invalid_command:error'));
+      const hasErrorResponse = this.output.controlResponses.some(r =>
+        r.includes('invalid_command:error')
+      );
 
       return {
         name: 'Control Commands',
@@ -430,16 +449,15 @@ class IntegrationTestRunner {
           expectedCommands: commands.length,
           actualResponses: responseCount,
           hasErrorHandling: hasErrorResponse,
-          responses: this.output.controlResponses
-        }
+          responses: this.output.controlResponses,
+        },
       };
-
     } catch (error) {
       return {
         name: 'Control Commands',
         success: false,
         message: `Test failed: ${(error as Error).message}`,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -466,24 +484,24 @@ class IntegrationTestRunner {
       return {
         name: 'Error Handling',
         success: hasJsonRpcError && hasControlError,
-        message: hasJsonRpcError && hasControlError ? 
-          'Error handling working correctly' : 
-          'Error handling not working properly',
+        message:
+          hasJsonRpcError && hasControlError
+            ? 'Error handling working correctly'
+            : 'Error handling not working properly',
         duration: Date.now() - startTime,
         details: {
           hasJsonRpcError,
           hasControlError,
           errorResponses: this.output.mcpResponses.filter(r => r.error),
-          controlErrors: this.output.controlResponses.filter(r => r.includes('error'))
-        }
+          controlErrors: this.output.controlResponses.filter(r => r.includes('error')),
+        },
       };
-
     } catch (error) {
       return {
         name: 'Error Handling',
         success: false,
         message: `Test failed: ${(error as Error).message}`,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -498,16 +516,18 @@ class IntegrationTestRunner {
     results.forEach(result => {
       const status = result.success ? '✅ PASS' : '❌ FAIL';
       const duration = `${result.duration}ms`;
-      
+
       console.log(`${status} ${result.name.padEnd(30)} ${duration.padStart(8)}`);
       console.log(`     ${result.message}`);
-      
+
       if (!result.success && result.details) {
-        console.log(`     Details: ${JSON.stringify(result.details, null, 2).substring(0, 200)}...`);
+        console.log(
+          `     Details: ${JSON.stringify(result.details, null, 2).substring(0, 200)}...`
+        );
       }
-      
+
       console.log('');
-      
+
       if (result.success) passed++;
       else failed++;
     });
@@ -527,13 +547,12 @@ class IntegrationTestRunner {
 // テスト実行
 async function main() {
   const runner = new IntegrationTestRunner();
-  
+
   try {
     const results = await runner.runAllTests();
-    
+
     const allPassed = results.every(r => r.success);
     process.exit(allPassed ? 0 : 1);
-    
   } catch (error) {
     console.error('❌ Integration tests failed:', error);
     process.exit(1);

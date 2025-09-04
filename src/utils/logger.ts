@@ -16,10 +16,10 @@ interface LogEntry {
 interface LoggerConfig {
   level: LogLevel;
   accumulateLevel: LogLevel; // 蓄積するログレベル（独立制御）
-  isMcpMode: boolean;  // MCPサーバーモード時はstdout出力を制限
-  prefix?: string;     // ログプレフィックス
+  isMcpMode: boolean; // MCPサーバーモード時はstdout出力を制限
+  prefix?: string; // ログプレフィックス
   accumulate: boolean; // ログ蓄積モード
-  maxEntries: number;  // 蓄積する最大ログエントリ数
+  maxEntries: number; // 蓄積する最大ログエントリ数
 }
 
 class Logger {
@@ -29,12 +29,12 @@ class Logger {
 
   // ログレベルの数値マッピング（小さいほど重要）
   private readonly LOG_LEVELS: Record<LogLevel, number> = {
-    quiet: 0,    // 出力なし
-    error: 1,    // エラーのみ
-    warn: 2,     // 警告以上
-    info: 3,     // 情報以上
-    verbose: 4,  // 詳細情報以上
-    debug: 5     // すべて（デバッグ含む）
+    quiet: 0, // 出力なし
+    error: 1, // エラーのみ
+    warn: 2, // 警告以上
+    info: 3, // 情報以上
+    verbose: 4, // 詳細情報以上
+    debug: 5, // すべて（デバッグ含む）
   };
 
   constructor(config: Partial<LoggerConfig> = {}) {
@@ -45,7 +45,7 @@ class Logger {
       prefix: '',
       accumulate: false,
       maxEntries: 1000,
-      ...config
+      ...config,
     };
   }
 
@@ -72,16 +72,20 @@ class Logger {
   private formatMessage(level: LogLevel, message: string, ...args: unknown[]): string {
     const timestamp = new Date().toISOString();
     const prefix = this.config.prefix ? `[${this.config.prefix}] ` : '';
-    const formattedArgs = args.length > 0 ? ` ${args.map(arg => 
-      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-    ).join(' ')}` : '';
-    
+    const formattedArgs =
+      args.length > 0
+        ? ` ${args
+            .map(arg => (typeof arg === 'object' ? JSON.stringify(arg) : String(arg)))
+            .join(' ')}`
+        : '';
+
     return `${timestamp} ${level.toUpperCase()} ${prefix}${message}${formattedArgs}`;
   }
 
   private writeLog(level: LogLevel, message: string, ...args: unknown[]): void {
     const shouldOutput = this.shouldLog(level);
-    const shouldAccumulate = this.config.accumulate && this.shouldLogAtLevel(level, this.config.accumulateLevel);
+    const shouldAccumulate =
+      this.config.accumulate && this.shouldLogAtLevel(level, this.config.accumulateLevel);
 
     // 出力もせず蓄積もしない場合は早期リターン
     if (!shouldOutput && !shouldAccumulate) {
@@ -89,7 +93,7 @@ class Logger {
     }
 
     const formattedMessage = this.formatMessage(level, message, ...args);
-    
+
     // ログエントリを蓄積モードで保存（蓄積レベルで独立判定）
     if (shouldAccumulate) {
       const logEntry: LogEntry = {
@@ -97,11 +101,11 @@ class Logger {
         level,
         message,
         args: args.length > 0 ? args : undefined,
-        formatted: formattedMessage
+        formatted: formattedMessage,
       };
-      
+
       this.logEntries.push(logEntry);
-      
+
       // 最大エントリ数を超えた場合、古いものを削除
       if (this.logEntries.length > this.config.maxEntries) {
         this.logEntries.shift();
@@ -195,12 +199,14 @@ class Logger {
   }
 
   // ログエントリ取得メソッド
-  getLogEntries(options: {
-    level?: LogLevel | LogLevel[];
-    since?: Date;
-    limit?: number;
-    search?: string;
-  } = {}): LogEntry[] {
+  getLogEntries(
+    options: {
+      level?: LogLevel | LogLevel[];
+      since?: Date;
+      limit?: number;
+      search?: string;
+    } = {}
+  ): LogEntry[] {
     let filtered = [...this.logEntries];
 
     // レベルフィルタ
@@ -218,9 +224,10 @@ class Logger {
     // 検索フィルタ
     if (options.search) {
       const searchLower = options.search.toLowerCase();
-      filtered = filtered.filter(entry => 
-        entry.message.toLowerCase().includes(searchLower) ||
-        entry.formatted.toLowerCase().includes(searchLower)
+      filtered = filtered.filter(
+        entry =>
+          entry.message.toLowerCase().includes(searchLower) ||
+          entry.formatted.toLowerCase().includes(searchLower)
       );
     }
 
@@ -252,10 +259,10 @@ class Logger {
         warn: 0,
         info: 0,
         verbose: 0,
-        debug: 0
+        debug: 0,
       } as Record<LogLevel, number>,
       oldestEntry: this.logEntries[0]?.timestamp,
-      newestEntry: this.logEntries[this.logEntries.length - 1]?.timestamp
+      newestEntry: this.logEntries[this.logEntries.length - 1]?.timestamp,
     };
 
     this.logEntries.forEach(entry => {
@@ -281,31 +288,31 @@ export const LoggerPresets = {
       accumulateLevel: 'error',
       isMcpMode: true,
       prefix: 'MCP',
-      accumulate: false
+      accumulate: false,
     });
   },
 
   // MCPサーバーモード（蓄積あり）：エラーのみstderrに出力、info以上を蓄積
   mcpServerWithAccumulation: (): void => {
     configureLogger({
-      level: 'error',         // 出力はエラーのみ
+      level: 'error', // 出力はエラーのみ
       accumulateLevel: 'info', // 蓄積はinfo以上（通常モード）
       isMcpMode: true,
       prefix: 'MCP',
       accumulate: true,
-      maxEntries: 2000
+      maxEntries: 2000,
     });
   },
 
   // MCPサーバーデバッグモード（蓄積あり）：詳細ログ出力、全ログ蓄積
   mcpServerDebugWithAccumulation: (): void => {
     configureLogger({
-      level: 'debug',         // デバッグモードでは詳細ログ出力
+      level: 'debug', // デバッグモードでは詳細ログ出力
       accumulateLevel: 'debug', // 蓄積は全レベル（デバッグモード）
-      isMcpMode: false,       // デバッグ時はstdout制限なし
+      isMcpMode: false, // デバッグ時はstdout制限なし
       prefix: 'MCP-DEBUG',
       accumulate: true,
-      maxEntries: 3000
+      maxEntries: 3000,
     });
   },
 
@@ -316,7 +323,7 @@ export const LoggerPresets = {
       accumulateLevel: 'info',
       isMcpMode: false,
       prefix: 'CLI',
-      accumulate: false
+      accumulate: false,
     });
   },
 
@@ -328,7 +335,7 @@ export const LoggerPresets = {
       isMcpMode: false,
       prefix: 'DEBUG',
       accumulate: true,
-      maxEntries: 3000
+      maxEntries: 3000,
     });
   },
 
@@ -338,7 +345,7 @@ export const LoggerPresets = {
       level: 'quiet',
       accumulateLevel: 'quiet',
       isMcpMode: true,
-      accumulate: false
+      accumulate: false,
     });
-  }
+  },
 };

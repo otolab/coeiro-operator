@@ -21,16 +21,16 @@ describe('DictionaryPersistenceManager', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // os.homedir のモック
     vi.spyOn(os, 'homedir').mockReturnValue(mockHomeDir);
-    
+
     // fs.existsSync のデフォルトモック
     vi.mocked(fs.existsSync).mockReturnValue(false);
-    
+
     // fs.mkdirSync のモック
     vi.mocked(fs.mkdirSync).mockImplementation(() => undefined as any);
-    
+
     manager = new DictionaryPersistenceManager();
   });
 
@@ -41,34 +41,29 @@ describe('DictionaryPersistenceManager', () => {
   describe('constructor', () => {
     it('設定ディレクトリが存在しない場合は作成する', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
-      
+
       new DictionaryPersistenceManager();
-      
-      expect(fs.mkdirSync).toHaveBeenCalledWith(
-        expectedConfigDir,
-        { recursive: true }
-      );
+
+      expect(fs.mkdirSync).toHaveBeenCalledWith(expectedConfigDir, { recursive: true });
     });
 
     it('設定ディレクトリが既に存在する場合は作成しない', () => {
       // existsSyncのモックをクリアして新しく設定
       vi.mocked(fs.existsSync).mockReset();
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      
+
       // mkdirSyncもリセット
       vi.mocked(fs.mkdirSync).mockReset();
-      
+
       new DictionaryPersistenceManager();
-      
+
       expect(fs.mkdirSync).not.toHaveBeenCalled();
     });
   });
 
   describe('save', () => {
     it('辞書データを正しい形式で保存する', async () => {
-      const words: DictionaryWord[] = [
-        { word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }
-      ];
+      const words: DictionaryWord[] = [{ word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }];
 
       const writeFileMock = vi.fn().mockResolvedValue(undefined);
       vi.mocked(fs.promises).writeFile = writeFileMock;
@@ -86,14 +81,14 @@ describe('DictionaryPersistenceManager', () => {
       expect(savedData).toMatchObject({
         version: '1.0.0',
         customWords: words,
-        includeDefaults: true
+        includeDefaults: true,
       });
       expect(savedData.lastUpdated).toBeDefined();
     });
 
     it('includeDefaultsのデフォルト値はtrue', async () => {
       const words: DictionaryWord[] = [];
-      
+
       const writeFileMock = vi.fn().mockResolvedValue(undefined);
       vi.mocked(fs.promises).writeFile = writeFileMock;
 
@@ -105,7 +100,7 @@ describe('DictionaryPersistenceManager', () => {
 
     it('保存エラー時に適切なエラーをスローする', async () => {
       const words: DictionaryWord[] = [];
-      
+
       const writeFileMock = vi.fn().mockRejectedValue(new Error('Write failed'));
       vi.mocked(fs.promises).writeFile = writeFileMock;
 
@@ -116,7 +111,7 @@ describe('DictionaryPersistenceManager', () => {
       const words: DictionaryWord[] = [
         { word: 'TEST1', yomi: 'テストイチ', accent: 1, numMoras: 5 },
         { word: 'TEST2', yomi: 'テストニ', accent: 2, numMoras: 4 },
-        { word: 'TEST3', yomi: 'テストサン', accent: 0, numMoras: 5 }
+        { word: 'TEST3', yomi: 'テストサン', accent: 0, numMoras: 5 },
       ];
 
       const writeFileMock = vi.fn().mockResolvedValue(undefined);
@@ -135,37 +130,35 @@ describe('DictionaryPersistenceManager', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
       const result = await manager.load();
-      
+
       expect(result).toBeNull();
     });
 
     it('正しい形式のデータを読み込める', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      
+
       const mockData: PersistentDictionary = {
         version: '1.0.0',
         lastUpdated: '2024-01-01T00:00:00.000Z',
-        customWords: [
-          { word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }
-        ],
-        includeDefaults: true
+        customWords: [{ word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }],
+        includeDefaults: true,
       };
 
       const readFileMock = vi.fn().mockResolvedValue(JSON.stringify(mockData));
       vi.mocked(fs.promises).readFile = readFileMock;
 
       const result = await manager.load();
-      
+
       expect(result).toEqual(mockData);
       expect(readFileMock).toHaveBeenCalledWith(expectedDictionaryFile, 'utf8');
     });
 
     it('バージョンがない場合はエラーをスローする', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      
+
       const invalidData = {
         customWords: [],
-        includeDefaults: true
+        includeDefaults: true,
       };
 
       const readFileMock = vi.fn().mockResolvedValue(JSON.stringify(invalidData));
@@ -176,7 +169,7 @@ describe('DictionaryPersistenceManager', () => {
 
     it('JSONパースエラー時に適切なエラーをスローする', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      
+
       const readFileMock = vi.fn().mockResolvedValue('invalid json');
       vi.mocked(fs.promises).readFile = readFileMock;
 
@@ -185,7 +178,7 @@ describe('DictionaryPersistenceManager', () => {
 
     it('ファイル読み込みエラー時に適切なエラーをスローする', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      
+
       const readFileMock = vi.fn().mockRejectedValue(new Error('Read failed'));
       vi.mocked(fs.promises).readFile = readFileMock;
 
@@ -196,23 +189,23 @@ describe('DictionaryPersistenceManager', () => {
   describe('clear', () => {
     it('ファイルが存在する場合は削除する', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      
+
       const unlinkMock = vi.fn().mockResolvedValue(undefined);
       vi.mocked(fs.promises).unlink = unlinkMock;
 
       await manager.clear();
-      
+
       expect(unlinkMock).toHaveBeenCalledWith(expectedDictionaryFile);
     });
 
     it('ファイルが存在しない場合は何もしない', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
-      
+
       const unlinkMock = vi.fn();
       vi.mocked(fs.promises).unlink = unlinkMock;
 
       await manager.clear();
-      
+
       expect(unlinkMock).not.toHaveBeenCalled();
     });
   });
@@ -220,17 +213,17 @@ describe('DictionaryPersistenceManager', () => {
   describe('exists', () => {
     it('ファイルが存在する場合はtrueを返す', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      
+
       const result = manager.exists();
-      
+
       expect(result).toBe(true);
     });
 
     it('ファイルが存在しない場合はfalseを返す', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
-      
+
       const result = manager.exists();
-      
+
       expect(result).toBe(false);
     });
   });
@@ -238,7 +231,7 @@ describe('DictionaryPersistenceManager', () => {
   describe('getFilePath', () => {
     it('辞書ファイルのパスを返す', () => {
       const path = manager.getFilePath();
-      
+
       expect(path).toBe(expectedDictionaryFile);
     });
   });
@@ -247,11 +240,11 @@ describe('DictionaryPersistenceManager', () => {
     it('save → load のラウンドトリップが正しく動作する', async () => {
       const words: DictionaryWord[] = [
         { word: 'COEIRO', yomi: 'コエイロ', accent: 2, numMoras: 4 },
-        { word: 'Claude', yomi: 'クロード', accent: 2, numMoras: 4 }
+        { word: 'Claude', yomi: 'クロード', accent: 2, numMoras: 4 },
       ];
 
       let savedData: string | undefined;
-      
+
       // save のモック
       const writeFileMock = vi.fn().mockImplementation((path, data) => {
         savedData = data;
@@ -268,10 +261,10 @@ describe('DictionaryPersistenceManager', () => {
 
       // 保存
       await manager.save(words, false);
-      
+
       // 読み込み
       const loaded = await manager.load();
-      
+
       expect(loaded).toBeDefined();
       expect(loaded?.customWords).toEqual(words);
       expect(loaded?.includeDefaults).toBe(false);
@@ -281,7 +274,7 @@ describe('DictionaryPersistenceManager', () => {
     it('clear後はファイルが存在しない', async () => {
       // 初期状態：ファイルが存在する
       vi.mocked(fs.existsSync).mockReturnValue(true);
-      
+
       const unlinkMock = vi.fn().mockImplementation(() => {
         // unlink後はファイルが存在しない
         vi.mocked(fs.existsSync).mockReturnValue(false);
@@ -290,9 +283,9 @@ describe('DictionaryPersistenceManager', () => {
       vi.mocked(fs.promises).unlink = unlinkMock;
 
       expect(manager.exists()).toBe(true);
-      
+
       await manager.clear();
-      
+
       expect(manager.exists()).toBe(false);
     });
   });

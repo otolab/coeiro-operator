@@ -36,7 +36,7 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
   private outputHandler?: (data: string) => void;
   private serverCapabilities?: any;
   private nextRequestId = 1; // 連番ID管理用
-  
+
   constructor(
     private stateManager: IMCPStateManager,
     private requestTracker: IRequestTracker
@@ -55,7 +55,7 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
   async initialize(capabilities: MCPCapabilities): Promise<any> {
     // 状態を初期化中に遷移
     this.stateManager.transitionTo(MCPServerState.INITIALIZING);
-    
+
     try {
       // initialize リクエストを送信
       const response = await this.sendRequest('initialize', {
@@ -63,19 +63,19 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
         capabilities,
         clientInfo: {
           name: 'mcp-debug',
-          version: '1.0.0'
-        }
+          version: '1.0.0',
+        },
       });
-      
+
       // サーバー機能を保存
       this.serverCapabilities = response.capabilities;
-      
+
       // initialized 通知を送信（仕様に従いnotifications/initializedを使用）
       this.sendNotification('notifications/initialized');
-      
+
       // 状態をREADYに遷移
       this.stateManager.transitionTo(MCPServerState.READY);
-      
+
       return response;
     } catch (error) {
       // エラー時は終了状態に遷移
@@ -90,36 +90,36 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
   async sendRequest(method: string, params?: any, timeout?: number): Promise<any> {
     // 連番IDを使用（整数のみ、デバッグしやすい）
     const id = this.nextRequestId++;
-    
+
     // IDが大きくなりすぎないように、必要に応じてリセット
     if (this.nextRequestId > 1000000) {
       this.nextRequestId = 1;
     }
-    
+
     const message: MCPMessage = {
       jsonrpc: '2.0',
       id,
       method,
-      params
+      params,
     };
-    
+
     // リクエストを追跡開始
     const responsePromise = this.requestTracker.track(id, method, params, timeout);
-    
+
     // メッセージを送信
     this.sendMessage(message);
-    
+
     // tools/call の場合は処理中状態に遷移
     if (method === 'tools/call') {
       this.stateManager.transitionTo(MCPServerState.PROCESSING);
-      
+
       // レスポンス後にREADY状態に戻す
       responsePromise.then(
         () => this.stateManager.transitionTo(MCPServerState.READY),
         () => this.stateManager.transitionTo(MCPServerState.READY)
       );
     }
-    
+
     return responsePromise;
   }
 
@@ -130,9 +130,9 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
     const message: MCPMessage = {
       jsonrpc: '2.0',
       method,
-      params
+      params,
     };
-    
+
     this.sendMessage(message);
   }
 
@@ -156,12 +156,13 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
   private handleResponse(message: MCPMessage): void {
     const id = message.id;
     if (id === undefined) return;
-    
+
     // エラーレスポンスの場合
     if (message.error) {
-      this.requestTracker.reject(id, new Error(
-        `MCP Error ${message.error.code}: ${message.error.message}`
-      ));
+      this.requestTracker.reject(
+        id,
+        new Error(`MCP Error ${message.error.code}: ${message.error.message}`)
+      );
     }
     // 成功レスポンスの場合
     else if ('result' in message) {
@@ -185,7 +186,7 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
     if (!this.outputHandler) {
       throw new Error('Output handler not set');
     }
-    
+
     const jsonString = JSON.stringify(message);
     this.outputHandler(jsonString + '\n');
   }

@@ -38,7 +38,7 @@ export class MCPDebugClient {
       args: options.args,
       env: options.env,
       cwd: options.cwd,
-      timeout: options.timeout
+      timeout: options.timeout,
     });
 
     this.setupHandlers();
@@ -58,9 +58,9 @@ export class MCPDebugClient {
       this.logs.push({
         timestamp: new Date(),
         level: 'stderr',
-        message: data
+        message: data,
       });
-      
+
       if (this.options.debug) {
         console.error('[MCP Server]', data);
       }
@@ -81,7 +81,7 @@ export class MCPDebugClient {
       this.stateManager.transitionTo(MCPServerState.TERMINATED);
     });
 
-    this.processManager.on('error', (error) => {
+    this.processManager.on('error', error => {
       console.error('[MCP Debug] Process error:', error);
       this.stateManager.transitionTo(MCPServerState.TERMINATED);
     });
@@ -103,34 +103,33 @@ export class MCPDebugClient {
    * プロセス出力を処理
    */
   private handleProcessOutput(data: string): void {
-    
     this.messageBuffer += data;
-    
+
     // 改行で分割してメッセージを処理
     const lines = this.messageBuffer.split('\n');
     this.messageBuffer = lines.pop() || '';
 
     for (const line of lines) {
       if (!line.trim()) continue;
-      
+
       try {
         const message = JSON.parse(line) as MCPMessage;
-        
+
         // stdoutのJSONメッセージもログに保存
         this.logs.push({
           timestamp: new Date(),
           level: 'stdout',
-          message: JSON.stringify(message)
+          message: JSON.stringify(message),
         });
-        
+
         // デバッグモードの場合、受信したメッセージをログ出力
         if (this.options.debug) {
           console.error('[MCP Debug] Raw message received:', JSON.stringify(message));
         }
-        
+
         // MCPメッセージとして処理
         this.protocolHandler.handleMessage(message);
-        
+
         // デバッグモードの場合、処理されたメッセージをログ出力
         if (this.options.debug) {
           if ('id' in message) {
@@ -144,9 +143,9 @@ export class MCPDebugClient {
         this.logs.push({
           timestamp: new Date(),
           level: 'stdout',
-          message: line
+          message: line,
         });
-        
+
         if (this.options.debug) {
           console.error('[MCP Server Output]', line);
         }
@@ -165,30 +164,30 @@ export class MCPDebugClient {
     try {
       // プロセスを起動
       await this.processManager.start();
-      
+
       // プロセスがUNINITIALIZED状態になるのを待つ
       await this.stateManager.waitForState(MCPServerState.UNINITIALIZED, 5000);
-      
+
       // MCP初期化を実行
       const capabilities = this.options.capabilities || {
-        tools: {}
+        tools: {},
       };
-      
+
       if (this.options.debug) {
         console.error('[MCP Debug] Sending initialize request...');
       }
-      
+
       const initResponse = await this.protocolHandler.initialize(capabilities);
-      
+
       if (this.options.debug) {
         console.error('[MCP Debug] Initialize response:', initResponse);
       }
-      
+
       // READY状態を待つ
       await this.stateManager.waitForState(MCPServerState.READY, 5000);
-      
+
       this.isInitialized = true;
-      
+
       if (this.options.debug) {
         console.error('[MCP Debug] Client successfully initialized');
       }
@@ -216,7 +215,7 @@ export class MCPDebugClient {
 
     const result = await this.protocolHandler.sendRequest('tools/call', {
       name,
-      arguments: args
+      arguments: args,
     });
 
     if (this.options.debug) {
@@ -285,19 +284,19 @@ export class MCPDebugClient {
     }
 
     this.isInitialized = false;
-    
+
     // 状態をSHUTTING_DOWNに遷移
     if (this.stateManager.currentState !== MCPServerState.TERMINATED) {
       this.stateManager.transitionTo(MCPServerState.SHUTTING_DOWN);
     }
-    
+
     // プロセスを停止
     await this.processManager.stop();
-    
+
     // クリーンアップ
     this.protocolHandler.cleanup();
     this.stateManager.reset();
-    
+
     if (this.options.debug) {
       console.error('[MCP Debug] Client stopped');
     }
@@ -324,31 +323,35 @@ export class MCPDebugClient {
     await this.processManager.cleanup();
     this.logs = [];
   }
-  
+
   /**
    * ログを取得
    */
-  getLogs(filter?: { level?: 'stdout' | 'stderr'; since?: Date; limit?: number }): Array<{ timestamp: Date; level: 'stdout' | 'stderr'; message: string }> {
+  getLogs(filter?: {
+    level?: 'stdout' | 'stderr';
+    since?: Date;
+    limit?: number;
+  }): Array<{ timestamp: Date; level: 'stdout' | 'stderr'; message: string }> {
     let logs = [...this.logs];
-    
+
     if (filter) {
       if (filter.level) {
         logs = logs.filter(log => log.level === filter.level);
       }
-      
+
       if (filter.since) {
         const since = filter.since;
         logs = logs.filter(log => log.timestamp >= since);
       }
-      
+
       if (filter.limit) {
         logs = logs.slice(-filter.limit);
       }
     }
-    
+
     return logs;
   }
-  
+
   /**
    * ログをクリア
    */

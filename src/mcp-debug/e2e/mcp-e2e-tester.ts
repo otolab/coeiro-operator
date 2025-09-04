@@ -22,21 +22,21 @@ export interface ServerStatus {
 
 /**
  * MCPサーバーのE2Eテストを実行するクラス
- * 
+ *
  * @example
  * ```typescript
  * // Mocha/Jest/Vitest での使用例
  * describe('MCP Server', () => {
  *   let tester: MCPServiceE2ETester;
- *   
+ *
  *   beforeEach(async () => {
  *     tester = await createMCPTester({ serverPath: 'dist/mcp/server.js' });
  *   });
- *   
+ *
  *   afterEach(async () => {
  *     await tester.cleanup();
  *   });
- *   
+ *
  *   it('should call tool', async () => {
  *     const result = await tester.callTool('operator_status', {});
  *     expect(result.success).toBe(true);
@@ -47,11 +47,11 @@ export interface ServerStatus {
 export class MCPServiceE2ETester {
   private client: MCPDebugClient;
   private isStarted = false;
-  
+
   constructor(private options: MCPDebugClientOptions) {
     this.client = new MCPDebugClient(options);
   }
-  
+
   /**
    * テスト環境を起動
    */
@@ -59,11 +59,11 @@ export class MCPServiceE2ETester {
     if (this.isStarted) {
       throw new Error('Tester is already started');
     }
-    
+
     await this.client.start();
     this.isStarted = true;
   }
-  
+
   /**
    * ツールを呼び出し
    */
@@ -71,25 +71,25 @@ export class MCPServiceE2ETester {
     if (!this.isStarted) {
       throw new Error('Tester is not started. Call start() first.');
     }
-    
+
     const startTime = Date.now();
-    
+
     try {
       const result = await this.client.callTool(name, args);
       return {
         success: true,
         result,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     } catch (error) {
       return {
         success: false,
         error: error as Error,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
-  
+
   /**
    * 複数のツールを順次呼び出し
    */
@@ -97,15 +97,15 @@ export class MCPServiceE2ETester {
     calls: Array<{ name: string; args?: any }>
   ): Promise<ToolCallResult[]> {
     const results: ToolCallResult[] = [];
-    
+
     for (const call of calls) {
       const result = await this.callTool(call.name, call.args);
       results.push(result);
     }
-    
+
     return results;
   }
-  
+
   /**
    * 複数のツールを並行して呼び出し
    */
@@ -115,7 +115,7 @@ export class MCPServiceE2ETester {
     const promises = calls.map(call => this.callTool(call.name, call.args));
     return Promise.all(promises);
   }
-  
+
   /**
    * カスタムJSON-RPCリクエストを送信
    */
@@ -123,10 +123,10 @@ export class MCPServiceE2ETester {
     if (!this.isStarted) {
       throw new Error('Tester is not started. Call start() first.');
     }
-    
+
     return this.client.sendRequest(method, params);
   }
-  
+
   /**
    * カスタムJSON-RPC通知を送信
    */
@@ -134,10 +134,10 @@ export class MCPServiceE2ETester {
     if (!this.isStarted) {
       throw new Error('Tester is not started. Call start() first.');
     }
-    
+
     this.client.sendNotification(method, params);
   }
-  
+
   /**
    * サーバーの状態を取得
    */
@@ -146,10 +146,10 @@ export class MCPServiceE2ETester {
       state: this.client.getState(),
       isReady: this.client.isReady(),
       pendingRequests: this.client.getPendingRequestCount(),
-      capabilities: this.client.getServerCapabilities()
+      capabilities: this.client.getServerCapabilities(),
     };
   }
-  
+
   /**
    * 利用可能なツール一覧を取得
    */
@@ -160,13 +160,13 @@ export class MCPServiceE2ETester {
     }
     return [];
   }
-  
+
   /**
    * サーバーが特定の状態になるまで待機
    */
   async waitForState(state: MCPServerState, timeout = 5000): Promise<void> {
     const startTime = Date.now();
-    
+
     while (this.client.getState() !== state) {
       if (Date.now() - startTime > timeout) {
         throw new Error(`Timeout waiting for state ${state}`);
@@ -174,13 +174,13 @@ export class MCPServiceE2ETester {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
-  
+
   /**
    * サーバーが準備完了するまで待機
    */
   async waitUntilReady(timeout = 5000): Promise<void> {
     const startTime = Date.now();
-    
+
     while (!this.client.isReady()) {
       if (Date.now() - startTime > timeout) {
         throw new Error('Timeout waiting for server to be ready');
@@ -188,7 +188,7 @@ export class MCPServiceE2ETester {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
-  
+
   /**
    * サーバーを再起動
    */
@@ -196,10 +196,10 @@ export class MCPServiceE2ETester {
     if (!this.isStarted) {
       throw new Error('Tester is not started');
     }
-    
+
     await this.client.restart();
   }
-  
+
   /**
    * テスト環境を停止
    */
@@ -207,11 +207,11 @@ export class MCPServiceE2ETester {
     if (!this.isStarted) {
       return;
     }
-    
+
     await this.client.stop();
     this.isStarted = false;
   }
-  
+
   /**
    * クリーンアップ
    */
@@ -219,24 +219,20 @@ export class MCPServiceE2ETester {
     await this.client.cleanup();
     this.isStarted = false;
   }
-  
+
   /**
    * ログを取得
    * @param filter ログのフィルター条件
    * @returns ログエントリの配列
    */
-  getLogs(filter?: { 
-    level?: 'stdout' | 'stderr'; 
-    since?: Date; 
-    limit?: number 
-  }): Array<{ 
-    timestamp: Date; 
-    level: 'stdout' | 'stderr'; 
-    message: string 
+  getLogs(filter?: { level?: 'stdout' | 'stderr'; since?: Date; limit?: number }): Array<{
+    timestamp: Date;
+    level: 'stdout' | 'stderr';
+    message: string;
   }> {
     return this.client.getLogs(filter);
   }
-  
+
   /**
    * ログをクリア
    */
@@ -247,7 +243,7 @@ export class MCPServiceE2ETester {
 
 /**
  * MCPサーバーテスターを作成して起動
- * 
+ *
  * @example
  * ```typescript
  * const tester = await createMCPTester({ serverPath: 'dist/mcp/server.js' });
@@ -255,7 +251,9 @@ export class MCPServiceE2ETester {
  * await tester.cleanup();
  * ```
  */
-export async function createMCPTester(options: MCPDebugClientOptions): Promise<MCPServiceE2ETester> {
+export async function createMCPTester(
+  options: MCPDebugClientOptions
+): Promise<MCPServiceE2ETester> {
   const tester = new MCPServiceE2ETester(options);
   await tester.start();
   return tester;

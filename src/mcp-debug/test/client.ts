@@ -48,29 +48,29 @@ class McpDebugTestClient {
 
   private async startServer(): Promise<void> {
     const serverPath = path.join(__dirname, '../server.js');
-    
+
     console.log(`Starting server: ${serverPath}`);
-    
+
     this.serverProcess = spawn('node', [serverPath, '--debug'], {
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     // サーバーの出力をキャプチャ
-    this.serverProcess.stdout?.on('data', (data) => {
+    this.serverProcess.stdout?.on('data', data => {
       const output = data.toString();
       if (output.trim()) {
         console.log(`[SERVER OUT] ${output.trim()}`);
       }
     });
 
-    this.serverProcess.stderr?.on('data', (data) => {
+    this.serverProcess.stderr?.on('data', data => {
       const output = data.toString();
       if (output.trim()) {
         console.log(`[SERVER ERR] ${output.trim()}`);
       }
     });
 
-    this.serverProcess.on('close', (code) => {
+    this.serverProcess.on('close', code => {
       console.log(`Server process closed with code ${code}`);
     });
 
@@ -82,7 +82,7 @@ class McpDebugTestClient {
     if (this.serverProcess) {
       console.log('Stopping server...');
       this.serverProcess.kill('SIGTERM');
-      
+
       // graceful shutdown待機
       await new Promise(resolve => {
         if (this.serverProcess) {
@@ -97,10 +97,10 @@ class McpDebugTestClient {
 
   private async startInteractiveMode(): Promise<void> {
     await this.startServer();
-    
+
     this.rl = createInterface({
       input: process.stdin,
-      output: process.stdout
+      output: process.stdout,
     });
 
     console.log('📝 Interactive Mode - Enter commands:');
@@ -108,18 +108,20 @@ class McpDebugTestClient {
     console.log('  CTRL:status - Get server status');
     console.log('  CTRL:health - Health check');
     console.log('  CTRL:logs:stats - Log statistics');
-    console.log('  {"jsonrpc":"2.0","method":"tools/call","params":{"name":"server_status"},"id":1} - MCP tool call');
+    console.log(
+      '  {"jsonrpc":"2.0","method":"tools/call","params":{"name":"server_status"},"id":1} - MCP tool call'
+    );
     console.log('  .help - Show this help');
     console.log('  .exit - Exit client\n');
 
     this.rl.on('line', async (input: string) => {
       const trimmed = input.trim();
-      
+
       if (trimmed === '.exit') {
         await this.shutdown();
         return;
       }
-      
+
       if (trimmed === '.help') {
         console.log(this.getHelp());
         return;
@@ -144,19 +146,18 @@ class McpDebugTestClient {
     }
 
     const startTime = Date.now();
-    
+
     try {
       console.log(`📤 Sending: ${command}`);
-      
+
       // サーバーにコマンドを送信
       this.serverProcess.stdin?.write(command + '\n');
-      
+
       // レスポンス待機（簡易実装）
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       const duration = Date.now() - startTime;
       console.log(`⏱️  Duration: ${duration}ms\n`);
-      
     } catch (error) {
       const duration = Date.now() - startTime;
       console.log(`❌ Error: ${error}`);
@@ -175,41 +176,43 @@ class McpDebugTestClient {
           { name: 'Health Check', command: 'CTRL:health', expectedType: 'control' },
           { name: 'Log Stats', command: 'CTRL:logs:stats', expectedType: 'control' },
           { name: 'Mode Change', command: 'CTRL:mode:debug', expectedType: 'control' },
-          { name: 'Invalid Command', command: 'CTRL:invalid', expectedType: 'control' }
-        ]
+          { name: 'Invalid Command', command: 'CTRL:invalid', expectedType: 'control' },
+        ],
       },
       {
         name: 'MCP Tools',
         tests: [
-          { 
-            name: 'Server Status Tool', 
-            command: '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"server_status"},"id":1}',
-            expectedType: 'mcp'
+          {
+            name: 'Server Status Tool',
+            command:
+              '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"server_status"},"id":1}',
+            expectedType: 'mcp',
           },
-          { 
-            name: 'Debug Logs Tool', 
-            command: '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_logs","arguments":{"action":"stats"}},"id":2}',
-            expectedType: 'mcp'
-          }
-        ]
-      }
+          {
+            name: 'Debug Logs Tool',
+            command:
+              '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_logs","arguments":{"action":"stats"}},"id":2}',
+            expectedType: 'mcp',
+          },
+        ],
+      },
     ];
 
     for (const suite of testSuites) {
       console.log(`🧪 Running test suite: ${suite.name}`);
-      
+
       for (const test of suite.tests) {
         const result = await this.runSingleTest(test);
         this.results.push(result);
-        
+
         const status = result.success ? '✅' : '❌';
         console.log(`  ${status} ${test.name} (${result.duration}ms)`);
-        
+
         if (!result.success && result.error) {
           console.log(`     Error: ${result.error}`);
         }
       }
-      
+
       console.log('');
     }
 
@@ -219,7 +222,7 @@ class McpDebugTestClient {
 
   private async runSingleTest(test: any): Promise<TestResult> {
     const startTime = Date.now();
-    
+
     try {
       if (!this.serverProcess) {
         throw new Error('Server not running');
@@ -227,22 +230,21 @@ class McpDebugTestClient {
 
       // テストコマンドを送信
       this.serverProcess.stdin?.write(test.command + '\n');
-      
+
       // レスポンス待機
       await new Promise(resolve => setTimeout(resolve, test.timeout || 2000));
-      
+
       return {
         command: test.command,
         success: true,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
-      
     } catch (error) {
       return {
         command: test.command,
         success: false,
         error: (error as Error).message,
-        duration: Date.now() - startTime
+        duration: Date.now() - startTime,
       };
     }
   }
@@ -251,13 +253,13 @@ class McpDebugTestClient {
     const total = this.results.length;
     const passed = this.results.filter(r => r.success).length;
     const failed = total - passed;
-    
+
     console.log('📊 Test Summary:');
     console.log(`   Total: ${total}`);
     console.log(`   Passed: ${passed} ✅`);
     console.log(`   Failed: ${failed} ❌`);
     console.log(`   Success Rate: ${((passed / total) * 100).toFixed(1)}%`);
-    
+
     if (failed > 0) {
       console.log('\n❌ Failed Tests:');
       this.results
@@ -294,11 +296,11 @@ Client Commands:
 
   private async shutdown(): Promise<void> {
     console.log('\n🔄 Shutting down test client...');
-    
+
     if (this.rl) {
       this.rl.close();
     }
-    
+
     await this.stopServer();
     process.exit(0);
   }
@@ -308,7 +310,7 @@ Client Commands:
 async function main() {
   const args = process.argv.slice(2);
   const isInteractive = args.includes('--interactive') || args.includes('-i');
-  
+
   if (args.includes('--help') || args.includes('-h')) {
     console.log(`
 MCP Debug Test Client
@@ -328,7 +330,7 @@ Examples:
   }
 
   const client = new McpDebugTestClient(isInteractive);
-  
+
   try {
     await client.start();
   } catch (error) {

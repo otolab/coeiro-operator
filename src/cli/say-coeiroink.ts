@@ -13,27 +13,27 @@ import { BUFFER_SIZES } from '../core/say/constants.js';
 import { LoggerPresets } from '../utils/logger.js';
 
 interface ParsedOptions {
-    voice: string;
-    rate: number;
-    inputFile: string;
-    outputFile: string;
-    text: string;
-    style?: string;
-    chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
-    bufferSize: number;
+  voice: string;
+  rate: number;
+  inputFile: string;
+  outputFile: string;
+  text: string;
+  style?: string;
+  chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
+  bufferSize: number;
 }
 
 class SayCoeiroinkCLI {
-    private sayCoeiroink: SayCoeiroink;
-    private config: Config;
+  private sayCoeiroink: SayCoeiroink;
+  private config: Config;
 
-    constructor(sayCoeiroink: SayCoeiroink, config: Config) {
-        this.sayCoeiroink = sayCoeiroink;
-        this.config = config;
-    }
+  constructor(sayCoeiroink: SayCoeiroink, config: Config) {
+    this.sayCoeiroink = sayCoeiroink;
+    this.config = config;
+  }
 
-    async showUsage(): Promise<void> {
-        console.log(`Usage: say-coeiroink [-v voice] [-r rate] [-o outfile] [-f file | text] [--style style] [--chunk-mode mode] [--buffer-size size]
+  async showUsage(): Promise<void> {
+    console.log(`Usage: say-coeiroink [-v voice] [-r rate] [-o outfile] [-f file | text] [--style style] [--chunk-mode mode] [--buffer-size size]
 
 低レイテンシストリーミング音声合成・再生（macOS sayコマンド互換）
 
@@ -76,194 +76,200 @@ Examples:
     say-coeiroink --chunk-mode small --buffer-size 256 "低レイテンシ再生"
     say-coeiroink --buffer-size 2048 "高品質・安定再生"
     echo "テキスト" | say-coeiroink -f -`);
-    }
+  }
 
-    private async parseArguments(args: string[]): Promise<ParsedOptions> {
-        const options: ParsedOptions = {
-            voice: process.env.COEIROINK_VOICE || '',
-            rate: this.config.operator.rate,
-            inputFile: '',
-            outputFile: '',
-            text: '',
-            chunkMode: 'punctuation',
-            bufferSize: BUFFER_SIZES.DEFAULT
-        };
+  private async parseArguments(args: string[]): Promise<ParsedOptions> {
+    const options: ParsedOptions = {
+      voice: process.env.COEIROINK_VOICE || '',
+      rate: this.config.operator.rate,
+      inputFile: '',
+      outputFile: '',
+      text: '',
+      chunkMode: 'punctuation',
+      bufferSize: BUFFER_SIZES.DEFAULT,
+    };
 
-        for (let i = 0; i < args.length; i++) {
-            const arg = args[i];
-            
-            switch (arg) {
-                case '-h':
-                case '--help':
-                    await this.showUsage();
-                    throw new Error('HELP_REQUESTED');
-                    
-                case '-v':
-                    if (args[i + 1] === '?') {
-                        await this.sayCoeiroink.listVoices();
-                        throw new Error('VOICE_LIST_REQUESTED');
-                    }
-                    options.voice = args[i + 1];
-                    i++;
-                    break;
-                
-                case '-r':
-                case '--rate':
-                    options.rate = parseInt(args[i + 1]);
-                    i++;
-                    break;
-                
-                case '-o':
-                case '--output-file':
-                    options.outputFile = args[i + 1];
-                    i++;
-                    break;
-                
-                case '-f':
-                case '--input-file':
-                    options.inputFile = args[i + 1];
-                    i++;
-                    break;
-                
-                
-                case '--style':
-                    options.style = args[i + 1];
-                    i++;
-                    break;
-                
-                case '--chunk-mode':
-                    const chunkMode = args[i + 1];
-                    if (!['none', 'small', 'medium', 'large', 'punctuation'].includes(chunkMode)) {
-                        throw new Error(`Invalid chunk mode: ${chunkMode}. Must be one of: none, small, medium, large, punctuation`);
-                    }
-                    options.chunkMode = chunkMode as 'none' | 'small' | 'medium' | 'large' | 'punctuation';
-                    i++;
-                    break;
-                
-                case '--buffer-size':
-                    const bufferSize = parseInt(args[i + 1]);
-                    if (isNaN(bufferSize) || bufferSize < BUFFER_SIZES.MIN || bufferSize > BUFFER_SIZES.MAX) {
-                        throw new Error(`Invalid buffer size: ${args[i + 1]}. Must be a number between ${BUFFER_SIZES.MIN} and ${BUFFER_SIZES.MAX}`);
-                    }
-                    options.bufferSize = bufferSize;
-                    i++;
-                    break;
-                
-                default:
-                    if (arg.startsWith('-')) {
-                        throw new Error(`Unknown option ${arg}`);
-                    } else {
-                        options.text = options.text ? `${options.text} ${arg}` : arg;
-                    }
-                    break;
-            }
+    for (let i = 0; i < args.length; i++) {
+      const arg = args[i];
+
+      switch (arg) {
+        case '-h':
+        case '--help':
+          await this.showUsage();
+          throw new Error('HELP_REQUESTED');
+
+        case '-v':
+          if (args[i + 1] === '?') {
+            await this.sayCoeiroink.listVoices();
+            throw new Error('VOICE_LIST_REQUESTED');
+          }
+          options.voice = args[i + 1];
+          i++;
+          break;
+
+        case '-r':
+        case '--rate':
+          options.rate = parseInt(args[i + 1]);
+          i++;
+          break;
+
+        case '-o':
+        case '--output-file':
+          options.outputFile = args[i + 1];
+          i++;
+          break;
+
+        case '-f':
+        case '--input-file':
+          options.inputFile = args[i + 1];
+          i++;
+          break;
+
+        case '--style':
+          options.style = args[i + 1];
+          i++;
+          break;
+
+        case '--chunk-mode': {
+          const chunkMode = args[i + 1];
+          if (!['none', 'small', 'medium', 'large', 'punctuation'].includes(chunkMode)) {
+            throw new Error(
+              `Invalid chunk mode: ${chunkMode}. Must be one of: none, small, medium, large, punctuation`
+            );
+          }
+          options.chunkMode = chunkMode as 'none' | 'small' | 'medium' | 'large' | 'punctuation';
+          i++;
+          break;
         }
 
-        return options;
-    }
-
-    private async getInputText(options: ParsedOptions): Promise<string> {
-        let text = options.text;
-
-        if (options.inputFile) {
-            if (options.inputFile === '-') {
-                const chunks: Buffer[] = [];
-                for await (const chunk of process.stdin) {
-                    chunks.push(chunk as Buffer);
-                }
-                text = Buffer.concat(chunks).toString('utf8').trim();
-            } else {
-                try {
-                    await access(options.inputFile, constants.F_OK);
-                    text = (await readFile(options.inputFile, 'utf8')).trim();
-                } catch {
-                    throw new Error(`File '${options.inputFile}' not found`);
-                }
-            }
-        } else if (!text) {
-            const chunks: Buffer[] = [];
-            for await (const chunk of process.stdin) {
-                chunks.push(chunk as Buffer);
-            }
-            text = Buffer.concat(chunks).toString('utf8').trim();
+        case '--buffer-size': {
+          const bufferSize = parseInt(args[i + 1]);
+          if (isNaN(bufferSize) || bufferSize < BUFFER_SIZES.MIN || bufferSize > BUFFER_SIZES.MAX) {
+            throw new Error(
+              `Invalid buffer size: ${args[i + 1]}. Must be a number between ${BUFFER_SIZES.MIN} and ${BUFFER_SIZES.MAX}`
+            );
+          }
+          options.bufferSize = bufferSize;
+          i++;
+          break;
         }
 
-        if (!text) {
-            throw new Error('No text to speak');
-        }
-
-        return text;
+        default:
+          if (arg.startsWith('-')) {
+            throw new Error(`Unknown option ${arg}`);
+          } else {
+            options.text = options.text ? `${options.text} ${arg}` : arg;
+          }
+          break;
+      }
     }
 
-    async run(args: string[]): Promise<void> {
-        const options = await this.parseArguments(args);
-        const text = await this.getInputText(options);
+    return options;
+  }
 
-        // Queue統一版：ウォームアップ → 音声合成 → 完了待機を全てqueue経由で処理
-        const result = await this.sayCoeiroink.synthesizeText(text, {
-            voice: options.voice || null,
-            rate: options.rate,
-            outputFile: options.outputFile || null,
-            style: options.style || undefined,
-            chunkMode: options.chunkMode,
-            bufferSize: options.bufferSize
-        });
+  private async getInputText(options: ParsedOptions): Promise<string> {
+    let text = options.text;
 
-        if (options.outputFile) {
-            console.error(`Audio saved to: ${options.outputFile}`);
+    if (options.inputFile) {
+      if (options.inputFile === '-') {
+        const chunks: Buffer[] = [];
+        for await (const chunk of process.stdin) {
+          chunks.push(chunk as Buffer);
         }
-        // 注：音声再生時の完了待機は synthesizeText() 内で自動実行される
+        text = Buffer.concat(chunks).toString('utf8').trim();
+      } else {
+        try {
+          await access(options.inputFile, constants.F_OK);
+          text = (await readFile(options.inputFile, 'utf8')).trim();
+        } catch {
+          throw new Error(`File '${options.inputFile}' not found`);
+        }
+      }
+    } else if (!text) {
+      const chunks: Buffer[] = [];
+      for await (const chunk of process.stdin) {
+        chunks.push(chunk as Buffer);
+      }
+      text = Buffer.concat(chunks).toString('utf8').trim();
     }
 
+    if (!text) {
+      throw new Error('No text to speak');
+    }
+
+    return text;
+  }
+
+  async run(args: string[]): Promise<void> {
+    const options = await this.parseArguments(args);
+    const text = await this.getInputText(options);
+
+    // Queue統一版：ウォームアップ → 音声合成 → 完了待機を全てqueue経由で処理
+    const result = await this.sayCoeiroink.synthesizeText(text, {
+      voice: options.voice || null,
+      rate: options.rate,
+      outputFile: options.outputFile || null,
+      style: options.style || undefined,
+      chunkMode: options.chunkMode,
+      bufferSize: options.bufferSize,
+    });
+
+    if (options.outputFile) {
+      console.error(`Audio saved to: ${options.outputFile}`);
+    }
+    // 注：音声再生時の完了待機は synthesizeText() 内で自動実行される
+  }
 }
 
 // プロセス終了ハンドリング
-process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error.message);
-    process.exit(1);
+process.on('uncaughtException', error => {
+  console.error('Uncaught Exception:', error.message);
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection:', reason);
-    process.exit(1);
+  console.error('Unhandled Rejection:', reason);
+  process.exit(1);
 });
 
 // メイン実行関数
 async function main(): Promise<void> {
-    // デバッグモード判定
-    const isDebugMode = process.argv.includes('--debug');
-    
-    // CLIモードでは通常ログレベル（info）を使用、デバッグモードではdebugレベル
-    if (isDebugMode) {
-        LoggerPresets.debug();
-    } else {
-        LoggerPresets.cli();
-    }
-    
-    const config = await loadConfig();
-    const sayCoeiroink = new SayCoeiroink(config);
-    
-    await sayCoeiroink.initialize();
-    await sayCoeiroink.buildDynamicConfig();
-    
-    const cli = new SayCoeiroinkCLI(sayCoeiroink, config);
-    await cli.run(process.argv.slice(2));
+  // デバッグモード判定
+  const isDebugMode = process.argv.includes('--debug');
+
+  // CLIモードでは通常ログレベル（info）を使用、デバッグモードではdebugレベル
+  if (isDebugMode) {
+    LoggerPresets.debug();
+  } else {
+    LoggerPresets.cli();
+  }
+
+  const config = await loadConfig();
+  const sayCoeiroink = new SayCoeiroink(config);
+
+  await sayCoeiroink.initialize();
+  await sayCoeiroink.buildDynamicConfig();
+
+  const cli = new SayCoeiroinkCLI(sayCoeiroink, config);
+  await cli.run(process.argv.slice(2));
 }
 
 // メイン実行
 main()
-    .then(() => {
-        process.exit(0);
-    })
-    .catch((error) => {
-        // 特別なエラーメッセージは正常終了扱い
-        if ((error as Error).message === 'HELP_REQUESTED' || 
-            (error as Error).message === 'VOICE_LIST_REQUESTED') {
-            process.exit(0);
-        } else {
-            console.error(`Error: ${(error as Error).message}`);
-            process.exit(1);
-        }
-    });
+  .then(() => {
+    process.exit(0);
+  })
+  .catch(error => {
+    // 特別なエラーメッセージは正常終了扱い
+    if (
+      (error as Error).message === 'HELP_REQUESTED' ||
+      (error as Error).message === 'VOICE_LIST_REQUESTED'
+    ) {
+      process.exit(0);
+    } else {
+      console.error(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
 
 export default SayCoeiroinkCLI;

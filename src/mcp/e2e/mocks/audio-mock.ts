@@ -90,11 +90,7 @@ export class SpeakerMock extends EventEmitter {
   private channels: number;
   private bitDepth: number;
 
-  constructor(options?: {
-    sampleRate?: number;
-    channels?: number;
-    bitDepth?: number;
-  }) {
+  constructor(options?: { sampleRate?: number; channels?: number; bitDepth?: number }) {
     super();
     this.sampleRate = options?.sampleRate || 48000;
     this.channels = options?.channels || 2;
@@ -110,10 +106,10 @@ export class SpeakerMock extends EventEmitter {
     if (this.closed) {
       throw new Error('Speaker is closed');
     }
-    
+
     this.written.push(buffer);
     this.emit('write', buffer);
-    
+
     // バックプレッシャーのシミュレート
     return this.written.length < 10;
   }

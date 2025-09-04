@@ -1,7 +1,7 @@
 /**
  * Vitest Tests for MCP Debug CLI Wrapper
  * MCPデバッグCLIラッパーのテスト
- * 
+ *
  * 新機能：ターゲットサーバー統合機能の単体テスト
  */
 
@@ -25,7 +25,7 @@ class CLIWrapperTestRunner {
     stderr: [],
     exitCode: null,
     controlResponses: [],
-    targetStatus: null
+    targetStatus: null,
   };
 
   /**
@@ -34,28 +34,34 @@ class CLIWrapperTestRunner {
   async startCLIWithEchoServer(options: string[] = []): Promise<void> {
     const cliPath = path.resolve(__dirname, '../../../dist/mcp-debug/cli.js');
     const echoServerPath = path.resolve(__dirname, '../../../dist/mcp-debug/test/echo-server.js');
-    
+
     return new Promise((resolve, reject) => {
       this.cliProcess = spawn('node', [cliPath, echoServerPath, ...options], {
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
 
-      this.cliProcess.stdout?.on('data', (data) => {
-        const lines = data.toString().split('\n').filter((line: string) => line.trim());
+      this.cliProcess.stdout?.on('data', data => {
+        const lines = data
+          .toString()
+          .split('\n')
+          .filter((line: string) => line.trim());
         this.output.stdout.push(...lines);
         this.parseOutput(lines);
       });
 
-      this.cliProcess.stderr?.on('data', (data) => {
-        const lines = data.toString().split('\n').filter((line: string) => line.trim());
+      this.cliProcess.stderr?.on('data', data => {
+        const lines = data
+          .toString()
+          .split('\n')
+          .filter((line: string) => line.trim());
         this.output.stderr.push(...lines);
       });
 
-      this.cliProcess.on('error', (error) => {
+      this.cliProcess.on('error', error => {
         reject(new Error(`Failed to start CLI: ${error.message}`));
       });
 
-      this.cliProcess.on('exit', (code) => {
+      this.cliProcess.on('exit', code => {
         this.output.exitCode = code;
       });
 
@@ -85,7 +91,7 @@ class CLIWrapperTestRunner {
       throw new Error('CLI not started');
     }
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       this.cliProcess!.stdin!.write(command + '\n');
       setTimeout(resolve, 500); // 処理時間を確保
     });
@@ -116,15 +122,15 @@ class CLIWrapperTestRunner {
    */
   async stopCLI(): Promise<void> {
     if (this.cliProcess) {
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         this.cliProcess!.on('close', () => {
           this.cliProcess = undefined;
           resolve();
         });
-        
+
         // graceful shutdown を試す
         this.cliProcess!.stdin?.write('exit\n');
-        
+
         // タイムアウト後にforceで終了
         setTimeout(() => {
           if (this.cliProcess && !this.cliProcess.killed) {
@@ -144,7 +150,7 @@ class CLIWrapperTestRunner {
       stderr: [],
       exitCode: null,
       controlResponses: [],
-      targetStatus: null
+      targetStatus: null,
     };
   }
 
@@ -167,37 +173,34 @@ describe('MCP Debug CLI Wrapper Tests', () => {
   describe('CLI基本機能', () => {
     test('CLIでターゲットサーバーを起動できる', async () => {
       await testRunner.startCLIWithEchoServer();
-      
+
       const output = testRunner.getOutput();
       expect(output.stdout).toEqual(
-        expect.arrayContaining([
-          expect.stringContaining('Target server started successfully')
-        ])
+        expect.arrayContaining([expect.stringContaining('Target server started successfully')])
       );
     }, 20000);
 
     test('CLIでターゲットサーバーのステータスを確認できる', async () => {
       await testRunner.startCLIWithEchoServer();
-      
+
       await testRunner.sendCommand('CTRL:target:status');
-      
+
       const output = testRunner.getOutput();
       // ステータス確認はサーバーが正常動作していることで判定
-      const serverRunning = output.stdout.some(line => 
-        line.includes('Target server started successfully') || 
-        line.includes('Echo MCP Server ready')
+      const serverRunning = output.stdout.some(
+        line =>
+          line.includes('Target server started successfully') ||
+          line.includes('Echo MCP Server ready')
       );
       expect(serverRunning).toBe(true);
     }, 20000);
 
     test('デバッグモードでの起動', async () => {
       await testRunner.startCLIWithEchoServer(['--debug']);
-      
+
       const output = testRunner.getOutput();
       expect(output.stdout).toEqual(
-        expect.arrayContaining([
-          expect.stringContaining('debugMode\":true')
-        ])
+        expect.arrayContaining([expect.stringContaining('debugMode\":true')])
       );
     }, 20000);
   });
@@ -205,24 +208,25 @@ describe('MCP Debug CLI Wrapper Tests', () => {
   describe('ターゲットサーバー制御', () => {
     test('ターゲットサーバーの再起動', async () => {
       await testRunner.startCLIWithEchoServer();
-      
+
       await testRunner.sendCommand('CTRL:target:restart');
-      
+
       const output = testRunner.getOutput();
       // 制御レスポンスがstdoutに出力される場合もあるため両方チェック
-      const hasRestartResponse = output.controlResponses.some(resp => 
-        resp.includes('CTRL_RESPONSE:target:restart')
-      ) || output.stdout.some(line => 
-        line.includes('Target server') && (line.includes('restart') || line.includes('started'))
-      );
+      const hasRestartResponse =
+        output.controlResponses.some(resp => resp.includes('CTRL_RESPONSE:target:restart')) ||
+        output.stdout.some(
+          line =>
+            line.includes('Target server') && (line.includes('restart') || line.includes('started'))
+        );
       expect(hasRestartResponse).toBe(true);
     }, 20000);
 
     test('制御コマンドのヘルプ表示', async () => {
       await testRunner.startCLIWithEchoServer();
-      
+
       await testRunner.sendCommand('help');
-      
+
       const output = testRunner.getOutput();
       expect(output.stdout.join('\n')).toContain('Target Server Control Commands');
       expect(output.stdout.join('\n')).toContain('CTRL:target:status');
@@ -233,18 +237,18 @@ describe('MCP Debug CLI Wrapper Tests', () => {
     test('存在しないターゲットサーバーでのエラー処理', async () => {
       const cliPath = path.resolve(__dirname, '../../../dist/mcp-debug/cli.js');
       const nonExistentPath = '/nonexistent/server.js';
-      
-      return new Promise((resolve) => {
+
+      return new Promise(resolve => {
         const process = spawn('node', [cliPath, nonExistentPath], {
-          stdio: ['pipe', 'pipe', 'pipe']
+          stdio: ['pipe', 'pipe', 'pipe'],
         });
 
         let stderr = '';
-        process.stderr?.on('data', (data) => {
+        process.stderr?.on('data', data => {
           stderr += data.toString();
         });
 
-        process.on('close', (code) => {
+        process.on('close', code => {
           expect(code).not.toBe(0);
           expect(stderr).toContain('not found');
           resolve(undefined);
@@ -254,14 +258,12 @@ describe('MCP Debug CLI Wrapper Tests', () => {
 
     test('不正なコマンドの処理', async () => {
       await testRunner.startCLIWithEchoServer();
-      
+
       await testRunner.sendCommand('invalid_command');
-      
+
       const output = testRunner.getOutput();
       expect(output.stdout).toEqual(
-        expect.arrayContaining([
-          expect.stringContaining('Echo: invalid_command')
-        ])
+        expect.arrayContaining([expect.stringContaining('Echo: invalid_command')])
       );
     }, 20000);
   });
@@ -269,12 +271,10 @@ describe('MCP Debug CLI Wrapper Tests', () => {
   describe('自動リロード機能', () => {
     test('自動リロードオプションでの起動', async () => {
       await testRunner.startCLIWithEchoServer(['--auto-reload']);
-      
+
       const output = testRunner.getOutput();
       expect(output.stdout).toEqual(
-        expect.arrayContaining([
-          expect.stringContaining('Watching for changes')
-        ])
+        expect.arrayContaining([expect.stringContaining('Watching for changes')])
       );
     }, 20000);
   });
@@ -285,11 +285,11 @@ describe('Target Server Wrapper Unit Tests', () => {
     test('Echo Backサーバーのロードテスト', async () => {
       // 動的読み込み機能の単体テスト
       const echoServerPath = path.resolve(__dirname, '../../../dist/mcp-debug/test/echo-server.js');
-      
+
       // ファイルの存在確認
       const stats = await fs.stat(echoServerPath);
       expect(stats.isFile()).toBe(true);
-      
+
       // 動的インポートテスト
       const module = await import(echoServerPath);
       expect(module).toBeDefined();

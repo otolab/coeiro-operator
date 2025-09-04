@@ -29,7 +29,7 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
   private isStarting = false;
   private isStopping = false;
   private startupTimeout?: NodeJS.Timeout;
-  
+
   constructor(private options: ProcessManagerOptions) {
     super();
   }
@@ -41,18 +41,18 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
     if (this.childProcess && !this.childProcess.killed) {
       throw new Error('Process is already running');
     }
-    
+
     if (this.isStarting) {
       throw new Error('Process is already starting');
     }
-    
+
     // ファイルの存在チェック
     if (!existsSync(this.options.serverPath)) {
       throw new Error(`Server file not found: ${this.options.serverPath}`);
     }
-    
+
     this.isStarting = true;
-    
+
     try {
       return await this.doStart();
     } finally {
@@ -64,19 +64,19 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
     return new Promise((resolve, reject) => {
       // 子プロセスを起動
       const args = this.options.args || [];
-      
+
       this.childProcess = spawn('node', [this.options.serverPath, ...args], {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { 
-          ...process.env, 
-          NODE_NO_WARNINGS: '1',  // Node.js警告を抑制
-          ...this.options.env 
+        env: {
+          ...process.env,
+          NODE_NO_WARNINGS: '1', // Node.js警告を抑制
+          ...this.options.env,
         },
-        cwd: this.options.cwd
+        cwd: this.options.cwd,
       });
 
       // エラーハンドリング
-      this.childProcess.on('error', (error) => {
+      this.childProcess.on('error', error => {
         this.emit('error', error);
         if (this.isStarting) {
           reject(error);
@@ -85,7 +85,7 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
 
       // 標準出力の処理
       if (this.childProcess.stdout) {
-        this.childProcess.stdout.on('data', (data) => {
+        this.childProcess.stdout.on('data', data => {
           const output = data.toString();
           this.emit('stdout', output);
         });
@@ -95,7 +95,7 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
 
       // 標準エラー出力の処理
       if (this.childProcess.stderr) {
-        this.childProcess.stderr.on('data', (data) => {
+        this.childProcess.stderr.on('data', data => {
           this.emit('stderr', data.toString());
         });
       }
@@ -155,13 +155,13 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
     if (!this.childProcess) {
       return;
     }
-    
+
     if (this.isStopping) {
       return;
     }
-    
+
     this.isStopping = true;
-    
+
     try {
       await this.doStop();
     } finally {
@@ -170,14 +170,14 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
   }
 
   private async doStop(): Promise<void> {
-    return new Promise<void>((resolve) => {
+    return new Promise<void>(resolve => {
       if (!this.childProcess) {
         resolve();
         return;
       }
 
       const proc = this.childProcess;
-      
+
       // 終了待機タイムアウト
       const killTimeout = setTimeout(() => {
         if (proc && !proc.killed) {
@@ -213,7 +213,7 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
     if (!this.childProcess || !this.childProcess.stdin) {
       throw new Error('Process is not running or stdin is not available');
     }
-    
+
     // stdinにデータを書き込み（改行は既にdataに含まれている）
     this.childProcess.stdin.write(data);
   }
@@ -240,7 +240,7 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
       clearTimeout(this.startupTimeout);
       this.startupTimeout = undefined;
     }
-    
+
     await this.stop();
     this.removeAllListeners();
   }
