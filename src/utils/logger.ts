@@ -38,8 +38,12 @@ class Logger {
   };
 
   constructor(config: Partial<LoggerConfig> = {}) {
+    // 環境変数からログレベルを取得
+    const envLogLevel = process.env.COEIRO_LOG_LEVEL as LogLevel;
+    const defaultLevel = envLogLevel && this.isValidLogLevel(envLogLevel) ? envLogLevel : 'info';
+    
     this.config = {
-      level: 'info',
+      level: defaultLevel,
       accumulateLevel: 'debug', // デフォルトで全レベル蓄積
       isMcpMode: false,
       prefix: '',
@@ -47,6 +51,10 @@ class Logger {
       maxEntries: 1000,
       ...config,
     };
+  }
+  
+  private isValidLogLevel(level: string): level is LogLevel {
+    return ['quiet', 'error', 'warn', 'info', 'verbose', 'debug'].includes(level);
   }
 
   static getInstance(): Logger {

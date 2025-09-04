@@ -440,11 +440,18 @@ export class AudioPlayer {
     
     // テスト用のモックインスタンスが設定されている場合はそれを返す
     if (forTests.mockSpeakerInstance) {
+      logger.debug('Using forTests.mockSpeakerInstance');
       return forTests.mockSpeakerInstance;
     }
     
     // CI環境またはテスト環境でモックSpeakerを返す
-    if (process.env.NODE_ENV === 'test' || process.env.CI === 'true') {
+    const isTestEnv = process.env.NODE_ENV === 'test';
+    const isCIEnv = process.env.CI === 'true';
+    
+    logger.debug(`Environment check - NODE_ENV: ${process.env.NODE_ENV}, CI: ${process.env.CI}, isTestEnv: ${isTestEnv}, isCIEnv: ${isCIEnv}`);
+    
+    if (isTestEnv || isCIEnv) {
+      logger.debug('Using mock Speaker for test/CI environment');
       const mockSpeaker = new EventEmitter() as any;
       
       // Writable Streamの基本メソッド
@@ -498,6 +505,7 @@ export class AudioPlayer {
     }
 
     // 本番環境では実際のSpeakerを返す
+    logger.debug('Using real Speaker (production mode)');
     return new Speaker(config);
   }
 

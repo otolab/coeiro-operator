@@ -9,6 +9,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
+import { getTestEnvironment } from '../../test-utils/test-env.js';
 
 interface MCPDebugTestResult {
   stdout: string[];
@@ -41,8 +42,7 @@ class CoeirocoperatorMCPDebugTestRunner {
       this.cliProcess = spawn('node', [cliPath, coeirocoperatorServerPath, '--debug', ...options], {
         stdio: ['pipe', 'pipe', 'pipe'],
         env: {
-          ...process.env,
-          NODE_ENV: 'test',
+          ...getTestEnvironment(),
           MCP_DEBUG_TEST_MODE: 'true',
         },
       });

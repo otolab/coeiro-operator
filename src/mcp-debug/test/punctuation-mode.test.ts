@@ -9,6 +9,7 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { getTestEnvironment } from '../../test-utils/test-env.js';
 
 interface PunctuationTestConfig {
   connection: {
@@ -57,7 +58,7 @@ class PunctuationModeTestRunner {
     return new Promise((resolve, reject) => {
       this.serverProcess = spawn('node', [...nodeArgs, ...serverArgs], {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, NODE_ENV: 'test' },
+        env: getTestEnvironment(),
       });
       console.timeEnd('Process spawn');
 

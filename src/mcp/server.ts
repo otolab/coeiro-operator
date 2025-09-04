@@ -8,6 +8,11 @@ import type { Character } from '../core/operator/character-info-service.js';
 import { logger, LoggerPresets } from '../utils/logger.js';
 import { DictionaryService } from '../core/dictionary/dictionary-service.js';
 
+// デバッグ: 環境変数を確認
+if (process.env.NODE_ENV === 'test' || process.env.CI === 'true') {
+  console.error(`[MCP Server] Environment: NODE_ENV=${process.env.NODE_ENV}, CI=${process.env.CI}`);
+}
+
 interface StyleInfo {
   id: string;
   name: string;
