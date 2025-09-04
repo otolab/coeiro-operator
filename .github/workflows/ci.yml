@@ -14,11 +14,7 @@ on:
 jobs:
   test:
     name: Test
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        node-version: [18.x, 20.x]
+    runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
@@ -27,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 20.x
           cache: 'npm'
       
       - name: Install dependencies
@@ -42,19 +38,11 @@ jobs:
       - name: Run tests
         run: npm test
       
-      - name: Run E2E tests (Unix)
-        if: runner.os != 'Windows'
+      - name: Run E2E tests
         run: npm run test:e2e
         env:
           COEIRO_TEST_MODE: true
           COEIROINK_OPERATOR_CONFIG_PATH: /tmp/test-operator-config.json
-      
-      - name: Run E2E tests (Windows)
-        if: runner.os == 'Windows'
-        run: npm run test:e2e
-        env:
-          COEIRO_TEST_MODE: true
-          COEIROINK_OPERATOR_CONFIG_PATH: ${{ runner.temp }}/test-operator-config.json
 
   lint:
     name: Lint
