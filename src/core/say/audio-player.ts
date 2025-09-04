@@ -3,11 +3,12 @@
  * speakerライブラリによるネイティブ音声出力を担当
  */
 
-import Speaker from 'speaker';
 import { writeFile } from 'fs/promises';
 import * as Echogarden from 'echogarden';
 // @ts-ignore - dsp.jsには型定義がない
 import DSP from 'dsp.js';
+// @ts-ignore - speakerには型定義がない
+import Speaker from 'speaker';
 // @ts-ignore - node-libsamplerateには型定義がない
 import SampleRate from 'node-libsamplerate';
 import { Transform } from 'stream';
