@@ -26,6 +26,7 @@ export class MCPDebugClient {
   private requestTracker: RequestTracker;
   private messageBuffer: string = '';
   private isInitialized = false;
+  private logs: Array<{ timestamp: Date; level: 'stdout' | 'stderr'; message: string }> = [];
 
   constructor(private options: MCPDebugClientOptions) {
     // コンポーネントを初期化
@@ -53,6 +54,13 @@ export class MCPDebugClient {
     });
 
     this.processManager.on('stderr', (data: string) => {
+      // ログを保存
+      this.logs.push({
+        timestamp: new Date(),
+        level: 'stderr',
+        message: data
+      });
+      
       if (this.options.debug) {
         console.error('[MCP Server]', data);
       }
@@ -108,6 +116,13 @@ export class MCPDebugClient {
       try {
         const message = JSON.parse(line) as MCPMessage;
         
+        // stdoutのJSONメッセージもログに保存
+        this.logs.push({
+          timestamp: new Date(),
+          level: 'stdout',
+          message: JSON.stringify(message)
+        });
+        
         // デバッグモードの場合、受信したメッセージをログ出力
         if (this.options.debug) {
           console.error('[MCP Debug] Raw message received:', JSON.stringify(message));
@@ -125,7 +140,13 @@ export class MCPDebugClient {
           }
         }
       } catch (error) {
-        // JSON以外の出力（デバッグログなど）
+        // JSON以外の出力（デバッグログなど）もログに保存
+        this.logs.push({
+          timestamp: new Date(),
+          level: 'stdout',
+          message: line
+        });
+        
         if (this.options.debug) {
           console.error('[MCP Server Output]', line);
         }
@@ -301,5 +322,37 @@ export class MCPDebugClient {
   async cleanup(): Promise<void> {
     await this.stop();
     await this.processManager.cleanup();
+    this.logs = [];
+  }
+  
+  /**
+   * ログを取得
+   */
+  getLogs(filter?: { level?: 'stdout' | 'stderr'; since?: Date; limit?: number }): Array<{ timestamp: Date; level: 'stdout' | 'stderr'; message: string }> {
+    let logs = [...this.logs];
+    
+    if (filter) {
+      if (filter.level) {
+        logs = logs.filter(log => log.level === filter.level);
+      }
+      
+      if (filter.since) {
+        const since = filter.since;
+        logs = logs.filter(log => log.timestamp >= since);
+      }
+      
+      if (filter.limit) {
+        logs = logs.slice(-filter.limit);
+      }
+    }
+    
+    return logs;
+  }
+  
+  /**
+   * ログをクリア
+   */
+  clearLogs(): void {
+    this.logs = [];
   }
 }
