@@ -237,7 +237,7 @@ describe('MCP Server Tools Tests', () => {
         const { action = 'get' } = args || {};
 
         switch (action) {
-          case 'get':
+          case 'get': {
             const entries = mockLogEntries;
             if (entries.length === 0) {
               return {
@@ -264,8 +264,9 @@ describe('MCP Server Tools Tests', () => {
                 },
               ],
             };
+          }
 
-          case 'stats':
+          case 'stats': {
             const stats = mockLogStats;
             const statsText =
               `📊 ログ統計情報\n\n` +
@@ -281,8 +282,9 @@ describe('MCP Server Tools Tests', () => {
                 },
               ],
             };
+          }
 
-          case 'clear':
+          case 'clear': {
             const beforeCount = 100;
             return {
               content: [
@@ -292,6 +294,7 @@ describe('MCP Server Tools Tests', () => {
                 },
               ],
             };
+          }
 
           default:
             throw new Error(`ログ取得エラー: 無効なアクション: ${action}`);

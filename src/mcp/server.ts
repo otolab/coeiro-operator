@@ -186,7 +186,7 @@ function formatAssignmentResult(assignResult: AssignResult, availableStyles: Sty
   }
 
   if (assignResult.greeting) {
-    resultText += `\n💬 \"${assignResult.greeting}\"\n`;
+    resultText += `\n💬 "${assignResult.greeting}"\n`;
   }
 
   return resultText;
@@ -824,7 +824,7 @@ server.registerTool(
             ],
           };
 
-        case 'status':
+        case 'status': {
           const currentOptions = sayCoeiroink.getStreamControllerOptions();
           const stats = sayCoeiroink.getGenerationStats();
 
@@ -847,6 +847,7 @@ server.registerTool(
               },
             ],
           };
+        }
 
         case 'update_options':
           if (options) {

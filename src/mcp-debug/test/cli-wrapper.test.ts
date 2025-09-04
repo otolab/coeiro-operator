@@ -200,7 +200,7 @@ describe('MCP Debug CLI Wrapper Tests', () => {
 
       const output = testRunner.getOutput();
       expect(output.stdout).toEqual(
-        expect.arrayContaining([expect.stringContaining('debugMode\":true')])
+        expect.arrayContaining([expect.stringContaining('debugMode":true')])
       );
     }, 20000);
   });

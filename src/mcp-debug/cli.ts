@@ -183,7 +183,7 @@ class MCPDebugCLI {
           console.log(`   Pending Requests: ${this.client.getPendingRequestCount()}`);
           return;
 
-        case 'tools':
+        case 'tools': {
           const capabilities = this.client.getServerCapabilities();
           if (capabilities?.tools) {
             console.log('🔧 Available Tools:');
@@ -194,6 +194,7 @@ class MCPDebugCLI {
             console.log('No tools available');
           }
           return;
+        }
 
         case 'clear':
           console.clear();
@@ -275,10 +276,11 @@ class MCPDebugCLI {
         result = await this.client.callTool(params.name, params.arguments);
         break;
 
-      case 'tools/list':
+      case 'tools/list': {
         const capabilities = this.client.getServerCapabilities();
         result = { tools: Object.keys(capabilities?.tools || {}) };
         break;
+      }
 
       default:
         result = await this.client.sendRequest(method, params);
@@ -423,7 +425,7 @@ function parseArguments(): CLIOptions {
         options.interactive = false;
         break;
 
-      case '--timeout':
+      case '--timeout': {
         const timeoutValue = parseInt(mcpDebugArgs[++i], 10);
         if (isNaN(timeoutValue) || timeoutValue <= 0) {
           console.error('Error: --timeout must be a positive number');
@@ -431,8 +433,9 @@ function parseArguments(): CLIOptions {
         }
         options.timeout = timeoutValue;
         break;
+      }
 
-      case '--request-timeout':
+      case '--request-timeout': {
         const requestTimeoutValue = parseInt(mcpDebugArgs[++i], 10);
         if (isNaN(requestTimeoutValue) || requestTimeoutValue <= 0) {
           console.error('Error: --request-timeout must be a positive number');
@@ -440,6 +443,7 @@ function parseArguments(): CLIOptions {
         }
         options.requestTimeout = requestTimeoutValue;
         break;
+      }
 
       case '--help':
       case '-h':
