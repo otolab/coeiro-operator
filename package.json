@@ -47,8 +47,10 @@
     "dsp.js": "^1.0.1",
     "echogarden": "^2.9.0",
     "node-libsamplerate": "^1.0.0",
-    "speaker": "^0.5.5",
     "uuid": "^11.1.0"
+  },
+  "optionalDependencies": {
+    "speaker": "^0.5.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",

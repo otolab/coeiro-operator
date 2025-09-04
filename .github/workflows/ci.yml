@@ -27,7 +27,7 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-optional
       
       - name: Build
         run: npm run build
@@ -59,7 +59,7 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-optional
       
       - name: Run ESLint
         run: npm run lint
@@ -84,7 +84,7 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-optional
       
       - name: Build production
         run: npm run build
@@ -111,7 +111,7 @@ jobs:
           cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --no-optional
       
       - name: Build
         run: npm run build
