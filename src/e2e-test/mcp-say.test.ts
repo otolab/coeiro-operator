@@ -18,11 +18,11 @@ describe('MCP Say Tool E2E', () => {
   beforeAll(async () => {
     coeiroinkMock = new COEIROINKMockServer({ port: 50032 });
     await coeiroinkMock.start();
-  });
+  }, 30000);
 
   afterAll(async () => {
     if (coeiroinkMock) await coeiroinkMock.stop();
-  });
+  }, 30000);
 
   beforeEach(async () => {
     process.env.COEIRO_TEST_MODE = 'true';
@@ -38,12 +38,12 @@ describe('MCP Say Tool E2E', () => {
         COEIROINK_API_URL: 'http://localhost:50032',
       },
     });
-  });
+  }, 30000);
 
   afterEach(async () => {
     if (tester) await tester.cleanup();
     coeiroinkMock.reset();
-  });
+  }, 30000);
 
   describe('基本的な音声再生フロー', () => {
     it('初期化→アサイン→音声再生の一連フローが動作する', async () => {

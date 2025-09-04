@@ -4,14 +4,32 @@
  */
 
 import { writeFile } from 'fs/promises';
+import { createRequire } from 'module';
 import * as Echogarden from 'echogarden';
 // @ts-ignore - dsp.jsには型定義がない
 import DSP from 'dsp.js';
-// @ts-ignore - speakerには型定義がない
-import Speaker from 'speaker';
-// @ts-ignore - node-libsamplerateには型定義がない
-import SampleRate from 'node-libsamplerate';
 import { Transform } from 'stream';
+
+// ESMでrequireを使用するための設定
+const require = createRequire(import.meta.url);
+
+// Optional dependenciesを動的にロード
+let Speaker: any;
+let SampleRate: any;
+
+try {
+  // @ts-ignore - speakerには型定義がない
+  Speaker = require('speaker');
+} catch (error) {
+  console.warn('Speaker module not available. Audio output will be disabled.');
+}
+
+try {
+  // @ts-ignore - node-libsamplerateには型定義がない
+  SampleRate = require('node-libsamplerate');
+} catch (error) {
+  console.warn('node-libsamplerate module not available. Resampling will be disabled.');
+}
 import type { AudioResult, Chunk, Config, AudioConfig } from './types.js';
 import { logger } from '../../utils/logger.js';
 import {
@@ -24,7 +42,7 @@ import {
 } from './constants.js';
 
 export class AudioPlayer {
-  private speaker: Speaker | null = null;
+  private speaker: any | null = null;
   private currentSpeakerConfig: {
     sampleRate: number;
     channels: number;
@@ -160,13 +178,18 @@ export class AudioPlayer {
 
   async initialize(): Promise<boolean> {
     try {
+      // Speakerモジュールが利用できない場合は警告
+      if (!Speaker) {
+        logger.warn('Speakerモジュールが利用できません。音声出力は無効化されます。');
+      }
+
       // ノイズ除去が有効な場合はEchogardenを初期化
       if (this.noiseReductionEnabled) {
         await this.initializeEchogarden();
       }
 
       logger.info(
-        `音声プレーヤー初期化: speakerライブラリ使用（ネイティブ出力）${this.noiseReductionEnabled ? ' + Echogarden' : ''} - Speaker遅延初期化`
+        `音声プレーヤー初期化: ${Speaker ? 'speakerライブラリ使用（ネイティブ出力）' : 'モックモード'}${this.noiseReductionEnabled ? ' + Echogarden' : ''}`
       );
       this.isInitialized = true;
       return true;
@@ -182,6 +205,12 @@ export class AudioPlayer {
   async playAudioStream(audioResult: AudioResult, bufferSize?: number): Promise<void> {
     if (!this.isInitialized) {
       throw new Error('音声プレーヤーが初期化されていません');
+    }
+
+    // Speakerが利用できない場合は何もしない
+    if (!Speaker) {
+      logger.debug('Speakerモジュールが利用できないため、音声再生をスキップ');
+      return;
     }
 
     try {
@@ -217,6 +246,11 @@ export class AudioPlayer {
    * 処理順序: 1) リサンプリング 2) ローパスフィルター 3) ノイズリダクション 4) Speaker出力
    */
   private async processAudioStreamPipeline(pcmData: Uint8Array): Promise<void> {
+    if (!Speaker) {
+      logger.debug('Speakerモジュールが利用できないため、パイプライン処理をスキップ');
+      return;
+    }
+
     logger.log('高品質音声処理パイプライン開始');
 
     return new Promise((resolve, reject) => {
@@ -272,8 +306,11 @@ export class AudioPlayer {
    * リサンプリング用Transform streamを作成
    */
   private createResampleTransform(): Transform {
-    if (this.synthesisRate === this.playbackRate) {
-      // サンプルレートが同じ場合はパススルー
+    if (this.synthesisRate === this.playbackRate || !SampleRate) {
+      // サンプルレートが同じ場合、またはSampleRateが利用できない場合はパススルー
+      if (!SampleRate && this.synthesisRate !== this.playbackRate) {
+        logger.warn(`リサンプリングが必要ですが、node-libsamplerateが利用できません`);
+      }
       return new Transform({
         transform(chunk, encoding, callback) {
           callback(null, chunk);
@@ -402,7 +439,7 @@ export class AudioPlayer {
   /**
    * 設定に基づいてSpeakerインスタンスを取得または作成
    */
-  private getOrCreateSpeaker(sampleRate: number, bufferSize: number): Speaker {
+  private getOrCreateSpeaker(sampleRate: number, bufferSize: number): any {
     const newConfig = {
       sampleRate,
       channels: this.channels,
@@ -467,6 +504,11 @@ export class AudioPlayer {
     bufferSize?: number,
     chunk?: Chunk
   ): Promise<void> {
+    if (!Speaker) {
+      logger.debug('Speakerモジュールが利用できないため、再生をスキップ');
+      return;
+    }
+
     return new Promise((resolve, reject) => {
       // synthesisRateとplaybackRateが異なる場合は、実際の生成レートを使用
       const actualSampleRate =
@@ -690,8 +732,8 @@ export class AudioPlayer {
    * 短い無音を再生してSpeakerドライバーを起動・安定化
    */
   async warmupAudioDriver(): Promise<void> {
-    if (!this.isInitialized) {
-      logger.warn('AudioPlayer未初期化のためウォームアップをスキップ');
+    if (!this.isInitialized || !Speaker) {
+      logger.warn('AudioPlayer未初期化またはSpeakerが利用できないためウォームアップをスキップ');
       return;
     }
 
