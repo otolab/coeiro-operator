@@ -20,11 +20,11 @@ describe('MCP Dictionary E2E', () => {
   beforeAll(async () => {
     coeiroinkMock = new COEIROINKMockServer({ port: 50032 });
     await coeiroinkMock.start();
-  }, 30000);
+  });
 
   afterAll(async () => {
     if (coeiroinkMock) await coeiroinkMock.stop();
-  }, 30000);
+  });
 
   beforeEach(async () => {
     // テスト用辞書ファイルをクリア
@@ -37,7 +37,6 @@ describe('MCP Dictionary E2E', () => {
     tester = await createMCPTester({
       serverPath: MCP_SERVER_PATH,
       debug: false,
-      timeout: 15000,
       env: {
         ...process.env,
         COEIRO_TEST_MODE: 'true',
@@ -45,12 +44,12 @@ describe('MCP Dictionary E2E', () => {
         USER_DICTIONARY_PATH: testDictionaryPath,
       },
     });
-  }, 30000);
+  });
 
   afterEach(async () => {
     if (tester) await tester.cleanup();
     coeiroinkMock.reset();
-  }, 30000);
+  });
 
   describe('辞書登録の基本フロー', () => {
     it('単語登録→音声再生で正しい読みが使用される', async () => {

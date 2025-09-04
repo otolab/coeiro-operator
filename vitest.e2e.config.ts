@@ -4,8 +4,6 @@ export default defineConfig({
   test: {
     // E2Eテスト用の設定
     environment: 'node',
-    testTimeout: 60000, // E2Eは時間がかかるため60秒に延長
-    hookTimeout: 60000, // beforeAll/afterAllも60秒
     
     // シングルスレッド実行
     pool: 'forks',
