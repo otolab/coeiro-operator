@@ -217,6 +217,7 @@ export class AudioPlayer {
     logger.log('高品質音声処理パイプライン開始');
 
     return new Promise((resolve, reject) => {
+      // 新しいSpeakerインスタンスを作成（ストリーミング用）
       const streamSpeaker = new Speaker({
         channels: this.channels,
         bitDepth: this.bitDepth,

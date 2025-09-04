@@ -65,6 +65,14 @@ describe('設定システム統合テスト', () => {
           setTimeout(callback, 10);
         }
       }),
+      once: vi.fn((event, callback) => {
+        if (event === 'close') {
+          setTimeout(callback, 10);
+        }
+      }),
+      removeListener: vi.fn(),
+      removeAllListeners: vi.fn(),
+      pipe: vi.fn(),
     };
     MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 

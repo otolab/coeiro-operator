@@ -10,6 +10,7 @@ import { writeFile, readFile, unlink } from 'fs/promises';
 import Speaker from 'speaker';
 import { OperatorManager } from '../operator/index.js';
 import type { Character, Speaker as SpeakerType } from '../operator/character-info-service.js';
+import { createMockSpeakerInstance } from './test-helpers.js';
 
 // モックの設定
 global.fetch = vi.fn();
@@ -103,16 +104,8 @@ describe('Say Integration Tests', () => {
     (OperatorManager as any).mockImplementation(() => mockOperatorManager);
 
     // Speakerモックを設定
-    const mockSpeakerInstance = {
-      write: vi.fn(),
-      end: vi.fn(),
-      on: vi.fn((event, callback) => {
-        if (event === 'close') {
-          setTimeout(callback, 10); // 非同期でcloseイベントを発火
-        }
-      }),
-    };
-    MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
+    const mockSpeakerInstance = createMockSpeakerInstance();
+    MockSpeaker.mockImplementation(() => mockSpeakerInstance);
 
     // デフォルト設定を使用（null を渡すとDEFAULT_CONFIGが使用される）
     const config: Config | null = null;

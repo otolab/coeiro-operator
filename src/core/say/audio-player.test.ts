@@ -67,6 +67,10 @@ describe('AudioPlayer', () => {
             write: vi.fn(),
             end: vi.fn(),
             on: vi.fn(),
+            once: vi.fn(),
+            removeListener: vi.fn(),
+            removeAllListeners: vi.fn(),
+            pipe: vi.fn(),
           }) as any
       );
 
@@ -151,6 +155,14 @@ describe('AudioPlayer', () => {
             closeCallback = callback;
           }
         }),
+        once: vi.fn((event, callback) => {
+          if (event === 'close') {
+            closeCallback = callback;
+          }
+        }),
+        removeListener: vi.fn(),
+        removeAllListeners: vi.fn(),
+        pipe: vi.fn(),
       };
 
       MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
@@ -220,6 +232,14 @@ describe('AudioPlayer', () => {
             errorCallback = callback;
           }
         }),
+        once: vi.fn((event, callback) => {
+          if (event === 'error') {
+            errorCallback = callback;
+          }
+        }),
+        removeListener: vi.fn(),
+        removeAllListeners: vi.fn(),
+        pipe: vi.fn(),
       };
 
       MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
