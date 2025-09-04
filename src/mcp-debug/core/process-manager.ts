@@ -5,6 +5,7 @@
 
 import { spawn, ChildProcess } from 'child_process';
 import { EventEmitter } from 'events';
+import { existsSync } from 'fs';
 
 export interface ProcessManagerOptions {
   serverPath: string;
@@ -43,6 +44,11 @@ export class ProcessManager extends EventEmitter implements IProcessManager {
     
     if (this.isStarting) {
       throw new Error('Process is already starting');
+    }
+    
+    // ファイルの存在チェック
+    if (!existsSync(this.options.serverPath)) {
+      throw new Error(`Server file not found: ${this.options.serverPath}`);
     }
     
     this.isStarting = true;

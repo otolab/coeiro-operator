@@ -17,8 +17,7 @@ export default defineConfig({
 
     // テストファイルパターン
     include: [
-      'src/**/*.test.ts',
-      '!src/mcp-debug/**/*.test.ts'  // mcp-debugのテストを除外
+      'src/**/*.test.ts'
     ],
     
     // 除外パターン
@@ -36,8 +35,7 @@ export default defineConfig({
       ],
       exclude: [
         'src/**/*.test.ts',
-        'src/**/*.d.ts',
-        'src/mcp-debug/**/*'  // mcp-debugのカバレッジを除外
+        'src/**/*.d.ts'
       ],
       reportsDirectory: 'coverage/coeiro-operator'
     },
