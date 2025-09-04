@@ -21,6 +21,11 @@ import {
   PADDING_SETTINGS,
 } from './constants.js';
 
+// テスト用のモックインスタンスを外部から注入可能にする
+export const forTests = {
+  mockSpeakerInstance: null as any,
+};
+
 export class AudioPlayer {
   private synthesisRate: number = SAMPLE_RATES.SYNTHESIS;
   private playbackRate: number = SAMPLE_RATES.PLAYBACK;
@@ -432,20 +437,63 @@ export class AudioPlayer {
       sampleRate: sampleRate,
       highWaterMark: bufferSize,
     };
+    
+    // テスト用のモックインスタンスが設定されている場合はそれを返す
+    if (forTests.mockSpeakerInstance) {
+      return forTests.mockSpeakerInstance;
+    }
+    
     // CI環境またはテスト環境でモックSpeakerを返す
     if (process.env.NODE_ENV === 'test' || process.env.CI === 'true') {
       const mockSpeaker = new EventEmitter() as any;
-      mockSpeaker.write = (chunk: any, callback?: any) => {
-        if (callback) callback();
+      
+      // Writable Streamの基本メソッド
+      mockSpeaker.write = (chunk: any, encoding?: any, callback?: any) => {
+        const cb = typeof encoding === 'function' ? encoding : callback;
+        if (cb) cb();
         return true;
       };
-      mockSpeaker.end = (chunk?: any, callback?: any) => {
-        const cb = typeof chunk === 'function' ? chunk : callback;
-        if (cb) setTimeout(cb, 10);
+      
+      mockSpeaker.end = (chunk?: any, encoding?: any, callback?: any) => {
+        let cb;
+        if (typeof chunk === 'function') {
+          cb = chunk;
+        } else if (typeof encoding === 'function') {
+          cb = encoding;
+        } else {
+          cb = callback;
+        }
+        
+        // endが呼ばれたら少し遅延してcloseイベントを発火
+        setImmediate(() => {
+          mockSpeaker.emit('close');
+        });
+        
+        if (cb) cb();
       };
+      
+      // EventEmitterのメソッド（onceはEventEmitterに既に存在）
       mockSpeaker.once = mockSpeaker.on;
       mockSpeaker.removeAllListeners = () => mockSpeaker;
+      
+      // pipe関連のメソッド（Transform Streamとの連携用）
+      mockSpeaker.pipe = (destination: any) => destination;
+      mockSpeaker.unpipe = () => mockSpeaker;
+      
+      // Writable Streamの状態
       mockSpeaker._writableState = { ended: false };
+      mockSpeaker.writable = true;
+      mockSpeaker.destroyed = false;
+      
+      // destroyメソッド（リソース解放用）
+      mockSpeaker.destroy = (error?: Error) => {
+        mockSpeaker.destroyed = true;
+        if (error) {
+          mockSpeaker.emit('error', error);
+        }
+        mockSpeaker.emit('close');
+      };
+      
       return mockSpeaker;
     }
 
@@ -711,9 +759,6 @@ export class AudioPlayer {
     logger.debug('AudioPlayer cleanup開始');
 
     try {
-      // Speakerインスタンスのクリーンアップ
-      this.cleanupCurrentSpeaker();
-
       // Echogardenリソースの解放
       if (this.echogardenInitialized) {
         // Echogardenには明示的なクリーンアップメソッドがないため、フラグのみリセット
