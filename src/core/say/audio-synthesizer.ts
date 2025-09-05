@@ -52,6 +52,13 @@ export class AudioSynthesizer {
   }
 
   /**
+   * スピーカー一覧を取得
+   */
+  async getSpeakers() {
+    return await this.speakerProvider.getSpeakers();
+  }
+
+  /**
    * オーディオ設定を取得
    */
   private getAudioConfig(): AudioConfig {

@@ -350,6 +350,8 @@ describe('並行チャンク生成システム統合テスト', () => {
 
   describe('メモリ効率とリソース管理', () => {
     test('並行生成完了後にメモリが適切に解放されること', async () => {
+      await sayCoeiroink.initialize();
+      
       const initialMemory = process.memoryUsage().heapUsed;
 
       // 複数回の並行生成を実行

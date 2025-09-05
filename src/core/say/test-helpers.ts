@@ -122,8 +122,27 @@ export function createMockConfigManager(overrides: Partial<Config> = {}): Config
     buildDynamicConfig: async () => {},
     getCharacterConfig: async (characterId: string) => {
       // テスト用のキャラクター設定を返す
+      // test-speaker-1などのテスト用IDの場合は適切な設定を返す
+      if (characterId === 'test-speaker-1' || characterId === 'test-speaker-uuid') {
+        return {
+          speakerId: 'test-speaker-1',  // テストのモックと一致させる
+          name: 'テストスピーカー1',
+          defaultStyle: 'ノーマル',
+          availableStyles: ['ノーマル'],
+        };
+      }
+      // tsukuyomiなど他のキャラクターも対応
+      if (characterId === 'tsukuyomi') {
+        return {
+          speakerId: 'tsukuyomi-uuid',
+          name: 'つくよみちゃん',
+          defaultStyle: 'ノーマル',
+          availableStyles: ['ノーマル'],
+        };
+      }
+      // デフォルトのキャラクター設定
       return {
-        speakerId: 'test-speaker-uuid',
+        speakerId: characterId + '-uuid',
         name: characterId,
         defaultStyle: 'ノーマル',
         availableStyles: ['ノーマル'],

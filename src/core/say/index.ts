@@ -189,23 +189,39 @@ export class SayCoeiroink {
     styleName?: string | null
   ): Promise<VoiceConfig> {
     try {
-      // CharacterInfoServiceからCharacter情報を取得
-      const character = await this.operatorManager.getCharacterInfo(characterId);
-
-      if (!character) {
+      // ConfigManagerからCharacter設定を取得
+      const characterConfig = await this.configManager.getCharacterConfig(characterId);
+      if (!characterConfig) {
         throw new Error(`Character not found: ${characterId}`);
       }
-
-      if (!character.speaker) {
-        throw new Error(`Character '${characterId}' has no speaker information`);
+      
+      // speakerIdからspeaker情報を取得（COEIROINKサーバーから）
+      if (!this.audioSynthesizer) {
+        throw new Error('AudioSynthesizer is not initialized');
       }
-
+      const speakers = await this.audioSynthesizer.getSpeakers();
+      const speaker = speakers.find(s => s.speakerUuid === characterConfig.speakerId);
+      if (!speaker) {
+        throw new Error(`Speaker '${characterConfig.speakerId}' not found for character '${characterId}'`);
+      }
+      
       // スタイル選択（styleNameが指定されていればそれを使用、そうでなければdefaultStyle）
-      const selectedStyle = this.operatorManager.selectStyle(character, styleName);
-
+      let selectedStyle = speaker.styles.find(s => s.styleName === (styleName || characterConfig.defaultStyle));
+      if (!selectedStyle) {
+        // デフォルトスタイルが見つからない場合は最初のスタイルを使用
+        selectedStyle = speaker.styles[0];
+      }
+      
+      // speaker-provider.Speakerからoperator.Speakerへ変換
+      const operatorSpeaker: import('../operator/character-info-service.js').Speaker = {
+        speakerId: speaker.speakerUuid,
+        speakerName: speaker.speakerName,
+        styles: speaker.styles,
+      };
+      
       return {
-        speaker: character.speaker,
-        selectedStyleId: selectedStyle.styleId,
+        speaker: operatorSpeaker,
+        selectedStyleId: selectedStyle!.styleId,
       };
     } catch (error) {
       logger.error(`Character解決エラー: ${(error as Error).message}`);

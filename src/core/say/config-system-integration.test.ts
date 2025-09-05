@@ -272,8 +272,8 @@ describe('設定システム統合テスト', () => {
         },
       };
 
-      const configManager = createMockConfigManager(enabledConfig);
-      const enabledSayCoeiroink = new SayCoeiroink(configManager);
+      const enabledConfigManager = createMockConfigManager(enabledConfig);
+      const enabledSayCoeiroink = new SayCoeiroink(enabledConfigManager);
       await enabledSayCoeiroink.initialize();
 
       // 有効状態でのテスト

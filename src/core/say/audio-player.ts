@@ -479,8 +479,7 @@ export class AudioPlayer {
         if (cb) cb();
       };
       
-      // EventEmitterのメソッド（onceはEventEmitterに既に存在）
-      mockSpeaker.once = mockSpeaker.on;
+      // EventEmitterのメソッド
       mockSpeaker.removeAllListeners = () => mockSpeaker;
       
       // pipe関連のメソッド（Transform Streamとの連携用）
@@ -541,7 +540,6 @@ export class AudioPlayer {
         if (cb) cb();
       };
       
-      mockSpeaker.once = mockSpeaker.on;
       mockSpeaker.removeAllListeners = () => mockSpeaker;
       mockSpeaker.pipe = (destination: any) => destination;
       mockSpeaker.unpipe = () => mockSpeaker;
