@@ -101,7 +101,12 @@ export class SayCoeiroink {
   private audioSynthesizer: AudioSynthesizer;
 
   constructor(config: Config | null = null) {
-    this.config = config || DEFAULT_CONFIG;
+    // configがnullまたは部分的な場合はDEFAULT_CONFIGとマージ
+    this.config = config ? { ...DEFAULT_CONFIG, ...config } : DEFAULT_CONFIG;
+    // operatorプロパティも同様にマージ
+    if (config && config.operator) {
+      this.config.operator = { ...DEFAULT_CONFIG.operator, ...config.operator };
+    }
     this.operatorManager = new OperatorManager();
     this.audioPlayer = new AudioPlayer(this.config);
     this.audioSynthesizer = new AudioSynthesizer(this.config);
