@@ -24,7 +24,7 @@ export interface IRequestTracker {
 export class RequestTracker implements IRequestTracker {
   private pendingRequests = new Map<string | number, PendingRequest>();
   private nextId = 1;
-  
+
   constructor(private defaultTimeout: number = 10000) {}
 
   /**
@@ -57,7 +57,7 @@ export class RequestTracker implements IRequestTracker {
         resolve,
         reject,
         timeout: timeoutHandle,
-        timestamp: new Date()
+        timestamp: new Date(),
       });
     });
   }
@@ -103,12 +103,12 @@ export class RequestTracker implements IRequestTracker {
   /**
    * デバッグ用：保留中のリクエスト情報を取得
    */
-  getPendingRequests(): Array<{id: string | number, method: string, elapsed: number}> {
+  getPendingRequests(): Array<{ id: string | number; method: string; elapsed: number }> {
     const now = new Date();
     return Array.from(this.pendingRequests.entries()).map(([id, request]) => ({
       id,
       method: request.method,
-      elapsed: now.getTime() - request.timestamp.getTime()
+      elapsed: now.getTime() - request.timestamp.getTime(),
     }));
   }
 
@@ -117,11 +117,11 @@ export class RequestTracker implements IRequestTracker {
    */
   cleanup(): void {
     // すべてのタイムアウトをクリア
-    this.pendingRequests.forEach((request) => {
+    this.pendingRequests.forEach(request => {
       clearTimeout(request.timeout);
       request.reject(new Error('Request tracker is being cleaned up'));
     });
-    
+
     this.pendingRequests.clear();
     this.nextId = 1;
   }

@@ -6,6 +6,12 @@ export default defineConfig({
     environment: 'node',
     testTimeout: 20000,
     
+    // テスト環境変数の設定
+    env: {
+      NODE_ENV: 'test',
+      CI: 'true'
+    },
+    
     // Issue #50: メモリリーク検出のためのNode.jsオプション
     // シングルスレッド実行でGCフラグ対応
     pool: 'forks',
@@ -17,8 +23,7 @@ export default defineConfig({
 
     // テストファイルパターン
     include: [
-      'src/**/*.test.ts',
-      '!src/mcp-debug/**/*.test.ts'  // mcp-debugのテストを除外
+      'src/**/*.test.ts'
     ],
     
     // 除外パターン
@@ -28,19 +33,8 @@ export default defineConfig({
       'coverage/**'
     ],
 
-    // カバレッジ設定
-    coverage: {
-      provider: 'v8',
-      include: [
-        'src/**/*.ts'
-      ],
-      exclude: [
-        'src/**/*.test.ts',
-        'src/**/*.d.ts',
-        'src/mcp-debug/**/*'  // mcp-debugのカバレッジを除外
-      ],
-      reportsDirectory: 'coverage/coeiro-operator'
-    },
+    // カバレッジはデフォルトで無効（CI環境でのみ有効化）
+    // test:coverageコマンドまたはvitest.coverage.config.tsを使用
 
     // ESM設定（Vitestはネイティブ対応）
     globals: true

@@ -1,6 +1,6 @@
-# COEIRO Operator - 開発ガイド
+# COEIRO Operator - AI Agent開発ガイド
 
-Claude向けのプロジェクト開発リファレンス・インデックス
+AI Agent（Claude Code等）向けのプロジェクト開発リファレンス・インデックス
 
 以下のファイルを読み込んでください:
 * @README.md

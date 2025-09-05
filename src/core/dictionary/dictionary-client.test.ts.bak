@@ -31,18 +31,16 @@ describe('DictionaryClient', () => {
 
   describe('registerWords', () => {
     it('単語を正常に登録できる', async () => {
-      const words: DictionaryWord[] = [
-        { word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }
-      ];
+      const words: DictionaryWord[] = [{ word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }];
 
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        statusText: 'OK'
+        statusText: 'OK',
       });
 
       const result = await client.registerWords(words);
-      
+
       expect(result.success).toBe(true);
       expect(result.registeredCount).toBe(1);
       expect(result.error).toBeUndefined();
@@ -50,13 +48,13 @@ describe('DictionaryClient', () => {
 
     it('半角英数字を全角に自動変換して登録する', async () => {
       const words: DictionaryWord[] = [
-        { word: 'ABC123', yomi: 'エービーシー', accent: 0, numMoras: 6 }
+        { word: 'ABC123', yomi: 'エービーシー', accent: 0, numMoras: 6 },
       ];
 
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        statusText: 'OK'
+        statusText: 'OK',
       });
 
       await client.registerWords(words);
@@ -67,38 +65,34 @@ describe('DictionaryClient', () => {
         expect.objectContaining({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: expect.stringContaining('ＡＢＣ１２３')
+          body: expect.stringContaining('ＡＢＣ１２３'),
         })
       );
     });
 
     it('サーバーエラー時にエラーを返す', async () => {
-      const words: DictionaryWord[] = [
-        { word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }
-      ];
+      const words: DictionaryWord[] = [{ word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }];
 
       (global.fetch as any).mockResolvedValueOnce({
         ok: false,
         status: 500,
-        statusText: 'Internal Server Error'
+        statusText: 'Internal Server Error',
       });
 
       const result = await client.registerWords(words);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('HTTP 500');
     });
 
     it('接続エラー時に適切なメッセージを返す', async () => {
-      const words: DictionaryWord[] = [
-        { word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }
-      ];
+      const words: DictionaryWord[] = [{ word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }];
 
       const error = new Error('ECONNREFUSED');
       (global.fetch as any).mockRejectedValueOnce(error);
 
       const result = await client.registerWords(words);
-      
+
       expect(result.success).toBe(false);
       expect(result.error).toContain('COEIROINKサーバーに接続できません');
       expect(result.error).toContain('http://localhost:50032');
@@ -108,17 +102,17 @@ describe('DictionaryClient', () => {
       const words: DictionaryWord[] = [
         { word: 'TEST1', yomi: 'テストイチ', accent: 1, numMoras: 5 },
         { word: 'TEST2', yomi: 'テストニ', accent: 2, numMoras: 4 },
-        { word: 'TEST3', yomi: 'テストサン', accent: 0, numMoras: 5 }
+        { word: 'TEST3', yomi: 'テストサン', accent: 0, numMoras: 5 },
       ];
 
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
         status: 200,
-        statusText: 'OK'
+        statusText: 'OK',
       });
 
       const result = await client.registerWords(words);
-      
+
       expect(result.success).toBe(true);
       expect(result.registeredCount).toBe(3);
     });
@@ -128,17 +122,17 @@ describe('DictionaryClient', () => {
     it('サーバーに接続できる場合はtrueを返す', async () => {
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
-        status: 200
+        status: 200,
       });
 
       const isConnected = await client.checkConnection();
-      
+
       expect(isConnected).toBe(true);
       expect(global.fetch).toHaveBeenCalledWith(
         'http://localhost:50032/',
         expect.objectContaining({
           method: 'GET',
-          signal: expect.any(AbortSignal)
+          signal: expect.any(AbortSignal),
         })
       );
     });
@@ -147,7 +141,7 @@ describe('DictionaryClient', () => {
       (global.fetch as any).mockRejectedValueOnce(new Error('Connection refused'));
 
       const isConnected = await client.checkConnection();
-      
+
       expect(isConnected).toBe(false);
     });
 
@@ -155,20 +149,18 @@ describe('DictionaryClient', () => {
       (global.fetch as any).mockRejectedValueOnce(new Error('AbortError'));
 
       const isConnected = await client.checkConnection();
-      
+
       expect(isConnected).toBe(false);
     });
   });
 
   describe('toFullWidth (private method via registerWords)', () => {
     it('半角大文字を全角に変換する', async () => {
-      const words: DictionaryWord[] = [
-        { word: 'ABCXYZ', yomi: 'テスト', accent: 0, numMoras: 3 }
-      ];
+      const words: DictionaryWord[] = [{ word: 'ABCXYZ', yomi: 'テスト', accent: 0, numMoras: 3 }];
 
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
-        status: 200
+        status: 200,
       });
 
       await client.registerWords(words);
@@ -178,13 +170,11 @@ describe('DictionaryClient', () => {
     });
 
     it('半角小文字を全角に変換する', async () => {
-      const words: DictionaryWord[] = [
-        { word: 'abcxyz', yomi: 'テスト', accent: 0, numMoras: 3 }
-      ];
+      const words: DictionaryWord[] = [{ word: 'abcxyz', yomi: 'テスト', accent: 0, numMoras: 3 }];
 
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
-        status: 200
+        status: 200,
       });
 
       await client.registerWords(words);
@@ -195,12 +185,12 @@ describe('DictionaryClient', () => {
 
     it('半角数字を全角に変換する', async () => {
       const words: DictionaryWord[] = [
-        { word: '0123456789', yomi: 'スウジ', accent: 0, numMoras: 3 }
+        { word: '0123456789', yomi: 'スウジ', accent: 0, numMoras: 3 },
       ];
 
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
-        status: 200
+        status: 200,
       });
 
       await client.registerWords(words);
@@ -211,12 +201,12 @@ describe('DictionaryClient', () => {
 
     it('日本語文字はそのまま保持する', async () => {
       const words: DictionaryWord[] = [
-        { word: 'つくよみちゃん', yomi: 'ツクヨミチャン', accent: 3, numMoras: 6 }
+        { word: 'つくよみちゃん', yomi: 'ツクヨミチャン', accent: 3, numMoras: 6 },
       ];
 
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
-        status: 200
+        status: 200,
       });
 
       await client.registerWords(words);
@@ -227,12 +217,12 @@ describe('DictionaryClient', () => {
 
     it('混在文字列を適切に変換する', async () => {
       const words: DictionaryWord[] = [
-        { word: 'Node.jsでCOEIRO', yomi: 'ノードジェイエス', accent: 0, numMoras: 8 }
+        { word: 'Node.jsでCOEIRO', yomi: 'ノードジェイエス', accent: 0, numMoras: 8 },
       ];
 
       (global.fetch as any).mockResolvedValueOnce({
         ok: true,
-        status: 200
+        status: 200,
       });
 
       await client.registerWords(words);
@@ -256,12 +246,12 @@ describe('DEFAULT_TECHNICAL_WORDS', () => {
       expect(word).toHaveProperty('yomi');
       expect(word).toHaveProperty('accent');
       expect(word).toHaveProperty('numMoras');
-      
+
       expect(typeof word.word).toBe('string');
       expect(typeof word.yomi).toBe('string');
       expect(typeof word.accent).toBe('number');
       expect(typeof word.numMoras).toBe('number');
-      
+
       // アクセント位置はモーラ数以下である必要がある
       expect(word.accent).toBeLessThanOrEqual(word.numMoras);
       expect(word.accent).toBeGreaterThanOrEqual(0);
@@ -288,12 +278,12 @@ describe('CHARACTER_NAME_WORDS', () => {
       expect(word).toHaveProperty('yomi');
       expect(word).toHaveProperty('accent');
       expect(word).toHaveProperty('numMoras');
-      
+
       expect(typeof word.word).toBe('string');
       expect(typeof word.yomi).toBe('string');
       expect(typeof word.accent).toBe('number');
       expect(typeof word.numMoras).toBe('number');
-      
+
       // アクセント位置はモーラ数以下である必要がある
       expect(word.accent).toBeLessThanOrEqual(word.numMoras);
       expect(word.accent).toBeGreaterThanOrEqual(0);

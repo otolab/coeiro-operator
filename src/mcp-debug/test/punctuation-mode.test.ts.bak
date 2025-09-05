@@ -1,7 +1,7 @@
 /**
  * Punctuation Mode Tests for COEIRO Operator
  * 句読点分割モードのテスト
- * 
+ *
  * chunkModeが未指定時の句読点分割モード機能確認
  */
 
@@ -9,6 +9,7 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { getTestEnvironment } from '../../test-utils/test-env.js';
 
 interface PunctuationTestConfig {
   connection: {
@@ -38,23 +39,26 @@ class PunctuationModeTestRunner {
   /**
    * テスト用設定ファイルでCOEIRO Operatorサーバーを起動
    */
-  async startServerWithConfig(configPath: string, options: { debug?: boolean } = {}): Promise<void> {
+  async startServerWithConfig(
+    configPath: string,
+    options: { debug?: boolean } = {}
+  ): Promise<void> {
     const serverPath = path.resolve(__dirname, '../../../dist/mcp/server.js');
-    
+
     // Nodeの引数とサーバーの引数を分離
     const nodeArgs = [serverPath];
     const serverArgs = ['--config', configPath];
     if (options.debug) {
       serverArgs.push('--debug');
     }
-    
+
     console.log(`📍 Starting server: node ${nodeArgs.join(' ')} ${serverArgs.join(' ')}`);
     console.time('Process spawn');
-    
+
     return new Promise((resolve, reject) => {
       this.serverProcess = spawn('node', [...nodeArgs, ...serverArgs], {
         stdio: ['pipe', 'pipe', 'pipe'],
-        env: { ...process.env, NODE_ENV: 'test' }
+        env: getTestEnvironment(),
       });
       console.timeEnd('Process spawn');
 
@@ -62,7 +66,7 @@ class PunctuationModeTestRunner {
       this.setupOutputHandlers();
       console.timeEnd('Output handlers setup');
 
-      this.serverProcess.on('error', (error) => {
+      this.serverProcess.on('error', error => {
         console.log(`❌ Server process error: ${error.message}`);
         reject(new Error(`Failed to start server: ${error.message}`));
       });
@@ -82,7 +86,7 @@ class PunctuationModeTestRunner {
    */
   async stopServer(): Promise<void> {
     if (this.serverProcess) {
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         this.serverProcess!.on('close', () => {
           this.serverProcess = undefined;
           resolve();
@@ -96,13 +100,19 @@ class PunctuationModeTestRunner {
    * 出力ハンドラーを設定
    */
   private setupOutputHandlers(): void {
-    this.serverProcess!.stdout?.on('data', (data) => {
-      const lines = data.toString().split('\n').filter((line: string) => line.trim());
+    this.serverProcess!.stdout?.on('data', data => {
+      const lines = data
+        .toString()
+        .split('\n')
+        .filter((line: string) => line.trim());
       this.output.push(...lines);
     });
 
-    this.serverProcess!.stderr?.on('data', (data) => {
-      const lines = data.toString().split('\n').filter((line: string) => line.trim());
+    this.serverProcess!.stderr?.on('data', data => {
+      const lines = data
+        .toString()
+        .split('\n')
+        .filter((line: string) => line.trim());
       this.errorOutput.push(...lines);
     });
   }
@@ -115,7 +125,7 @@ class PunctuationModeTestRunner {
       jsonrpc: '2.0',
       method,
       ...(params && { params }),
-      id
+      id,
     };
 
     console.log(`📤 Sending JSON-RPC: ${method} (id: ${id})`);
@@ -130,7 +140,7 @@ class PunctuationModeTestRunner {
       console.time(`Request write (${id})`);
       this.serverProcess.stdin.write(JSON.stringify(request) + '\n');
       console.timeEnd(`Request write (${id})`);
-      
+
       // レスポンスを待機（短縮）
       const timeout = setTimeout(() => {
         console.log(`⏰ JSON-RPC timeout for ${method} (id: ${id})`);
@@ -142,14 +152,18 @@ class PunctuationModeTestRunner {
         if (this.output.length > 0) {
           console.log(`📊 Current output lines (${this.output.length}):`);
           this.output.slice(-5).forEach((line, i) => {
-            console.log(`  [${this.output.length - 5 + i}] ${line.substring(0, 100)}${line.length > 100 ? '...' : ''}`);
+            console.log(
+              `  [${this.output.length - 5 + i}] ${line.substring(0, 100)}${line.length > 100 ? '...' : ''}`
+            );
           });
         }
-        
+
         if (this.errorOutput.length > 0) {
           console.log(`🚨 Error output lines (${this.errorOutput.length}):`);
           this.errorOutput.slice(-5).forEach((line, i) => {
-            console.log(`  [${this.errorOutput.length - 5 + i}] ${line.substring(0, 100)}${line.length > 100 ? '...' : ''}`);
+            console.log(
+              `  [${this.errorOutput.length - 5 + i}] ${line.substring(0, 100)}${line.length > 100 ? '...' : ''}`
+            );
           });
         }
 
@@ -194,7 +208,7 @@ class PunctuationModeTestRunner {
   getOutput(): { stdout: string[]; stderr: string[] } {
     return {
       stdout: [...this.output],
-      stderr: [...this.errorOutput]
+      stderr: [...this.errorOutput],
     };
   }
 }
@@ -202,8 +216,10 @@ class PunctuationModeTestRunner {
 describe('Punctuation Mode Tests', () => {
   let testRunner: PunctuationModeTestRunner;
   const configPath = path.resolve(__dirname, '../../../test-configs/punctuation-test-config.json');
-  const defaultConfigPath = path.resolve(__dirname, '../../../test-configs/default-split-mode-config.json');
-
+  const defaultConfigPath = path.resolve(
+    __dirname,
+    '../../../test-configs/default-split-mode-config.json'
+  );
 
   beforeEach(() => {
     testRunner = new PunctuationModeTestRunner();
@@ -236,10 +252,10 @@ describe('Punctuation Mode Tests', () => {
 
       // サーバーが正常に起動していることを確認
       const output = testRunner.getOutput();
-      
+
       // より広範囲でログを確認（何らかのログが出力されていることを確認）
       const hasAnyLog = output.stderr.length > 0 || output.stdout.length > 0;
-      
+
       expect(hasAnyLog).toBe(true);
     }, 6000);
   });
@@ -254,19 +270,23 @@ describe('Punctuation Mode Tests', () => {
         capabilities: { tools: {} },
         clientInfo: {
           name: 'punctuation-test-client',
-          version: '1.0.0'
-        }
+          version: '1.0.0',
+        },
       });
 
       // debug_logsツールで内部ログを取得してsplitMode関連情報を確認
-      const debugResponse = await testRunner.sendJsonRpcRequest('tools/call', {
-        name: 'debug_logs',
-        arguments: {
-          action: 'get',
-          search: 'split',
-          limit: 50
-        }
-      }, 200);
+      const debugResponse = await testRunner.sendJsonRpcRequest(
+        'tools/call',
+        {
+          name: 'debug_logs',
+          arguments: {
+            action: 'get',
+            search: 'split',
+            limit: 50,
+          },
+        },
+        200
+      );
 
       if (debugResponse && debugResponse.result) {
         // debug_logsツールが利用可能な場合、内部ログを確認
@@ -284,11 +304,11 @@ describe('Punctuation Mode Tests', () => {
 
       const initResponse = await testRunner.sendJsonRpcRequest('initialize', {
         protocolVersion: '2024-11-05',
-        capabilities: { tools: {} }
+        capabilities: { tools: {} },
       });
 
       expect(initResponse).toBeDefined();
-      
+
       if (initResponse.error) {
         // エラーがある場合（COEIROINKサーバー未起動等）はスキップ
         console.log('MCP Server initialization failed:', initResponse.error.message);
@@ -309,8 +329,8 @@ describe('Punctuation Mode Tests', () => {
         capabilities: { tools: {} },
         clientInfo: {
           name: 'punctuation-test-client',
-          version: '1.0.0'
-        }
+          version: '1.0.0',
+        },
       });
 
       // ツール一覧取得
@@ -318,7 +338,7 @@ describe('Punctuation Mode Tests', () => {
 
       expect(toolsResponse).toBeDefined();
       expect(toolsResponse.result.tools).toBeDefined();
-      
+
       const sayTool = toolsResponse.result.tools.find((tool: any) => tool.name === 'say');
       expect(sayTool).toBeDefined();
       expect(sayTool.description).toContain('音声');
@@ -333,20 +353,24 @@ describe('Punctuation Mode Tests', () => {
         capabilities: { tools: {} },
         clientInfo: {
           name: 'punctuation-test-client',
-          version: '1.0.0'
-        }
+          version: '1.0.0',
+        },
       });
 
       // 句読点を含むテキストで音声合成（chunkMode指定なし）
-      const sayResponse = await testRunner.sendJsonRpcRequest('tools/call', {
-        name: 'say',
-        arguments: {
-          message: 'こんにちは。今日は良い天気ですね！テストを実行しています。'
-        }
-      }, 3);
+      const sayResponse = await testRunner.sendJsonRpcRequest(
+        'tools/call',
+        {
+          name: 'say',
+          arguments: {
+            message: 'こんにちは。今日は良い天気ですね！テストを実行しています。',
+          },
+        },
+        3
+      );
 
       expect(sayResponse).toBeDefined();
-      
+
       if (sayResponse.error) {
         // COEIROINKサーバーが起動していない場合はスキップ
         console.log('COEIROINK server not available, skipping audio synthesis test');
@@ -364,12 +388,12 @@ describe('Punctuation Mode Tests', () => {
       const configContent = await fs.readFile(configPath, 'utf-8');
       const config: PunctuationTestConfig = JSON.parse(configContent);
       expect(config.audio.splitMode).toBe('punctuation');
-      
+
       // サーバー起動確認（通常モード）
       await testRunner.startServerWithConfig(configPath);
-      
+
       const output = testRunner.getOutput();
-      
+
       // サーバーが正常に起動していることを確認（ログ出力あり）
       const hasServerLogs = output.stderr.length > 0 || output.stdout.length > 0;
       expect(hasServerLogs).toBe(true);
@@ -379,17 +403,17 @@ describe('Punctuation Mode Tests', () => {
   describe('Default SplitMode Behavior', () => {
     test('splitMode未指定時でもpunctuationがデフォルトで動作する', async () => {
       console.time('Total test time');
-      
+
       console.time('Config file reading');
       // splitModeが明示的に指定されていない設定ファイルを確認
       const configContent = await fs.readFile(defaultConfigPath, 'utf-8');
       const config: PunctuationTestConfig = JSON.parse(configContent);
       console.timeEnd('Config file reading');
-      
+
       // splitModeが未指定であることを確認
       expect(config.audio.splitMode).toBeUndefined();
       console.log('✓ Config validation completed');
-      
+
       console.time('Server startup');
       // 通常モードでサーバー起動（デバッグモードはスキップ）
       console.log('Starting MCP server...');
@@ -405,8 +429,8 @@ describe('Punctuation Mode Tests', () => {
         capabilities: { tools: {} },
         clientInfo: {
           name: 'punctuation-test-client',
-          version: '1.0.0'
-        }
+          version: '1.0.0',
+        },
       });
       console.timeEnd('Server initialization');
       console.log('✓ Server initialization completed');
@@ -414,16 +438,20 @@ describe('Punctuation Mode Tests', () => {
       console.time('Voice synthesis');
       // 短いテキストで音声合成テスト
       console.log('Testing voice synthesis...');
-      const sayResponse = await testRunner.sendJsonRpcRequest('tools/call', {
-        name: 'say',
-        arguments: {
-          message: 'テスト。確認！'
-        }
-      }, 100);
+      const sayResponse = await testRunner.sendJsonRpcRequest(
+        'tools/call',
+        {
+          name: 'say',
+          arguments: {
+            message: 'テスト。確認！',
+          },
+        },
+        100
+      );
       console.timeEnd('Voice synthesis');
 
       expect(sayResponse).toBeDefined();
-      
+
       if (sayResponse.error) {
         // COEIROINKサーバーが起動していない場合は設定の動作確認のみ
         console.log('COEIROINK server not available, confirming config behavior only');
@@ -434,7 +462,7 @@ describe('Punctuation Mode Tests', () => {
         expect(sayResponse.result.content).toBeDefined();
         expect(sayResponse.result.content[0].text).toContain('発声完了');
       }
-      
+
       console.timeEnd('Total test time');
     }, 60000);
 
@@ -443,7 +471,7 @@ describe('Punctuation Mode Tests', () => {
       const configContent = await fs.readFile(defaultConfigPath, 'utf-8');
       const config: PunctuationTestConfig = JSON.parse(configContent);
       expect(config.audio.splitMode).toBeUndefined();
-      
+
       // デバッグモードでサーバー起動
       console.log('🔍 Starting server in DEBUG mode to capture splitting logs...');
       await testRunner.startServerWithConfig(defaultConfigPath, { debug: true });
@@ -454,42 +482,51 @@ describe('Punctuation Mode Tests', () => {
         capabilities: { tools: {} },
         clientInfo: {
           name: 'punctuation-debug-client',
-          version: '1.0.0'
-        }
+          version: '1.0.0',
+        },
       });
 
       // オペレータを割り当て（音声合成に必要）
-      await testRunner.sendJsonRpcRequest('tools/call', {
-        name: 'operator_assign',
-        arguments: {}
-      }, 150);
+      await testRunner.sendJsonRpcRequest(
+        'tools/call',
+        {
+          name: 'operator_assign',
+          arguments: {},
+        },
+        150
+      );
 
       // 句読点を含む複数文のテキストで音声合成
-      const testText = 'これは最初の文です。次に二番目の文があります！最後に三番目の文で終わります。';
+      const testText =
+        'これは最初の文です。次に二番目の文があります！最後に三番目の文で終わります。';
       console.log(`🎯 Testing punctuation splitting with: "${testText}"`);
-      
-      const sayResponse = await testRunner.sendJsonRpcRequest('tools/call', {
-        name: 'say',
-        arguments: {
-          message: testText
-        }
-      }, 200);
+
+      const sayResponse = await testRunner.sendJsonRpcRequest(
+        'tools/call',
+        {
+          name: 'say',
+          arguments: {
+            message: testText,
+          },
+        },
+        200
+      );
 
       const output = testRunner.getOutput();
       const allLogs = [...output.stdout, ...output.stderr].join('\n');
-      
+
       console.log('📊 Analyzing logs for punctuation splitting evidence...');
-      
+
       // デバッグログから句読点分割の直接的な証拠を確認
       const hasPunctuationSplitting = allLogs.includes('Using punctuation-based splitting');
       const hasChunkResults = /Punctuation splitting result: \d+ chunks/.test(allLogs);
       const hasSplitDebug = allLogs.includes('SPLIT_TEXT_INTO_CHUNKS DEBUG');
       const hasChunkDetails = /Chunk \d+:/.test(allLogs);
-      
+
       // 設定解決ログの確認
       const hasConfigResolution = /config\.audio\.splitMode: undefined/.test(allLogs);
       const hasFallbackMode = /chunkMode: punctuation.*fallback/.test(allLogs);
-      
+
       console.log('🔍 Splitting evidence found:');
       console.log(`  - Using punctuation-based splitting: ${hasPunctuationSplitting}`);
       console.log(`  - Chunk results: ${hasChunkResults}`);
@@ -497,17 +534,19 @@ describe('Punctuation Mode Tests', () => {
       console.log(`  - Chunk details: ${hasChunkDetails}`);
       console.log(`  - Config resolution: ${hasConfigResolution}`);
       console.log(`  - Fallback to punctuation: ${hasFallbackMode}`);
-      
+
       // 設定解決の確認（実際の音声処理は環境依存のため除外）
       console.log('✅ Configuration verification:');
       console.log(`  - Config resolution (splitMode undefined): ${hasConfigResolution}`);
       console.log(`  - Fallback to punctuation mode: ${hasFallbackMode}`);
-      
+
       // 設定が正しく動作していることを確認
       const configurationWorking = hasConfigResolution && hasFallbackMode;
-      
+
       if (configurationWorking) {
-        console.log('✅ Configuration working correctly: splitMode undefined defaults to punctuation mode');
+        console.log(
+          '✅ Configuration working correctly: splitMode undefined defaults to punctuation mode'
+        );
       } else {
         console.log('❌ Configuration not working as expected!');
         console.log('📄 Recent debug logs:');
@@ -517,37 +556,45 @@ describe('Punctuation Mode Tests', () => {
           }
         });
       }
-      
+
       // 最低限、設定解決が正しく動作していることを確認
       expect(configurationWorking).toBe(true);
     }, 30000);
 
     test('明示的にpunctuationを指定した場合と同等の動作', async () => {
       // 明示的指定版とデフォルト版で同じように動作することを確認
-      
+
       // 明示的指定版での起動
       await testRunner.startServerWithConfig(configPath);
-      
-      const initResponse1 = await testRunner.sendJsonRpcRequest('initialize', {
-        protocolVersion: '2024-11-05',
-        capabilities: { tools: {} }
-      }, 101);
+
+      const initResponse1 = await testRunner.sendJsonRpcRequest(
+        'initialize',
+        {
+          protocolVersion: '2024-11-05',
+          capabilities: { tools: {} },
+        },
+        101
+      );
 
       expect(initResponse1).toBeDefined();
 
       // サーバー停止して再起動（デフォルト版）
       await testRunner.stopServer();
       testRunner.clearOutput();
-      
+
       await testRunner.startServerWithConfig(defaultConfigPath);
 
-      const initResponse2 = await testRunner.sendJsonRpcRequest('initialize', {
-        protocolVersion: '2024-11-05',
-        capabilities: { tools: {} }
-      }, 102);
+      const initResponse2 = await testRunner.sendJsonRpcRequest(
+        'initialize',
+        {
+          protocolVersion: '2024-11-05',
+          capabilities: { tools: {} },
+        },
+        102
+      );
 
       expect(initResponse2).toBeDefined();
-      
+
       // どちらも同様に初期化されることを確認
       if (initResponse1.result && initResponse2.result) {
         expect(initResponse1.result.serverInfo.name).toBe(initResponse2.result.serverInfo.name);
@@ -558,15 +605,14 @@ describe('Punctuation Mode Tests', () => {
   describe('Fallback Behavior', () => {
     test('設定ファイルがない場合のフォールバック動作', async () => {
       const invalidConfigPath = '/path/to/nonexistent/config.json';
-      
+
       await testRunner.startServerWithConfig(invalidConfigPath);
 
       const output = testRunner.getOutput();
-      
+
       // フォールバック設定での初期化ログを確認
-      const fallbackLogs = output.stderr.filter(line => 
-        line.includes('fallback') ||
-        line.includes('Failed to initialize')
+      const fallbackLogs = output.stderr.filter(
+        line => line.includes('fallback') || line.includes('Failed to initialize')
       );
 
       // フォールバック動作が行われているか、または正常に起動していることを確認

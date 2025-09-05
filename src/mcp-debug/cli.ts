@@ -47,7 +47,7 @@ class MCPDebugCLI {
         args: this.options.childArgs,
         timeout: this.options.timeout,
         requestTimeout: this.options.requestTimeout,
-        debug: this.options.debugMode
+        debug: this.options.debugMode,
       });
 
       // MCPサーバーを起動・初期化
@@ -61,7 +61,6 @@ class MCPDebugCLI {
       } else {
         await this.startNonInteractiveMode();
       }
-
     } catch (error) {
       console.error(`❌ Error: ${(error as Error).message}`);
       process.exit(1);
@@ -75,7 +74,7 @@ class MCPDebugCLI {
     try {
       const fullPath = path.resolve(this.options.targetServerPath);
       const stats = await fs.stat(fullPath);
-      
+
       if (!stats.isFile()) {
         throw new Error(`Target server path is not a file: ${fullPath}`);
       }
@@ -86,7 +85,6 @@ class MCPDebugCLI {
       }
 
       this.options.targetServerPath = fullPath;
-
     } catch (error) {
       if ((error as any).code === 'ENOENT') {
         throw new Error(`Target server file not found: ${this.options.targetServerPath}`);
@@ -108,7 +106,7 @@ class MCPDebugCLI {
     this.readline = createInterface({
       input: process.stdin,
       output: process.stdout,
-      prompt: '> '
+      prompt: '> ',
     });
 
     this.readline.on('line', async (input: string) => {
@@ -130,22 +128,21 @@ class MCPDebugCLI {
   private async startNonInteractiveMode(): Promise<void> {
     const readline = createInterface({
       input: process.stdin,
-      output: process.stdout
+      output: process.stdout,
     });
 
     let inputBuffer = '';
-    
+
     readline.on('line', async (line: string) => {
       inputBuffer += line + '\n';
-      
+
       // 完全なJSONオブジェクトかチェック
       try {
         const message = JSON.parse(inputBuffer);
         inputBuffer = '';
-        
+
         // JSON-RPCリクエストを処理
         await this.handleNonInteractiveInput(message);
-        
       } catch (error) {
         // JSONが不完全な場合は次の行を待つ
         if (!(error instanceof SyntaxError)) {
@@ -186,7 +183,7 @@ class MCPDebugCLI {
           console.log(`   Pending Requests: ${this.client.getPendingRequestCount()}`);
           return;
 
-        case 'tools':
+        case 'tools': {
           const capabilities = this.client.getServerCapabilities();
           if (capabilities?.tools) {
             console.log('🔧 Available Tools:');
@@ -197,6 +194,7 @@ class MCPDebugCLI {
             console.log('No tools available');
           }
           return;
+        }
 
         case 'clear':
           console.clear();
@@ -222,7 +220,6 @@ class MCPDebugCLI {
           console.log('❓ Invalid input. Enter JSON-RPC request or use shortcuts.');
         }
       }
-
     } catch (error) {
       console.log(`❌ Error: ${(error as Error).message}`);
     }
@@ -237,9 +234,9 @@ class MCPDebugCLI {
         jsonrpc: '2.0',
         error: {
           code: -32603,
-          message: 'Client not initialized'
+          message: 'Client not initialized',
         },
-        id: message.id || null
+        id: message.id || null,
       };
       console.log(JSON.stringify(error));
       return;
@@ -253,9 +250,9 @@ class MCPDebugCLI {
         jsonrpc: '2.0',
         error: {
           code: -32603,
-          message: (error as Error).message
+          message: (error as Error).message,
         },
-        id: message.id || null
+        id: message.id || null,
       };
       console.log(JSON.stringify(errorResponse));
     }
@@ -273,17 +270,18 @@ class MCPDebugCLI {
     const { method, params, id } = request;
 
     let result;
-    
+
     switch (method) {
       case 'tools/call':
         result = await this.client.callTool(params.name, params.arguments);
         break;
-        
-      case 'tools/list':
+
+      case 'tools/list': {
         const capabilities = this.client.getServerCapabilities();
         result = { tools: Object.keys(capabilities?.tools || {}) };
         break;
-        
+      }
+
       default:
         result = await this.client.sendRequest(method, params);
     }
@@ -291,7 +289,7 @@ class MCPDebugCLI {
     return {
       jsonrpc: '2.0',
       result,
-      id: id || null
+      id: id || null,
     };
   }
 
@@ -344,7 +342,7 @@ Examples:
    */
   private async shutdown(): Promise<void> {
     if (this.isShuttingDown) return;
-    
+
     this.isShuttingDown = true;
 
     try {
@@ -374,13 +372,13 @@ Examples:
 
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
-    
-    process.on('uncaughtException', (error) => {
+
+    process.on('uncaughtException', error => {
       console.error('Uncaught exception:', error);
       this.shutdown();
     });
 
-    process.on('unhandledRejection', (reason) => {
+    process.on('unhandledRejection', reason => {
       console.error('Unhandled rejection:', reason);
       this.shutdown();
     });
@@ -399,7 +397,7 @@ function parseArguments(): CLIOptions {
     help: false,
     timeout: 30000,
     requestTimeout: 10000,
-    childArgs: []
+    childArgs: [],
   };
 
   // '--'で引数を分割
@@ -427,7 +425,7 @@ function parseArguments(): CLIOptions {
         options.interactive = false;
         break;
 
-      case '--timeout':
+      case '--timeout': {
         const timeoutValue = parseInt(mcpDebugArgs[++i], 10);
         if (isNaN(timeoutValue) || timeoutValue <= 0) {
           console.error('Error: --timeout must be a positive number');
@@ -435,8 +433,9 @@ function parseArguments(): CLIOptions {
         }
         options.timeout = timeoutValue;
         break;
+      }
 
-      case '--request-timeout':
+      case '--request-timeout': {
         const requestTimeoutValue = parseInt(mcpDebugArgs[++i], 10);
         if (isNaN(requestTimeoutValue) || requestTimeoutValue <= 0) {
           console.error('Error: --request-timeout must be a positive number');
@@ -444,6 +443,7 @@ function parseArguments(): CLIOptions {
         }
         options.requestTimeout = requestTimeoutValue;
         break;
+      }
 
       case '--help':
       case '-h':
@@ -475,14 +475,14 @@ function parseArguments(): CLIOptions {
 async function main(): Promise<void> {
   const options = parseArguments();
   const cli = new MCPDebugCLI(options);
-  
+
   cli.setupSignalHandlers();
   await cli.start();
 }
 
 // 直接実行された場合のみCLIを起動
 if (import.meta.url === `file://${process.argv[1]}`) {
-  main().catch((error) => {
+  main().catch(error => {
     console.error('Failed to start MCP Debug CLI:', error);
     process.exit(1);
   });

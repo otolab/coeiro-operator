@@ -1,0 +1,140 @@
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  check-size:
+    name: Check PR Size
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check PR size
+        run: |
+          echo "Checking PR size..."
+          CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD | wc -l)
+          ADDITIONS=$(git diff --numstat origin/${{ github.base_ref }}...HEAD | awk '{sum+=$1} END {print sum}')
+          DELETIONS=$(git diff --numstat origin/${{ github.base_ref }}...HEAD | awk '{sum+=$2} END {print sum}')
+          
+          echo "Changed files: $CHANGED_FILES"
+          echo "Lines added: $ADDITIONS"
+          echo "Lines deleted: $DELETIONS"
+          
+          if [ "$ADDITIONS" -gt 1000 ]; then
+            echo "⚠️ Warning: Large PR detected (>1000 lines added)"
+            echo "Consider breaking this PR into smaller chunks for easier review"
+          fi
+
+  check-conflicts:
+    name: Check Merge Conflicts
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check for merge conflicts
+        run: |
+          git fetch origin ${{ github.base_ref }}
+          if git merge-tree $(git merge-base HEAD origin/${{ github.base_ref }}) HEAD origin/${{ github.base_ref }} | grep -q "<<<<<<< "; then
+            echo "❌ Merge conflicts detected"
+            exit 1
+          else
+            echo "✅ No merge conflicts"
+          fi
+
+  check-dependencies:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      
+      - name: Check for security vulnerabilities
+        run: |
+          npm audit --audit-level=moderate || true
+          echo "Note: Security vulnerabilities found. Please review and fix if critical."
+      
+      - name: Check for outdated dependencies
+        run: |
+          npx npm-check-updates --target minor || true
+          echo "Note: Some dependencies may have updates available."
+
+  validate-commits:
+    name: Validate Commits
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Check commit messages
+        run: |
+          echo "Checking commit messages..."
+          COMMITS=$(git log --format="%s" origin/${{ github.base_ref }}..HEAD)
+          
+          # 基本的なコミットメッセージ検証
+          while IFS= read -r commit; do
+            if [ -z "$commit" ]; then
+              continue
+            fi
+            
+            # コミットメッセージの長さチェック
+            if [ ${#commit} -lt 10 ]; then
+              echo "⚠️ Warning: Short commit message detected: '$commit'"
+              echo "Consider using more descriptive commit messages"
+            fi
+            
+            # 一般的なプレフィックスをチェック
+            if ! echo "$commit" | grep -qE "^(feat|fix|docs|style|refactor|test|chore|perf|ci|build|revert):|^Merge |^Initial |^Update |^Add |^Remove |^Fix |^Refactor "; then
+              echo "ℹ️ Info: Non-conventional commit message: '$commit'"
+              echo "Consider using conventional commit format (e.g., 'feat:', 'fix:', etc.)"
+            fi
+          done <<< "$COMMITS"
+
+  test-quick:
+    name: Quick Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+      
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build
+      
+      - name: Run unit tests only
+        run: |
+          # ユニットテストのみを実行（E2Eを除外）
+          npm test -- --exclude="**/e2e/**" || npm test
+        env:
+          COEIRO_TEST_MODE: true
