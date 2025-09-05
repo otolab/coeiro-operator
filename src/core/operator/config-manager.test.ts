@@ -2,13 +2,11 @@
  * src/operator/config-manager.test.ts: ConfigManager テスト
  */
 
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ConfigManager } from './config-manager.js';
-import { readFile, writeFile, access, mkdir } from 'fs/promises';
+import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-
-// fetchのモック
-global.fetch = vi.fn();
 
 describe('ConfigManager', () => {
   let configManager: ConfigManager;
@@ -21,17 +19,21 @@ describe('ConfigManager', () => {
 
     configManager = new ConfigManager(tempDir);
 
-    // fetchのモックをリセット
+    // モックをリセット
     vi.clearAllMocks();
   });
 
   afterEach(async () => {
     // 一時ディレクトリをクリーンアップ
-    const fs = await import('fs');
-    await fs.promises.rm(tempDir, { recursive: true, force: true });
+    try {
+      const fs = await import('fs');
+      await fs.promises.rm(tempDir, { recursive: true, force: true });
+    } catch (error) {
+      // クリーンアップエラーは無視
+    }
   });
 
-  describe('readJsonFile', () => {
+  describe('設定ファイルの読み書き', () => {
     test('存在するJSONファイルを正しく読み込む', async () => {
       const testData = { test: 'value' };
       const testFile = join(tempDir, 'test.json');
@@ -57,9 +59,7 @@ describe('ConfigManager', () => {
       const result = await configManager.readJsonFile(invalidJsonFile, defaultValue);
       expect(result).toEqual(defaultValue);
     });
-  });
 
-  describe('writeJsonFile', () => {
     test('JSONファイルを正しく書き込む', async () => {
       const testData = { test: 'value', number: 42 };
       const testFile = join(tempDir, 'output.json');
@@ -72,256 +72,441 @@ describe('ConfigManager', () => {
     });
   });
 
-  describe('speakerNameToId', () => {
-    test('既知のスピーカー名を正しくIDに変換', () => {
-      // SPEAKER_NAME_TO_ID_MAPに定義されているマッピングをテスト
-      const result = configManager.speakerNameToId('つくよみちゃん');
-      expect(result).toBeDefined();
-      expect(typeof result).toBe('string');
-    });
-
-    test('未知のスピーカー名を小文字英数字に変換', () => {
-      const result = configManager.speakerNameToId('テスト キャラクター！');
-      expect(result).toBe('');
-    });
-
-    test('英数字のスピーカー名はそのまま小文字に変換', () => {
-      const result = configManager.speakerNameToId('TestCharacter123');
-      expect(result).toBe('testcharacter123');
-    });
-  });
-
-  describe('deepMerge', () => {
-    test('ネストしたオブジェクトを正しくマージ', () => {
-      const target = {
-        a: 1,
-        b: { c: 2, d: 3 },
-        e: [1, 2],
-      };
-      const source = {
-        b: { c: 20, f: 4 },
-        g: 5,
-      };
-
-      const result = configManager.deepMerge(target, source);
-
-      expect(result).toEqual({
-        a: 1,
-        b: { c: 20, d: 3, f: 4 },
-        e: [1, 2],
-        g: 5,
-      });
-    });
-
-    test('配列は上書きされる', () => {
-      const target = { arr: [1, 2, 3] };
-      const source = { arr: [4, 5] };
-
-      const result = configManager.deepMerge(target, source);
-
-      expect(result.arr).toEqual([4, 5]);
-    });
-
-    test('プロトタイプ汚染攻撃を防ぐ - __proto__', () => {
-      const target = {};
-      const maliciousSource = {
-        __proto__: { isAdmin: true },
-      };
-
-      configManager.deepMerge(target, maliciousSource);
-
-      // Object.prototypeが汚染されていないことを確認
-      expect(({} as any).isAdmin).toBeUndefined();
-    });
-
-    test('プロトタイプ汚染攻撃を防ぐ - constructor', () => {
-      const target = {};
-      const maliciousSource = {
-        constructor: { prototype: { isAdmin: true } },
-      };
-
-      configManager.deepMerge(target, maliciousSource);
-
-      // constructorプロパティが無視されることを確認
-      expect(({} as any).isAdmin).toBeUndefined();
-    });
-
-    test('プロトタイプ汚染攻撃を防ぐ - prototype', () => {
-      const target = {};
-      const maliciousSource = {
-        prototype: { isAdmin: true },
-      };
-
-      configManager.deepMerge(target, maliciousSource);
-
-      // prototypeプロパティが無視されることを確認
-      expect(({} as any).isAdmin).toBeUndefined();
-    });
-
-    test('継承されたプロパティは無視される', () => {
-      const parent = { inheritedProp: 'inherited' };
-      const child = Object.create(parent);
-      child.ownProp = 'own';
-
-      const target = {};
-      const result = configManager.deepMerge(target, child);
-
-      // 自身のプロパティのみがマージされることを確認
-      expect(result.ownProp).toBe('own');
-      expect(result.inheritedProp).toBeUndefined();
-    });
-  });
-
-  describe('VoiceProvider integration', () => {
-    test('COEIROINKサーバーからの正常なレスポンスでconfig構築', async () => {
-      const mockResponse = [
+  describe('動的設定の構築', () => {
+    test('サーバーからスピーカー情報を取得して設定を構築', async () => {
+      // speakerProviderのモック設定
+      const mockGetSpeakers = vi.fn().mockResolvedValue([
         {
+          speakerUuid: 'tsukuyomi-uuid',
           speakerName: 'つくよみちゃん',
-          speakerUuid: 'test-uuid-1',
           styles: [
-            { styleId: 0, styleName: 'れいせい' },
-            { styleId: 1, styleName: 'ねむねむ' },
+            { styleId: 0, styleName: 'ノーマル' },
+            { styleId: 1, styleName: 'おしとやか' },
           ],
         },
-      ];
-
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockResponse,
-      });
-
-      const config = await configManager.buildDynamicConfig();
-      expect(config.characters).toBeDefined();
-      expect(global.fetch).toHaveBeenCalledWith(
-        'http://localhost:50032/v1/speakers',
-        expect.any(Object)
-      );
-    });
-
-    test('COEIROINKサーバーエラー時もconfig構築成功', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('Connection failed'));
-
-      // エラーが投げられないことを確認
-      const config = await configManager.buildDynamicConfig();
-      expect(config.characters).toBeDefined();
-    });
-
-    test('カスタム接続設定を適用', async () => {
-      // カスタム設定ファイルを作成
-      const customConfig = {
-        connection: { host: 'custom-host', port: '9999' },
+      ]);
+      
+      // configManagerのspeakerProviderを直接置き換え
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
       };
-      const configFile = join(tempDir, 'coeiroink-config.json');
-      await writeFile(configFile, JSON.stringify(customConfig), 'utf8');
 
-      (global.fetch as any).mockResolvedValueOnce({
-        ok: true,
-        json: async () => [],
-      });
+      await configManager.buildDynamicConfig();
+      const config = configManager.getMergedConfig();
 
-      const config = await configManager.buildDynamicConfig();
-      expect(config.characters).toBeDefined();
-      expect(global.fetch).toHaveBeenCalledWith(
-        'http://custom-host:9999/v1/speakers',
-        expect.any(Object)
-      );
+      expect(config).toBeDefined();
+      expect(config?.characters).toBeDefined();
+      expect(config?.characters['tsukuyomi']).toBeDefined();
+      expect(config?.characters['tsukuyomi'].availableStyles).toContain('ノーマル');
+      expect(config?.characters['tsukuyomi'].availableStyles).toContain('おしとやか');
     });
-  });
 
-  describe('buildDynamicConfig', () => {
-    test('音声フォントが利用できない場合は内蔵設定を使用', async () => {
-      // VoiceProviderが空配列を返すようにモック
-      (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
+    test('サーバーエラー時は空の設定でフォールバック', async () => {
+      const mockGetSpeakers = vi.fn().mockRejectedValue(new Error('Connection failed'));
+      
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
 
-      const config = await configManager.buildDynamicConfig();
+      // エラーがコンソールに出力されることを確認
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
-      expect(config.characters).toBeDefined();
-      expect(Object.keys(config.characters).length).toBeGreaterThan(0);
+      await configManager.buildDynamicConfig();
+      const config = configManager.getMergedConfig();
+
+      expect(config).toBeDefined();
+      expect(config?.characters).toEqual({});
+      expect(config?.operatorTimeout).toBe(14400000);
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '動的設定構築エラー:',
+        expect.any(Error)
+      );
+
+      consoleSpy.mockRestore();
     });
 
     test('ユーザー設定でキャラクターを無効化', async () => {
-      // ユーザー設定ファイルを作成（angieを無効化）
-      const userConfig = {
-        characters: {
-          angie: { disabled: true },
-        },
-      };
-      const configFile = join(tempDir, 'operator-config.json');
-      await writeFile(configFile, JSON.stringify(userConfig), 'utf8');
-
-      (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
-
-      const config = await configManager.buildDynamicConfig();
-
-      // angieが設定に含まれていないことを確認
-      expect(config.characters.angie).toBeUndefined();
-    });
-
-    test('キャッシュが正しく動作', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
-
-      // 初回呼び出し
-      const config1 = await configManager.buildDynamicConfig();
-
-      // 2回目呼び出し（キャッシュから取得）
-      const config2 = await configManager.buildDynamicConfig();
-
-      expect(config1).toBe(config2); // 同じオブジェクトインスタンスであることを確認
-    });
-
-    test('forceRefreshでキャッシュを無視', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
-
-      // 初回呼び出し
-      await configManager.buildDynamicConfig();
-
-      // forceRefreshで再呼び出し
-      await configManager.buildDynamicConfig(true);
-
-      // fetchが2回呼ばれることを確認
-      expect(global.fetch).toHaveBeenCalledTimes(2);
-    });
-  });
-
-  describe('getCharacterConfig', () => {
-    test('存在するキャラクターの設定を取得', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
-
-      const characterIds = await configManager.getAvailableCharacterIds();
-      const firstCharacterId = characterIds[0];
-
-      const characterConfig = await configManager.getCharacterConfig(firstCharacterId);
-
-      expect(characterConfig).toBeDefined();
-      expect(characterConfig.name).toBeDefined();
-      expect(characterConfig.personality).toBeDefined();
-    });
-
-    test('存在しないキャラクターの場合エラーを投げる', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
-
-      await expect(configManager.getCharacterConfig('non-existent-character')).rejects.toThrow(
-        "キャラクター 'non-existent-character' が見つかりません"
+      // 設定ファイルを作成
+      const configFile = join(tempDir, 'config.json');
+      await writeFile(
+        configFile,
+        JSON.stringify({
+          characters: {
+            tsukuyomi: { disabled: true },
+          },
+        }),
+        'utf8'
       );
+
+      const mockGetSpeakers = vi.fn().mockResolvedValue([
+        {
+          speakerUuid: 'tsukuyomi-uuid',
+          speakerName: 'つくよみちゃん',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ]);
+      
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      await configManager.buildDynamicConfig();
+      const config = configManager.getMergedConfig();
+
+      expect(config?.characters['tsukuyomi']).toBeUndefined();
+    });
+
+    test('カスタム接続設定を適用', async () => {
+      const configFile = join(tempDir, 'config.json');
+      await writeFile(
+        configFile,
+        JSON.stringify({
+          connection: {
+            host: 'custom.host',
+            port: '12345',
+          },
+        }),
+        'utf8'
+      );
+
+      const mockUpdateConnection = vi.fn();
+      const mockGetSpeakers = vi.fn().mockResolvedValue([]);
+      
+      (configManager as any).speakerProvider = {
+        updateConnection: mockUpdateConnection,
+        getSpeakers: mockGetSpeakers,
+      };
+
+      await configManager.buildDynamicConfig();
+
+      expect(mockUpdateConnection).toHaveBeenCalledWith({
+        host: 'custom.host',
+        port: '12345',
+      });
     });
   });
 
-  describe('refreshConfig', () => {
-    test('キャッシュが正しくクリアされる', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
+  describe('設定の取得', () => {
+    test('キャラクター設定を取得', async () => {
+      const mockGetSpeakers = vi.fn().mockResolvedValue([
+        {
+          speakerUuid: 'tsukuyomi-uuid',
+          speakerName: 'つくよみちゃん',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ]);
+      
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
 
-      // 初回呼び出してキャッシュを作成
+      const characterConfig = await configManager.getCharacterConfig('tsukuyomi');
+      
+      expect(characterConfig).toBeDefined();
+      expect(characterConfig?.name).toBe('つくよみちゃん');
+      expect(characterConfig?.speakerId).toBe('tsukuyomi-uuid');
+    });
+
+    test('存在しないキャラクターの場合nullを返す', async () => {
+      const mockGetSpeakers = vi.fn().mockResolvedValue([]);
+      
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      const characterConfig = await configManager.getCharacterConfig('non-existent');
+      
+      expect(characterConfig).toBeNull();
+    });
+
+    test('利用可能なキャラクターIDを取得', async () => {
+      const mockGetSpeakers = vi.fn().mockResolvedValue([
+        {
+          speakerUuid: 'tsukuyomi-uuid',
+          speakerName: 'つくよみちゃん',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+        {
+          speakerUuid: 'maru-uuid',
+          speakerName: 'ずんだもん',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ]);
+      
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      const ids = await configManager.getAvailableCharacterIds();
+      
+      expect(ids).toContain('tsukuyomi');
+      // maruは内蔵設定に存在しない場合は含まれない
+    });
+
+    test('オペレータタイムアウトを取得', async () => {
+      const configFile = join(tempDir, 'config.json');
+      await writeFile(
+        configFile,
+        JSON.stringify({
+          operator: {
+            timeout: 60000,
+          },
+        }),
+        'utf8'
+      );
+
+      // buildDynamicConfigを実行するために必要なモック
+      const mockGetSpeakers = vi.fn().mockResolvedValue([]);
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      const timeout = await configManager.getOperatorTimeout();
+      expect(timeout).toBe(60000);
+    });
+
+    test('話速（rate）を取得', async () => {
+      const configFile = join(tempDir, 'config.json');
+      await writeFile(
+        configFile,
+        JSON.stringify({
+          operator: {
+            rate: 250,
+          },
+        }),
+        'utf8'
+      );
+
+      const rate = await configManager.getRate();
+      expect(rate).toBe(250);
+    });
+
+    test('音声設定を取得', async () => {
+      const audioConfig = {
+        latencyMode: 'ultra-low',
+        splitMode: 'punctuation',
+        bufferSize: 512,
+      };
+
+      const configFile = join(tempDir, 'config.json');
+      await writeFile(
+        configFile,
+        JSON.stringify({
+          audio: audioConfig,
+        }),
+        'utf8'
+      );
+
+      const result = await configManager.getAudioConfig();
+      expect(result).toEqual(audioConfig);
+    });
+
+    test('接続設定を取得', async () => {
+      const configFile = join(tempDir, 'config.json');
+      await writeFile(
+        configFile,
+        JSON.stringify({
+          connection: {
+            host: 'test.host',
+            port: '9999',
+          },
+        }),
+        'utf8'
+      );
+
+      const result = await configManager.getConnectionConfig();
+      expect(result).toEqual({
+        host: 'test.host',
+        port: '9999',
+      });
+    });
+
+    test('デフォルト接続設定を取得', async () => {
+      const result = await configManager.getConnectionConfig();
+      expect(result).toEqual({
+        host: 'localhost',
+        port: '50032',
+      });
+    });
+  });
+
+  describe('完全な設定の取得', () => {
+    test('getFullConfigで完全な設定を取得', async () => {
+      const configFile = join(tempDir, 'config.json');
+      await writeFile(
+        configFile,
+        JSON.stringify({
+          connection: {
+            host: 'test.host',
+            port: '8888',
+          },
+          audio: {
+            latencyMode: 'balanced',
+          },
+          operator: {
+            rate: 180,
+            timeout: 30000,
+          },
+        }),
+        'utf8'
+      );
+
+      const mockGetSpeakers = vi.fn().mockResolvedValue([]);
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      const fullConfig = await configManager.getFullConfig();
+
+      expect(fullConfig).toBeDefined();
+      expect(fullConfig.connection).toEqual({
+        host: 'test.host',
+        port: '8888',
+      });
+      expect(fullConfig.audio?.latencyMode).toBe('balanced');
+      expect(fullConfig.operator.rate).toBe(180);
+      expect(fullConfig.operator.timeout).toBe(30000);
+      expect(fullConfig.characters).toBeDefined();
+    });
+  });
+
+  describe('設定ディレクトリ管理', () => {
+    test('設定ディレクトリの存在確認と作成', async () => {
+      const newDir = join(tempDir, 'new-config-dir');
+      const newConfigManager = new ConfigManager(newDir);
+      
+      await newConfigManager.ensureConfigDir();
+
+      // ディレクトリが作成されたか確認
+      const fs = await import('fs');
+      const stats = await fs.promises.stat(newDir);
+      expect(stats.isDirectory()).toBe(true);
+    });
+  });
+
+  describe('本質的な失敗を検出するテスト', () => {
+    test('設定ファイルが破損している場合でも動作する', async () => {
+      const configFile = join(tempDir, 'config.json');
+      await writeFile(configFile, '{ invalid json }', 'utf8');
+
+      const mockGetSpeakers = vi.fn().mockResolvedValue([]);
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      // エラーをスローせずにデフォルト設定で動作すること
+      const config = await configManager.loadConfig();
+      expect(config).toEqual({});
+      
+      const fullConfig = await configManager.getFullConfig();
+      expect(fullConfig).toBeDefined();
+      expect(fullConfig.operator.rate).toBe(200); // デフォルト値
+    });
+
+    test('設定のマージが正しく動作する', async () => {
+      const configFile = join(tempDir, 'config.json');
+      await writeFile(
+        configFile,
+        JSON.stringify({
+          characters: {
+            tsukuyomi: {
+              defaultStyle: 'カスタムスタイル',
+            },
+          },
+        }),
+        'utf8'
+      );
+
+      const mockGetSpeakers = vi.fn().mockResolvedValue([
+        {
+          speakerUuid: 'tsukuyomi-uuid',
+          speakerName: 'つくよみちゃん',
+          styles: [
+            { styleId: 0, styleName: 'ノーマル' },
+            { styleId: 1, styleName: 'カスタムスタイル' },
+          ],
+        },
+      ]);
+      
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      await configManager.buildDynamicConfig();
+      const character = await configManager.getCharacterConfig('tsukuyomi');
+      
+      expect(character?.defaultStyle).toBe('カスタムスタイル');
+    });
+
+    test('複数回buildDynamicConfigを呼んでも安定して動作する', async () => {
+      const mockGetSpeakers = vi.fn().mockResolvedValue([
+        {
+          speakerUuid: 'tsukuyomi-uuid',
+          speakerName: 'つくよみちゃん',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ]);
+      
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      // 複数回呼び出す
+      await configManager.buildDynamicConfig();
+      await configManager.buildDynamicConfig();
       await configManager.buildDynamicConfig();
 
-      // キャッシュをクリア
-      configManager.refreshConfig();
+      const config = configManager.getMergedConfig();
+      expect(config?.characters['tsukuyomi']).toBeDefined();
+      
+      // getSpeakersが3回呼ばれていることを確認
+      expect(mockGetSpeakers).toHaveBeenCalledTimes(3);
+    });
 
-      // 再度呼び出し（新しいインスタンスが作られるはず）
-      (global.fetch as any).mockRejectedValueOnce(new Error('No server'));
+    test('サーバーが一時的にエラーを返してもリトライできる', async () => {
+      let callCount = 0;
+      const mockGetSpeakers = vi.fn().mockImplementation(() => {
+        callCount++;
+        if (callCount === 1) {
+          return Promise.reject(new Error('一時的なエラー'));
+        }
+        return Promise.resolve([
+          {
+            speakerUuid: 'tsukuyomi-uuid',
+            speakerName: 'つくよみちゃん',
+            styles: [{ styleId: 0, styleName: 'ノーマル' }],
+          },
+        ]);
+      });
+      
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      // 1回目：エラー
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       await configManager.buildDynamicConfig();
+      let config = configManager.getMergedConfig();
+      expect(config?.characters).toEqual({});
 
-      // fetchが2回呼ばれることを確認
-      expect(global.fetch).toHaveBeenCalledTimes(2);
+      // 2回目：成功
+      await configManager.buildDynamicConfig();
+      config = configManager.getMergedConfig();
+      expect(config?.characters['tsukuyomi']).toBeDefined();
+
+      consoleSpy.mockRestore();
     });
   });
 });

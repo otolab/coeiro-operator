@@ -92,7 +92,7 @@ export class ConfigManager {
   /**
    * 統一設定ファイルを読み込み
    */
-  private async loadConfig(): Promise<UnifiedConfig> {
+  async loadConfig(): Promise<UnifiedConfig> {
     return await this.readJsonFile<UnifiedConfig>(this.configFile, {});
   }
 
@@ -124,9 +124,12 @@ export class ConfigManager {
       const speakers = await this.speakerProvider.getSpeakers();
       const dynamicCharacters: Record<string, CharacterConfig> = {};
 
+      // speakersがundefinedまたは配列でない場合は空の配列として扱う
+      const availableSpeakers = Array.isArray(speakers) ? speakers : [];
+
       for (const [characterId, builtinConfig] of Object.entries(BUILTIN_CHARACTER_CONFIGS)) {
         // speakerIdでCOEIROINKのSpeakerとマッチング
-        const speaker = speakers.find(s => s.speakerUuid === builtinConfig.speakerId);
+        const speaker = availableSpeakers.find(s => s.speakerUuid === builtinConfig.speakerId);
         if (!speaker) continue; // 利用可能なspeakerがない場合はスキップ
 
         // ユーザー設定はcharacterIdで管理
