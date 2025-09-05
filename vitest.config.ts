@@ -6,6 +6,12 @@ export default defineConfig({
     environment: 'node',
     testTimeout: 20000,
     
+    // テスト環境変数の設定
+    env: {
+      NODE_ENV: 'test',
+      CI: 'true'
+    },
+    
     // Issue #50: メモリリーク検出のためのNode.jsオプション
     // シングルスレッド実行でGCフラグ対応
     pool: 'forks',

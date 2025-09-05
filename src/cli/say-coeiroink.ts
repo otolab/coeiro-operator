@@ -33,13 +33,14 @@ class SayCoeiroinkCLI {
   }
 
   async showUsage(): Promise<void> {
+    const defaultRate = this.config?.operator?.rate || 200;
     console.log(`Usage: say-coeiroink [-v voice] [-r rate] [-o outfile] [-f file | text] [--style style] [--chunk-mode mode] [--buffer-size size]
 
 低レイテンシストリーミング音声合成・再生（macOS sayコマンド互換）
 
 Options:
     -v voice           Specify voice (voice ID or name, use '?' to list available voices)
-    -r rate            Speech rate in words per minute (default: ${this.config.operator.rate})
+    -r rate            Speech rate in words per minute (default: ${defaultRate})
     -o outfile         Write audio to file instead of playing (WAV format)
     -f file            Read text from file (use '-' for stdin)
     --style style      Specify voice style (e.g., 'のーまる', 'セクシー')
@@ -81,13 +82,18 @@ Examples:
   private async parseArguments(args: string[]): Promise<ParsedOptions> {
     const options: ParsedOptions = {
       voice: process.env.COEIROINK_VOICE || '',
-      rate: this.config.operator.rate,
+      rate: this.config?.operator?.rate || 200,
       inputFile: '',
       outputFile: '',
       text: '',
       chunkMode: 'punctuation',
       bufferSize: BUFFER_SIZES.DEFAULT,
     };
+
+    // args が undefined や null の場合はデフォルト値を返す
+    if (!args || !Array.isArray(args)) {
+      return options;
+    }
 
     for (let i = 0; i < args.length; i++) {
       const arg = args[i];
@@ -221,16 +227,18 @@ Examples:
   }
 }
 
-// プロセス終了ハンドリング
-process.on('uncaughtException', error => {
-  console.error('Uncaught Exception:', error.message);
-  process.exit(1);
-});
+// プロセス終了ハンドリング（テスト環境では無効化）
+if (process.env.NODE_ENV !== 'test') {
+  process.on('uncaughtException', error => {
+    console.error('Uncaught Exception:', error.message);
+    process.exit(1);
+  });
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection:', reason);
-  process.exit(1);
-});
+  process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection:', reason);
+    process.exit(1);
+  });
+}
 
 // メイン実行関数
 async function main(): Promise<void> {
@@ -254,22 +262,24 @@ async function main(): Promise<void> {
   await cli.run(process.argv.slice(2));
 }
 
-// メイン実行
-main()
-  .then(() => {
-    process.exit(0);
-  })
-  .catch(error => {
-    // 特別なエラーメッセージは正常終了扱い
-    if (
-      (error as Error).message === 'HELP_REQUESTED' ||
-      (error as Error).message === 'VOICE_LIST_REQUESTED'
-    ) {
+// メイン実行（テスト環境では実行しない）
+if (process.env.NODE_ENV !== 'test') {
+  main()
+    .then(() => {
       process.exit(0);
-    } else {
-      console.error(`Error: ${(error as Error).message}`);
-      process.exit(1);
-    }
-  });
+    })
+    .catch(error => {
+      // 特別なエラーメッセージは正常終了扱い
+      if (
+        (error as Error).message === 'HELP_REQUESTED' ||
+        (error as Error).message === 'VOICE_LIST_REQUESTED'
+      ) {
+        process.exit(0);
+      } else {
+        console.error(`Error: ${(error as Error).message}`);
+        process.exit(1);
+      }
+    });
+}
 
 export default SayCoeiroinkCLI;

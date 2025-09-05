@@ -305,7 +305,7 @@ describe('SayCoeiroinkCLI', () => {
     test('正常なテキスト音声合成が実行されること', async () => {
       process.argv = ['node', 'cli.ts', 'Hello, World!'];
 
-      await cli.run();
+      await cli.run([]);
 
       expect(mockSayCoeiroink.initialize).toHaveBeenCalledTimes(1);
       expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith('Hello, World!', {
@@ -344,7 +344,7 @@ describe('SayCoeiroinkCLI', () => {
       process.argv = ['node', 'cli.ts', '-f', 'input.txt'];
       mockReadFile.mockResolvedValueOnce('ファイルの内容');
 
-      await cli.run();
+      await cli.run([]);
 
       expect(mockReadFile).toHaveBeenCalledWith('input.txt', 'utf8');
       expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith('ファイルの内容', {
@@ -368,7 +368,7 @@ describe('SayCoeiroinkCLI', () => {
         'カスタムテスト',
       ];
 
-      await cli.run();
+      await cli.run([]);
 
       expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith('カスタムテスト', {
         voice: 'custom-voice',
@@ -381,7 +381,7 @@ describe('SayCoeiroinkCLI', () => {
     test('ストリーミングモードでの音声合成が実行されること', async () => {
       process.argv = ['node', 'cli.ts', '--stream', 'ストリーミングテスト'];
 
-      await cli.run();
+      await cli.run([]);
 
       expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith('ストリーミングテスト', {
         voice: undefined,
@@ -437,7 +437,7 @@ describe('SayCoeiroinkCLI', () => {
     test('空文字列のテキストでも正常に処理されること', async () => {
       process.argv = ['node', 'cli.ts', ''];
 
-      await cli.run();
+      await cli.run([]);
 
       expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith('', {
         voice: undefined,
@@ -451,7 +451,7 @@ describe('SayCoeiroinkCLI', () => {
       const longText = 'a'.repeat(10000);
       process.argv = ['node', 'cli.ts', longText];
 
-      await cli.run();
+      await cli.run([]);
 
       expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith(longText, {
         voice: undefined,
@@ -465,7 +465,7 @@ describe('SayCoeiroinkCLI', () => {
       const specialText = '特殊文字: @#$%^&*()_+{}[]|\\:";\'<>?,./～！＠＃';
       process.argv = ['node', 'cli.ts', specialText];
 
-      await cli.run();
+      await cli.run([]);
 
       expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith(specialText, {
         voice: undefined,
@@ -482,7 +482,7 @@ describe('SayCoeiroinkCLI', () => {
         vi.clearAllMocks();
         process.argv = ['node', 'cli.ts', '-r', rate.toString(), 'テスト'];
 
-        await cli.run();
+        await cli.run([]);
 
         expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith('テスト', {
           voice: undefined,
@@ -509,7 +509,7 @@ describe('SayCoeiroinkCLI', () => {
         return mockStdin;
       });
 
-      await cli.run();
+      await cli.run([]);
 
       expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith(stdinData, {
         voice: undefined,
@@ -528,7 +528,7 @@ describe('SayCoeiroinkCLI', () => {
       );
 
       const startTime = Date.now();
-      await cli.run();
+      await cli.run(['テスト']);
       const endTime = Date.now();
 
       expect(endTime - startTime).toBeGreaterThanOrEqual(100);
