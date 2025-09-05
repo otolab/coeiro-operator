@@ -5,6 +5,7 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SayCoeiroink } from './index.js';
+import { createMockConfigManager } from './test-helpers.js';
 import type { Config, SynthesizeOptions } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -153,7 +154,8 @@ describe('設定システム統合テスト', () => {
       await writeFile(configFile, JSON.stringify(defaultConfig, null, 2));
 
       // 設定ファイルを使用してSayCoeiroink初期化
-      sayCoeiroink = new SayCoeiroink();
+      const configManager = createMockConfigManager();
+      sayCoeiroink = new SayCoeiroink(configManager);
       await sayCoeiroink.initialize();
 
       // 基本動作確認
@@ -203,7 +205,8 @@ describe('設定システム統合テスト', () => {
         },
       };
 
-      sayCoeiroink = new SayCoeiroink(config);
+      const configManager = createMockConfigManager(config);
+      sayCoeiroink = new SayCoeiroink(configManager);
       await sayCoeiroink.initialize();
 
       // カスタム設定での動作確認
@@ -237,7 +240,8 @@ describe('設定システム統合テスト', () => {
         },
       };
 
-      sayCoeiroink = new SayCoeiroink(initialConfig);
+      const configManager = createMockConfigManager(initialConfig);
+      sayCoeiroink = new SayCoeiroink(configManager);
       await sayCoeiroink.initialize();
 
       // 無効状態でのテスト
@@ -268,7 +272,8 @@ describe('設定システム統合テスト', () => {
         },
       };
 
-      const enabledSayCoeiroink = new SayCoeiroink(enabledConfig);
+      const configManager = createMockConfigManager(enabledConfig);
+      const enabledSayCoeiroink = new SayCoeiroink(configManager);
       await enabledSayCoeiroink.initialize();
 
       // 有効状態でのテスト
@@ -304,7 +309,8 @@ describe('設定システム統合テスト', () => {
           },
         };
 
-        const testSayCoeiroink = new SayCoeiroink(config);
+        const configManager = createMockConfigManager(config);
+        const testSayCoeiroink = new SayCoeiroink(configManager);
         await testSayCoeiroink.initialize();
 
         const result = await testSayCoeiroink.synthesizeText(
@@ -337,7 +343,8 @@ describe('設定システム統合テスト', () => {
           },
         };
 
-        const testSayCoeiroink = new SayCoeiroink(config);
+        const configManager = createMockConfigManager(config);
+        const testSayCoeiroink = new SayCoeiroink(configManager);
         await testSayCoeiroink.initialize();
 
         const startTime = Date.now();
@@ -384,7 +391,8 @@ describe('設定システム統合テスト', () => {
           },
         };
 
-        const testSayCoeiroink = new SayCoeiroink(config);
+        const configManager = createMockConfigManager(config);
+        const testSayCoeiroink = new SayCoeiroink(configManager);
         await testSayCoeiroink.initialize();
 
         const result = await testSayCoeiroink.synthesizeText(
@@ -477,7 +485,8 @@ describe('設定システム統合テスト', () => {
       ];
 
       for (const { name, config } of complexConfigs) {
-        const testSayCoeiroink = new SayCoeiroink(config);
+        const configManager = createMockConfigManager(config);
+        const testSayCoeiroink = new SayCoeiroink(configManager);
         await testSayCoeiroink.initialize();
 
         const result = await testSayCoeiroink.synthesizeText(
@@ -497,7 +506,8 @@ describe('設定システム統合テスト', () => {
       await writeFile(configFile, '{ invalid json }');
 
       try {
-        sayCoeiroink = new SayCoeiroink();
+        const configManager = createMockConfigManager();
+      sayCoeiroink = new SayCoeiroink(configManager);
         await sayCoeiroink.initialize();
 
         // デフォルト設定でフォールバック
@@ -521,7 +531,8 @@ describe('設定システム統合テスト', () => {
         // ファイルが存在しない場合は無視
       }
 
-      sayCoeiroink = new SayCoeiroink();
+      const configManager = createMockConfigManager();
+      sayCoeiroink = new SayCoeiroink(configManager);
       await sayCoeiroink.initialize();
 
       const result = await sayCoeiroink.synthesizeText('デフォルト設定テスト', {
@@ -554,7 +565,8 @@ describe('設定システム統合テスト', () => {
         },
       };
 
-      sayCoeiroink = new SayCoeiroink(edgeCaseConfig);
+      const configManager = createMockConfigManager(edgeCaseConfig);
+      sayCoeiroink = new SayCoeiroink(configManager);
       await sayCoeiroink.initialize();
 
       const result = await sayCoeiroink.synthesizeText(

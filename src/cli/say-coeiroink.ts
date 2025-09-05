@@ -7,7 +7,9 @@
 
 import { readFile, access } from 'fs/promises';
 import { constants } from 'fs';
-import { SayCoeiroink, loadConfig } from '../core/say/index.js';
+import { SayCoeiroink } from '../core/say/index.js';
+import { ConfigManager } from '../core/operator/config-manager.js';
+import { getConfigDir } from '../core/common/config-paths.js';
 import type { Config } from '../core/say/types.js';
 import { BUFFER_SIZES } from '../core/say/constants.js';
 import { LoggerPresets } from '../utils/logger.js';
@@ -252,12 +254,15 @@ async function main(): Promise<void> {
     LoggerPresets.cli();
   }
 
-  const config = await loadConfig();
-  const sayCoeiroink = new SayCoeiroink(config);
-
+  const configDir = await getConfigDir();
+  const configManager = new ConfigManager(configDir);
+  await configManager.buildDynamicConfig();
+  
+  const sayCoeiroink = new SayCoeiroink(configManager);
   await sayCoeiroink.initialize();
   await sayCoeiroink.buildDynamicConfig();
 
+  const config = await configManager.getFullConfig();
   const cli = new SayCoeiroinkCLI(sayCoeiroink, config);
   await cli.run(process.argv.slice(2));
 }

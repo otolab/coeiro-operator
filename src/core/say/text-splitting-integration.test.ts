@@ -5,6 +5,7 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SayCoeiroink } from './index.js';
+import { createMockConfigManager } from './test-helpers.js';
 import type { Config, SynthesizeOptions } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -69,7 +70,8 @@ describe('テキスト分割モード統合テスト', () => {
     MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
     // デフォルト設定
-    sayCoeiroink = new SayCoeiroink();
+    const configManager = createMockConfigManager();
+    sayCoeiroink = new SayCoeiroink(configManager);
 
     // COEIROINK サーバーのモック設定
     (global.fetch as any).mockImplementation((url: string) => {

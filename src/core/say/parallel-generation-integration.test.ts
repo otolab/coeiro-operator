@@ -5,6 +5,7 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SayCoeiroink } from './index.js';
+import { createMockConfigManager } from './test-helpers.js';
 import type { Config, SynthesizeOptions } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -87,7 +88,8 @@ describe('並行チャンク生成システム統合テスト', () => {
       },
     };
 
-    sayCoeiroink = new SayCoeiroink(config);
+    const configManager = createMockConfigManager(config);
+    sayCoeiroink = new SayCoeiroink(configManager);
 
     // COEIROINK サーバーのモック設定
     (global.fetch as any).mockImplementation((url: string) => {
@@ -195,7 +197,8 @@ describe('並行チャンク生成システム統合テスト', () => {
         },
       };
 
-      const sequentialSayCoeiroink = new SayCoeiroink(sequentialConfig);
+      const configManager = createMockConfigManager(sequentialConfig);
+      const sequentialSayCoeiroink = new SayCoeiroink(configManager);
       await sequentialSayCoeiroink.initialize();
 
       const longText = 'テスト文1。テスト文2。テスト文3。';
@@ -225,7 +228,8 @@ describe('並行チャンク生成システム統合テスト', () => {
         },
       };
 
-      const bufferSayCoeiroink = new SayCoeiroink(bufferConfig);
+      const configManager = createMockConfigManager(bufferConfig);
+      const bufferSayCoeiroink = new SayCoeiroink(configManager);
       await bufferSayCoeiroink.initialize();
 
       const result = await bufferSayCoeiroink.synthesizeText(
@@ -253,7 +257,8 @@ describe('並行チャンク生成システム統合テスト', () => {
         },
       };
 
-      const disabledSayCoeiroink = new SayCoeiroink(disabledConfig);
+      const configManager = createMockConfigManager(disabledConfig);
+      const disabledSayCoeiroink = new SayCoeiroink(configManager);
       await disabledSayCoeiroink.initialize();
 
       const result = await disabledSayCoeiroink.synthesizeText(
@@ -330,7 +335,8 @@ describe('並行チャンク生成システム統合テスト', () => {
         },
       };
 
-      const edgeCaseSayCoeiroink = new SayCoeiroink(edgeCaseConfig);
+      const configManager = createMockConfigManager(edgeCaseConfig);
+      const edgeCaseSayCoeiroink = new SayCoeiroink(configManager);
       await edgeCaseSayCoeiroink.initialize();
 
       const result = await edgeCaseSayCoeiroink.synthesizeText(

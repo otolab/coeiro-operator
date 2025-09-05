@@ -3,10 +3,8 @@
  * MCPサーバから直接呼び出し可能なモジュール
  */
 
-import { readFile, access } from 'fs/promises';
-import { constants } from 'fs';
-import { getConfigDir, getConfigPath } from '../common/config-paths.js';
 import { OperatorManager } from '../operator/index.js';
+import { ConfigManager } from '../operator/config-manager.js';
 import type { Character, Speaker } from '../operator/character-info-service.js';
 import { SpeechQueue } from './speech-queue.js';
 import { AudioPlayer } from './audio-player.js';
@@ -34,31 +32,6 @@ import type {
 } from './types.js';
 import type { StreamControllerOptions } from './audio-stream-controller.js';
 
-// デフォルト設定
-const DEFAULT_CONFIG: Config = {
-  connection: {
-    host: CONNECTION_SETTINGS.DEFAULT_HOST,
-    port: CONNECTION_SETTINGS.DEFAULT_PORT,
-  },
-  operator: {
-    rate: SYNTHESIS_SETTINGS.DEFAULT_RATE,
-    timeout: 14400000, // 4時間
-    assignmentStrategy: 'random' as const,
-  },
-  audio: {
-    latencyMode: 'balanced',
-    splitMode: 'punctuation',
-    bufferSize: BUFFER_SIZES.DEFAULT,
-    parallelGeneration: {
-      maxConcurrency: 2, // 最大並行生成数（1=逐次、2以上=並行、デフォルト: 2）
-      delayBetweenRequests: 50, // リクエスト間隔（ms）
-      bufferAheadCount: 1, // 先読みチャンク数
-      pauseUntilFirstComplete: true, // 初回チャンク完了まで並行生成をポーズ（レイテンシ改善、デフォルト有効）
-    },
-  },
-  characters: {},
-};
-
 // ストリーミング設定
 const STREAM_CONFIG: StreamConfig = {
   chunkSizeChars: STREAM_SETTINGS.CHUNK_SIZE_CHARS,
@@ -69,61 +42,40 @@ const STREAM_CONFIG: StreamConfig = {
   preloadChunks: STREAM_SETTINGS.PRELOAD_CHUNKS,
 };
 
-/**
- * 設定ファイルを読み込み
- */
-export async function loadConfig(configFile: string | null = null): Promise<Config> {
-  if (!configFile) {
-    configFile = await getConfigPath('config.json');
-  }
-
-  try {
-    await access(configFile, constants.F_OK);
-  } catch {
-    return DEFAULT_CONFIG;
-  }
-
-  try {
-    const configData = await readFile(configFile, 'utf8');
-    const rawConfig = JSON.parse(configData);
-    return { ...DEFAULT_CONFIG, ...rawConfig };
-  } catch (error) {
-    logger.error(`設定ファイル読み込みエラー: ${(error as Error).message}`);
-    return DEFAULT_CONFIG;
-  }
-}
-
 export class SayCoeiroink {
+  private configManager: ConfigManager;
   private config: Config;
   private operatorManager: OperatorManager;
-  private speechQueue: SpeechQueue;
-  private audioPlayer: AudioPlayer;
-  private audioSynthesizer: AudioSynthesizer;
+  private speechQueue: SpeechQueue | null = null;
+  private audioPlayer: AudioPlayer | null = null;
+  private audioSynthesizer: AudioSynthesizer | null = null;
 
-  constructor(config: Config | null = null) {
-    // configがnullまたは部分的な場合はDEFAULT_CONFIGとマージ
-    this.config = config ? { ...DEFAULT_CONFIG, ...config } : DEFAULT_CONFIG;
-    // operatorプロパティも同様にマージ
-    if (config && config.operator) {
-      this.config.operator = { ...DEFAULT_CONFIG.operator, ...config.operator };
-    }
+  constructor(configManager: ConfigManager) {
+    this.configManager = configManager;
+    // 初期設定は空のオブジェクトで初期化（後でinitializeで設定）
+    this.config = {} as Config;
     this.operatorManager = new OperatorManager();
-    this.audioPlayer = new AudioPlayer(this.config);
-    this.audioSynthesizer = new AudioSynthesizer(this.config);
-
-    // SpeechQueueを初期化（処理コールバックとウォームアップコールバックを渡す）
-    this.speechQueue = new SpeechQueue(
-      async (task: SpeechTask) => {
-        await this.synthesizeTextInternal(task.text, task.options);
-      },
-      async () => {
-        await this.audioPlayer.warmupAudioDriver();
-      }
-    );
   }
 
   async initialize(): Promise<void> {
     try {
+      // ConfigManagerから完全な設定を取得
+      this.config = await this.configManager.getFullConfig();
+      
+      // AudioPlayerとAudioSynthesizerを初期化
+      this.audioPlayer = new AudioPlayer(this.config);
+      this.audioSynthesizer = new AudioSynthesizer(this.config);
+      
+      // SpeechQueueを初期化（処理コールバックとウォームアップコールバックを渡す）
+      this.speechQueue = new SpeechQueue(
+        async (task: SpeechTask) => {
+          await this.synthesizeTextInternal(task.text, task.options);
+        },
+        async () => {
+          await this.audioPlayer!.warmupAudioDriver();
+        }
+      );
+      
       await this.operatorManager.initialize();
     } catch (err) {
       throw new Error(`SayCoeiroink initialization failed: ${(err as Error).message}`);
@@ -132,13 +84,20 @@ export class SayCoeiroink {
 
   async buildDynamicConfig(): Promise<void> {
     try {
+      await this.configManager.buildDynamicConfig();
       await this.operatorManager.buildDynamicConfig();
+      // 設定を再取得して更新
+      this.config = await this.configManager.getFullConfig();
     } catch (err) {
       throw new Error(`buildDynamicConfig failed: ${(err as Error).message}`);
     }
   }
 
   async initializeAudioPlayer(): Promise<boolean> {
+    if (!this.audioPlayer) {
+      throw new Error('AudioPlayer is not initialized. Call initialize() first.');
+    }
+    
     // プリセットベースの設定がaudio-player.ts内で適用されるため、
     // 個別設定の上書きのみここで行う
     const audioConfig = this.config.audio;
@@ -167,6 +126,9 @@ export class SayCoeiroink {
    * ウォームアップタスクをキューに追加
    */
   async enqueueWarmup(): Promise<SynthesizeResult> {
+    if (!this.speechQueue) {
+      throw new Error('SpeechQueue is not initialized. Call initialize() first.');
+    }
     return await this.speechQueue.enqueueWarmup();
   }
 
@@ -253,11 +215,17 @@ export class SayCoeiroink {
 
   // AudioPlayer の playAudioStream メソッドを使用
   async playAudioStream(audioResult: AudioResult): Promise<void> {
+    if (!this.audioPlayer) {
+      throw new Error('AudioPlayer is not initialized. Call initialize() first.');
+    }
     return await this.audioPlayer.playAudioStream(audioResult);
   }
 
   // AudioSynthesizer の convertRateToSpeed メソッドを使用
   convertRateToSpeed(rate: number): number {
+    if (!this.audioSynthesizer) {
+      throw new Error('AudioSynthesizer is not initialized. Call initialize() first.');
+    }
     return this.audioSynthesizer.convertRateToSpeed(rate);
   }
 
@@ -268,6 +236,9 @@ export class SayCoeiroink {
     chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation',
     bufferSize?: number
   ): Promise<void> {
+    if (!this.audioPlayer || !this.audioSynthesizer) {
+      throw new Error('AudioPlayer or AudioSynthesizer is not initialized. Call initialize() first.');
+    }
     // 真のストリーミング再生：ジェネレータを直接AudioPlayerに渡す
     await this.audioPlayer.playStreamingAudio(
       this.audioSynthesizer.synthesizeStream(text, voiceConfig, speed, chunkMode),
@@ -277,31 +248,49 @@ export class SayCoeiroink {
 
   // AudioSynthesizer の listVoices メソッドを使用
   async listVoices(): Promise<void> {
+    if (!this.audioSynthesizer) {
+      throw new Error('AudioSynthesizer is not initialized. Call initialize() first.');
+    }
     return await this.audioSynthesizer.listVoices();
   }
 
   // AudioPlayer の saveAudio メソッドを使用
   async saveAudio(audioBuffer: ArrayBuffer, outputFile: string): Promise<void> {
+    if (!this.audioPlayer) {
+      throw new Error('AudioPlayer is not initialized. Call initialize() first.');
+    }
     return await this.audioPlayer.saveAudio(audioBuffer, outputFile);
   }
 
   // AudioSynthesizer の checkServerConnection メソッドを使用
   async checkServerConnection(): Promise<boolean> {
+    if (!this.audioSynthesizer) {
+      throw new Error('AudioSynthesizer is not initialized. Call initialize() first.');
+    }
     return await this.audioSynthesizer.checkServerConnection();
   }
 
   // SpeechQueue の enqueue メソッドを使用
   async enqueueSpeech(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+    if (!this.speechQueue) {
+      throw new Error('SpeechQueue is not initialized. Call initialize() first.');
+    }
     return await this.speechQueue.enqueue(text, options);
   }
 
   // SpeechQueue のステータスを取得
   getSpeechQueueStatus() {
+    if (!this.speechQueue) {
+      throw new Error('SpeechQueue is not initialized. Call initialize() first.');
+    }
     return this.speechQueue.getStatus();
   }
 
   // SpeechQueue をクリア
   clearSpeechQueue(): void {
+    if (!this.speechQueue) {
+      throw new Error('SpeechQueue is not initialized. Call initialize() first.');
+    }
     this.speechQueue.clear();
   }
 
@@ -315,6 +304,10 @@ export class SayCoeiroink {
    * - 同期的な動作でユーザーが完了を確認できる
    */
   async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+    if (!this.speechQueue) {
+      throw new Error('SpeechQueue is not initialized. Call initialize() first.');
+    }
+    
     // ファイル出力時はウォームアップと完了待機をスキップ
     if (options.outputFile) {
       return await this.speechQueue.enqueueAndWait(text, options);
@@ -351,6 +344,9 @@ export class SayCoeiroink {
     text: string,
     options: SynthesizeOptions = {}
   ): Promise<SynthesizeResult> {
+    if (!this.speechQueue) {
+      throw new Error('SpeechQueue is not initialized. Call initialize() first.');
+    }
     return await this.speechQueue.enqueueAndWait(text, options);
   }
 
@@ -406,6 +402,10 @@ export class SayCoeiroink {
   ): Promise<SynthesizeResult> {
     logger.info(`ファイル出力モード: ${outputFile}`);
 
+    if (!this.audioSynthesizer) {
+      throw new Error('AudioSynthesizer is not initialized. Call initialize() first.');
+    }
+    
     // ストリーミング合成してファイルに保存
     const audioChunks: ArrayBuffer[] = [];
     for await (const audioResult of this.audioSynthesizer.synthesizeStream(
@@ -548,6 +548,9 @@ export class SayCoeiroink {
    * 並行生成の有効/無効を設定
    */
   setParallelGenerationEnabled(enabled: boolean): void {
+    if (!this.audioSynthesizer) {
+      throw new Error('AudioSynthesizer is not initialized. Call initialize() first.');
+    }
     this.audioSynthesizer.setParallelGenerationEnabled(enabled);
     logger.info(`並行生成設定変更: ${enabled ? '有効' : '無効'}`);
   }
@@ -556,6 +559,9 @@ export class SayCoeiroink {
    * AudioStreamControllerのオプションを更新
    */
   updateStreamControllerOptions(options: Partial<StreamControllerOptions>): void {
+    if (!this.audioSynthesizer) {
+      throw new Error('AudioSynthesizer is not initialized. Call initialize() first.');
+    }
     this.audioSynthesizer.updateStreamControllerOptions(options);
     logger.info('AudioStreamController設定更新', options);
   }
@@ -564,6 +570,9 @@ export class SayCoeiroink {
    * 並行生成の統計情報を取得
    */
   getGenerationStats() {
+    if (!this.audioSynthesizer) {
+      throw new Error('AudioSynthesizer is not initialized. Call initialize() first.');
+    }
     return this.audioSynthesizer.getGenerationStats();
   }
 
@@ -571,6 +580,9 @@ export class SayCoeiroink {
    * 現在の並行生成設定を取得
    */
   getParallelGenerationConfig() {
+    if (!this.audioSynthesizer) {
+      throw new Error('AudioSynthesizer is not initialized. Call initialize() first.');
+    }
     return this.audioSynthesizer.getStreamControllerOptions();
   }
 
@@ -578,6 +590,9 @@ export class SayCoeiroink {
    * ストリーム制御オプションを取得
    */
   getStreamControllerOptions() {
+    if (!this.audioSynthesizer) {
+      throw new Error('AudioSynthesizer is not initialized. Call initialize() first.');
+    }
     return this.audioSynthesizer.getStreamControllerOptions();
   }
 
@@ -590,10 +605,14 @@ export class SayCoeiroink {
 
     try {
       // SpeechQueueのクリア
-      this.speechQueue.clear();
+      if (this.speechQueue) {
+        this.speechQueue.clear();
+      }
 
       // AudioPlayerのクリーンアップ
-      await this.audioPlayer.cleanup();
+      if (this.audioPlayer) {
+        await this.audioPlayer.cleanup();
+      }
 
       // AudioSynthesizerには特別なクリーンアップは不要（HTTPクライアントベース）
 

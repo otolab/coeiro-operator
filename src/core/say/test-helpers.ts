@@ -3,6 +3,8 @@
  */
 
 import { vi } from 'vitest';
+import { ConfigManager } from '../operator/config-manager.js';
+import type { Config } from './types.js';
 
 /**
  * Speakerモックインスタンスを作成
@@ -81,4 +83,80 @@ export function createErrorMockSpeakerInstance() {
   }).bind(mockInstance);
 
   return mockInstance;
+}
+
+/**
+ * テスト用のConfigManagerモックを作成
+ */
+export function createMockConfigManager(overrides: Partial<Config> = {}): ConfigManager {
+  const defaultConfig: Config = {
+    connection: {
+      host: 'localhost',
+      port: '50032',
+    },
+    operator: {
+      rate: 200,
+      timeout: 14400000,
+      assignmentStrategy: 'random',
+    },
+    audio: {
+      latencyMode: 'balanced',
+      splitMode: 'punctuation',
+      bufferSize: 256,
+      parallelGeneration: {
+        maxConcurrency: 2,
+        delayBetweenRequests: 50,
+        bufferAheadCount: 1,
+        pauseUntilFirstComplete: true,
+      },
+    },
+    characters: {},
+  };
+
+  // overridesで深くマージ
+  const mergedConfig = deepMerge(defaultConfig, overrides);
+
+  // ConfigManagerのモックオブジェクトを作成
+  const mockConfigManager = {
+    getFullConfig: async () => mergedConfig,
+    buildDynamicConfig: async () => {},
+    getCharacterConfig: async (characterId: string) => {
+      // テスト用のキャラクター設定を返す
+      return {
+        speakerId: 'test-speaker-uuid',
+        name: characterId,
+        defaultStyle: 'ノーマル',
+        availableStyles: ['ノーマル'],
+      };
+    },
+    getAvailableCharacterIds: async () => ['test-speaker-1', 'tsukuyomi'],
+    getOperatorTimeout: async () => mergedConfig.operator.timeout,
+    getRate: async () => mergedConfig.operator.rate,
+    getAudioConfig: async () => mergedConfig.audio,
+    getConnectionConfig: async () => mergedConfig.connection,
+  } as unknown as ConfigManager;
+
+  return mockConfigManager;
+}
+
+/**
+ * オブジェクトの深いマージ
+ */
+function deepMerge<T>(target: T, source: Partial<T>): T {
+  const result = { ...target };
+
+  for (const key in source) {
+    if (source[key] !== undefined) {
+      if (typeof source[key] === 'object' && source[key] !== null && !Array.isArray(source[key])) {
+        result[key] = deepMerge(
+          result[key] as any,
+          source[key] as any
+        );
+      } else {
+        result[key] = source[key] as any;
+      }
+    }
+  }
+
+  return result;
 }

@@ -3,6 +3,7 @@
  */
 
 import { SayCoeiroink } from './index.js';
+import { createMockConfigManager } from './test-helpers.js';
 import type { Config, SynthesizeOptions } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -108,10 +109,10 @@ describe('Say Integration Tests', () => {
     const mockSpeakerInstance = createMockSpeakerInstance();
     MockSpeaker.mockImplementation(() => mockSpeakerInstance);
 
-    // デフォルト設定を使用（null を渡すとDEFAULT_CONFIGが使用される）
-    const config: Config | null = null;
+    // デフォルト設定を使用
+    const configManager = createMockConfigManager();
 
-    sayCoeiroink = new SayCoeiroink(config);
+    sayCoeiroink = new SayCoeiroink(configManager);
 
     // COEIROINK サーバーのモック設定
     (global.fetch as any).mockImplementation((url: string) => {

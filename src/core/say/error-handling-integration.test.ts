@@ -6,6 +6,7 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SayCoeiroink } from './index.js';
+import { createMockConfigManager } from './test-helpers.js';
 import { logger } from '../../utils/logger.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
@@ -66,7 +67,8 @@ describe('エラーハンドリング統合テスト', () => {
       destroy: vi.fn(),
     }));
 
-    sayCoeiroink = new SayCoeiroink();
+    const configManager = createMockConfigManager();
+    sayCoeiroink = new SayCoeiroink(configManager);
   });
 
   afterEach(() => {
@@ -352,7 +354,8 @@ describe('エラーハンドリング統合テスト', () => {
       };
 
       try {
-        const fallbackSayCoeiroink = new SayCoeiroink(invalidConfig);
+        const configManager = createMockConfigManager(invalidConfig);
+        const fallbackSayCoeiroink = new SayCoeiroink(configManager);
 
         // フォールバック設定で動作することを確認
         console.log('フォールバック設定でSayCoeiroinkが初期化されました');

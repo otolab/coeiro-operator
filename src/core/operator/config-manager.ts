@@ -241,6 +241,27 @@ export class ConfigManager {
       port: config.connection?.port || CONNECTION_SETTINGS.DEFAULT_PORT,
     };
   }
+
+  /**
+   * 完全なConfig型を取得（SayCoeiroink用）
+   */
+  async getFullConfig(): Promise<import('../say/types.js').Config> {
+    const config = await this.loadConfig();
+    if (!this.mergedConfig) {
+      await this.buildDynamicConfig();
+    }
+
+    return {
+      connection: await this.getConnectionConfig(),
+      audio: await this.getAudioConfig(),
+      operator: {
+        rate: config.operator?.rate || 200,
+        timeout: config.operator?.timeout || 14400000,
+        assignmentStrategy: config.operator?.assignmentStrategy || 'random',
+      },
+      characters: this.mergedConfig?.characters || {},
+    };
+  }
 }
 
 export default ConfigManager;

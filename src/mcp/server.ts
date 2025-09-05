@@ -2,7 +2,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
-import { SayCoeiroink, loadConfig } from '../core/say/index.js';
+import * as path from 'path';
+import { SayCoeiroink } from '../core/say/index.js';
+import { ConfigManager } from '../core/operator/config-manager.js';
+import { getConfigDir } from '../core/common/config-paths.js';
 import { OperatorManager } from '../core/operator/index.js';
 import type { Character } from '../core/operator/character-info-service.js';
 import { logger, LoggerPresets } from '../utils/logger.js';
@@ -96,8 +99,11 @@ let operatorManager: OperatorManager;
 let dictionaryService: DictionaryService;
 
 try {
-  const config = await loadConfig(configPath);
-  sayCoeiroink = new SayCoeiroink(config);
+  const configDir = configPath ? path.dirname(configPath) : await getConfigDir();
+  const configManager = new ConfigManager(configDir);
+  await configManager.buildDynamicConfig();
+  
+  sayCoeiroink = new SayCoeiroink(configManager);
 
   logger.info('Initializing SayCoeiroink...');
   await sayCoeiroink.initialize();
@@ -109,6 +115,7 @@ try {
   await operatorManager.initialize();
 
   logger.info('Initializing Dictionary...');
+  const config = await configManager.getFullConfig();
   dictionaryService = new DictionaryService(config?.connection);
   await dictionaryService.initialize();
 
@@ -120,7 +127,11 @@ try {
 
   // フォールバック設定で初期化
   try {
-    sayCoeiroink = new SayCoeiroink();
+    const fallbackConfigDir = await getConfigDir();
+    const fallbackConfigManager = new ConfigManager(fallbackConfigDir);
+    await fallbackConfigManager.buildDynamicConfig();
+    
+    sayCoeiroink = new SayCoeiroink(fallbackConfigManager);
     await sayCoeiroink.initialize();
     await sayCoeiroink.buildDynamicConfig();
 
@@ -505,13 +516,9 @@ server.registerTool(
       }
 
       // 設定情報をログ出力
-      const config = await loadConfig();
-      logger.debug(`Current audio config:`);
-      logger.debug(
-        `  splitMode: ${config.audio?.splitMode || 'undefined (will fallback to punctuation)'}`
-      );
-      logger.debug(`  latencyMode: ${config.audio?.latencyMode || 'undefined'}`);
-      logger.debug(`  bufferSize: ${config.audio?.bufferSize || 'undefined'}`);
+      // NOTE: ConfigManagerはすでにsayCoeiroink内部で管理されているため、
+      // ここでは設定のログ出力をスキップ
+      logger.debug('Audio config is managed internally by SayCoeiroink');
       logger.debug('==============================');
 
       // MCP設計: 音声合成タスクをキューに投稿のみ（再生完了を待たない）
