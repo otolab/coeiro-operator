@@ -41,7 +41,6 @@ vi.mock('node-libsamplerate', () => {
   return { default: MockSampleRate };
 });
 
-const MockSpeaker = Speaker as any;
 const mockReadFile = readFile as any;
 const mockWriteFile = writeFile as any;
 

@@ -10,7 +10,6 @@ import { createMockConfigManager } from './test-helpers.js';
 import { logger } from '../../utils/logger.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import type Speaker from 'speaker';
 
 // 共通モック設定
 global.fetch = vi.fn();
@@ -41,7 +40,6 @@ vi.mock('node-libsamplerate', () => {
   return { default: MockSampleRate };
 });
 
-const MockSpeaker = Speaker as any;
 
 describe('エラーハンドリング統合テスト', () => {
   let sayCoeiroink: SayCoeiroink;
@@ -56,6 +54,8 @@ describe('エラーハンドリング統合テスト', () => {
     };
 
     // Speaker モック設定
+    const SpeakerModule = await vi.importMock('speaker');
+    const MockSpeaker = SpeakerModule.default as any;
     MockSpeaker.mockImplementation(() => ({
       write: vi.fn(),
       end: vi.fn(),
@@ -213,6 +213,8 @@ describe('エラーハンドリング統合テスト', () => {
   describe('音声処理エラー処理', () => {
     test('Speakerライブラリエラー時の適切な処理', async () => {
       // Speakerエラーをシミュレート
+      const SpeakerModule = await vi.importMock('speaker');
+      const MockSpeaker = SpeakerModule.default as any;
       MockSpeaker.mockImplementation(() => {
         throw new Error('Hardware audio device failure');
       });

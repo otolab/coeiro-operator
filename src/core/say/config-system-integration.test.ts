@@ -10,8 +10,6 @@ import type { Config, SynthesizeOptions } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { writeFile, readFile, mkdir } from 'fs/promises';
-import type Speaker from 'speaker';
-
 // モックの設定
 global.fetch = vi.fn();
 vi.mock('speaker', () => ({
@@ -40,8 +38,6 @@ vi.mock('node-libsamplerate', () => {
   MockSampleRate.SRC_SINC_MEDIUM_QUALITY = 2;
   return { default: MockSampleRate };
 });
-
-const MockSpeaker = Speaker as any;
 
 describe('設定システム統合テスト', () => {
   let sayCoeiroink: SayCoeiroink;
@@ -75,6 +71,9 @@ describe('設定システム統合テスト', () => {
       removeAllListeners: vi.fn(),
       pipe: vi.fn(),
     };
+    // Speakerモックを動的に取得
+    const SpeakerModule = await vi.importMock('speaker');
+    const MockSpeaker = SpeakerModule.default as any;
     MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
     // COEIROINK サーバーのモック設定

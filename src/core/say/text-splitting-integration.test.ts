@@ -9,7 +9,6 @@ import { createMockConfigManager } from './test-helpers.js';
 import type { Config, SynthesizeOptions } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import type Speaker from 'speaker';
 
 // モックの設定
 global.fetch = vi.fn();
@@ -40,7 +39,6 @@ vi.mock('node-libsamplerate', () => {
   return { default: MockSampleRate };
 });
 
-const MockSpeaker = Speaker as any;
 
 describe('テキスト分割モード統合テスト', () => {
   let sayCoeiroink: SayCoeiroink;
@@ -67,6 +65,8 @@ describe('テキスト分割モード統合テスト', () => {
       removeAllListeners: vi.fn(),
       pipe: vi.fn(),
     };
+    const SpeakerModule = await vi.importMock('speaker');
+    const MockSpeaker = SpeakerModule.default as any;
     MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
 
     // デフォルト設定

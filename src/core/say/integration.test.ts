@@ -8,7 +8,6 @@ import type { Config, SynthesizeOptions } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { writeFile, readFile, unlink } from 'fs/promises';
-import type Speaker from 'speaker';
 import { OperatorManager } from '../operator/index.js';
 import type { Character, Speaker as SpeakerType } from '../operator/character-info-service.js';
 import { createMockSpeakerInstance } from './test-helpers.js';
@@ -47,8 +46,6 @@ vi.mock('node-libsamplerate', () => {
   MockSampleRate.SRC_SINC_MEDIUM_QUALITY = 2;
   return { default: MockSampleRate };
 });
-
-const MockSpeaker = Speaker as any;
 
 describe('Say Integration Tests', () => {
   let sayCoeiroink: SayCoeiroink;
@@ -113,6 +110,8 @@ describe('Say Integration Tests', () => {
 
     // Speakerモックを設定
     const mockSpeakerInstance = createMockSpeakerInstance();
+    const SpeakerModule = await vi.importMock('speaker');
+    const MockSpeaker = SpeakerModule.default as any;
     MockSpeaker.mockImplementation(() => mockSpeakerInstance);
 
     // デフォルト設定を使用
