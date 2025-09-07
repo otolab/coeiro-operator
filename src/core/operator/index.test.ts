@@ -9,6 +9,9 @@ import { writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+// fetchをモック
+vi.stubGlobal('fetch', vi.fn());
+
 describe('OperatorManager', () => {
   let operatorManager: OperatorManager;
   let tempDir: string;
@@ -62,6 +65,9 @@ describe('OperatorManager', () => {
       },
     };
     await writeFile(join(configSubDir, 'config.json'), JSON.stringify(config), 'utf8');
+
+    // fetchモックを設定
+    (global.fetch as any).mockRejectedValue(new Error('Network error'));
 
     operatorManager = new OperatorManager();
 

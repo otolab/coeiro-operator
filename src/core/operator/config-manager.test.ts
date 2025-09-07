@@ -8,6 +8,9 @@ import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+// fetchをモック
+vi.stubGlobal('fetch', vi.fn());
+
 describe('ConfigManager', () => {
   let configManager: ConfigManager;
   let tempDir: string;
@@ -18,6 +21,9 @@ describe('ConfigManager', () => {
     await mkdir(tempDir, { recursive: true });
 
     configManager = new ConfigManager(tempDir);
+
+    // fetchモックを設定（エラーを返す）
+    (global.fetch as any).mockRejectedValue(new Error('Network error'));
 
     // モックをリセット
     vi.clearAllMocks();

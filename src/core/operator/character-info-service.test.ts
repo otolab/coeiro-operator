@@ -8,6 +8,10 @@ import ConfigManager, { CharacterConfig } from './config-manager.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { vi } from 'vitest';
+
+// fetchをモック
+vi.stubGlobal('fetch', vi.fn());
 
 describe('CharacterInfoService', () => {
   let characterInfoService: CharacterInfoService;
@@ -65,6 +69,9 @@ describe('CharacterInfoService', () => {
   };
 
   beforeEach(async () => {
+    // fetchモックを設定
+    (global.fetch as any).mockRejectedValue(new Error('Network error'));
+    
     // 一時ディレクトリを作成
     tempDir = join(
       tmpdir(),

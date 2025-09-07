@@ -9,6 +9,9 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+// fetchをモック
+vi.stubGlobal('fetch', vi.fn());
+
 describe('DynamicConfigManagement', () => {
   let configManager: ConfigManager;
   let tempDir: string;
@@ -19,6 +22,9 @@ describe('DynamicConfigManagement', () => {
     await mkdir(tempDir, { recursive: true });
 
     configManager = new ConfigManager(tempDir);
+
+    // fetchモックを設定
+    (global.fetch as any).mockRejectedValue(new Error('Network error'));
 
     // モックをリセット
     vi.clearAllMocks();
