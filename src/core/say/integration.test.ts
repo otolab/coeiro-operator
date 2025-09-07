@@ -73,14 +73,20 @@ describe('Say Integration Tests', () => {
           const testCharacter: Character = {
             characterId: characterId,
             speaker: {
-              speakerId: 'test-speaker-uuid',
+              speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-uuid',
               speakerName: characterId === 'tsukuyomi' ? 'つくよみちゃん' : 'テストスピーカー1',
-              styles: [
-                { styleId: 0, styleName: 'ノーマル' },
-                { styleId: 1, styleName: 'ハッピー' },
-              ],
+              styles: characterId === 'tsukuyomi' 
+                ? [
+                    { styleId: 0, styleName: 'れいせい' },
+                    { styleId: 1, styleName: 'おしとやか' },
+                    { styleId: 2, styleName: 'げんき' },
+                  ]
+                : [
+                    { styleId: 0, styleName: 'ノーマル' },
+                    { styleId: 1, styleName: 'ハッピー' },
+                  ],
             },
-            defaultStyle: 'ノーマル',
+            defaultStyle: characterId === 'tsukuyomi' ? 'れいせい' : 'ノーマル',
             greeting: 'こんにちは',
             farewell: 'さようなら',
             personality: 'テスト性格',
@@ -126,6 +132,15 @@ describe('Say Integration Tests', () => {
               styles: [
                 { styleId: 0, styleName: 'ノーマル' },
                 { styleId: 1, styleName: 'ハッピー' },
+              ],
+            },
+            {
+              speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
+              speakerName: 'つくよみちゃん',
+              styles: [
+                { styleId: 0, styleName: 'れいせい' },
+                { styleId: 1, styleName: 'おしとやか' },
+                { styleId: 2, styleName: 'げんき' },
               ],
             },
           ],

@@ -134,10 +134,10 @@ export function createMockConfigManager(overrides: Partial<Config> = {}): Config
       // tsukuyomiなど他のキャラクターも対応
       if (characterId === 'tsukuyomi') {
         return {
-          speakerId: 'tsukuyomi-uuid',
+          speakerId: '3c37646f-3881-5374-2a83-149267990abc', // 実際のtsukuyomiのspeakerId
           name: 'つくよみちゃん',
-          defaultStyle: 'ノーマル',
-          availableStyles: ['ノーマル'],
+          defaultStyle: 'れいせい',
+          availableStyles: ['れいせい', 'おしとやか', 'げんき'],
         };
       }
       // デフォルトのキャラクター設定
