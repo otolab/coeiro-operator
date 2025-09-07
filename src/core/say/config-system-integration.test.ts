@@ -10,7 +10,7 @@ import type { Config, SynthesizeOptions } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { writeFile, readFile, mkdir } from 'fs/promises';
-import Speaker from 'speaker';
+import type Speaker from 'speaker';
 
 // モックの設定
 global.fetch = vi.fn();

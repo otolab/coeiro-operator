@@ -8,7 +8,7 @@ import type { Config, SynthesizeOptions } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { writeFile, readFile, unlink } from 'fs/promises';
-import Speaker from 'speaker';
+import type Speaker from 'speaker';
 import { OperatorManager } from '../operator/index.js';
 import type { Character, Speaker as SpeakerType } from '../operator/character-info-service.js';
 import { createMockSpeakerInstance } from './test-helpers.js';

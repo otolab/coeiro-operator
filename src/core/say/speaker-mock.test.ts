@@ -21,10 +21,12 @@ vi.mock('speaker', () => ({
   })
 }));
 
-import Speaker from 'speaker';
-
 describe('Speaker Mock Test', () => {
-  test('should use mock Speaker', () => {
+  test('should use mock Speaker', async () => {
+    // モックされたSpeakerを動的インポート
+    const SpeakerModule = await import('speaker');
+    const Speaker = SpeakerModule.default;
+    
     const speaker = new (Speaker as any)({
       channels: 1,
       bitDepth: 16,

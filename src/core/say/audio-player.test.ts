@@ -4,7 +4,7 @@
 
 import { AudioPlayer, forTests } from './audio-player.js';
 import type { AudioResult, Chunk, Config } from './types.js';
-import Speaker from 'speaker';
+import type Speaker from 'speaker';
 import { readFile, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';

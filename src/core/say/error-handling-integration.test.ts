@@ -10,7 +10,7 @@ import { createMockConfigManager } from './test-helpers.js';
 import { logger } from '../../utils/logger.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import Speaker from 'speaker';
+import type Speaker from 'speaker';
 
 // 共通モック設定
 global.fetch = vi.fn();
