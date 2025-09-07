@@ -80,7 +80,7 @@ async function convertCharacterConfigToCharacter(
           styles: [],
         };
       }
-    } catch (error) {
+    } catch {
       // APIエラーの場合、基本情報のみ設定
       speaker = {
         speakerId: config.speakerId,
@@ -191,7 +191,7 @@ export class CharacterInfoService {
         return null;
       }
       return await convertCharacterConfigToCharacter(characterId, config);
-    } catch (error) {
+    } catch {
       throw new Error(`オペレータ '${characterId}' は存在しないか無効です`);
     }
   }

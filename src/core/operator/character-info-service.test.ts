@@ -2,7 +2,7 @@
  * src/operator/character-info-service.test.ts: CharacterInfoServiceテスト
  */
 
-import { CharacterInfoService, Speaker, Style } from './character-info-service.js';
+import { CharacterInfoService } from './character-info-service.js';
 import FileOperationManager from './file-operation-manager.js';
 import ConfigManager, { CharacterConfig } from './config-manager.js';
 import { writeFile, mkdir } from 'fs/promises';

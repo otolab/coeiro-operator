@@ -9,7 +9,7 @@ import { join } from 'path';
 import ConfigManager from './config-manager.js';
 import FileOperationManager from './file-operation-manager.js';
 import { hostname } from 'os';
-import CharacterInfoService, { Character, Speaker, Style } from './character-info-service.js';
+import CharacterInfoService, { Character, Style } from './character-info-service.js';
 import { getConfigDir } from '../common/config-paths.js';
 
 // セッション情報（キャラクターとスタイルの組み合わせ）
@@ -209,7 +209,7 @@ export class OperatorManager {
 
     const characterId = operatorSession.characterId;
 
-    const success = await this.dataStore.remove();
+    await this.dataStore.remove();
 
     // お別れの挨拶情報を取得
     let character: Character | null = null;
@@ -406,7 +406,7 @@ export class OperatorManager {
           message: `現在のオペレータ: ${characterId} (キャラクター情報なし)`,
         };
       }
-    } catch (error) {
+    } catch {
       return {
         characterId,
         message: `現在のオペレータ: ${characterId} (キャラクター情報なし)`,

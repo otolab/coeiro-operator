@@ -62,7 +62,7 @@ async function testProsody(word: string, host: string, port: string): Promise<vo
 
       if (result.detail && result.detail[0]) {
         console.log('モーラ解析:');
-        result.detail[0].forEach((mora: any, index: number) => {
+        result.detail[0].forEach((mora: {hira: string; phoneme: string; accent: number}, index: number) => {
           console.log(
             `  ${index + 1}. ${mora.hira} (${mora.phoneme}) - アクセント: ${mora.accent}`
           );
@@ -76,8 +76,8 @@ async function testProsody(word: string, host: string, port: string): Promise<vo
     } else {
       console.error('❌ 韻律解析に失敗しました:', response.statusText);
     }
-  } catch (error: any) {
-    console.error('❌ エラー:', error.message);
+  } catch (error) {
+    console.error('❌ エラー:', (error as Error).message);
   }
 }
 
@@ -134,8 +134,8 @@ async function main() {
       const content = fs.readFileSync(options.file, 'utf8');
       wordsToRegister = JSON.parse(content);
       console.log(`📁 カスタム辞書ファイルを読み込みました: ${options.file}`);
-    } catch (error: any) {
-      console.error(`❌ ファイル読み込みエラー: ${error.message}`);
+    } catch (error) {
+      console.error(`❌ ファイル読み込みエラー: ${(error as Error).message}`);
       process.exit(1);
     }
   }

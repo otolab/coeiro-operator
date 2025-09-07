@@ -28,7 +28,7 @@ interface UnifiedConfig {
       maxConcurrency?: number;
       pauseUntilFirstComplete?: boolean;
     };
-    [key: string]: any;
+    [key: string]: unknown;
   };
   operator?: {
     rate?: number; // 話速（WPM）
@@ -229,7 +229,7 @@ export class ConfigManager {
   /**
    * 音声設定を取得
    */
-  async getAudioConfig(): Promise<any> {
+  async getAudioConfig(): Promise<Record<string, unknown>> {
     const config = await this.loadConfig();
     return config.audio || {};
   }

@@ -8,6 +8,7 @@ import { DictionaryClient, DictionaryWord } from './dictionary-client.js';
 import { DictionaryPersistenceManager } from './dictionary-persistence.js';
 import { DEFAULT_TECHNICAL_WORDS, CHARACTER_NAME_WORDS } from './default-dictionaries.js';
 import { logger } from '../../utils/logger.js';
+import { ConnectionConfig } from '../environment/speaker-provider.js';
 
 /**
  * 辞書管理サービス
@@ -16,7 +17,7 @@ export class DictionaryService {
   private client: DictionaryClient;
   private persistenceManager: DictionaryPersistenceManager;
 
-  constructor(connectionConfig?: any) {
+  constructor(connectionConfig?: ConnectionConfig) {
     this.client = new DictionaryClient(connectionConfig);
     this.persistenceManager = new DictionaryPersistenceManager();
   }

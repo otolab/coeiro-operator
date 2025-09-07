@@ -3,7 +3,7 @@
  * 汎用期限付きキーバリューストアのテスト
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { FileOperationManager } from './file-operation-manager.js';
 import { readFile, writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';

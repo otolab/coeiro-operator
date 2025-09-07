@@ -7,14 +7,13 @@ import { readFile, writeFile, stat, unlink, rename, access } from 'fs/promises';
 import { constants } from 'fs';
 
 // 期限付きストレージ構造
+interface StorageEntry<T> {
+  data: T;
+  updated_at: string; // ISO 8601形式
+}
+
 export interface TimedStorage<T> {
-  storage: Record<
-    string,
-    {
-      data: T;
-      updated_at: string; // ISO 8601形式
-    }
-  >;
+  storage: Record<string, StorageEntry<T>>;
 }
 
 export class FileOperationManager<T> {
@@ -115,8 +114,8 @@ export class FileOperationManager<T> {
           // ロック解除
           await this.deleteFile(lockFile);
         }
-      } catch (error: any) {
-        if (error.code === 'EEXIST') {
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
           // ロック競合 - 指数バックオフでリトライ
           const backoffDelay = this.lockRetryDelay * Math.min(Math.pow(1.5, i), 10);
           await new Promise(resolve => setTimeout(resolve, backoffDelay + Math.random() * 10));
@@ -149,7 +148,7 @@ export class FileOperationManager<T> {
    */
   private cleanupExpired(state: TimedStorage<T>): TimedStorage<T> {
     const now = Date.now();
-    const validStorage: Record<string, any> = {};
+    const validStorage: Record<string, StorageEntry<T>> = {};
 
     for (const [k, entry] of Object.entries(state.storage)) {
       const age = now - new Date(entry.updated_at).getTime();
@@ -248,7 +247,7 @@ export class FileOperationManager<T> {
    * 全データをクリア
    */
   async clear(): Promise<void> {
-    await this.withLock(async state => {
+    await this.withLock(async () => {
       await this.write({ storage: {} });
     });
   }

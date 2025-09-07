@@ -26,7 +26,9 @@ export async function getConfigDir(): Promise<string> {
       const tmpDir = '/tmp/coeiroink-mcp-shared';
       try {
         await mkdir(tmpDir, { recursive: true });
-      } catch {}
+      } catch {
+        // ディレクトリ作成エラーは無視
+      }
       return tmpDir;
     }
   }

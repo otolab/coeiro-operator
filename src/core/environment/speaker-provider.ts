@@ -56,7 +56,7 @@ export class SpeakerProvider {
         signal: AbortSignal.timeout(3000),
       });
       return response.ok;
-    } catch (error) {
+    } catch {
       return false;
     }
   }
@@ -122,7 +122,7 @@ export class SpeakerProvider {
           console.log(`  Style ${style.styleId}: ${style.styleName}`);
         });
       });
-    } catch (error) {
+    } catch {
       console.error(
         `Error: Cannot connect to COEIROINK server at http://${this.connectionConfig.host}:${this.connectionConfig.port}`
       );

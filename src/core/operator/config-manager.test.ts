@@ -28,7 +28,7 @@ describe('ConfigManager', () => {
     try {
       const fs = await import('fs');
       await fs.promises.rm(tempDir, { recursive: true, force: true });
-    } catch (error) {
+    } catch {
       // クリーンアップエラーは無視
     }
   });

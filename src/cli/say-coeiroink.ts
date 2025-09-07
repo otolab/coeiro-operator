@@ -213,7 +213,7 @@ Examples:
     const text = await this.getInputText(options);
 
     // Queue統一版：ウォームアップ → 音声合成 → 完了待機を全てqueue経由で処理
-    const result = await this.sayCoeiroink.synthesizeText(text, {
+    await this.sayCoeiroink.synthesizeText(text, {
       voice: options.voice || null,
       rate: options.rate,
       outputFile: options.outputFile || null,
@@ -236,7 +236,7 @@ if (process.env.NODE_ENV !== 'test') {
     process.exit(1);
   });
 
-  process.on('unhandledRejection', (reason, promise) => {
+  process.on('unhandledRejection', (reason) => {
     console.error('Unhandled Rejection:', reason);
     process.exit(1);
   });

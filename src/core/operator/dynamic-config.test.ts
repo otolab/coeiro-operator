@@ -5,7 +5,7 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ConfigManager } from './config-manager.js';
-import { readFile, writeFile, mkdir } from 'fs/promises';
+import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
@@ -29,7 +29,7 @@ describe('DynamicConfigManagement', () => {
     try {
       const fs = await import('fs');
       await fs.promises.rm(tempDir, { recursive: true, force: true });
-    } catch (error) {
+    } catch {
       // クリーンアップエラーは無視
     }
   });
