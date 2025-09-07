@@ -156,12 +156,6 @@ export class OperatorManager {
     return this.characterInfoService.selectStyle(character, specifiedStyle);
   }
 
-  /**
-   * 挨拶パターンを自動抽出
-   */
-  async extractGreetingPatterns(): Promise<string[]> {
-    return await this.characterInfoService.extractGreetingPatterns();
-  }
 
   /**
    * 利用可能なオペレータを取得（仕事中のオペレータ情報も含む）

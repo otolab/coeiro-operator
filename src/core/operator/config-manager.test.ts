@@ -77,10 +77,10 @@ describe('ConfigManager', () => {
       // speakerProviderのモック設定
       const mockGetSpeakers = vi.fn().mockResolvedValue([
         {
-          speakerUuid: 'tsukuyomi-uuid',
+          speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
           speakerName: 'つくよみちゃん',
           styles: [
-            { styleId: 0, styleName: 'ノーマル' },
+            { styleId: 0, styleName: 'れいせい' },
             { styleId: 1, styleName: 'おしとやか' },
           ],
         },
@@ -98,7 +98,7 @@ describe('ConfigManager', () => {
       expect(config).toBeDefined();
       expect(config?.characters).toBeDefined();
       expect(config?.characters['tsukuyomi']).toBeDefined();
-      expect(config?.characters['tsukuyomi'].availableStyles).toContain('ノーマル');
+      expect(config?.characters['tsukuyomi'].availableStyles).toContain('れいせい');
       expect(config?.characters['tsukuyomi'].availableStyles).toContain('おしとやか');
     });
 
@@ -142,7 +142,7 @@ describe('ConfigManager', () => {
 
       const mockGetSpeakers = vi.fn().mockResolvedValue([
         {
-          speakerUuid: 'tsukuyomi-uuid',
+          speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
           speakerName: 'つくよみちゃん',
           styles: [{ styleId: 0, styleName: 'ノーマル' }],
         },
@@ -193,7 +193,7 @@ describe('ConfigManager', () => {
     test('キャラクター設定を取得', async () => {
       const mockGetSpeakers = vi.fn().mockResolvedValue([
         {
-          speakerUuid: 'tsukuyomi-uuid',
+          speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
           speakerName: 'つくよみちゃん',
           styles: [{ styleId: 0, styleName: 'ノーマル' }],
         },
@@ -208,7 +208,7 @@ describe('ConfigManager', () => {
       
       expect(characterConfig).toBeDefined();
       expect(characterConfig?.name).toBe('つくよみちゃん');
-      expect(characterConfig?.speakerId).toBe('tsukuyomi-uuid');
+      expect(characterConfig?.speakerId).toBe('3c37646f-3881-5374-2a83-149267990abc');
     });
 
     test('存在しないキャラクターの場合nullを返す', async () => {
@@ -227,7 +227,7 @@ describe('ConfigManager', () => {
     test('利用可能なキャラクターIDを取得', async () => {
       const mockGetSpeakers = vi.fn().mockResolvedValue([
         {
-          speakerUuid: 'tsukuyomi-uuid',
+          speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
           speakerName: 'つくよみちゃん',
           styles: [{ styleId: 0, styleName: 'ノーマル' }],
         },
@@ -428,7 +428,7 @@ describe('ConfigManager', () => {
 
       const mockGetSpeakers = vi.fn().mockResolvedValue([
         {
-          speakerUuid: 'tsukuyomi-uuid',
+          speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
           speakerName: 'つくよみちゃん',
           styles: [
             { styleId: 0, styleName: 'ノーマル' },
@@ -451,7 +451,7 @@ describe('ConfigManager', () => {
     test('複数回buildDynamicConfigを呼んでも安定して動作する', async () => {
       const mockGetSpeakers = vi.fn().mockResolvedValue([
         {
-          speakerUuid: 'tsukuyomi-uuid',
+          speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
           speakerName: 'つくよみちゃん',
           styles: [{ styleId: 0, styleName: 'ノーマル' }],
         },
@@ -483,7 +483,7 @@ describe('ConfigManager', () => {
         }
         return Promise.resolve([
           {
-            speakerUuid: 'tsukuyomi-uuid',
+            speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
             speakerName: 'つくよみちゃん',
             styles: [{ styleId: 0, styleName: 'ノーマル' }],
           },

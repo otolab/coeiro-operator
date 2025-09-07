@@ -202,16 +202,6 @@ describe('CharacterInfoService', () => {
     });
   });
 
-  describe('extractGreetingPatterns', () => {
-    test('挨拶パターンを抽出する', async () => {
-      const mockPatterns = ['こんにちは！', 'おはよう！', 'こんばんは！'];
-      vi.spyOn(configManager, 'getGreetingPatterns').mockResolvedValue(mockPatterns);
-
-      const patterns = await characterInfoService.extractGreetingPatterns();
-
-      expect(patterns).toEqual(mockPatterns);
-    });
-  });
 
   describe('getAvailableCharacterIds', () => {
     test('利用可能なキャラクターIDリストを取得する', async () => {

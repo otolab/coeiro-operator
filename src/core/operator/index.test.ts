@@ -150,15 +150,6 @@ describe('OperatorManager', () => {
       }
     });
 
-    test('挨拶パターン抽出が動作する', async () => {
-      try {
-        const patterns = await operatorManager.extractGreetingPatterns();
-        expect(Array.isArray(patterns)).toBe(true);
-      } catch (error) {
-        // モック環境でのエラーは許容
-        expect(error).toBeDefined();
-      }
-    });
   });
 
   describe('Issue #58: sayコマンド改善機能', () => {
@@ -233,8 +224,9 @@ describe('OperatorManager', () => {
   });
 
   describe('エラーハンドリング', () => {
-    test('存在しないキャラクターの取得でエラーが発生する', async () => {
-      await expect(operatorManager.getCharacterInfo('non-existent-character')).rejects.toThrow();
+    test('存在しないキャラクターの取得でnullが返される', async () => {
+      const result = await operatorManager.getCharacterInfo('non-existent-character');
+      expect(result).toBeNull();
     });
 
     test('同一セッションでの重複予約を確認する', async () => {

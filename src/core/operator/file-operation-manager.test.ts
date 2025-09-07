@@ -1,17 +1,26 @@
 /**
  * FileOperationManagerテスト
- * 基本ファイル操作とロック機構のテスト
+ * 汎用期限付きキーバリューストアのテスト
  */
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FileOperationManager } from './file-operation-manager.js';
-import { readFile, writeFile, access, mkdir, unlink, rm } from 'fs/promises';
+import { readFile, writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
+interface TestData {
+  id: string;
+  name: string;
+  timestamp?: number;
+}
+
 describe('FileOperationManager', () => {
-  let fileManager: FileOperationManager;
+  let fileManager: FileOperationManager<TestData>;
   let tempDir: string;
+  let testFilePath: string;
+  const TEST_KEY = 'test-key';
+  const TEST_TIMEOUT = 5000; // 5秒
 
   beforeEach(async () => {
     // 一時ディレクトリを作成（ランダムな要素を追加してユニーク性を保証）
@@ -21,311 +30,349 @@ describe('FileOperationManager', () => {
     );
     await mkdir(tempDir, { recursive: true });
 
-    fileManager = new FileOperationManager();
+    testFilePath = join(tempDir, 'test-storage.json');
+    fileManager = new FileOperationManager<TestData>(testFilePath, TEST_KEY, TEST_TIMEOUT);
   });
 
   afterEach(async () => {
     // 一時ディレクトリをクリーンアップ
-    const fs = await import('fs');
-    await fs.promises.rm(tempDir, { recursive: true, force: true });
+    await rm(tempDir, { recursive: true, force: true });
   });
 
-  describe('readJsonFile', () => {
-    test('存在するJSONファイルを正しく読み込む', async () => {
-      const testData = { test: 'value', number: 42 };
-      const testFile = join(tempDir, 'test.json');
-      await writeFile(testFile, JSON.stringify(testData), 'utf8');
+  describe('基本的なストア操作', () => {
+    test('データの保存と復元', async () => {
+      const testData: TestData = {
+        id: 'test-1',
+        name: 'Test Item',
+        timestamp: Date.now(),
+      };
 
-      const result = await fileManager.readJsonFile(testFile, {});
-      expect(result).toEqual(testData);
+      // データを保存
+      await fileManager.store(testData);
+
+      // データを復元
+      const restored = await fileManager.restore();
+      expect(restored).toEqual(testData);
     });
 
-    test('存在しないファイルの場合デフォルト値を返す', async () => {
-      const defaultValue = { default: true };
-      const nonExistentFile = join(tempDir, 'non-existent.json');
-
-      const result = await fileManager.readJsonFile(nonExistentFile, defaultValue);
-      expect(result).toEqual(defaultValue);
+    test('存在しないキーの復元はnullを返す', async () => {
+      const result = await fileManager.restore();
+      expect(result).toBeNull();
     });
 
-    test('無効なJSONファイルの場合デフォルト値を返す', async () => {
-      const defaultValue = { default: true };
-      const invalidJsonFile = join(tempDir, 'invalid.json');
-      await writeFile(invalidJsonFile, 'invalid json content', 'utf8');
+    test('データの削除', async () => {
+      const testData: TestData = {
+        id: 'test-2',
+        name: 'To Delete',
+      };
 
-      const result = await fileManager.readJsonFile(invalidJsonFile, defaultValue);
-      expect(result).toEqual(defaultValue);
-    });
-  });
+      await fileManager.store(testData);
+      const existed = await fileManager.remove();
+      expect(existed).toBe(true);
 
-  describe('writeJsonFile', () => {
-    test('JSONファイルを正しく書き込む', async () => {
-      const testData = { test: 'value', number: 42 };
-      const testFile = join(tempDir, 'output.json');
-
-      await fileManager.writeJsonFile(testFile, testData);
-
-      const content = await readFile(testFile, 'utf8');
-      const parsed = JSON.parse(content);
-      expect(parsed).toEqual(testData);
+      const restored = await fileManager.restore();
+      expect(restored).toBeNull();
     });
 
-    test('アトミック操作でファイルを更新', async () => {
-      const testFile = join(tempDir, 'atomic.json');
-      const initialData = { version: 1 };
-      const updatedData = { version: 2 };
-
-      // 初期ファイル作成
-      await fileManager.writeJsonFile(testFile, initialData);
-
-      // 更新操作
-      await fileManager.writeJsonFile(testFile, updatedData);
-
-      const content = await readFile(testFile, 'utf8');
-      const parsed = JSON.parse(content);
-      expect(parsed).toEqual(updatedData);
+    test('存在しないキーの削除', async () => {
+      const existed = await fileManager.remove();
+      expect(existed).toBe(false);
     });
   });
 
-  // 統一ファイルシステムに移行済み - 古いテストは削除
+  describe('期限管理', () => {
+    test('期限切れデータの自動クリーンアップ', async () => {
+      // 短い期限（100ms）のFileOperationManagerを作成
+      const shortTimeoutManager = new FileOperationManager<TestData>(
+        testFilePath,
+        'short-timeout-key',
+        100
+      );
 
-  describe('updateVoiceSetting', () => {
-    test('音声設定を正しく更新する', async () => {
-      const configFile = join(tempDir, 'voice-config.json');
-      const initialConfig = { other_setting: 'value' };
-      await writeFile(configFile, JSON.stringify(initialConfig), 'utf8');
+      const testData: TestData = {
+        id: 'expire-test',
+        name: 'Will Expire',
+      };
 
-      await fileManager.updateVoiceSetting(configFile, 'voice123', 42);
+      await shortTimeoutManager.store(testData);
 
-      const content = await readFile(configFile, 'utf8');
-      const parsed = JSON.parse(content);
+      // 期限内は復元可能
+      let restored = await shortTimeoutManager.restore();
+      expect(restored).toEqual(testData);
 
-      expect(parsed.voice?.default_speaker_id).toBe('voice123');
-      expect(parsed.voice?.default_style_id).toBe(42);
-      expect(parsed.other_setting).toBe('value');
+      // 期限を過ぎるまで待機
+      await new Promise(resolve => setTimeout(resolve, 150));
 
-      // 古い設定値が削除されていることを確認
-      expect(parsed.voice_id).toBeUndefined();
-      expect(parsed.style_id).toBeUndefined();
+      // 期限切れ後は復元不可
+      restored = await shortTimeoutManager.restore();
+      expect(restored).toBeNull();
     });
 
-    test('設定ファイルが存在しない場合は新規作成', async () => {
-      const configFile = join(tempDir, 'new-voice-config.json');
+    test('期限の更新（refresh）', async () => {
+      // 短い期限（200ms）のFileOperationManagerを作成
+      const shortTimeoutManager = new FileOperationManager<TestData>(
+        testFilePath,
+        'refresh-test-key',
+        200
+      );
 
-      await fileManager.updateVoiceSetting(configFile, 'voice456', 7);
+      const testData: TestData = {
+        id: 'refresh-test',
+        name: 'Refresh Test',
+      };
 
-      const content = await readFile(configFile, 'utf8');
-      const parsed = JSON.parse(content);
+      await shortTimeoutManager.store(testData);
 
-      expect(parsed.voice?.default_speaker_id).toBe('voice456');
-      expect(parsed.voice?.default_style_id).toBe(7);
+      // 100ms後に期限を更新
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const refreshed = await shortTimeoutManager.refresh();
+      expect(refreshed).toBe(true);
 
-      // 古い設定値が存在しないことを確認
-      expect(parsed.voice_id).toBeUndefined();
-      expect(parsed.style_id).toBeUndefined();
+      // さらに150ms待機（最初の保存から250ms経過）
+      await new Promise(resolve => setTimeout(resolve, 150));
+
+      // refresh のおかげでまだ復元可能
+      const restored = await shortTimeoutManager.restore();
+      expect(restored).toEqual(testData);
+    });
+
+    test('存在しないキーのrefresh', async () => {
+      const refreshed = await fileManager.refresh();
+      expect(refreshed).toBe(false);
     });
   });
 
-  describe('fileExists', () => {
-    test('存在するファイルに対してtrueを返す', async () => {
-      const testFile = join(tempDir, 'exists.txt');
-      await writeFile(testFile, 'content', 'utf8');
+  describe('複数キー管理', () => {
+    test('異なるキーでのデータ管理', async () => {
+      const manager1 = new FileOperationManager<TestData>(testFilePath, 'key1', TEST_TIMEOUT);
+      const manager2 = new FileOperationManager<TestData>(testFilePath, 'key2', TEST_TIMEOUT);
 
-      const result = await fileManager.fileExists(testFile);
-      expect(result).toBe(true);
+      const data1: TestData = { id: '1', name: 'Data 1' };
+      const data2: TestData = { id: '2', name: 'Data 2' };
+
+      await manager1.store(data1);
+      await manager2.store(data2);
+
+      const restored1 = await manager1.restore();
+      const restored2 = await manager2.restore();
+
+      expect(restored1).toEqual(data1);
+      expect(restored2).toEqual(data2);
     });
 
-    test('存在しないファイルに対してfalseを返す', async () => {
-      const nonExistentFile = join(tempDir, 'does-not-exist.txt');
+    test('他のエントリの取得', async () => {
+      const manager1 = new FileOperationManager<TestData>(testFilePath, 'key1', TEST_TIMEOUT);
+      const manager2 = new FileOperationManager<TestData>(testFilePath, 'key2', TEST_TIMEOUT);
+      const manager3 = new FileOperationManager<TestData>(testFilePath, 'key3', TEST_TIMEOUT);
 
-      const result = await fileManager.fileExists(nonExistentFile);
-      expect(result).toBe(false);
+      const data1: TestData = { id: '1', name: 'Data 1' };
+      const data2: TestData = { id: '2', name: 'Data 2' };
+      const data3: TestData = { id: '3', name: 'Data 3' };
+
+      await manager1.store(data1);
+      await manager2.store(data2);
+      await manager3.store(data3);
+
+      // manager1から見た他のエントリ
+      const others = await manager1.getOtherEntries();
+      expect(others).toHaveProperty('key2');
+      expect(others).toHaveProperty('key3');
+      expect(others).not.toHaveProperty('key1');
+      expect(others.key2).toEqual(data2);
+      expect(others.key3).toEqual(data3);
     });
-  });
 
-  describe('deleteFile', () => {
-    test('存在するファイルを削除する', async () => {
-      const testFile = join(tempDir, 'to-delete.txt');
-      await writeFile(testFile, 'content', 'utf8');
+    test('全データのクリア', async () => {
+      const manager1 = new FileOperationManager<TestData>(testFilePath, 'key1', TEST_TIMEOUT);
+      const manager2 = new FileOperationManager<TestData>(testFilePath, 'key2', TEST_TIMEOUT);
 
-      await fileManager.deleteFile(testFile);
+      await manager1.store({ id: '1', name: 'Data 1' });
+      await manager2.store({ id: '2', name: 'Data 2' });
 
-      const exists = await fileManager.fileExists(testFile);
-      expect(exists).toBe(false);
-    });
+      // 全データをクリア
+      await manager1.clear();
 
-    test('存在しないファイルの削除でエラーを出さない', async () => {
-      const nonExistentFile = join(tempDir, 'does-not-exist.txt');
+      const restored1 = await manager1.restore();
+      const restored2 = await manager2.restore();
 
-      // エラーが発生しないことを確認
-      await expect(fileManager.deleteFile(nonExistentFile)).resolves.not.toThrow();
+      expect(restored1).toBeNull();
+      expect(restored2).toBeNull();
     });
   });
 
   describe('ファイルロック機能', () => {
-    let testFilePath: string;
+    test('並行操作でデータの整合性が保たれる', async () => {
+      const operations: Promise<void>[] = [];
+      const testData: TestData = { id: 'lock-test', name: 'Lock Test' };
 
-    beforeEach(() => {
-      testFilePath = join(tempDir, 'test-lock.json');
+      // 複数の並行store操作でも一貫性が保たれることを確認
+      for (let i = 0; i < 3; i++) {
+        operations.push(
+          fileManager.store({
+            ...testData,
+            id: `lock-test-${i}`,
+          })
+        );
+      }
+
+      await Promise.all(operations);
+
+      // データが正しく保存されていることを確認
+      const restored = await fileManager.restore();
+      expect(restored).toBeDefined();
+      expect(restored?.name).toBe('Lock Test');
     });
 
-    describe('基本的なロック機能', () => {
-      test('ロックが正常に取得・解放されること', async () => {
-        let lockAcquired = false;
-        let lockReleased = false;
+    test('古いロックファイルの自動クリーンアップ', { timeout: 10000 }, async () => {
+      // 古いロックファイルを手動で作成
+      const lockFile = `${testFilePath}.lock`;
+      const oldTimestamp = new Date(Date.now() - 3000); // 3秒前
 
-        await fileManager.withFileLock(testFilePath, async () => {
-          lockAcquired = true;
-          // 短時間の処理をシミュレート
-          await new Promise(resolve => setTimeout(resolve, 10));
-          lockReleased = true;
-        });
+      await writeFile(lockFile, 'old-process-id', 'utf8');
 
-        expect(lockAcquired).toBe(true);
-        expect(lockReleased).toBe(true);
-      });
+      // ファイルのタイムスタンプを古く設定
+      const fs = await import('fs');
+      await fs.promises.utimes(lockFile, oldTimestamp, oldTimestamp);
 
-      test('ロックファイルが正しく削除されること', async () => {
-        const lockFile = `${testFilePath}.lock`;
+      // 古いロックがタイムアウトでクリアされ、新しい操作が成功すること
+      const testData: TestData = { id: 'timeout-test', name: 'Timeout Test' };
+      await fileManager.store(testData);
 
-        await fileManager.withFileLock(testFilePath, async () => {
-          // ロック中はロックファイルが存在することを確認
-          expect(await fileManager.fileExists(lockFile)).toBe(true);
-        });
-
-        // ロック解放後はロックファイルが削除されることを確認
-        expect(await fileManager.fileExists(lockFile)).toBe(false);
-      });
-
-      test('ロック中にエラーが発生してもロックが解放されること', async () => {
-        const lockFile = `${testFilePath}.lock`;
-
-        try {
-          await fileManager.withFileLock(testFilePath, async () => {
-            expect(await fileManager.fileExists(lockFile)).toBe(true);
-            throw new Error('テストエラー');
-          });
-        } catch (error) {
-          expect((error as Error).message).toBe('テストエラー');
-        }
-
-        // エラー後もロックファイルが削除されることを確認
-        expect(await fileManager.fileExists(lockFile)).toBe(false);
-      });
+      const restored = await fileManager.restore();
+      expect(restored).toEqual(testData);
     });
+  });
 
-    describe('ロック競合テスト', () => {
-      test('複数の並行ロック取得が順次実行されること', async () => {
-        const results: number[] = [];
-        const promises: Promise<void>[] = [];
+  describe('並行操作の安全性', () => {
+    test('複数の並行操作でファイルが破損しないこと', async () => {
+      const promises: Promise<void>[] = [];
 
-        // 3つの並行ロック処理を開始
-        for (let i = 0; i < 3; i++) {
-          const promise = fileManager.withFileLock(testFilePath, async () => {
-            results.push(i);
-            // 処理時間を少し置く
-            await new Promise(resolve => setTimeout(resolve, 50));
-          });
-          promises.push(promise);
-        }
-
-        await Promise.all(promises);
-
-        // 全ての処理が完了していること
-        expect(results).toHaveLength(3);
-        expect(results.sort()).toEqual([0, 1, 2]);
-      });
-
-      test('ロックタイムアウトが動作すること', { timeout: 10000 }, async () => {
-        // 古いロックファイルを手動で作成（1分前のタイムスタンプ）
-        const lockFile = `${testFilePath}.lock`;
-        const oldTimestamp = new Date(Date.now() - 60000); // 1分前
-
-        await fileManager.writeJsonFile(lockFile, 'old-process-id');
-
-        // ファイルのタイムスタンプを古く設定
-        const fs = await import('fs');
-        await fs.promises.utimes(lockFile, oldTimestamp, oldTimestamp);
-
-        let lockAcquired = false;
-
-        // 古いロックがタイムアウトでクリアされ、新しいロックが取得できること
-        await fileManager.withFileLock(testFilePath, async () => {
-          lockAcquired = true;
-        });
-
-        expect(lockAcquired).toBe(true);
-      });
-    });
-
-    describe('統一ファイル操作とロック', () => {
-      test('initUnifiedOperatorStateが正常に動作すること', async () => {
-        await fileManager.initUnifiedOperatorState();
-
-        const unifiedFilePath = fileManager.getUnifiedOperatorFilePath();
-        expect(await fileManager.fileExists(unifiedFilePath)).toBe(true);
-
-        const content = await fileManager.readJsonFile(unifiedFilePath, {});
-        expect(content).toHaveProperty('operators');
-        expect(content).toHaveProperty('last_updated');
-      });
-
-      test('cleanupStaleOperatorsが正常に動作すること', async () => {
-        // まず統一ファイルを初期化
-        await fileManager.initUnifiedOperatorState();
-
-        // cleanupStaleOperatorsが例外を投げないことを確認
-        await expect(fileManager.cleanupStaleOperators('test-session')).resolves.not.toThrow();
-      });
-
-      test('複数の並行操作でファイルが破損しないこと', async () => {
-        await fileManager.initUnifiedOperatorState();
-
-        const promises: Promise<void>[] = [];
-
-        // 複数の並行読み書き操作
-        for (let i = 0; i < 5; i++) {
-          promises.push(
-            fileManager
-              .reserveOperatorUnified(`operator-${i}`, `session-${i}`)
-              .then(() => {})
-              .catch(() => {}) // エラーは無視（競合は正常）
-          );
-        }
-
-        await Promise.all(promises);
-
-        // ファイルが破損していないことを確認
-        const unifiedFilePath = fileManager.getUnifiedOperatorFilePath();
-        const content = await fileManager.readJsonFile(unifiedFilePath, {});
-        expect(content).toHaveProperty('operators');
-        expect(content).toHaveProperty('last_updated');
-      });
-    });
-
-    describe('パフォーマンステスト', () => {
-      test('大量の並行ロック処理が適切な時間で完了すること', { timeout: 30000 }, async () => {
-        const startTime = Date.now();
-        const promises: Promise<void>[] = [];
-
-        // 20個の並行ロック処理
-        for (let i = 0; i < 20; i++) {
-          promises.push(
-            fileManager.withFileLock(testFilePath, async () => {
-              // 短時間の処理
-              await new Promise(resolve => setTimeout(resolve, 10));
+      // 複数の並行読み書き操作
+      for (let i = 0; i < 5; i++) {
+        const manager = new FileOperationManager<TestData>(
+          testFilePath,
+          `concurrent-key-${i}`,
+          TEST_TIMEOUT
+        );
+        promises.push(
+          manager
+            .store({
+              id: `concurrent-${i}`,
+              name: `Concurrent Test ${i}`,
             })
-          );
-        }
+            .then(() => {})
+            .catch(() => {}) // エラーは無視（競合は正常）
+        );
+      }
 
-        await Promise.all(promises);
+      await Promise.all(promises);
 
-        const duration = Date.now() - startTime;
-        console.log(`20個の並行ロック処理完了時間: ${duration}ms`);
+      // ファイルが破損していないことを確認
+      const content = await readFile(testFilePath, 'utf8');
+      const parsed = JSON.parse(content);
+      expect(parsed).toHaveProperty('storage');
+      expect(Object.keys(parsed.storage).length).toBeGreaterThan(0);
+    });
 
-        // 30秒以内に完了することを確認
-        expect(duration).toBeLessThan(30000);
-      });
+    test('並行store/restore操作の一貫性', async () => {
+      const testData: TestData = { id: 'consistency', name: 'Consistency Test' };
+      const operations: Promise<any>[] = [];
+
+      // 10個の並行store操作
+      for (let i = 0; i < 10; i++) {
+        operations.push(
+          fileManager.store({
+            ...testData,
+            id: `${testData.id}-${i}`,
+          })
+        );
+      }
+
+      await Promise.all(operations);
+
+      // 最後のstoreが勝つはず
+      const restored = await fileManager.restore();
+      expect(restored).toBeDefined();
+      expect(restored?.name).toBe('Consistency Test');
+    });
+  });
+
+  describe('エラーハンドリング', () => {
+    test('不正なJSONファイルの場合のフォールバック', async () => {
+      // 不正なJSONを直接書き込み
+      await writeFile(testFilePath, '{ invalid json }', 'utf8');
+
+      // デフォルト値が返されることを確認
+      const result = await fileManager.restore();
+      expect(result).toBeNull();
+    });
+
+    test('ファイルアクセス権限エラーのハンドリング', async () => {
+      // テスト環境によってはスキップが必要
+      if (process.platform === 'win32') {
+        return; // Windowsではファイル権限のテストが困難
+      }
+
+      // ファイルを作成して読み取り専用にする
+      await writeFile(testFilePath, '{}', 'utf8');
+      const fs = await import('fs');
+      await fs.promises.chmod(testFilePath, 0o444);
+
+      try {
+        // 書き込みを試みる
+        await fileManager.store({ id: 'readonly', name: 'Readonly Test' });
+        // エラーが発生することを期待
+        expect.fail('Should have thrown an error');
+      } catch (error) {
+        // エラーが発生することが正常
+        expect(error).toBeDefined();
+      } finally {
+        // 権限を元に戻す
+        await fs.promises.chmod(testFilePath, 0o644);
+      }
+    });
+  });
+
+  describe('パフォーマンステスト', () => {
+    test('大量の並行操作が適切な時間で完了すること', { timeout: 30000 }, async () => {
+      const startTime = Date.now();
+      const promises: Promise<void>[] = [];
+
+      // 20個の異なるキーで並行操作
+      for (let i = 0; i < 20; i++) {
+        const manager = new FileOperationManager<TestData>(
+          testFilePath,
+          `perf-key-${i}`,
+          TEST_TIMEOUT
+        );
+        promises.push(
+          manager.store({
+            id: `perf-${i}`,
+            name: `Performance Test ${i}`,
+            timestamp: Date.now(),
+          })
+        );
+      }
+
+      await Promise.all(promises);
+
+      const duration = Date.now() - startTime;
+      console.log(`20個の並行store操作完了時間: ${duration}ms`);
+
+      // 30秒以内に完了することを確認
+      expect(duration).toBeLessThan(30000);
+
+      // 全てのデータが正しく保存されていることを確認
+      for (let i = 0; i < 20; i++) {
+        const manager = new FileOperationManager<TestData>(
+          testFilePath,
+          `perf-key-${i}`,
+          TEST_TIMEOUT
+        );
+        const restored = await manager.restore();
+        expect(restored).toBeDefined();
+        expect(restored?.id).toBe(`perf-${i}`);
+      }
     });
   });
 });

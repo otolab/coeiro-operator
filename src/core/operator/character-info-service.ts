@@ -167,17 +167,9 @@ export class CharacterInfoService {
     return styles[0];
   }
 
-  /**
-   * 挨拶パターンを自動抽出
-   */
-  async extractGreetingPatterns(): Promise<string[]> {
-    // ConfigManagerにgetGreetingPatternsメソッドがないため、空配列を返す
-    // 将来的に実装する場合は、ConfigManagerに適切なメソッドを追加する
-    if (!this.configManager) {
-      throw new Error('CharacterInfoService is not initialized');
-    }
-    return [];
-  }
+  // 削除: extractGreetingPatternsメソッド
+  // greetingフィールドは各キャラクターに1つずつ定義されており、
+  // assignOperator時に自動的に返されるため、別途抽出機能は不要
 
   // 削除: updateVoiceSettingメソッド
   // CharacterInfoServiceは読み込み専用サービスとして設計されているため、
