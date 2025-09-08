@@ -14,7 +14,7 @@ let messageCount = 0;
 const startTime = Date.now();
 
 // デバッグログ出力
-function debugLog(message: string, data?: any): void {
+function debugLog(message: string, data?: unknown): void {
   if (isDebugMode) {
     console.error(`[ECHO-DEBUG] ${message}`, data ? JSON.stringify(data) : '');
   }

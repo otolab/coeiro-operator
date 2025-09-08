@@ -70,7 +70,7 @@ describe('CharacterInfoService', () => {
 
   beforeEach(async () => {
     // fetchモックを設定
-    (global.fetch as any).mockRejectedValue(new Error('Network error'));
+    (global.fetch as unknown).mockRejectedValue(new Error('Network error'));
     
     // 一時ディレクトリを作成
     tempDir = join(
@@ -174,10 +174,10 @@ describe('CharacterInfoService', () => {
     test('利用可能なスタイルがない場合はエラー', () => {
       const noStyleCharacter: Character = {
         ...mockCharacter,
-        speaker: {
-          ...mockCharacter.speaker!,
+        speaker: mockCharacter.speaker ? {
+          ...mockCharacter.speaker,
           styles: [], // 空のスタイル配列
-        },
+        } : undefined,
       };
 
       expect(() => characterInfoService.selectStyle(noStyleCharacter)).toThrow(

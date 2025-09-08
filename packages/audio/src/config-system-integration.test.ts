@@ -73,11 +73,11 @@ describe('設定システム統合テスト', () => {
     };
     // Speakerモックを動的に取得
     const SpeakerModule = await vi.importMock('speaker');
-    const MockSpeaker = SpeakerModule.default as any;
-    MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
+    const MockSpeaker = SpeakerModule.default as unknown;
+    MockSpeaker.mockImplementation(() => mockSpeakerInstance as unknown);
 
     // COEIROINK サーバーのモック設定
-    (global.fetch as any).mockImplementation((url: string) => {
+    (global.fetch as unknown).mockImplementation((url: string) => {
       if (url.includes('/v1/speakers')) {
         return Promise.resolve({
           ok: true,

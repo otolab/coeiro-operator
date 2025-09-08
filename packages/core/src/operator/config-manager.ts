@@ -18,6 +18,30 @@ const CONNECTION_SETTINGS = {
 } as const;
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
 
+// FullConfig型の定義（audioパッケージのConfig型と互換）
+export interface FullConfig {
+  connection: {
+    host: string;
+    port: string;
+  };
+  audio: {
+    latencyMode?: string;
+    splitMode?: string;
+    bufferSize?: number;
+    processing?: Record<string, unknown>;
+    splitSettings?: Record<string, unknown>;
+    bufferSettings?: Record<string, unknown>;
+    paddingSettings?: Record<string, unknown>;
+    crossfadeSettings?: Record<string, unknown>;
+  };
+  operator: {
+    rate: number;
+    timeout: number;
+    assignmentStrategy: string;
+  };
+  characters: Record<string, BaseCharacterConfig | CharacterConfig>;
+}
+
 // 統一設定ファイルの型定義
 interface UnifiedConfig {
   connection?: {
@@ -252,8 +276,7 @@ export class ConfigManager {
   /**
    * 完全なConfig型を取得（SayCoeiroink用）
    */
-  async getFullConfig(): Promise<any> {
-    // 返り値の型はaudioパッケージのConfig型と互換性があります
+  async getFullConfig(): Promise<FullConfig> {
     const config = await this.loadConfig();
     if (!this.mergedConfig) {
       await this.buildDynamicConfig();

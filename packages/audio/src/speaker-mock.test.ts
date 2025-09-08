@@ -27,7 +27,7 @@ describe('Speaker Mock Test', () => {
     const SpeakerModule = await import('speaker');
     const Speaker = SpeakerModule.default;
     
-    const speaker = new (Speaker as any)({
+    const speaker = new (Speaker as unknown)({
       channels: 1,
       bitDepth: 16,
       sampleRate: 24000

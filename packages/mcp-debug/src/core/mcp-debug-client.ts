@@ -200,7 +200,7 @@ export class MCPDebugClient {
   /**
    * MCPツールを呼び出し
    */
-  async callTool(name: string, args?: any): Promise<any> {
+  async callTool(name: string, args?: unknown): Promise<unknown> {
     if (!this.isInitialized) {
       throw new Error('Client is not initialized. Call start() first.');
     }
@@ -228,7 +228,7 @@ export class MCPDebugClient {
   /**
    * 任意のMCPリクエストを送信
    */
-  async sendRequest(method: string, params?: any): Promise<any> {
+  async sendRequest(method: string, params?: unknown): Promise<unknown> {
     if (!this.isInitialized) {
       throw new Error('Client is not initialized. Call start() first.');
     }
@@ -239,7 +239,7 @@ export class MCPDebugClient {
   /**
    * 任意のMCP通知を送信
    */
-  sendNotification(method: string, params?: any): void {
+  sendNotification(method: string, params?: unknown): void {
     if (!this.isInitialized) {
       throw new Error('Client is not initialized. Call start() first.');
     }
@@ -264,7 +264,7 @@ export class MCPDebugClient {
   /**
    * サーバーの機能を取得
    */
-  getServerCapabilities(): any {
+  getServerCapabilities(): unknown {
     return this.protocolHandler.getServerCapabilities();
   }
 

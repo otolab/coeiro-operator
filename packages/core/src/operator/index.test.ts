@@ -67,7 +67,7 @@ describe('OperatorManager', () => {
     await writeFile(join(configSubDir, 'config.json'), JSON.stringify(config), 'utf8');
 
     // fetchモックを設定
-    (global.fetch as any).mockRejectedValue(new Error('Network error'));
+    (global.fetch as unknown).mockRejectedValue(new Error('Network error'));
 
     operatorManager = new OperatorManager();
 

@@ -110,11 +110,13 @@ export class MCPStateManager implements IMCPStateManager {
       if (!this.stateWaiters.has(state)) {
         this.stateWaiters.set(state, new Set());
       }
-      const waiters = this.stateWaiters.get(state)!;
-      waiters.add(resolve);
+      const waiters = this.stateWaiters.get(state);
+      if (waiters) {
+        waiters.add(resolve);
+      }
 
       // タイムアウト設定
-      if (timeout) {
+      if (timeout && waiters) {
         const timeoutId = setTimeout(() => {
           waiters.delete(resolve);
           reject(new Error(`Timeout waiting for state ${state} after ${timeout}ms`));

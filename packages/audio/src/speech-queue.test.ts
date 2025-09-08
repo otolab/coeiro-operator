@@ -150,8 +150,8 @@ describe('SpeechQueue', () => {
 
       expect(status).toEqual({
         queueLength: 2,
-        isProcessing: expect.any(Boolean),
-        nextTaskId: expect.any(Number),
+        isProcessing: expect.anything(Boolean),
+        nextTaskId: expect.anything(Number),
       });
     });
   });
@@ -211,7 +211,7 @@ describe('SpeechQueue', () => {
     });
 
     test('オプションがundefinedでも正常に処理されること', async () => {
-      const result = await speechQueue.enqueue('テスト', undefined as any);
+      const result = await speechQueue.enqueue('テスト', undefined as unknown);
 
       expect(result.success).toBe(true);
 

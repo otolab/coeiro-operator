@@ -21,6 +21,11 @@ vi.mock('@coeiro-operator/core', () => ({
     }),
     getCurrentOperatorSession: vi.fn().mockResolvedValue(null),
   })),
+  getSpeakerProvider: vi.fn(() => ({
+    getSpeakers: vi.fn().mockResolvedValue([]),
+    updateConnection: vi.fn(),
+    checkConnection: vi.fn().mockResolvedValue(true),
+  })),
 }));
 vi.mock('speaker', () => ({
   default: vi.fn(),
@@ -96,11 +101,11 @@ describe('エラーハンドリング統合テスト', () => {
     };
 
     // OperatorManagerモックを設定
-    (OperatorManager as any).mockImplementation(() => mockOperatorManager);
+    (OperatorManager as unknown).mockImplementation(() => mockOperatorManager);
 
     // Speaker モック設定
     const SpeakerModule = await vi.importMock('speaker');
-    const MockSpeaker = SpeakerModule.default as any;
+    const MockSpeaker = SpeakerModule.default as unknown;
     MockSpeaker.mockImplementation(() => ({
       write: vi.fn(),
       end: vi.fn(),
@@ -113,7 +118,7 @@ describe('エラーハンドリング統合テスト', () => {
     }));
 
     // fetchモックを設定（speakers APIは成功させる）
-    (global.fetch as any).mockImplementation((url: string) => {
+    (global.fetch as unknown).mockImplementation((url: string) => {
       if (url.includes('/v1/speakers')) {
         return Promise.resolve({
           ok: true,
@@ -141,7 +146,7 @@ describe('エラーハンドリング統合テスト', () => {
   describe('ネットワークエラー処理', () => {
     test('サーバー接続失敗時の適切なエラーハンドリングとログ出力', async () => {
       // サーバー接続失敗をシミュレート（全APIが失敗）
-      (global.fetch as any).mockImplementation(() => {
+      (global.fetch as unknown).mockImplementation(() => {
         return Promise.reject(new Error('Connection failed'));
       });
 
@@ -153,7 +158,7 @@ describe('エラーハンドリング統合テスト', () => {
 
     test('音声合成API失敗時の適切なエラーハンドリング', async () => {
       // 音声情報取得は成功するが合成APIが失敗するケース
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as unknown).mockImplementation((url: string) => {
         if (url.includes('/v1/speakers')) {
           return Promise.resolve({
             ok: true,
@@ -184,7 +189,7 @@ describe('エラーハンドリング統合テスト', () => {
 
     test('タイムアウトエラーの適切な処理', async () => {
       // タイムアウトをシミュレート（speakers APIは成功、synthesis APIはタイムアウト）
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as unknown).mockImplementation((url: string) => {
         if (url.includes('/v1/speakers')) {
           return Promise.resolve({
             ok: true,
@@ -214,7 +219,7 @@ describe('エラーハンドリング統合テスト', () => {
       const invalidPath = '/invalid/path/output.wav';
 
       // 音声情報取得モック
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as unknown).mockImplementation((url: string) => {
         if (url.includes('/speakers')) {
           return Promise.resolve({
             ok: true,
@@ -272,13 +277,13 @@ describe('エラーハンドリング統合テスト', () => {
     test('Speakerライブラリエラー時の適切な処理', async () => {
       // Speakerエラーをシミュレート
       const SpeakerModule = await vi.importMock('speaker');
-      const MockSpeaker = SpeakerModule.default as any;
+      const MockSpeaker = SpeakerModule.default as unknown;
       MockSpeaker.mockImplementation(() => {
         throw new Error('Hardware audio device failure');
       });
 
       // 音声合成APIモック（正常レスポンス）
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as unknown).mockImplementation((url: string) => {
         if (url.includes('/v1/speakers')) {
           return Promise.resolve({
             ok: true,
@@ -327,7 +332,7 @@ describe('エラーハンドリング統合テスト', () => {
 
     test('音声データ形式エラーの処理', async () => {
       // 無効な音声データをシミュレート
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as unknown).mockImplementation((url: string) => {
         if (url.includes('/speakers')) {
           return Promise.resolve({
             ok: true,
@@ -366,7 +371,7 @@ describe('エラーハンドリング統合テスト', () => {
       let callCount = 0;
 
       // 最初の2回は失敗、3回目は成功するモック
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as unknown).mockImplementation((url: string) => {
         callCount++;
 
         if (url.includes('/speakers')) {
@@ -420,8 +425,8 @@ describe('エラーハンドリング統合テスト', () => {
           port: -1, // 無効なポート
         },
         audio: {
-          latencyMode: 'invalid-mode' as any,
-          splitMode: 'invalid-split' as any,
+          latencyMode: 'invalid-mode' as unknown,
+          splitMode: 'invalid-split' as unknown,
         },
       };
 

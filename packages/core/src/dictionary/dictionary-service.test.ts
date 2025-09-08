@@ -19,10 +19,20 @@ vi.mock('../../utils/logger.js', () => ({
     }
 }));
 
+interface MockDictionaryClient {
+    checkConnection: ReturnType<typeof vi.fn>;
+    registerWords: ReturnType<typeof vi.fn>;
+}
+
+interface MockPersistenceManager {
+    load: ReturnType<typeof vi.fn>;
+    save: ReturnType<typeof vi.fn>;
+}
+
 describe('DictionaryService', () => {
     let service: DictionaryService;
-    let mockClient: any;
-    let mockPersistenceManager: any;
+    let mockClient: MockDictionaryClient;
+    let mockPersistenceManager: MockPersistenceManager;
 
     beforeEach(() => {
         vi.clearAllMocks();
@@ -36,14 +46,14 @@ describe('DictionaryService', () => {
                 error: null
             })
         };
-        (DictionaryClient as any).mockImplementation(() => mockClient);
+        vi.mocked(DictionaryClient).mockImplementation(() => mockClient as unknown as DictionaryClient);
 
         // DictionaryPersistenceManagerのモック設定
         mockPersistenceManager = {
             load: vi.fn().mockResolvedValue(null),
             save: vi.fn().mockResolvedValue(undefined)
         };
-        (DictionaryPersistenceManager as any).mockImplementation(() => mockPersistenceManager);
+        vi.mocked(DictionaryPersistenceManager).mockImplementation(() => mockPersistenceManager as unknown as DictionaryPersistenceManager);
 
         service = new DictionaryService();
     });

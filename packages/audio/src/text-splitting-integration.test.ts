@@ -66,15 +66,15 @@ describe('テキスト分割モード統合テスト', () => {
       pipe: vi.fn(),
     };
     const SpeakerModule = await vi.importMock('speaker');
-    const MockSpeaker = SpeakerModule.default as any;
-    MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
+    const MockSpeaker = SpeakerModule.default as unknown;
+    MockSpeaker.mockImplementation(() => mockSpeakerInstance as unknown);
 
     // デフォルト設定
     const configManager = createMockConfigManager();
     sayCoeiroink = new SayCoeiroink(configManager);
 
     // COEIROINK サーバーのモック設定
-    (global.fetch as any).mockImplementation((url: string) => {
+    (global.fetch as unknown).mockImplementation((url: string) => {
       if (url.includes('/v1/speakers')) {
         return Promise.resolve({
           ok: true,
@@ -378,7 +378,7 @@ describe('テキスト分割モード統合テスト', () => {
       try {
         await sayCoeiroink.synthesizeText('テスト', {
           voice: 'test-speaker-1',
-          chunkMode: 'invalid' as any,
+          chunkMode: 'invalid' as unknown,
         });
 
         // 無効なモードでも動作する場合はデフォルトにフォールバック

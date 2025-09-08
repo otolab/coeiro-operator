@@ -10,31 +10,31 @@ export interface MCPMessage {
   jsonrpc: '2.0';
   id?: string | number;
   method?: string;
-  params?: any;
-  result?: any;
+  params?: unknown;
+  result?: unknown;
   error?: {
     code: number;
     message: string;
-    data?: any;
+    data?: unknown;
   };
 }
 
 export interface MCPCapabilities {
-  tools?: Record<string, any>;
-  prompts?: Record<string, any>;
-  resources?: Record<string, any>;
+  tools?: Record<string, unknown>;
+  prompts?: Record<string, unknown>;
+  resources?: Record<string, unknown>;
 }
 
 export interface IMCPProtocolHandler {
-  initialize(capabilities: MCPCapabilities): Promise<any>;
-  sendRequest(method: string, params?: any, timeout?: number): Promise<any>;
-  sendNotification(method: string, params?: any): void;
+  initialize(capabilities: MCPCapabilities): Promise<unknown>;
+  sendRequest(method: string, params?: unknown, timeout?: number): Promise<unknown>;
+  sendNotification(method: string, params?: unknown): void;
   handleMessage(message: MCPMessage): void;
 }
 
 export class MCPProtocolHandler implements IMCPProtocolHandler {
   private outputHandler?: (data: string) => void;
-  private serverCapabilities?: any;
+  private serverCapabilities?: unknown;
   private nextRequestId = 1; // 連番ID管理用
 
   constructor(
@@ -52,7 +52,7 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
   /**
    * MCPサーバーを初期化
    */
-  async initialize(capabilities: MCPCapabilities): Promise<any> {
+  async initialize(capabilities: MCPCapabilities): Promise<unknown> {
     // 状態を初期化中に遷移
     this.stateManager.transitionTo(MCPServerState.INITIALIZING);
 
@@ -87,7 +87,7 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
   /**
    * リクエストを送信
    */
-  async sendRequest(method: string, params?: any, timeout?: number): Promise<any> {
+  async sendRequest(method: string, params?: unknown, timeout?: number): Promise<unknown> {
     // 連番IDを使用（整数のみ、デバッグしやすい）
     const id = this.nextRequestId++;
 
@@ -126,7 +126,7 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
   /**
    * 通知を送信（レスポンスを待たない）
    */
-  sendNotification(method: string, params?: any): void {
+  sendNotification(method: string, params?: unknown): void {
     const message: MCPMessage = {
       jsonrpc: '2.0',
       method,
@@ -194,7 +194,7 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
   /**
    * サーバー機能を取得
    */
-  getServerCapabilities(): any {
+  getServerCapabilities(): unknown {
     return this.serverCapabilities;
   }
 

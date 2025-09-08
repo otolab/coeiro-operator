@@ -8,7 +8,7 @@ import { MCPServerState } from '../core/state-manager.js';
 
 export interface ToolCallResult {
   success: boolean;
-  result?: any;
+  result?: unknown;
   error?: Error;
   duration?: number;
 }
@@ -17,7 +17,7 @@ export interface ServerStatus {
   state: MCPServerState;
   isReady: boolean;
   pendingRequests: number;
-  capabilities?: any;
+  capabilities?: unknown;
 }
 
 /**
@@ -67,7 +67,7 @@ export class MCPServiceE2ETester {
   /**
    * ツールを呼び出し
    */
-  async callTool(name: string, args?: any): Promise<ToolCallResult> {
+  async callTool(name: string, args?: unknown): Promise<ToolCallResult> {
     if (!this.isStarted) {
       throw new Error('Tester is not started. Call start() first.');
     }
@@ -94,7 +94,7 @@ export class MCPServiceE2ETester {
    * 複数のツールを順次呼び出し
    */
   async callToolsSequentially(
-    calls: Array<{ name: string; args?: any }>
+    calls: Array<{ name: string; args?: unknown }>
   ): Promise<ToolCallResult[]> {
     const results: ToolCallResult[] = [];
 
@@ -110,7 +110,7 @@ export class MCPServiceE2ETester {
    * 複数のツールを並行して呼び出し
    */
   async callToolsConcurrently(
-    calls: Array<{ name: string; args?: any }>
+    calls: Array<{ name: string; args?: unknown }>
   ): Promise<ToolCallResult[]> {
     const promises = calls.map(call => this.callTool(call.name, call.args));
     return Promise.all(promises);
@@ -119,7 +119,7 @@ export class MCPServiceE2ETester {
   /**
    * カスタムJSON-RPCリクエストを送信
    */
-  async sendRequest(method: string, params?: any): Promise<any> {
+  async sendRequest(method: string, params?: unknown): Promise<unknown> {
     if (!this.isStarted) {
       throw new Error('Tester is not started. Call start() first.');
     }
@@ -130,7 +130,7 @@ export class MCPServiceE2ETester {
   /**
    * カスタムJSON-RPC通知を送信
    */
-  sendNotification(method: string, params?: any): void {
+  sendNotification(method: string, params?: unknown): void {
     if (!this.isStarted) {
       throw new Error('Tester is not started. Call start() first.');
     }

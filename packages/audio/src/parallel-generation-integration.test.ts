@@ -66,8 +66,8 @@ describe('並行チャンク生成システム統合テスト', () => {
       pipe: vi.fn(),
     };
     const SpeakerModule = await vi.importMock('speaker');
-    const MockSpeaker = SpeakerModule.default as any;
-    MockSpeaker.mockImplementation(() => mockSpeakerInstance as any);
+    const MockSpeaker = SpeakerModule.default as unknown;
+    MockSpeaker.mockImplementation(() => mockSpeakerInstance as unknown);
 
     // 並行生成有効な設定
     const config: Config = {
@@ -92,7 +92,7 @@ describe('並行チャンク生成システム統合テスト', () => {
     sayCoeiroink = new SayCoeiroink(configManager);
 
     // COEIROINK サーバーのモック設定
-    (global.fetch as any).mockImplementation((url: string) => {
+    (global.fetch as unknown).mockImplementation((url: string) => {
       if (url.includes('/v1/speakers')) {
         return Promise.resolve({
           ok: true,
@@ -275,7 +275,7 @@ describe('並行チャンク生成システム統合テスト', () => {
     test('並行生成中の一部失敗でも全体処理が継続されること', async () => {
       // 特定のリクエストで失敗するモック
       let requestCount = 0;
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as unknown).mockImplementation((url: string) => {
         if (url.includes('/v1/speakers')) {
           return Promise.resolve({
             ok: true,

@@ -24,7 +24,7 @@ describe('DynamicConfigManagement', () => {
     configManager = new ConfigManager(tempDir);
 
     // fetchモックを設定
-    (global.fetch as any).mockRejectedValue(new Error('Network error'));
+    (global.fetch as unknown).mockRejectedValue(new Error('Network error'));
 
     // モックをリセット
     vi.clearAllMocks();
@@ -61,7 +61,7 @@ describe('DynamicConfigManagement', () => {
         },
       ]);
 
-      (configManager as any).speakerProvider = {
+      (configManager as unknown).speakerProvider = {
         updateConnection: vi.fn(),
         getSpeakers: mockGetSpeakers,
       };
@@ -82,7 +82,7 @@ describe('DynamicConfigManagement', () => {
     test('音声プロバイダエラー時に内蔵設定にフォールバックする', async () => {
       const mockGetSpeakers = vi.fn().mockRejectedValue(new Error('Connection failed'));
       
-      (configManager as any).speakerProvider = {
+      (configManager as unknown).speakerProvider = {
         updateConnection: vi.fn(),
         getSpeakers: mockGetSpeakers,
       };
@@ -102,7 +102,7 @@ describe('DynamicConfigManagement', () => {
     test('音声プロバイダから空配列が返された場合の処理', async () => {
       const mockGetSpeakers = vi.fn().mockResolvedValue([]);
       
-      (configManager as any).speakerProvider = {
+      (configManager as unknown).speakerProvider = {
         updateConnection: vi.fn(),
         getSpeakers: mockGetSpeakers,
       };
@@ -142,7 +142,7 @@ describe('DynamicConfigManagement', () => {
         },
       ]);
 
-      (configManager as any).speakerProvider = {
+      (configManager as unknown).speakerProvider = {
         updateConnection: vi.fn(),
         getSpeakers: mockGetSpeakers,
       };
@@ -176,7 +176,7 @@ describe('DynamicConfigManagement', () => {
         },
       ]);
 
-      (configManager as any).speakerProvider = {
+      (configManager as unknown).speakerProvider = {
         updateConnection: vi.fn(),
         getSpeakers: mockGetSpeakers,
       };
@@ -192,7 +192,7 @@ describe('DynamicConfigManagement', () => {
     test('存在しないキャラクターIDでnullを返す', async () => {
       const mockGetSpeakers = vi.fn().mockResolvedValue([]);
       
-      (configManager as any).speakerProvider = {
+      (configManager as unknown).speakerProvider = {
         updateConnection: vi.fn(),
         getSpeakers: mockGetSpeakers,
       };
@@ -210,7 +210,7 @@ describe('DynamicConfigManagement', () => {
         },
       ]);
 
-      (configManager as any).speakerProvider = {
+      (configManager as unknown).speakerProvider = {
         updateConnection: vi.fn(),
         getSpeakers: mockGetSpeakers,
       };
@@ -233,7 +233,7 @@ describe('DynamicConfigManagement', () => {
         },
       ]);
 
-      (configManager as any).speakerProvider = {
+      (configManager as unknown).speakerProvider = {
         updateConnection: vi.fn(),
         getSpeakers: mockGetSpeakers,
       };
@@ -268,7 +268,7 @@ describe('DynamicConfigManagement', () => {
         ]);
       });
 
-      (configManager as any).speakerProvider = {
+      (configManager as unknown).speakerProvider = {
         updateConnection: vi.fn(),
         getSpeakers: mockGetSpeakers,
       };
@@ -303,7 +303,7 @@ describe('DynamicConfigManagement', () => {
       const mockUpdateConnection = vi.fn();
       const mockGetSpeakers = vi.fn().mockResolvedValue([]);
       
-      (configManager as any).speakerProvider = {
+      (configManager as unknown).speakerProvider = {
         updateConnection: mockUpdateConnection,
         getSpeakers: mockGetSpeakers,
       };
@@ -320,7 +320,7 @@ describe('DynamicConfigManagement', () => {
       const mockUpdateConnection = vi.fn();
       const mockGetSpeakers = vi.fn().mockResolvedValue([]);
       
-      (configManager as any).speakerProvider = {
+      (configManager as unknown).speakerProvider = {
         updateConnection: mockUpdateConnection,
         getSpeakers: mockGetSpeakers,
       };

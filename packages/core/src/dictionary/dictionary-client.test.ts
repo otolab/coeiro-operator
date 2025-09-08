@@ -35,7 +35,7 @@ describe('DictionaryClient', () => {
         { word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         status: 200,
         statusText: 'OK'
@@ -53,7 +53,7 @@ describe('DictionaryClient', () => {
         { word: 'ABC123', yomi: 'エービーシー', accent: 0, numMoras: 6 }
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         status: 200,
         statusText: 'OK'
@@ -77,7 +77,7 @@ describe('DictionaryClient', () => {
         { word: 'TEST', yomi: 'テスト', accent: 1, numMoras: 3 }
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error'
@@ -95,7 +95,7 @@ describe('DictionaryClient', () => {
       ];
 
       const error = new Error('ECONNREFUSED');
-      (global.fetch as any).mockRejectedValueOnce(error);
+      (global.fetch as unknown).mockRejectedValueOnce(error);
 
       const result = await client.registerWords(words);
       
@@ -111,7 +111,7 @@ describe('DictionaryClient', () => {
         { word: 'TEST3', yomi: 'テストサン', accent: 0, numMoras: 5 }
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         status: 200,
         statusText: 'OK'
@@ -126,7 +126,7 @@ describe('DictionaryClient', () => {
 
   describe('checkConnection', () => {
     it('サーバーに接続できる場合はtrueを返す', async () => {
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         status: 200
       });
@@ -138,13 +138,13 @@ describe('DictionaryClient', () => {
         'http://localhost:50032/',
         expect.objectContaining({
           method: 'GET',
-          signal: expect.any(AbortSignal)
+          signal: expect.anything(AbortSignal)
         })
       );
     });
 
     it('サーバーに接続できない場合はfalseを返す', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('Connection refused'));
+      (global.fetch as unknown).mockRejectedValueOnce(new Error('Connection refused'));
 
       const isConnected = await client.checkConnection();
       
@@ -152,7 +152,7 @@ describe('DictionaryClient', () => {
     });
 
     it('タイムアウト時はfalseを返す', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('AbortError'));
+      (global.fetch as unknown).mockRejectedValueOnce(new Error('AbortError'));
 
       const isConnected = await client.checkConnection();
       
@@ -166,14 +166,14 @@ describe('DictionaryClient', () => {
         { word: 'ABCXYZ', yomi: 'テスト', accent: 0, numMoras: 3 }
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         status: 200
       });
 
       await client.registerWords(words);
 
-      const callBody = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+      const callBody = JSON.parse((global.fetch as unknown).mock.calls[0][1].body);
       expect(callBody.dictionaryWords[0].word).toBe('ＡＢＣＸＹＺ');
     });
 
@@ -182,14 +182,14 @@ describe('DictionaryClient', () => {
         { word: 'abcxyz', yomi: 'テスト', accent: 0, numMoras: 3 }
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         status: 200
       });
 
       await client.registerWords(words);
 
-      const callBody = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+      const callBody = JSON.parse((global.fetch as unknown).mock.calls[0][1].body);
       expect(callBody.dictionaryWords[0].word).toBe('ａｂｃｘｙｚ');
     });
 
@@ -198,14 +198,14 @@ describe('DictionaryClient', () => {
         { word: '0123456789', yomi: 'スウジ', accent: 0, numMoras: 3 }
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         status: 200
       });
 
       await client.registerWords(words);
 
-      const callBody = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+      const callBody = JSON.parse((global.fetch as unknown).mock.calls[0][1].body);
       expect(callBody.dictionaryWords[0].word).toBe('０１２３４５６７８９');
     });
 
@@ -214,14 +214,14 @@ describe('DictionaryClient', () => {
         { word: 'つくよみちゃん', yomi: 'ツクヨミチャン', accent: 3, numMoras: 6 }
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         status: 200
       });
 
       await client.registerWords(words);
 
-      const callBody = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+      const callBody = JSON.parse((global.fetch as unknown).mock.calls[0][1].body);
       expect(callBody.dictionaryWords[0].word).toBe('つくよみちゃん');
     });
 
@@ -230,14 +230,14 @@ describe('DictionaryClient', () => {
         { word: 'Node.jsでCOEIRO', yomi: 'ノードジェイエス', accent: 0, numMoras: 8 }
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         status: 200
       });
 
       await client.registerWords(words);
 
-      const callBody = JSON.parse((global.fetch as any).mock.calls[0][1].body);
+      const callBody = JSON.parse((global.fetch as unknown).mock.calls[0][1].body);
       expect(callBody.dictionaryWords[0].word).toBe('Ｎｏｄｅ．ｊｓでＣＯＥＩＲＯ');
     });
   });

@@ -52,7 +52,10 @@ export class McpTestSession {
       throw new Error('Session already started');
     }
 
-    const args = [this.config.serverPath!];
+    if (!this.config.serverPath) {
+      throw new Error('Server path is required');
+    }
+    const args = [this.config.serverPath];
     if (this.config.debugMode) {
       args.push('--debug');
     }
@@ -83,13 +86,14 @@ export class McpTestSession {
         resolve();
       }, 5000);
 
-      this.process!.on('close', () => {
+      const process = this.process;
+      process.on('close', () => {
         clearTimeout(timeout);
         this.process = undefined;
         resolve();
       });
 
-      this.process!.kill('SIGTERM');
+      process.kill('SIGTERM');
     });
   }
 
@@ -115,14 +119,16 @@ export class McpTestSession {
       });
 
       // コマンドを送信
-      this.process!.stdin?.write(command + '\n');
+      if (this.process?.stdin) {
+        this.process.stdin.write(command + '\n');
+      }
     });
   }
 
   /**
    * MCPツールコールを送信
    */
-  async sendMcpTool(toolName: string, args: any = {}, id: number = 1): Promise<TestMessage | null> {
+  async sendMcpTool(toolName: string, args: unknown = {}, id: number = 1): Promise<TestMessage | null> {
     const mcpMessage = {
       jsonrpc: '2.0',
       method: 'tools/call',
@@ -158,7 +164,9 @@ export class McpTestSession {
       });
 
       // メッセージを送信
-      this.process!.stdin?.write(message + '\n');
+      if (this.process?.stdin) {
+        this.process.stdin.write(message + '\n');
+      }
     });
   }
 
@@ -248,7 +256,7 @@ export class McpTestSession {
     for (const [handlerId, handler] of this.responseHandlers) {
       if (handlerId.startsWith(type.substring(0, 3))) {
         handler({
-          type: type as any,
+          type: type as 'control' | 'mcp' | 'error' | 'stdout' | 'stderr',
           content,
           timestamp: new Date(),
         });

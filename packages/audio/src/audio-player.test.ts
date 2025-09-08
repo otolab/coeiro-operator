@@ -41,8 +41,8 @@ vi.mock('node-libsamplerate', () => {
   return { default: MockSampleRate };
 });
 
-const mockReadFile = readFile as any;
-const mockWriteFile = writeFile as any;
+const mockReadFile = readFile as unknown;
+const mockWriteFile = writeFile as unknown;
 
 describe('AudioPlayer', () => {
   let audioPlayer: AudioPlayer;
@@ -233,7 +233,7 @@ describe('AudioPlayer', () => {
       );
 
       // ファイル書き込み処理が実際に呼び出されたことを確認
-      expect(mockWriteFile).toHaveBeenCalledWith(outputFile, expect.any(Buffer));
+      expect(mockWriteFile).toHaveBeenCalledWith(outputFile, expect.anything(Buffer));
     });
   });
 
@@ -263,7 +263,7 @@ describe('AudioPlayer', () => {
 
       // Buffer.fromが適切に呼ばれ、メモリ効率的に変換されることを確認
       expect(bufferFromSpy).toHaveBeenCalledWith(largeBuffer);
-      expect(mockWriteFile).toHaveBeenCalledWith(outputFile, expect.any(Buffer));
+      expect(mockWriteFile).toHaveBeenCalledWith(outputFile, expect.anything(Buffer));
 
       bufferFromSpy.mockRestore();
     });
@@ -282,7 +282,7 @@ describe('AudioPlayer', () => {
       );
 
       // 無効なパスでも処理が呼び出されることを確認（エラーハンドリングの検証）
-      expect(mockWriteFile).toHaveBeenCalledWith(invalidPath, expect.any(Buffer));
+      expect(mockWriteFile).toHaveBeenCalledWith(invalidPath, expect.anything(Buffer));
     });
   });
 });

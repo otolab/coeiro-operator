@@ -11,6 +11,15 @@ import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 // fetchのモック
 global.fetch = vi.fn();
 
+// coreパッケージのモック
+vi.mock('@coeiro-operator/core', () => ({
+  getSpeakerProvider: vi.fn(() => ({
+    getSpeakers: vi.fn().mockResolvedValue([]),
+    updateConnection: vi.fn(),
+    checkConnection: vi.fn().mockResolvedValue(true),
+  })),
+}));
+
 // 他のモックの設定
 vi.mock('echogarden', () => ({
   default: {},
@@ -213,21 +222,23 @@ describe('AudioSynthesizer', () => {
 
   describe('checkServerConnection', () => {
     test('サーバーが利用可能な場合trueを返すこと', async () => {
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
+      text: async () => "response text",
       });
 
       const result = await audioSynthesizer.checkServerConnection();
 
       expect(result).toBe(true);
       expect(global.fetch).toHaveBeenCalledWith('http://localhost:50032/v1/speakers', {
-        signal: expect.any(AbortSignal),
+        signal: expect.anything(AbortSignal),
       });
     });
 
     test('サーバーが利用不可の場合falseを返すこと', async () => {
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: false,
+      text: async () => "response text",
       });
 
       const result = await audioSynthesizer.checkServerConnection();
@@ -236,7 +247,7 @@ describe('AudioSynthesizer', () => {
     });
 
     test('接続エラーの場合falseを返すこと', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('Connection failed'));
+      (global.fetch as unknown).mockRejectedValueOnce(new Error('Connection failed'));
 
       const result = await audioSynthesizer.checkServerConnection();
 
@@ -262,9 +273,10 @@ describe('AudioSynthesizer', () => {
         },
       ];
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         json: async () => mockSpeakers,
+      text: async () => "response text",
       });
 
       // console.logをモック
@@ -273,7 +285,7 @@ describe('AudioSynthesizer', () => {
       await audioSynthesizer.listVoices();
 
       expect(global.fetch).toHaveBeenCalledWith('http://localhost:50032/v1/speakers', {
-        signal: expect.any(AbortSignal),
+        signal: expect.anything(AbortSignal),
       });
 
       expect(consoleLogSpy).toHaveBeenCalledWith('Available voices:');
@@ -284,7 +296,7 @@ describe('AudioSynthesizer', () => {
     });
 
     test('サーバーエラー時に適切なエラーを投げること', async () => {
-      (global.fetch as any).mockRejectedValueOnce(new Error('Connection failed'));
+      (global.fetch as unknown).mockRejectedValueOnce(new Error('Connection failed'));
 
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
       const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
@@ -324,9 +336,10 @@ describe('AudioSynthesizer', () => {
       };
 
       // synthesisエンドポイントのモック
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
+      text: async () => "response text",
       });
 
       const result = await audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0);
@@ -334,7 +347,7 @@ describe('AudioSynthesizer', () => {
       expect(result).toEqual({
         chunk: mockChunk,
         audioBuffer: mockAudioBuffer,
-        latency: expect.any(Number),
+        latency: expect.anything(Number),
       });
 
       expect(global.fetch).toHaveBeenCalledWith('http://localhost:50032/v1/synthesis', {
@@ -357,16 +370,17 @@ describe('AudioSynthesizer', () => {
 
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
+      text: async () => "response text",
       });
 
       const result = await audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0);
 
       expect(result.audioBuffer).toBe(mockAudioBuffer);
 
-      const fetchCall = (global.fetch as any).mock.calls[0];
+      const fetchCall = (global.fetch as unknown).mock.calls[0];
       const requestBody = JSON.parse(fetchCall[1].body);
 
       expect(requestBody.speakerUuid).toBe('operator-voice-id');
@@ -390,14 +404,14 @@ describe('AudioSynthesizer', () => {
 
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      (global.fetch as any).mockResolvedValue({
+      (global.fetch as unknown).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });
 
       // 音声合成を実行
       await audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0);
-      const fetchCall = (global.fetch as any).mock.calls[0];
+      const fetchCall = (global.fetch as unknown).mock.calls[0];
       const requestBody = JSON.parse(fetchCall[1].body);
 
       // 指定したスタイルIDが使用されていることを確認
@@ -416,10 +430,11 @@ describe('AudioSynthesizer', () => {
       };
 
       // speakersエンドポイントのモック
-      (global.fetch as any).mockResolvedValueOnce({
+      (global.fetch as unknown).mockResolvedValueOnce({
         ok: false,
         status: 500,
         statusText: 'Internal Server Error',
+        text: async () => 'Internal Server Error',
       });
 
       await expect(
@@ -438,7 +453,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as any).mockRejectedValueOnce(new Error('Network error'));
+      (global.fetch as unknown).mockRejectedValueOnce(new Error('Network error'));
 
       await expect(
         audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0)
@@ -462,7 +477,7 @@ describe('AudioSynthesizer', () => {
       };
 
       // synthesisエンドポイントのモック
-      (global.fetch as any).mockResolvedValue({
+      (global.fetch as unknown).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });
@@ -480,7 +495,7 @@ describe('AudioSynthesizer', () => {
           isLast: true,
         }),
         audioBuffer: mockAudioBuffer,
-        latency: expect.any(Number),
+        latency: expect.anything(Number),
       });
     });
   });
@@ -500,7 +515,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as any).mockResolvedValue({
+      (global.fetch as unknown).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });
@@ -537,7 +552,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as any).mockResolvedValue({
+      (global.fetch as unknown).mockResolvedValue({
         ok: true,
         json: async () => [],
         arrayBuffer: async () => new ArrayBuffer(0),
@@ -568,7 +583,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as any).mockResolvedValue({
+      (global.fetch as unknown).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });
@@ -597,7 +612,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as any).mockResolvedValue({
+      (global.fetch as unknown).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });
@@ -625,7 +640,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as any).mockResolvedValue({
+      (global.fetch as unknown).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });
@@ -645,7 +660,7 @@ describe('AudioSynthesizer', () => {
       const longText = 'a'.repeat(150); // 複数チャンクに分割される
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      (global.fetch as any).mockResolvedValue({
+      (global.fetch as unknown).mockResolvedValue({
         ok: true,
         json: async () => [
           {
@@ -697,7 +712,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as any).mockResolvedValue({
+      (global.fetch as unknown).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });

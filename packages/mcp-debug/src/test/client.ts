@@ -11,7 +11,7 @@ import * as path from 'path';
 interface TestResult {
   command: string;
   success: boolean;
-  response?: any;
+  response?: unknown;
   error?: string;
   duration: number;
 }
@@ -220,7 +220,7 @@ class McpDebugTestClient {
     await this.stopServer();
   }
 
-  private async runSingleTest(test: any): Promise<TestResult> {
+  private async runSingleTest(test: unknown): Promise<TestResult> {
     const startTime = Date.now();
 
     try {

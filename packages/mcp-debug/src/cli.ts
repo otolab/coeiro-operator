@@ -22,7 +22,7 @@ interface CLIOptions {
 
 class MCPDebugCLI {
   private client?: MCPDebugClient;
-  private readline?: any;
+  private readline?: unknown;
   private isShuttingDown = false;
 
   constructor(private options: CLIOptions) {}
@@ -228,7 +228,7 @@ class MCPDebugCLI {
   /**
    * 非インタラクティブモードの入力を処理
    */
-  private async handleNonInteractiveInput(message: any): Promise<void> {
+  private async handleNonInteractiveInput(message: unknown): Promise<void> {
     if (!this.client) {
       const error = {
         jsonrpc: '2.0',
@@ -261,7 +261,7 @@ class MCPDebugCLI {
   /**
    * JSON-RPCリクエストを処理
    */
-  private async processRequest(request: any): Promise<any> {
+  private async processRequest(request: unknown): Promise<any> {
     if (!this.client) {
       throw new Error('Client not initialized');
     }

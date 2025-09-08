@@ -17,14 +17,14 @@ export interface McpTestResult {
   success: boolean;
   message: string;
   duration: number;
-  details?: any;
+  details?: unknown;
 }
 
 export interface OutputCapture {
   stdout: string[];
   stderr: string[];
-  mcpResponses: any[];
-  controlResponses: any[];
+  mcpResponses: unknown[];
+  controlResponses: unknown[];
   debugMessages: string[];
   errorMessages: string[];
 }
@@ -116,11 +116,16 @@ export class McpTestHelper {
   async stopServer(): Promise<void> {
     if (this.serverProcess) {
       return new Promise(resolve => {
-        this.serverProcess!.on('close', () => {
+        const process = this.serverProcess;
+        if (!process) {
+          resolve();
+          return;
+        }
+        process.on('close', () => {
           this.serverProcess = undefined;
           resolve();
         });
-        this.serverProcess!.kill('SIGTERM');
+        process.kill('SIGTERM');
       });
     }
   }
@@ -129,7 +134,9 @@ export class McpTestHelper {
    * 出力ハンドラーを設定
    */
   private setupOutputHandlers(): void {
-    this.serverProcess!.stdout?.on('data', data => {
+    if (!this.serverProcess) return;
+    
+    this.serverProcess.stdout?.on('data', data => {
       const lines = data
         .toString()
         .split('\n')
@@ -138,7 +145,7 @@ export class McpTestHelper {
       this.parseOutput(lines);
     });
 
-    this.serverProcess!.stderr?.on('data', data => {
+    this.serverProcess.stderr?.on('data', data => {
       const lines = data
         .toString()
         .split('\n')
@@ -190,8 +197,9 @@ export class McpTestHelper {
       throw new Error('Server not started');
     }
 
+    const stdin = this.serverProcess.stdin;
     return new Promise(resolve => {
-      this.serverProcess!.stdin!.write(command + '\n');
+      stdin.write(command + '\n');
       // 処理時間を確保
       setTimeout(resolve, 100);
     });
@@ -200,7 +208,7 @@ export class McpTestHelper {
   /**
    * JSON-RPCリクエストを送信
    */
-  async sendJsonRpcRequest(method: string, params?: any, id = 1): Promise<any> {
+  async sendJsonRpcRequest(method: string, params?: unknown, id = 1): Promise<unknown> {
     const request = {
       jsonrpc: '2.0',
       method,
@@ -270,9 +278,9 @@ export class McpTestHelper {
    */
   async waitForResponse(
     type: 'mcp' | 'control',
-    matcher: (response: any) => boolean,
+    matcher: (response: unknown) => boolean,
     timeoutMs = 5000
-  ): Promise<any> {
+  ): Promise<unknown> {
     const start = Date.now();
 
     while (Date.now() - start < timeoutMs) {
@@ -291,7 +299,7 @@ export class McpTestHelper {
 /**
  * Node.jsスクリプトを実行してJSONレスポンスを取得
  */
-export async function executeNodeScript(script: string, cwd?: string): Promise<any> {
+export async function executeNodeScript(script: string, cwd?: string): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const child = spawn('node', ['--input-type=module', '-e', script], {
       cwd: cwd || path.resolve(__dirname, '../../..'),

@@ -5,17 +5,17 @@
 
 export interface PendingRequest {
   method: string;
-  params?: any;
-  resolve: (value: any) => void;
-  reject: (error: any) => void;
+  params?: unknown;
+  resolve: (value: unknown) => void;
+  reject: (error: unknown) => void;
   timeout: NodeJS.Timeout;
   timestamp: Date;
 }
 
 export interface IRequestTracker {
-  track(id: string | number, method: string, params?: any, timeout?: number): Promise<any>;
-  resolve(id: string | number, result: any): void;
-  reject(id: string | number, error: any): void;
+  track(id: string | number, method: string, params?: unknown, timeout?: number): Promise<unknown>;
+  resolve(id: string | number, result: unknown): void;
+  reject(id: string | number, error: unknown): void;
   hasRequest(id: string | number): boolean;
   getPendingCount(): number;
   cleanup(): void;
@@ -37,7 +37,7 @@ export class RequestTracker implements IRequestTracker {
   /**
    * リクエストを追跡開始
    */
-  track(id: string | number, method: string, params?: any, timeout?: number): Promise<any> {
+  track(id: string | number, method: string, params?: unknown, timeout?: number): Promise<unknown> {
     // 既存のIDが使用されている場合はエラー
     if (this.pendingRequests.has(id)) {
       throw new Error(`Request ID ${id} is already being tracked`);
@@ -65,7 +65,7 @@ export class RequestTracker implements IRequestTracker {
   /**
    * リクエストを成功として解決
    */
-  resolve(id: string | number, result: any): void {
+  resolve(id: string | number, result: unknown): void {
     const pending = this.pendingRequests.get(id);
     if (pending) {
       clearTimeout(pending.timeout);
@@ -77,7 +77,7 @@ export class RequestTracker implements IRequestTracker {
   /**
    * リクエストをエラーとして拒否
    */
-  reject(id: string | number, error: any): void {
+  reject(id: string | number, error: unknown): void {
     const pending = this.pendingRequests.get(id);
     if (pending) {
       clearTimeout(pending.timeout);

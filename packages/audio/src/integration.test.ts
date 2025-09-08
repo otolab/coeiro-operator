@@ -14,10 +14,15 @@ import { createMockSpeakerInstance } from './test-helpers.js';
 
 // モックの設定
 global.fetch = vi.fn();
-vi.mock('../operator/index.js', () => ({
+vi.mock('@coeiro-operator/core', () => ({
   OperatorManager: vi.fn().mockImplementation(() => ({
     initialize: vi.fn(),
     getCharacterInfo: vi.fn(),
+  })),
+  getSpeakerProvider: vi.fn(() => ({
+    getSpeakers: vi.fn().mockResolvedValue([]),
+    updateConnection: vi.fn(),
+    checkConnection: vi.fn().mockResolvedValue(true),
   })),
 }));
 vi.mock('speaker', () => ({
@@ -105,13 +110,13 @@ describe('Say Integration Tests', () => {
     };
 
     // OperatorManagerのモックを設定
-    (OperatorManager as any).mockImplementation(() => mockOperatorManager);
+    vi.mocked(OperatorManager).mockImplementation(() => mockOperatorManager);
 
     // Speakerモックを設定
     const mockSpeakerInstance = createMockSpeakerInstance();
     const SpeakerModule = await vi.importMock('speaker');
-    const MockSpeaker = SpeakerModule.default as any;
-    MockSpeaker.mockImplementation(() => mockSpeakerInstance);
+    const MockSpeaker = SpeakerModule.default;
+    vi.mocked(MockSpeaker).mockImplementation(() => mockSpeakerInstance);
 
     // デフォルト設定を使用
     const configManager = createMockConfigManager();
@@ -119,7 +124,7 @@ describe('Say Integration Tests', () => {
     sayCoeiroink = new SayCoeiroink(configManager);
 
     // COEIROINK サーバーのモック設定
-    (global.fetch as any).mockImplementation((url: string) => {
+    (global.fetch as unknown).mockImplementation((url: string) => {
       if (url.includes('/v1/speakers')) {
         return Promise.resolve({
           ok: true,
@@ -272,7 +277,7 @@ describe('Say Integration Tests', () => {
   describe('エラー処理統合テスト', () => {
     test('サーバー接続失敗時の適切なエラーハンドリング', async () => {
       // サーバー接続失敗をシミュレート
-      (global.fetch as any).mockImplementation(() =>
+      (global.fetch as unknown).mockImplementation(() =>
         Promise.reject(new Error('Connection refused'))
       );
 
@@ -286,7 +291,7 @@ describe('Say Integration Tests', () => {
 
     test('音声合成API失敗時の適切なエラーハンドリング', async () => {
       // speakers APIは成功、synthesis APIは失敗
-      (global.fetch as any).mockImplementation((url: string) => {
+      (global.fetch as unknown).mockImplementation((url: string) => {
         if (url.includes('/v1/speakers')) {
           return Promise.resolve({
             ok: true,

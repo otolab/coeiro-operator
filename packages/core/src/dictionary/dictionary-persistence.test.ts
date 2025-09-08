@@ -29,7 +29,7 @@ describe('DictionaryPersistenceManager', () => {
     vi.mocked(fs.existsSync).mockReturnValue(false);
     
     // fs.mkdirSync のモック
-    vi.mocked(fs.mkdirSync).mockImplementation(() => undefined as any);
+    vi.mocked(fs.mkdirSync).mockImplementation(() => undefined as unknown);
     
     manager = new DictionaryPersistenceManager();
   });
@@ -77,7 +77,7 @@ describe('DictionaryPersistenceManager', () => {
 
       expect(writeFileMock).toHaveBeenCalledWith(
         expectedDictionaryFile,
-        expect.any(String),
+        expect.anything(String),
         'utf8'
       );
 

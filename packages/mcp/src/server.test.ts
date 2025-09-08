@@ -9,7 +9,7 @@ import type { SynthesizeResult } from '@coeiro-operator/audio';
 vi.mock('@coeiro-operator/audio');
 vi.mock('@coeiro-operator/core');
 
-const MockSayCoeiroink = SayCoeiroink as any;
+const MockSayCoeiroink = SayCoeiroink as unknown;
 
 describe('MCP Server allowFallback behavior', () => {
     let mockSayCoeiroinkInstance: any;
@@ -22,7 +22,7 @@ describe('MCP Server allowFallback behavior', () => {
             synthesizeTextAsync: vi.fn(),
             initialize: vi.fn(),
             buildDynamicConfig: vi.fn()
-        } as any;
+        } as unknown;
         
         MockSayCoeiroink.mockImplementation(() => mockSayCoeiroinkInstance);
     });

@@ -18,7 +18,13 @@ afterAll(() => {
 });
 
 // 非同期操作のためのヘルパー
-(global as any).waitFor = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+interface GlobalWithTestHelpers extends NodeJS.Global {
+  waitFor: (ms: number) => Promise<void>;
+  getTestPort: () => number;
+}
+
+const globalWithHelpers = global as unknown as GlobalWithTestHelpers;
+globalWithHelpers.waitFor = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // テスト用ポート範囲（他のテストとの競合を避ける）
-(global as any).getTestPort = () => Math.floor(Math.random() * 1000) + 9000;
+globalWithHelpers.getTestPort = () => Math.floor(Math.random() * 1000) + 9000;
