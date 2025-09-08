@@ -40,7 +40,7 @@ export class McpTestSession {
       debugMode: true,
       timeout: 30000,
       logLevel: 'debug',
-      ...config
+      ...config,
     };
   }
 
@@ -58,11 +58,11 @@ export class McpTestSession {
     }
 
     this.process = spawn('node', args, {
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     this.setupProcessHandlers();
-    
+
     // サーバー起動待機
     await this.waitForReady();
   }
@@ -75,7 +75,7 @@ export class McpTestSession {
       return;
     }
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       const timeout = setTimeout(() => {
         if (this.process) {
           this.process.kill('SIGKILL');
@@ -108,7 +108,7 @@ export class McpTestSession {
 
       // レスポンスハンドラーを登録
       const handlerId = `ctrl_${Date.now()}`;
-      this.responseHandlers.set(handlerId, (message) => {
+      this.responseHandlers.set(handlerId, message => {
         clearTimeout(timeout);
         this.responseHandlers.delete(handlerId);
         resolve(message);
@@ -128,9 +128,9 @@ export class McpTestSession {
       method: 'tools/call',
       params: {
         name: toolName,
-        arguments: args
+        arguments: args,
       },
-      id
+      id,
     };
 
     return this.sendMcpMessage(JSON.stringify(mcpMessage));
@@ -151,7 +151,7 @@ export class McpTestSession {
 
       // レスポンスハンドラーを登録
       const handlerId = `mcp_${Date.now()}`;
-      this.responseHandlers.set(handlerId, (message) => {
+      this.responseHandlers.set(handlerId, message => {
         clearTimeout(timeout);
         this.responseHandlers.delete(handlerId);
         resolve(message);
@@ -198,24 +198,24 @@ export class McpTestSession {
     if (!this.process) return;
 
     // 標準出力（MCPレスポンス + 制御レスポンス）
-    this.process.stdout?.on('data', (data) => {
+    this.process.stdout?.on('data', data => {
       const output = data.toString();
       this.parseOutput(output, 'stdout');
     });
 
     // 標準エラー出力（エラー + デバッグ）
-    this.process.stderr?.on('data', (data) => {
+    this.process.stderr?.on('data', data => {
       const output = data.toString();
       this.parseOutput(output, 'stderr');
     });
 
     // プロセス終了
-    this.process.on('close', (code) => {
+    this.process.on('close', code => {
       this.addMessage('error', `Process exited with code ${code}`);
     });
 
     // エラー
-    this.process.on('error', (error) => {
+    this.process.on('error', error => {
       this.addMessage('error', `Process error: ${error.message}`);
     });
   }
@@ -240,7 +240,7 @@ export class McpTestSession {
     this.messages.push({
       type,
       content,
-      timestamp: new Date()
+      timestamp: new Date(),
     });
   }
 
@@ -250,7 +250,7 @@ export class McpTestSession {
         handler({
           type: type as any,
           content,
-          timestamp: new Date()
+          timestamp: new Date(),
         });
       }
     }
@@ -407,14 +407,14 @@ export class TestRunner {
         { name: 'Control Mode Change', test: () => controlTester.testModeChange('debug') },
         { name: 'Control Log Stats', test: () => controlTester.testLogStats() },
         { name: 'Control Log Get', test: () => controlTester.testLogGet(5) },
-        { name: 'Control Invalid Command', test: () => controlTester.testInvalidCommand() }
+        { name: 'Control Invalid Command', test: () => controlTester.testInvalidCommand() },
       ];
 
       // MCPツールテスト
       const mcpTests = [
         { name: 'MCP Server Status', test: () => mcpTester.testServerStatus() },
         { name: 'MCP Debug Logs', test: () => mcpTester.testDebugLogs() },
-        { name: 'MCP Invalid Tool', test: () => mcpTester.testInvalidTool() }
+        { name: 'MCP Invalid Tool', test: () => mcpTester.testInvalidTool() },
       ];
 
       // すべてのテストを実行
@@ -424,15 +424,14 @@ export class TestRunner {
             const success = await testCase.test();
             results.push({ name: testCase.name, success });
           } catch (error) {
-            results.push({ 
-              name: testCase.name, 
-              success: false, 
-              error: (error as Error).message 
+            results.push({
+              name: testCase.name,
+              success: false,
+              error: (error as Error).message,
             });
           }
         }
       }
-
     } finally {
       await session.stop();
     }
@@ -444,7 +443,7 @@ export class TestRunner {
       passed,
       failed,
       total: results.length,
-      results
+      results,
     };
   }
 }

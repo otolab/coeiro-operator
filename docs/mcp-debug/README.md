@@ -30,6 +30,15 @@ mcp-debugの内部設計と実装詳細：
 - メモリ管理
 - 拡張性とテスタビリティ
 
+### [E2Eテストモード](./e2e-testing.md)
+プログラマティックなMCPサーバーテスト：
+- MCPServiceE2ETesterクラス
+- withMCPServerヘルパー
+- E2EAssertionsアサーション
+- 並行実行サポート
+- Jestとの統合
+- CI/CDでの使用例
+
 ## 🚀 クイックスタート
 
 ### 基本的な使い方
@@ -44,6 +53,20 @@ node dist/mcp-debug/cli.js --interactive dist/mcp/server.js
 
 # デバッグモード
 node dist/mcp-debug/cli.js --debug dist/mcp/server.js
+```
+
+### E2Eテストモード（プログラマティック）
+
+```typescript
+import { withMCPServer } from 'coeiro-operator/mcp-debug';
+
+await withMCPServer(
+  { serverPath: 'dist/mcp/server.js' },
+  async (tester) => {
+    const result = await tester.callTool('operator_status');
+    console.log(result);
+  }
+);
 ```
 
 ### Echo Serverでの練習

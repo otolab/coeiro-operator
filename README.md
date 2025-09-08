@@ -265,6 +265,17 @@ npm install && npm run build
 
 詳細な事前要件・開発環境構築は **[docs/development-tips.md](docs/development-tips.md)** を参照。
 
+## ドキュメント構造
+
+本プロジェクトのドキュメントは、対象読者別に整理されています：
+
+- **一般ユーザー向け**: このREADME.mdから開始
+- **開発者向け詳細**: [docs/README.md](docs/README.md) - 技術ドキュメント完全インデックス
+- **AI Agent向け**: [AGENTS.md](AGENTS.md) - Claude Code等のAI向けクイックリファレンス
+  - 詳細プロンプト: [prompts/README.md](prompts/README.md)
+
+各README.mdファイルが、それぞれの対象に応じた情報へのインデックスとして機能します。
+
 ## サポート・コミュニティ
 
 - **Issue報告**: [GitHub Issues](https://github.com/otolab/coeiro-operator/issues)

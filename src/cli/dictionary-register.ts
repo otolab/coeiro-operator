@@ -2,7 +2,7 @@
 
 /**
  * COEIROINK ユーザー辞書登録 CLIツール
- * 
+ *
  * 使用方法:
  * dictionary-register                       # デフォルト技術用語を登録
  * dictionary-register --preset all          # 全プリセット登録
@@ -14,7 +14,10 @@ import { Command } from 'commander';
 import fs from 'fs';
 import { DictionaryService } from '../core/dictionary/dictionary-service.js';
 import { DictionaryWord } from '../core/dictionary/dictionary-client.js';
-import { DEFAULT_TECHNICAL_WORDS, CHARACTER_NAME_WORDS } from '../core/dictionary/default-dictionaries.js';
+import {
+  DEFAULT_TECHNICAL_WORDS,
+  CHARACTER_NAME_WORDS,
+} from '../core/dictionary/default-dictionaries.js';
 
 const program = new Command();
 
@@ -49,18 +52,20 @@ async function testProsody(word: string, host: string, port: string): Promise<vo
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ text: word })
+      body: JSON.stringify({ text: word }),
     });
-    
+
     if (response.ok) {
       const result = await response.json();
       console.log(`\n📝 「${word}」の韻律解析結果:`);
       console.log('─'.repeat(60));
-      
+
       if (result.detail && result.detail[0]) {
         console.log('モーラ解析:');
-        result.detail[0].forEach((mora: any, index: number) => {
-          console.log(`  ${index + 1}. ${mora.hira} (${mora.phoneme}) - アクセント: ${mora.accent}`);
+        result.detail[0].forEach((mora: {hira: string; phoneme: string; accent: number}, index: number) => {
+          console.log(
+            `  ${index + 1}. ${mora.hira} (${mora.phoneme}) - アクセント: ${mora.accent}`
+          );
         });
         console.log('\n音素記号:');
         console.log('  ' + result.plain.join(' '));
@@ -71,8 +76,8 @@ async function testProsody(word: string, host: string, port: string): Promise<vo
     } else {
       console.error('❌ 韻律解析に失敗しました:', response.statusText);
     }
-  } catch (error: any) {
-    console.error('❌ エラー:', error.message);
+  } catch (error) {
+    console.error('❌ エラー:', (error as Error).message);
   }
 }
 
@@ -89,7 +94,7 @@ async function main() {
     console.log(JSON.stringify(CHARACTER_NAME_WORDS, null, 2));
     process.exit(0);
   }
-  
+
   // エクスポート
   if (options.export) {
     const exportData = [...DEFAULT_TECHNICAL_WORDS, ...CHARACTER_NAME_WORDS];
@@ -97,19 +102,19 @@ async function main() {
     console.log(`✅ デフォルト辞書をエクスポートしました: ${options.export}`);
     process.exit(0);
   }
-  
+
   // 韻律解析テスト
   if (options.test) {
     await testProsody(options.test, options.host, options.port);
     process.exit(0);
   }
-  
+
   // DictionaryServiceのインスタンス作成
-  const service = new DictionaryService({ 
-    host: options.host, 
-    port: options.port 
+  const service = new DictionaryService({
+    host: options.host,
+    port: options.port,
   });
-  
+
   // 初期化と接続確認
   await service.initialize();
   const isConnected = await service.checkConnection();
@@ -119,18 +124,18 @@ async function main() {
     console.error('   サーバーが起動していることを確認してください');
     process.exit(1);
   }
-  
+
   // 登録する単語を決定
   let wordsToRegister: DictionaryWord[] = [];
-  
+
   // カスタムファイル
   if (options.file) {
     try {
       const content = fs.readFileSync(options.file, 'utf8');
       wordsToRegister = JSON.parse(content);
       console.log(`📁 カスタム辞書ファイルを読み込みました: ${options.file}`);
-    } catch (error: any) {
-      console.error(`❌ ファイル読み込みエラー: ${error.message}`);
+    } catch (error) {
+      console.error(`❌ ファイル読み込みエラー: ${(error as Error).message}`);
       process.exit(1);
     }
   }
@@ -140,12 +145,14 @@ async function main() {
       console.error('❌ 単語登録には --yomi, --accent, --moras が必要です');
       process.exit(1);
     }
-    wordsToRegister = [{
-      word: options.word,
-      yomi: options.yomi,
-      accent: options.accent,
-      numMoras: options.moras
-    }];
+    wordsToRegister = [
+      {
+        word: options.word,
+        yomi: options.yomi,
+        accent: options.accent,
+        numMoras: options.moras,
+      },
+    ];
   }
   // プリセット辞書
   else {
@@ -164,15 +171,15 @@ async function main() {
         process.exit(1);
     }
   }
-  
+
   if (wordsToRegister.length === 0) {
     console.error('⚠️ 登録する単語がありません');
     process.exit(1);
   }
-  
+
   // 辞書登録実行
   console.log(`📝 ${wordsToRegister.length}個の単語を登録中...`);
-  
+
   // 単一単語の場合はaddWord、複数の場合は直接登録
   let success = false;
   if (options.word && wordsToRegister.length === 1) {
@@ -190,22 +197,21 @@ async function main() {
     success = true;
     console.log(`✅ ${wordsToRegister.length}個の単語を登録しました\n`);
   }
-  
+
   if (success) {
-    
     // 登録内容を表示
     console.log('登録された単語:');
     console.log('─'.repeat(60));
     console.log('単語\t\t読み方\t\tアクセント\tモーラ数');
     console.log('─'.repeat(60));
-    
+
     for (const word of wordsToRegister) {
       const paddedWord = word.word.padEnd(16);
       const paddedYomi = word.yomi.padEnd(16);
       console.log(`${paddedWord}${paddedYomi}${word.accent}\t\t${word.numMoras}`);
     }
     console.log('─'.repeat(60));
-    
+
     console.log('\n⚠️ 注意事項:');
     console.log('• 登録した辞書はCOEIROINK再起動時にリセットされます');
     console.log('• 全角で登録された単語は半角入力にも適用されます');
@@ -221,7 +227,7 @@ async function main() {
 }
 
 // エラーハンドリング
-main().catch((error) => {
+main().catch(error => {
   console.error('❌ 予期しないエラー:', error.message);
   process.exit(1);
 });

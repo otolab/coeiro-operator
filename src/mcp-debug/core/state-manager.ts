@@ -9,7 +9,7 @@ export enum MCPServerState {
   READY = 'ready',
   PROCESSING = 'processing',
   SHUTTING_DOWN = 'shutting_down',
-  TERMINATED = 'terminated'
+  TERMINATED = 'terminated',
 }
 
 export interface IMCPStateManager {
@@ -23,16 +23,34 @@ export interface IMCPStateManager {
 export class MCPStateManager implements IMCPStateManager {
   private _currentState: MCPServerState = MCPServerState.UNINITIALIZED;
   private stateWaiters = new Map<MCPServerState, Set<(value: void) => void>>();
-  private stateChangeHandlers = new Set<(oldState: MCPServerState, newState: MCPServerState) => void>();
-  
+  private stateChangeHandlers = new Set<
+    (oldState: MCPServerState, newState: MCPServerState) => void
+  >();
+
   // 状態遷移の有効性を定義
   private readonly validTransitions: Record<MCPServerState, MCPServerState[]> = {
-    [MCPServerState.UNINITIALIZED]: [MCPServerState.INITIALIZING, MCPServerState.SHUTTING_DOWN, MCPServerState.TERMINATED],
-    [MCPServerState.INITIALIZING]: [MCPServerState.READY, MCPServerState.SHUTTING_DOWN, MCPServerState.TERMINATED],
-    [MCPServerState.READY]: [MCPServerState.PROCESSING, MCPServerState.SHUTTING_DOWN, MCPServerState.TERMINATED],
-    [MCPServerState.PROCESSING]: [MCPServerState.READY, MCPServerState.SHUTTING_DOWN, MCPServerState.TERMINATED],
+    [MCPServerState.UNINITIALIZED]: [
+      MCPServerState.INITIALIZING,
+      MCPServerState.SHUTTING_DOWN,
+      MCPServerState.TERMINATED,
+    ],
+    [MCPServerState.INITIALIZING]: [
+      MCPServerState.READY,
+      MCPServerState.SHUTTING_DOWN,
+      MCPServerState.TERMINATED,
+    ],
+    [MCPServerState.READY]: [
+      MCPServerState.PROCESSING,
+      MCPServerState.SHUTTING_DOWN,
+      MCPServerState.TERMINATED,
+    ],
+    [MCPServerState.PROCESSING]: [
+      MCPServerState.READY,
+      MCPServerState.SHUTTING_DOWN,
+      MCPServerState.TERMINATED,
+    ],
     [MCPServerState.SHUTTING_DOWN]: [MCPServerState.TERMINATED],
-    [MCPServerState.TERMINATED]: []
+    [MCPServerState.TERMINATED]: [],
   };
 
   get currentState(): MCPServerState {
@@ -41,7 +59,7 @@ export class MCPStateManager implements IMCPStateManager {
 
   transitionTo(newState: MCPServerState): void {
     const oldState = this._currentState;
-    
+
     // 同じ状態への遷移は無視
     if (oldState === newState) {
       return;
@@ -54,7 +72,7 @@ export class MCPStateManager implements IMCPStateManager {
 
     // 状態を更新
     this._currentState = newState;
-    
+
     // 状態変更ハンドラーを呼び出し
     this.stateChangeHandlers.forEach(handler => {
       try {
@@ -63,7 +81,7 @@ export class MCPStateManager implements IMCPStateManager {
         console.error('Error in state change handler:', error);
       }
     });
-    
+
     // 待機中のPromiseを解決
     const waiters = this.stateWaiters.get(newState);
     if (waiters) {
@@ -118,17 +136,19 @@ export class MCPStateManager implements IMCPStateManager {
     this.stateChangeHandlers.add(handler);
   }
 
-  removeStateChangeHandler(handler: (oldState: MCPServerState, newState: MCPServerState) => void): void {
+  removeStateChangeHandler(
+    handler: (oldState: MCPServerState, newState: MCPServerState) => void
+  ): void {
     this.stateChangeHandlers.delete(handler);
   }
 
   reset(): void {
     // すべての待機中のPromiseを拒否
-    this.stateWaiters.forEach((waiters) => {
+    this.stateWaiters.forEach(waiters => {
       waiters.clear();
     });
     this.stateWaiters.clear();
-    
+
     // 状態をリセット
     this._currentState = MCPServerState.UNINITIALIZED;
   }

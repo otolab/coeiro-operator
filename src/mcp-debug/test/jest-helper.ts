@@ -40,7 +40,7 @@ export class McpTestHelper {
     mcpResponses: [],
     controlResponses: [],
     debugMessages: [],
-    errorMessages: []
+    errorMessages: [],
   };
 
   constructor(private config: McpTestConfig = {}) {
@@ -48,7 +48,7 @@ export class McpTestHelper {
       timeout: 10000,
       debugMode: false,
       maxRetries: 3,
-      ...config
+      ...config,
     };
   }
 
@@ -58,15 +58,15 @@ export class McpTestHelper {
   async startEchoServer(): Promise<void> {
     const serverPath = path.resolve(__dirname, '../../../dist/mcp-debug/test/echo-server.js');
     const args = this.config.debugMode ? ['--debug'] : [];
-    
+
     return new Promise((resolve, reject) => {
       this.serverProcess = spawn('node', [serverPath, ...args], {
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
 
       this.setupOutputHandlers();
 
-      this.serverProcess.on('error', (error) => {
+      this.serverProcess.on('error', error => {
         reject(new Error(`Failed to start server: ${error.message}`));
       });
 
@@ -93,15 +93,15 @@ export class McpTestHelper {
    */
   async startCoeitoOperatorServer(): Promise<void> {
     const serverPath = path.resolve(__dirname, '../../../dist/mcp/server.js');
-    
+
     return new Promise((resolve, reject) => {
       this.serverProcess = spawn('node', [serverPath], {
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
       });
 
       this.setupOutputHandlers();
 
-      this.serverProcess.on('error', (error) => {
+      this.serverProcess.on('error', error => {
         reject(new Error(`Failed to start server: ${error.message}`));
       });
 
@@ -115,7 +115,7 @@ export class McpTestHelper {
    */
   async stopServer(): Promise<void> {
     if (this.serverProcess) {
-      return new Promise((resolve) => {
+      return new Promise(resolve => {
         this.serverProcess!.on('close', () => {
           this.serverProcess = undefined;
           resolve();
@@ -129,14 +129,20 @@ export class McpTestHelper {
    * 出力ハンドラーを設定
    */
   private setupOutputHandlers(): void {
-    this.serverProcess!.stdout?.on('data', (data) => {
-      const lines = data.toString().split('\n').filter((line: string) => line.trim());
+    this.serverProcess!.stdout?.on('data', data => {
+      const lines = data
+        .toString()
+        .split('\n')
+        .filter((line: string) => line.trim());
       this.output.stdout.push(...lines);
       this.parseOutput(lines);
     });
 
-    this.serverProcess!.stderr?.on('data', (data) => {
-      const lines = data.toString().split('\n').filter((line: string) => line.trim());
+    this.serverProcess!.stderr?.on('data', data => {
+      const lines = data
+        .toString()
+        .split('\n')
+        .filter((line: string) => line.trim());
       this.output.stderr.push(...lines);
       this.parseErrorOutput(lines);
     });
@@ -184,7 +190,7 @@ export class McpTestHelper {
       throw new Error('Server not started');
     }
 
-    return new Promise((resolve) => {
+    return new Promise(resolve => {
       this.serverProcess!.stdin!.write(command + '\n');
       // 処理時間を確保
       setTimeout(resolve, 100);
@@ -199,14 +205,14 @@ export class McpTestHelper {
       jsonrpc: '2.0',
       method,
       ...(params && { params }),
-      id
+      id,
     };
 
     await this.sendCommand(JSON.stringify(request));
-    
+
     // レスポンスを待機
     await new Promise(resolve => setTimeout(resolve, 200));
-    
+
     return this.output.mcpResponses.find(r => r.id === id);
   }
 
@@ -215,10 +221,10 @@ export class McpTestHelper {
    */
   async sendControlCommand(command: string): Promise<string | undefined> {
     await this.sendCommand(`CTRL:${command}`);
-    
+
     // レスポンスを待機
     await new Promise(resolve => setTimeout(resolve, 200));
-    
+
     return this.output.controlResponses.find(r => r.includes(`CTRL_RESPONSE:${command}:`));
   }
 
@@ -232,7 +238,7 @@ export class McpTestHelper {
       mcpResponses: [],
       controlResponses: [],
       debugMessages: [],
-      errorMessages: []
+      errorMessages: [],
     };
   }
 
@@ -248,23 +254,27 @@ export class McpTestHelper {
    */
   async waitForCondition(condition: () => boolean, timeoutMs = 5000): Promise<boolean> {
     const start = Date.now();
-    
+
     while (Date.now() - start < timeoutMs) {
       if (condition()) {
         return true;
       }
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
+
     return false;
   }
 
   /**
    * レスポンスを待機
    */
-  async waitForResponse(type: 'mcp' | 'control', matcher: (response: any) => boolean, timeoutMs = 5000): Promise<any> {
+  async waitForResponse(
+    type: 'mcp' | 'control',
+    matcher: (response: any) => boolean,
+    timeoutMs = 5000
+  ): Promise<any> {
     const start = Date.now();
-    
+
     while (Date.now() - start < timeoutMs) {
       const responses = type === 'mcp' ? this.output.mcpResponses : this.output.controlResponses;
       const match = responses.find(matcher);
@@ -273,7 +283,7 @@ export class McpTestHelper {
       }
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
+
     throw new Error(`Timeout waiting for ${type} response`);
   }
 }
@@ -285,21 +295,21 @@ export async function executeNodeScript(script: string, cwd?: string): Promise<a
   return new Promise((resolve, reject) => {
     const child = spawn('node', ['--input-type=module', '-e', script], {
       cwd: cwd || path.resolve(__dirname, '../../..'),
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
 
     let output = '';
     let errorOutput = '';
 
-    child.stdout.on('data', (data) => {
+    child.stdout.on('data', data => {
       output += data.toString();
     });
 
-    child.stderr.on('data', (data) => {
+    child.stderr.on('data', data => {
       errorOutput += data.toString();
     });
 
-    child.on('close', (code) => {
+    child.on('close', code => {
       if (code === 0) {
         try {
           const result = JSON.parse(output.trim());
@@ -312,7 +322,7 @@ export async function executeNodeScript(script: string, cwd?: string): Promise<a
       }
     });
 
-    child.on('error', (error) => {
+    child.on('error', error => {
       reject(error);
     });
   });
