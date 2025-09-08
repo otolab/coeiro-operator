@@ -136,7 +136,7 @@ it('長文の分割処理が正しく動作する', async () => {
 ### E2Eテストでのモック
 
 ```typescript
-// src/mcp/e2e/mocks/coeiroink-mock.ts
+// src/e2e-test/mocks/coeiroink-mock.ts
 export class COEIROINKMockServer {
   private app: express.Application;
   private synthesisCount = 0;
