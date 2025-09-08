@@ -138,7 +138,7 @@ export class MCPDebugClient {
             console.error('[MCP Debug] Notification processed:', message.method);
           }
         }
-      } catch (error) {
+      } catch {
         // JSON以外の出力（デバッグログなど）もログに保存
         this.logs.push({
           timestamp: new Date(),

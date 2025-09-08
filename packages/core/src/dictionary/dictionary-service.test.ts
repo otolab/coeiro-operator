@@ -246,13 +246,13 @@ describe('DictionaryService', () => {
                 port: '12345'
             };
 
-            const customService = new DictionaryService(connectionConfig);
+            const _customService = new DictionaryService(connectionConfig);
 
             expect(DictionaryClient).toHaveBeenCalledWith(connectionConfig);
         });
 
         it('接続設定なしでも動作する', () => {
-            const defaultService = new DictionaryService();
+            const _defaultService = new DictionaryService();
 
             expect(DictionaryClient).toHaveBeenCalledWith(undefined);
         });

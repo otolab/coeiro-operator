@@ -165,7 +165,7 @@ export class McpTestHelper {
           // デバッグメッセージ
           this.output.debugMessages.push(line);
         }
-      } catch (e) {
+      } catch {
         // JSON解析失敗は無視
       }
     }
@@ -314,7 +314,7 @@ export async function executeNodeScript(script: string, cwd?: string): Promise<a
         try {
           const result = JSON.parse(output.trim());
           resolve(result);
-        } catch (e) {
+        } catch {
           reject(new Error(`Failed to parse output: ${output}`));
         }
       } else {
