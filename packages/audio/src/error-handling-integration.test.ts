@@ -7,11 +7,11 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SayCoeiroink } from './index.js';
 import { createMockConfigManager } from './test-helpers.js';
-import { OperatorManager } from '../operator/index.js';
+import { OperatorManager } from '@coeiro-operator/core';
 
 // 共通モック設定
 global.fetch = vi.fn();
-vi.mock('../operator/index.js', () => ({
+vi.mock('@coeiro-operator/core', () => ({
   OperatorManager: vi.fn().mockImplementation(() => ({
     initialize: vi.fn().mockResolvedValue(undefined),
     getCharacterInfo: vi.fn(),

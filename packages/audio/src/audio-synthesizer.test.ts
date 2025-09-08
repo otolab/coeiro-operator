@@ -4,7 +4,7 @@
 
 import { AudioSynthesizer } from './audio-synthesizer.js';
 import type { Config, Chunk, VoiceConfig, AudioResult } from './types.js';
-import type { Speaker } from '../operator/character-info-service.js';
+import type { Speaker } from '@coeiro-operator/core';
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 

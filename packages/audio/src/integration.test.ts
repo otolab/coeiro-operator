@@ -8,8 +8,8 @@ import type { Config, SynthesizeOptions } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { writeFile, readFile, unlink } from 'fs/promises';
-import { OperatorManager } from '../operator/index.js';
-import type { Character, Speaker as SpeakerType } from '../operator/character-info-service.js';
+import { OperatorManager } from '@coeiro-operator/core';
+import type { Character, Speaker as SpeakerType } from '@coeiro-operator/core';
 import { createMockSpeakerInstance } from './test-helpers.js';
 
 // モックの設定

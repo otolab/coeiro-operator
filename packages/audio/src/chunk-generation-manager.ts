@@ -3,7 +3,7 @@
  * 複数チャンクの生成を並行して行い、完成順序ではなく論理順序で管理
  */
 
-import { logger } from '../../utils/logger.js';
+import { logger } from '@coeiro-operator/core';
 import type { Chunk, AudioResult, VoiceConfig } from './types.js';
 
 export interface GenerationTask {

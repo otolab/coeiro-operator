@@ -83,7 +83,7 @@ export interface AudioResult {
 }
 
 // CharacterInfoServiceのCharacter型を使用
-import type { Character, Speaker } from '../operator/character-info-service.js';
+import type { Character, Speaker } from '@coeiro-operator/core';
 
 /**
  * VoiceConfig: 音声合成に必要な最小限の情報

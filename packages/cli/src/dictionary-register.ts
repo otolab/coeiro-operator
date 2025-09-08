@@ -12,12 +12,12 @@
 
 import { Command } from 'commander';
 import fs from 'fs';
-import { DictionaryService } from '../core/dictionary/dictionary-service.js';
-import { DictionaryWord } from '../core/dictionary/dictionary-client.js';
-import {
+import { 
+  DictionaryService,
+  DictionaryWord,
   DEFAULT_TECHNICAL_WORDS,
-  CHARACTER_NAME_WORDS,
-} from '../core/dictionary/default-dictionaries.js';
+  CHARACTER_NAME_WORDS
+} from '@coeiro-operator/core';
 
 const program = new Command();
 

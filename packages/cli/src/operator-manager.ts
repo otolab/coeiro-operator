@@ -5,7 +5,7 @@
  * operator-managerスクリプトのJavaScript版
  */
 
-import OperatorManager from '../core/operator/index.js';
+import { OperatorManager } from '@coeiro-operator/core';
 
 interface AssignResult {
   characterId: string; // キャラクターID（例: 'tsukuyomi'）

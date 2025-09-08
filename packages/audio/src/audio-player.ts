@@ -11,7 +11,7 @@ import type Speaker from 'speaker';
 import { Transform } from 'stream';
 import { EventEmitter } from 'events';
 import type { AudioResult, Chunk, Config, AudioConfig } from './types.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '@coeiro-operator/core';
 import {
   SAMPLE_RATES,
   AUDIO_FORMAT,

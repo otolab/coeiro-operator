@@ -35,6 +35,8 @@
     "dist",
     "**/dist",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "coverage",
+    "eslint.config.js"
   ]
 }

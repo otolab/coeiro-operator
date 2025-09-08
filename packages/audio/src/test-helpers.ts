@@ -3,7 +3,7 @@
  */
 
 import { vi } from 'vitest';
-import { ConfigManager } from '../operator/config-manager.js';
+import { ConfigManager } from '@coeiro-operator/core';
 import type { Config } from './types.js';
 
 /**

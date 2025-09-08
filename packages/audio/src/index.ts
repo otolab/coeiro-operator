@@ -3,13 +3,12 @@
  * MCPサーバから直接呼び出し可能なモジュール
  */
 
-import { OperatorManager } from '../operator/index.js';
-import { ConfigManager } from '../operator/config-manager.js';
-import type { Character, Speaker } from '../operator/character-info-service.js';
+import { OperatorManager, ConfigManager } from '@coeiro-operator/core';
+import type { Character, Speaker } from '@coeiro-operator/core';
 import { SpeechQueue } from './speech-queue.js';
 import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '@coeiro-operator/core';
 import {
   CONNECTION_SETTINGS,
   SAMPLE_RATES,
@@ -641,3 +640,8 @@ export class SayCoeiroink {
 
 // デフォルトエクスポート
 export default SayCoeiroink;
+
+// 名前付きエクスポート
+export { SayCoeiroink };
+export type { Config, SynthesizeResult, SynthesizeOptions } from './types.js';
+export { BUFFER_SIZES } from './constants.js';

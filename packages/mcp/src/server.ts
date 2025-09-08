@@ -3,13 +3,16 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import * as path from 'path';
-import { SayCoeiroink } from '../core/say/index.js';
-import { ConfigManager } from '../core/operator/config-manager.js';
-import { getConfigDir } from '../core/common/config-paths.js';
-import { OperatorManager } from '../core/operator/index.js';
-import type { Character } from '../core/operator/character-info-service.js';
-import { logger, LoggerPresets } from '../utils/logger.js';
-import { DictionaryService } from '../core/dictionary/dictionary-service.js';
+import { SayCoeiroink } from '@coeiro-operator/audio';
+import { 
+  ConfigManager,
+  getConfigDir,
+  OperatorManager,
+  logger,
+  LoggerPresets,
+  DictionaryService
+} from '@coeiro-operator/core';
+import type { Character } from '@coeiro-operator/core';
 
 // デバッグ: 環境変数を確認
 if (process.env.NODE_ENV === 'test' || process.env.CI === 'true') {

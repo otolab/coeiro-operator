@@ -12,10 +12,10 @@ import type {
   AudioConfig,
   VoiceConfig,
 } from './types.js';
-import type { Style, Character } from '../operator/character-info-service.js';
-import { logger } from '../../utils/logger.js';
+import type { Style, Character } from '@coeiro-operator/core';
+import { logger } from '@coeiro-operator/core';
 import { SAMPLE_RATES, SPLIT_SETTINGS, PADDING_SETTINGS, SYNTHESIS_SETTINGS } from './constants.js';
-import { getSpeakerProvider } from '../environment/speaker-provider.js';
+import { getSpeakerProvider } from '@coeiro-operator/core';
 import { AudioStreamController, StreamControllerOptions } from './audio-stream-controller.js';
 
 // ストリーミング設定

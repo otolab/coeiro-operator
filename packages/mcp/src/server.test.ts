@@ -2,12 +2,12 @@
  * src/index.test.ts: MCPサーバーテスト（allowFallback動作確認）
  */
 
-import { SayCoeiroink } from '../core/say/index.js';
-import type { SynthesizeResult } from '../core/say/types.js';
+import { SayCoeiroink } from '@coeiro-operator/audio';
+import type { SynthesizeResult } from '@coeiro-operator/audio';
 
 // モックの設定
-vi.mock('../core/say/index.js');
-vi.mock('../core/operator/index.js');
+vi.mock('@coeiro-operator/audio');
+vi.mock('@coeiro-operator/core');
 
 const MockSayCoeiroink = SayCoeiroink as any;
 

@@ -7,12 +7,10 @@
 
 import { readFile, access } from 'fs/promises';
 import { constants } from 'fs';
-import { SayCoeiroink } from '../core/say/index.js';
-import { ConfigManager } from '../core/operator/config-manager.js';
-import { getConfigDir } from '../core/common/config-paths.js';
-import type { Config } from '../core/say/types.js';
-import { BUFFER_SIZES } from '../core/say/constants.js';
-import { LoggerPresets } from '../utils/logger.js';
+import { SayCoeiroink } from '@coeiro-operator/audio';
+import { ConfigManager, getConfigDir, LoggerPresets } from '@coeiro-operator/core';
+import type { Config } from '@coeiro-operator/audio';
+import { BUFFER_SIZES } from '@coeiro-operator/audio';
 
 interface ParsedOptions {
   voice: string;
