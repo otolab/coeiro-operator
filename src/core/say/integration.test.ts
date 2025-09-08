@@ -64,7 +64,6 @@ describe('Say Integration Tests', () => {
           characterId === 'test-speaker-1' ||
           characterId === 'test-voice' ||
           characterId === '3c37646f-3881-5374-2a83-149267990abc' ||
-          characterId === 'custom-voice-id' ||
           characterId === 'tsukuyomi'  // デフォルトキャラクターを追加
         ) {
           const testCharacter: Character = {
@@ -188,6 +187,9 @@ describe('Say Integration Tests', () => {
     } catch (error) {
       // ディレクトリ作成エラーは無視
     }
+    
+    // SayCoeiroinkを初期化
+    await sayCoeiroink.initialize();
   });
 
   afterEach(async () => {
@@ -202,9 +204,6 @@ describe('Say Integration Tests', () => {
 
   describe('End-to-End ワークフロー', () => {
     test('初期化から音声合成まで完全なフローが動作すること', async () => {
-      // 初期化フェーズ
-      await expect(sayCoeiroink.initialize()).resolves.not.toThrow();
-
       // サーバー接続確認
       const isConnected = await sayCoeiroink.checkServerConnection();
       expect(isConnected).toBe(true);
@@ -338,7 +337,7 @@ describe('Say Integration Tests', () => {
     });
 
     test('異なる音声ID設定での合成が正常に動作すること', async () => {
-      const voiceIds = ['test-speaker-1', 'custom-voice-id'];
+      const voiceIds = ['test-speaker-1', 'tsukuyomi'];
 
       for (const voiceId of voiceIds) {
         const result = await sayCoeiroink.synthesizeText('音声IDテスト', {

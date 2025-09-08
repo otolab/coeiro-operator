@@ -483,6 +483,9 @@ export class SayCoeiroink {
     // オプション解析とデバッグログ出力
     const resolvedOptions = this.resolveAndLogOptions(options);
 
+    // サーバー接続確認を最初に行う
+    await this.validateServerConnection();
+
     // 音声設定の決定（VoiceConfigに統一）
     let voiceConfig: VoiceConfig;
 
@@ -534,9 +537,6 @@ export class SayCoeiroink {
       const styleName = selectedStyle?.styleName || `ID:${voiceConfig.selectedStyleId}`;
       logger.info(`VoiceConfig使用: ${voiceConfig.speaker.speakerName} (スタイル: ${styleName})`);
     }
-
-    // サーバー接続確認
-    await this.validateServerConnection();
 
     const speed = this.convertRateToSpeed(resolvedOptions.rate);
 
