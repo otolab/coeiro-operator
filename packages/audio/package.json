@@ -1,0 +1,35 @@
+{
+  "name": "@coeiro-operator/audio",
+  "version": "1.0.0",
+  "description": "Audio synthesis and playback module for COEIRO Operator",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts,.js",
+    "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
+  },
+  "dependencies": {
+    "@coeiro-operator/core": "workspace:*",
+    "speaker": "^0.5.5",
+    "wav": "^1.0.2",
+    "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "@types/wav": "^1.0.4",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "keywords": [
+    "audio",
+    "synthesis",
+    "coeiroink",
+    "tts"
+  ],
+  "license": "MIT"
+}

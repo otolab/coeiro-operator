@@ -2,6 +2,10 @@
   "name": "coeiro-operator",
   "version": "2.0.0",
   "description": "MCP server for COEIROINK voice synthesis and operator management",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "main": "dist/mcp/server.js",
   "bin": {
     "coeiro-operator": "./dist/mcp/server.js",
