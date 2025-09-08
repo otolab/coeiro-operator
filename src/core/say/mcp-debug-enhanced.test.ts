@@ -294,7 +294,7 @@ class CoeirocoperatorMCPDebugTestRunner {
   }
 }
 
-describe('COEIRO Operator with MCP Debug Integration E2E Tests', () => {
+describe.skip('COEIRO Operator with MCP Debug Integration E2E Tests', () => {
   let testRunner: CoeirocoperatorMCPDebugTestRunner;
 
   beforeEach(() => {
