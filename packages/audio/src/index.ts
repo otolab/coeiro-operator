@@ -212,7 +212,7 @@ export class SayCoeiroink {
       }
       
       // speaker-provider.Speakerからoperator.Speakerへ変換
-      const operatorSpeaker: import('../operator/character-info-service.js').Speaker = {
+      const operatorSpeaker: Speaker = {
         speakerId: speaker.speakerUuid,
         speakerName: speaker.speakerName,
         styles: speaker.styles,
@@ -641,7 +641,6 @@ export class SayCoeiroink {
 // デフォルトエクスポート
 export default SayCoeiroink;
 
-// 名前付きエクスポート
-export { SayCoeiroink };
+// 型と定数のエクスポート
 export type { Config, SynthesizeResult, SynthesizeOptions } from './types.js';
 export { BUFFER_SIZES } from './constants.js';

@@ -3,7 +3,11 @@
  * COEIROINKサーバーからの動的Speaker情報取得を一元管理
  */
 
-import { CONNECTION_SETTINGS } from '../say/constants.js';
+// CONNECTION_SETTINGSを直接定義（循環参照を避けるため）
+const CONNECTION_SETTINGS = {
+  DEFAULT_HOST: 'localhost',
+  DEFAULT_PORT: '50032',
+} as const;
 
 export interface VoiceStyle {
   styleId: number;

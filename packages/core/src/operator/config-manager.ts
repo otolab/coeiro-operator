@@ -11,7 +11,11 @@ import {
   BaseCharacterConfig,
   CharacterConfig,
 } from './character-defaults.js';
-import { CONNECTION_SETTINGS } from '../say/constants.js';
+// CONNECTION_SETTINGSを直接定義（循環参照を避けるため）
+const CONNECTION_SETTINGS = {
+  DEFAULT_HOST: 'localhost',
+  DEFAULT_PORT: '50032',
+} as const;
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
 
 // 統一設定ファイルの型定義
@@ -248,7 +252,8 @@ export class ConfigManager {
   /**
    * 完全なConfig型を取得（SayCoeiroink用）
    */
-  async getFullConfig(): Promise<import('../say/types.js').Config> {
+  async getFullConfig(): Promise<any> {
+    // 返り値の型はaudioパッケージのConfig型と互換性があります
     const config = await this.loadConfig();
     if (!this.mergedConfig) {
       await this.buildDynamicConfig();

@@ -21,8 +21,13 @@ export * from './operator/character-defaults.js';
 export * from './operator/config-manager.js';
 export * from './operator/file-operation-manager.js';
 
-// Environment
-export * from './environment/speaker-provider.js';
+// Environment (Speakerは除外してcharacter-info-serviceから使用)
+export { 
+  VoiceStyle,
+  ConnectionConfig,
+  getSpeakerProvider,
+  type SpeakerProvider
+} from './environment/speaker-provider.js';
 
 // Test utilities (only for development)
 export * from './test-utils/test-env.js';

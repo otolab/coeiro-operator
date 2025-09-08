@@ -14,8 +14,8 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@coeiro-operator/common": "workspace:*",
-    "@coeiro-operator/core": "workspace:*",
+    "@coeiro-operator/common": "*",
+    "@coeiro-operator/core": "*",
     "speaker": "^0.5.5",
     "wav": "^1.0.2",
     "node-fetch": "^3.3.2"

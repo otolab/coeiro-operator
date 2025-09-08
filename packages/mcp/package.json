@@ -18,8 +18,9 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@coeiro-operator/core": "workspace:*",
-    "@coeiro-operator/audio": "workspace:*",
+    "@coeiro-operator/common": "*",
+    "@coeiro-operator/core": "*",
+    "@coeiro-operator/audio": "*",
     "@modelcontextprotocol/sdk": "^1.17.0"
   },
   "devDependencies": {
