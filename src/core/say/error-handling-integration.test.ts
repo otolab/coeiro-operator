@@ -7,9 +7,6 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SayCoeiroink } from './index.js';
 import { createMockConfigManager } from './test-helpers.js';
-import { logger } from '../../utils/logger.js';
-import { tmpdir } from 'os';
-import { join } from 'path';
 
 // 共通モック設定
 global.fetch = vi.fn();

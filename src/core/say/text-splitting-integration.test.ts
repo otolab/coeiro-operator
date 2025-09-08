@@ -6,7 +6,7 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SayCoeiroink } from './index.js';
 import { createMockConfigManager } from './test-helpers.js';
-import type { Config, SynthesizeOptions } from './types.js';
+import type { Config } from './types.js';
 import { tmpdir } from 'os';
 import { join } from 'path';
 
