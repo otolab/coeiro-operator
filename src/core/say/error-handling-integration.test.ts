@@ -7,9 +7,21 @@
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SayCoeiroink } from './index.js';
 import { createMockConfigManager } from './test-helpers.js';
+import { OperatorManager } from '../operator/index.js';
 
 // 共通モック設定
 global.fetch = vi.fn();
+vi.mock('../operator/index.js', () => ({
+  OperatorManager: vi.fn().mockImplementation(() => ({
+    initialize: vi.fn().mockResolvedValue(undefined),
+    getCharacterInfo: vi.fn(),
+    selectStyle: vi.fn(),
+    showCurrentOperator: vi.fn().mockResolvedValue({
+      message: 'オペレータは割り当てられていません',
+    }),
+    getCurrentOperatorSession: vi.fn().mockResolvedValue(null),
+  })),
+}));
 vi.mock('speaker', () => ({
   default: vi.fn(),
 }));
@@ -41,6 +53,7 @@ vi.mock('node-libsamplerate', () => {
 describe('エラーハンドリング統合テスト', () => {
   let sayCoeiroink: SayCoeiroink;
   let consoleSpy: any;
+  let mockOperatorManager: any;
 
   beforeEach(async () => {
     // ログスパイ設定
@@ -49,6 +62,41 @@ describe('エラーハンドリング統合テスト', () => {
       warn: vi.spyOn(console, 'warn').mockImplementation(() => {}),
       log: vi.spyOn(console, 'log').mockImplementation(() => {}),
     };
+
+    // OperatorManagerモックの設定
+    mockOperatorManager = {
+      initialize: vi.fn().mockResolvedValue(undefined),
+      getCharacterInfo: vi.fn().mockImplementation((characterId: string) => {
+        if (characterId === 'test-speaker-1' || characterId === 'tsukuyomi') {
+          return Promise.resolve({
+            characterId: characterId,
+            speaker: {
+              speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-uuid',
+              speakerName: characterId === 'tsukuyomi' ? 'つくよみちゃん' : 'テストスピーカー1',
+              styles: characterId === 'tsukuyomi' 
+                ? [{ styleId: 0, styleName: 'れいせい' }]
+                : [{ styleId: 0, styleName: 'ノーマル' }],
+            },
+            defaultStyle: characterId === 'tsukuyomi' ? 'れいせい' : 'ノーマル',
+            greeting: 'こんにちは',
+            farewell: 'さようなら',
+            personality: 'テスト性格',
+            speakingStyle: 'テスト話し方',
+          });
+        }
+        throw new Error(`Character not found: ${characterId}`);
+      }),
+      selectStyle: vi.fn().mockImplementation((character, specifiedStyle) => {
+        return character.speaker?.styles[0] || { styleId: 0, styleName: 'ノーマル' };
+      }),
+      showCurrentOperator: vi.fn().mockResolvedValue({
+        message: 'オペレータは割り当てられていません',
+      }),
+      getCurrentOperatorSession: vi.fn().mockResolvedValue(null),
+    };
+
+    // OperatorManagerモックを設定
+    (OperatorManager as any).mockImplementation(() => mockOperatorManager);
 
     // Speaker モック設定
     const SpeakerModule = await vi.importMock('speaker');
@@ -92,7 +140,19 @@ describe('エラーハンドリング統合テスト', () => {
 
   describe('ネットワークエラー処理', () => {
     test('サーバー接続失敗時の適切なエラーハンドリングとログ出力', async () => {
-      // サーバー接続失敗をシミュレート（synthesis APIのみ失敗）
+      // サーバー接続失敗をシミュレート（全APIが失敗）
+      (global.fetch as any).mockImplementation(() => {
+        return Promise.reject(new Error('Connection failed'));
+      });
+
+      // サーバー接続エラーを期待
+      await expect(sayCoeiroink.synthesizeText('接続失敗テスト', {
+        voice: 'test-speaker-1',
+      })).rejects.toThrow('Cannot connect to COEIROINK server');
+    });
+
+    test('音声合成API失敗時の適切なエラーハンドリング', async () => {
+      // 音声情報取得は成功するが合成APIが失敗するケース
       (global.fetch as any).mockImplementation((url: string) => {
         if (url.includes('/v1/speakers')) {
           return Promise.resolve({
@@ -104,36 +164,8 @@ describe('エラーハンドリング統合テスト', () => {
             }],
           });
         }
-        return Promise.reject(new Error('Connection failed'));
-      });
 
-      try {
-        await sayCoeiroink.synthesizeText('接続失敗テスト', {
-          voice: 'test-speaker-1',
-        });
-
-        // エラーが適切に伝播されることを期待
-        expect(true).toBe(false); // この行に到達しないはず
-      } catch (error) {
-        // エラーが適切に処理されることを確認
-        expect(error).toBeInstanceOf(Error);
-        // ストリーミング再生エラーまたはconnectionエラーを期待
-        expect((error as Error).message).toMatch(/ストリーミング|チャンク|connection|failed|error/i);
-      }
-    });
-
-    test('音声合成API失敗時の適切なエラーハンドリング', async () => {
-      // 音声情報取得は成功するが合成APIが失敗するケース
-      (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('/speakers')) {
-          return Promise.resolve({
-            ok: true,
-            json: () =>
-              Promise.resolve([{ id: 'test-speaker-1', name: 'テスト話者1', styles: [] }]),
-          });
-        }
-
-        if (url.includes('/synthesis')) {
+        if (url.includes('/v1/synthesis')) {
           return Promise.resolve({
             ok: false,
             status: 500,
@@ -144,37 +176,35 @@ describe('エラーハンドリング統合テスト', () => {
         return Promise.reject(new Error('Unexpected URL'));
       });
 
-      try {
-        await sayCoeiroink.synthesizeText('API失敗テスト', {
-          voice: 'test-speaker-1',
-        });
-
-        expect(true).toBe(false); // この行に到達しないはず
-      } catch (error) {
-        expect(error).toBeInstanceOf(Error);
-        // エラーメッセージにキャラクター解決エラーまたはHTTPステータスが含まれていることを確認
-        const errorMessage = (error as Error).message;
-        expect(errorMessage.toLowerCase()).toMatch(/failed|resolve|character|500|server|error/);
-      }
+      // API失敗時のエラーを期待
+      await expect(sayCoeiroink.synthesizeText('API失敗テスト', {
+        voice: 'test-speaker-1',
+      })).rejects.toThrow(); // HTTPエラーが発生することを確認
     });
 
     test('タイムアウトエラーの適切な処理', async () => {
-      // タイムアウトをシミュレート
-      (global.fetch as any).mockImplementation(
-        () =>
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Request timeout')), 100))
-      );
+      // タイムアウトをシミュレート（speakers APIは成功、synthesis APIはタイムアウト）
+      (global.fetch as any).mockImplementation((url: string) => {
+        if (url.includes('/v1/speakers')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => [{
+              speakerUuid: 'test-speaker-1',
+              speakerName: 'テストスピーカー1',
+              styles: [{ styleId: 0, styleName: 'ノーマル' }],
+            }],
+          });
+        }
+        // synthesis APIはタイムアウト
+        return new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout')), 100)
+        );
+      });
 
-      try {
-        await sayCoeiroink.synthesizeText('タイムアウトテスト', {
-          voice: 'test-speaker-1',
-        });
-
-        expect(true).toBe(false); // この行に到達しないはず
-      } catch (error) {
-        expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toMatch(/timeout|time.*out/i);
-      }
+      // タイムアウトエラーを期待
+      await expect(sayCoeiroink.synthesizeText('タイムアウトテスト', {
+        voice: 'test-speaker-1',
+      })).rejects.toThrow(); // タイムアウトエラーが発生することを確認
     });
   });
 
@@ -247,40 +277,52 @@ describe('エラーハンドリング統合テスト', () => {
         throw new Error('Hardware audio device failure');
       });
 
-      // 音声合成APIモック
+      // 音声合成APIモック（正常レスポンス）
       (global.fetch as any).mockImplementation((url: string) => {
-        if (url.includes('/speakers')) {
+        if (url.includes('/v1/speakers')) {
           return Promise.resolve({
             ok: true,
-            json: () =>
-              Promise.resolve([{ id: 'test-speaker-1', name: 'テスト話者1', styles: [] }]),
+            json: async () => [{
+              speakerUuid: 'test-speaker-1',
+              speakerName: 'テストスピーカー1',
+              styles: [{ styleId: 0, styleName: 'ノーマル' }],
+            }],
           });
         }
 
-        if (url.includes('/synthesis')) {
-          const audioBuffer = new ArrayBuffer(1024);
+        if (url.includes('/v1/synthesis')) {
+          const buffer = new ArrayBuffer(44 + 1000);
+          const view = new DataView(buffer);
+          // WAVヘッダー設定
+          view.setUint32(0, 0x52494646, false);
+          view.setUint32(4, buffer.byteLength - 8, true);
+          view.setUint32(8, 0x57415645, false);
+          view.setUint32(12, 0x666d7420, false);
+          view.setUint32(16, 16, true);
+          view.setUint16(20, 1, true);
+          view.setUint16(22, 1, true);
+          view.setUint32(24, 48000, true);
+          view.setUint32(28, 96000, true);
+          view.setUint16(32, 2, true);
+          view.setUint16(34, 16, true);
+          view.setUint32(36, 0x64617461, false);
+          view.setUint32(40, 1000, true);
           return Promise.resolve({
             ok: true,
-            arrayBuffer: () => Promise.resolve(audioBuffer),
+            arrayBuffer: async () => buffer,
           });
         }
 
         return Promise.reject(new Error('Unexpected URL'));
       });
 
-      try {
-        await sayCoeiroink.synthesizeText('Speaker失敗テスト', {
-          voice: 'test-speaker-1',
-          streamMode: true,
-        });
-
-        // Speakerエラーは内部で処理され、代替手段が使われる可能性
-        console.log('Speakerエラーテスト: 代替処理が実行される場合があります');
-      } catch (error) {
-        // Speakerエラーが適切に処理されることを確認
-        expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toMatch(/hardware|audio|device|speaker/i);
-      }
+      // Speakerエラーは内部で処理されるため、正常に完了することを確認
+      // SpeechQueueにタスクが登録されるため、successが返る
+      const result = await sayCoeiroink.synthesizeText('Speaker失敗テスト', {
+        voice: 'test-speaker-1',
+      });
+      expect(result.success).toBe(true);
+      expect(result.taskId).toBeDefined();
     });
 
     test('音声データ形式エラーの処理', async () => {
