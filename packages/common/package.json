@@ -1,7 +1,7 @@
 {
-  "name": "@coeiro-operator/core",
+  "name": "@coeiro-operator/common",
   "version": "1.0.0",
-  "description": "Core utilities and shared functionality for COEIRO Operator",
+  "description": "Common utilities and logger for COEIRO Operator",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -9,12 +9,10 @@
     "build": "tsc",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "type-check": "tsc --noEmit",
-    "lint": "eslint src --ext .ts,.js",
-    "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@coeiro-operator/common": "workspace:*"
+    "winston": "^3.17.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.1",
@@ -22,9 +20,8 @@
     "vitest": "^3.2.4"
   },
   "keywords": [
-    "core",
+    "common",
     "utilities",
-    "config",
     "logger"
   ],
   "license": "MIT"

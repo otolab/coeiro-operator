@@ -5,8 +5,8 @@
 // Config and paths
 export * from './common/config-paths.js';
 
-// Logger
-export * from './utils/logger.js';
+// Logger (re-export from common)
+export { logger, LoggerPresets } from '@coeiro-operator/common';
 
 // Dictionary
 export * from './dictionary/dictionary-service.js';

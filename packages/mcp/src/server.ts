@@ -8,10 +8,9 @@ import {
   ConfigManager,
   getConfigDir,
   OperatorManager,
-  logger,
-  LoggerPresets,
   DictionaryService
 } from '@coeiro-operator/core';
+import { logger, LoggerPresets } from '@coeiro-operator/common';
 import type { Character } from '@coeiro-operator/core';
 
 // デバッグ: 環境変数を確認

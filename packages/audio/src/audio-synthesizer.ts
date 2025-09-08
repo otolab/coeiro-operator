@@ -13,7 +13,7 @@ import type {
   VoiceConfig,
 } from './types.js';
 import type { Style, Character } from '@coeiro-operator/core';
-import { logger } from '@coeiro-operator/core';
+import { logger } from '@coeiro-operator/common';
 import { SAMPLE_RATES, SPLIT_SETTINGS, PADDING_SETTINGS, SYNTHESIS_SETTINGS } from './constants.js';
 import { getSpeakerProvider } from '@coeiro-operator/core';
 import { AudioStreamController, StreamControllerOptions } from './audio-stream-controller.js';

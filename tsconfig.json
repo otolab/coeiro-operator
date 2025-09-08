@@ -24,6 +24,7 @@
     "incremental": true
   },
   "references": [
+    { "path": "./packages/common" },
     { "path": "./packages/core" },
     { "path": "./packages/audio" },
     { "path": "./packages/cli" },

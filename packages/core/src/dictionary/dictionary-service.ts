@@ -7,7 +7,7 @@
 import { DictionaryClient, DictionaryWord } from './dictionary-client.js';
 import { DictionaryPersistenceManager } from './dictionary-persistence.js';
 import { DEFAULT_TECHNICAL_WORDS, CHARACTER_NAME_WORDS } from './default-dictionaries.js';
-import { logger } from '../../utils/logger.js';
+import { logger } from '@coeiro-operator/common';
 import { ConnectionConfig } from '../environment/speaker-provider.js';
 
 /**

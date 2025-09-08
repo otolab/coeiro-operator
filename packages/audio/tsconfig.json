@@ -8,6 +8,7 @@
     "declarationMap": true
   },
   "references": [
+    { "path": "../common" },
     { "path": "../core" }
   ],
   "include": ["src/**/*"],

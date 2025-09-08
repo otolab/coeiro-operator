@@ -8,7 +8,8 @@
 import { readFile, access } from 'fs/promises';
 import { constants } from 'fs';
 import { SayCoeiroink } from '@coeiro-operator/audio';
-import { ConfigManager, getConfigDir, LoggerPresets } from '@coeiro-operator/core';
+import { ConfigManager, getConfigDir } from '@coeiro-operator/core';
+import { LoggerPresets } from '@coeiro-operator/common';
 import type { Config } from '@coeiro-operator/audio';
 import { BUFFER_SIZES } from '@coeiro-operator/audio';
 

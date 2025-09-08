@@ -8,7 +8,7 @@ import type { Character, Speaker } from '@coeiro-operator/core';
 import { SpeechQueue } from './speech-queue.js';
 import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
-import { logger } from '@coeiro-operator/core';
+import { logger } from '@coeiro-operator/common';
 import {
   CONNECTION_SETTINGS,
   SAMPLE_RATES,

@@ -3,7 +3,7 @@
  * 並行生成と順序再生の協調制御を担当
  */
 
-import { logger } from '@coeiro-operator/core';
+import { logger } from '@coeiro-operator/common';
 import { ChunkGenerationManager, GenerationOptions } from './chunk-generation-manager.js';
 import type { Chunk, AudioResult, VoiceConfig } from './types.js';
 

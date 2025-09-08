@@ -4,7 +4,7 @@
  */
 
 import type { SpeechTask, SpeechTaskType, SynthesizeOptions, SynthesizeResult } from './types.js';
-import { logger } from '@coeiro-operator/core';
+import { logger } from '@coeiro-operator/common';
 
 export class SpeechQueue {
   private speechQueue: SpeechTask[] = [];
