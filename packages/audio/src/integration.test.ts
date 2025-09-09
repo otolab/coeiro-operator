@@ -12,6 +12,34 @@ import { OperatorManager } from '@coeiro-operator/core';
 import type { Character, Speaker as SpeakerType } from '@coeiro-operator/core';
 import { createMockSpeakerInstance } from './test-helpers.js';
 
+// Responseオブジェクトのモックヘルパー
+const createMockResponse = (options: {
+  ok: boolean;
+  status?: number;
+  statusText?: string;
+  text?: () => Promise<string>;
+  json?: () => Promise<any>;
+  arrayBuffer?: () => Promise<ArrayBuffer>;
+}): Response => {
+  return {
+    ok: options.ok,
+    status: options.status || 200,
+    statusText: options.statusText || 'OK',
+    text: options.text || (() => Promise.resolve('')),
+    json: options.json || (() => Promise.resolve({})),
+    arrayBuffer: options.arrayBuffer || (() => Promise.resolve(new ArrayBuffer(0))),
+    headers: new Headers(),
+    redirected: false,
+    type: 'basic',
+    url: '',
+    clone: () => ({} as Response),
+    body: null,
+    bodyUsed: false,
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+  } as Response;
+};
+
 // モックの設定
 global.fetch = vi.fn();
 vi.mock('@coeiro-operator/core', () => ({
@@ -20,9 +48,43 @@ vi.mock('@coeiro-operator/core', () => ({
     getCharacterInfo: vi.fn(),
   })),
   getSpeakerProvider: vi.fn(() => ({
-    getSpeakers: vi.fn().mockResolvedValue([]),
+    getSpeakers: vi.fn().mockResolvedValue([
+      {
+        speakerUuid: 'test-speaker-1',
+        speakerName: 'テストスピーカー1',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      },
+      {
+        speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
+        speakerName: 'つくよみちゃん',
+        styles: [
+          { styleId: 0, styleName: 'れいせい' },
+          { styleId: 1, styleName: 'おしとやか' },
+          { styleId: 2, styleName: 'げんき' },
+        ],
+      },
+    ]),
     updateConnection: vi.fn(),
     checkConnection: vi.fn().mockResolvedValue(true),
+    logAvailableVoices: vi.fn(),
+  })),
+  ConfigManager: vi.fn().mockImplementation(() => ({
+    getFullConfig: vi.fn().mockResolvedValue({
+      connection: { host: 'localhost', port: '50032' },
+      voice: { rate: 200 },
+      audio: { latencyMode: 'balanced' },
+      operator: { rate: 200 },
+    }),
+    getCharacterConfig: vi.fn().mockImplementation((characterId: string) => {
+      if (characterId === 'test-speaker-1' || characterId === 'tsukuyomi') {
+        return Promise.resolve({
+          characterId,
+          speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-1',
+          defaultStyle: characterId === 'tsukuyomi' ? 'れいせい' : 'ノーマル',
+        });
+      }
+      return null;
+    }),
   })),
 }));
 vi.mock('speaker', () => ({
@@ -124,30 +186,32 @@ describe('Say Integration Tests', () => {
     sayCoeiroink = new SayCoeiroink(configManager);
 
     // COEIROINK サーバーのモック設定
-    (global.fetch as unknown).mockImplementation((url: string) => {
+    vi.mocked(global.fetch).mockImplementation((url: string) => {
       if (url.includes('/v1/speakers')) {
-        return Promise.resolve({
-          ok: true,
-          json: async () => [
-            {
-              speakerUuid: 'test-speaker-1',
-              speakerName: 'テストスピーカー1',
-              styles: [
-                { styleId: 0, styleName: 'ノーマル' },
-                { styleId: 1, styleName: 'ハッピー' },
-              ],
-            },
-            {
-              speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
-              speakerName: 'つくよみちゃん',
-              styles: [
-                { styleId: 0, styleName: 'れいせい' },
-                { styleId: 1, styleName: 'おしとやか' },
-                { styleId: 2, styleName: 'げんき' },
-              ],
-            },
-          ],
-        });
+        return Promise.resolve(
+          createMockResponse({
+            ok: true,
+            json: async () => [
+              {
+                speakerUuid: 'test-speaker-1',
+                speakerName: 'テストスピーカー1',
+                styles: [
+                  { styleId: 0, styleName: 'ノーマル' },
+                  { styleId: 1, styleName: 'ハッピー' },
+                ],
+              },
+              {
+                speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
+                speakerName: 'つくよみちゃん',
+                styles: [
+                  { styleId: 0, styleName: 'れいせい' },
+                  { styleId: 1, styleName: 'おしとやか' },
+                  { styleId: 2, styleName: 'げんき' },
+                ],
+              },
+            ],
+          })
+        );
       }
 
       if (url.includes('/v1/synthesis')) {
@@ -174,10 +238,12 @@ describe('Say Integration Tests', () => {
         view.setUint32(36, 0x64617461, false); // "data"
         view.setUint32(40, 1000, true); // dataサイズ
 
-        return Promise.resolve({
-          ok: true,
-          arrayBuffer: async () => buffer,
-        });
+        return Promise.resolve(
+          createMockResponse({
+            ok: true,
+            arrayBuffer: async () => buffer,
+          })
+        );
       }
 
       return Promise.reject(new Error('Unknown endpoint'));
@@ -198,6 +264,9 @@ describe('Say Integration Tests', () => {
   });
 
   afterEach(async () => {
+    // モックをリセット
+    vi.restoreAllMocks();
+    
     // 一時ファイルのクリーンアップ
     try {
       const fs = await import('fs');
@@ -277,34 +346,52 @@ describe('Say Integration Tests', () => {
   describe('エラー処理統合テスト', () => {
     test('サーバー接続失敗時の適切なエラーハンドリング', async () => {
       // サーバー接続失敗をシミュレート
-      (global.fetch as unknown).mockImplementation(() =>
+      vi.mocked(global.fetch).mockImplementation(() =>
         Promise.reject(new Error('Connection refused'))
       );
+      
+      // checkConnectionもfalseを返すようにモック
+      const { getSpeakerProvider } = await import('@coeiro-operator/core');
+      vi.mocked(getSpeakerProvider).mockReturnValue({
+        getSpeakers: vi.fn().mockRejectedValue(new Error('Connection refused')),
+        updateConnection: vi.fn(),
+        checkConnection: vi.fn().mockResolvedValue(false),
+        logAvailableVoices: vi.fn().mockRejectedValue(new Error('Connection refused')),
+      } as any);
 
-      const isConnected = await sayCoeiroink.checkServerConnection();
+      // 新しいSayCoeiroinkインスタンスを作成（モックが反映される）
+      const failConfigManager = createMockConfigManager();
+      const failSayCoeiroink = new SayCoeiroink(failConfigManager);
+      await failSayCoeiroink.initialize();
+
+      const isConnected = await failSayCoeiroink.checkServerConnection();
       expect(isConnected).toBe(false);
 
-      await expect(sayCoeiroink.synthesizeText('テスト')).rejects.toThrow(
+      await expect(failSayCoeiroink.synthesizeText('テスト')).rejects.toThrow(
         'Cannot connect to COEIROINK server'
       );
     });
 
     test('音声合成API失敗時の適切なエラーハンドリング', async () => {
       // speakers APIは成功、synthesis APIは失敗
-      (global.fetch as unknown).mockImplementation((url: string) => {
+      vi.mocked(global.fetch).mockImplementation((url: string) => {
         if (url.includes('/v1/speakers')) {
-          return Promise.resolve({
-            ok: true,
-            json: async () => [],
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: true,
+              json: async () => [],
+            })
+          );
         }
 
         if (url.includes('/v1/synthesis')) {
-          return Promise.resolve({
-            ok: false,
-            status: 500,
-            statusText: 'Internal Server Error',
-          });
+          return Promise.resolve(
+            createMockResponse({
+              ok: false,
+              status: 500,
+              statusText: 'Internal Server Error',
+            })
+          );
         }
 
         return Promise.reject(new Error('Unknown endpoint'));

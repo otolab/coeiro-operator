@@ -8,15 +8,49 @@ import type { Speaker } from '@coeiro-operator/core';
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// Responseオブジェクトのモックヘルパー
+const createMockResponse = (options: {
+  ok: boolean;
+  status?: number;
+  statusText?: string;
+  text?: () => Promise<string>;
+  json?: () => Promise<any>;
+  arrayBuffer?: () => Promise<ArrayBuffer>;
+}): Response => {
+  return {
+    ok: options.ok,
+    status: options.status || 200,
+    statusText: options.statusText || 'OK',
+    text: options.text || (() => Promise.resolve('')),
+    json: options.json || (() => Promise.resolve({})),
+    arrayBuffer: options.arrayBuffer || (() => Promise.resolve(new ArrayBuffer(0))),
+    headers: new Headers(),
+    redirected: false,
+    type: 'basic',
+    url: '',
+    clone: () => ({} as Response),
+    body: null,
+    bodyUsed: false,
+    blob: () => Promise.resolve(new Blob()),
+    formData: () => Promise.resolve(new FormData()),
+  } as Response;
+};
+
 // fetchのモック
 global.fetch = vi.fn();
 
 // coreパッケージのモック
+const mockCheckConnection = vi.fn();
+const mockGetSpeakers = vi.fn();
+const mockLogAvailableVoices = vi.fn();
+const mockUpdateConnection = vi.fn();
+
 vi.mock('@coeiro-operator/core', () => ({
   getSpeakerProvider: vi.fn(() => ({
-    getSpeakers: vi.fn().mockResolvedValue([]),
-    updateConnection: vi.fn(),
-    checkConnection: vi.fn().mockResolvedValue(true),
+    getSpeakers: mockGetSpeakers,
+    updateConnection: mockUpdateConnection,
+    checkConnection: mockCheckConnection,
+    logAvailableVoices: mockLogAvailableVoices,
   })),
 }));
 
@@ -43,6 +77,10 @@ describe('AudioSynthesizer', () => {
     };
     audioSynthesizer = new AudioSynthesizer(config);
     vi.clearAllMocks();
+    // デフォルトのモック動作を設定
+    mockCheckConnection.mockResolvedValue(true);
+    mockGetSpeakers.mockResolvedValue([]);
+    mockLogAvailableVoices.mockResolvedValue(undefined);
   });
 
   describe('初期化', () => {
@@ -222,36 +260,26 @@ describe('AudioSynthesizer', () => {
 
   describe('checkServerConnection', () => {
     test('サーバーが利用可能な場合trueを返すこと', async () => {
-      (global.fetch as unknown).mockResolvedValueOnce({
-        ok: true,
-      text: async () => "response text",
-      });
+      mockCheckConnection.mockResolvedValueOnce(true);
 
       const result = await audioSynthesizer.checkServerConnection();
 
       expect(result).toBe(true);
-      expect(global.fetch).toHaveBeenCalledWith('http://localhost:50032/v1/speakers', {
-        signal: expect.anything(AbortSignal),
-      });
+      expect(mockCheckConnection).toHaveBeenCalled();
     });
 
     test('サーバーが利用不可の場合falseを返すこと', async () => {
-      (global.fetch as unknown).mockResolvedValueOnce({
-        ok: false,
-      text: async () => "response text",
-      });
+      mockCheckConnection.mockResolvedValueOnce(false);
 
       const result = await audioSynthesizer.checkServerConnection();
 
       expect(result).toBe(false);
     });
 
-    test('接続エラーの場合falseを返すこと', async () => {
-      (global.fetch as unknown).mockRejectedValueOnce(new Error('Connection failed'));
+    test('接続エラーの場合エラーを投げること', async () => {
+      mockCheckConnection.mockRejectedValueOnce(new Error('Connection failed'));
 
-      const result = await audioSynthesizer.checkServerConnection();
-
-      expect(result).toBe(false);
+      await expect(audioSynthesizer.checkServerConnection()).rejects.toThrow('Connection failed');
     });
   });
 
@@ -273,42 +301,28 @@ describe('AudioSynthesizer', () => {
         },
       ];
 
-      (global.fetch as unknown).mockResolvedValueOnce({
-        ok: true,
-        json: async () => mockSpeakers,
-      text: async () => "response text",
-      });
+      vi.mocked(global.fetch).mockResolvedValueOnce(
+        createMockResponse({
+          ok: true,
+          json: async () => mockSpeakers,
+          text: async () => "response text",
+        })
+      );
 
       // console.logをモック
       const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
 
       await audioSynthesizer.listVoices();
 
-      expect(global.fetch).toHaveBeenCalledWith('http://localhost:50032/v1/speakers', {
-        signal: expect.anything(AbortSignal),
-      });
-
-      expect(consoleLogSpy).toHaveBeenCalledWith('Available voices:');
-      expect(consoleLogSpy).toHaveBeenCalledWith('test-uuid-1: テストキャラクター1');
-      expect(consoleLogSpy).toHaveBeenCalledWith('  Style 0: ノーマル');
+      expect(mockLogAvailableVoices).toHaveBeenCalled();
 
       consoleLogSpy.mockRestore();
     });
 
     test('サーバーエラー時に適切なエラーを投げること', async () => {
-      (global.fetch as unknown).mockRejectedValueOnce(new Error('Connection failed'));
+      mockLogAvailableVoices.mockRejectedValueOnce(new Error('Connection failed'));
 
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation();
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation();
-
-      // listVoicesはエラーでも例外を投げずにログ出力する実装の場合
-      await audioSynthesizer.listVoices();
-
-      // コンソールログが呼ばれることを確認
-      expect(consoleLogSpy).toHaveBeenCalledWith('Available voices:');
-
-      consoleErrorSpy.mockRestore();
-      consoleLogSpy.mockRestore();
+      await expect(audioSynthesizer.listVoices()).rejects.toThrow('Connection failed');
     });
   });
 
@@ -336,11 +350,13 @@ describe('AudioSynthesizer', () => {
       };
 
       // synthesisエンドポイントのモック
-      (global.fetch as unknown).mockResolvedValueOnce({
-        ok: true,
-        arrayBuffer: async () => mockAudioBuffer,
-      text: async () => "response text",
-      });
+      vi.mocked(global.fetch).mockResolvedValueOnce(
+        createMockResponse({
+          ok: true,
+          arrayBuffer: async () => mockAudioBuffer,
+          text: async () => "response text",
+        })
+      );
 
       const result = await audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0);
 
@@ -370,17 +386,19 @@ describe('AudioSynthesizer', () => {
 
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      (global.fetch as unknown).mockResolvedValueOnce({
-        ok: true,
-        arrayBuffer: async () => mockAudioBuffer,
-      text: async () => "response text",
-      });
+      vi.mocked(global.fetch).mockResolvedValueOnce(
+        createMockResponse({
+          ok: true,
+          arrayBuffer: async () => mockAudioBuffer,
+          text: async () => "response text",
+        })
+      );
 
       const result = await audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0);
 
-      expect(result.audioBuffer).toBe(mockAudioBuffer);
+      expect(result.audioBuffer).toStrictEqual(mockAudioBuffer);
 
-      const fetchCall = (global.fetch as unknown).mock.calls[0];
+      const fetchCall = vi.mocked(global.fetch).mock.calls[0];
       const requestBody = JSON.parse(fetchCall[1].body);
 
       expect(requestBody.speakerUuid).toBe('operator-voice-id');
@@ -404,14 +422,16 @@ describe('AudioSynthesizer', () => {
 
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      (global.fetch as unknown).mockResolvedValue({
-        ok: true,
-        arrayBuffer: async () => mockAudioBuffer,
-      });
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockResponse({
+          ok: true,
+          arrayBuffer: async () => mockAudioBuffer,
+        })
+      );
 
       // 音声合成を実行
       await audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0);
-      const fetchCall = (global.fetch as unknown).mock.calls[0];
+      const fetchCall = vi.mocked(global.fetch).mock.calls[0];
       const requestBody = JSON.parse(fetchCall[1].body);
 
       // 指定したスタイルIDが使用されていることを確認
@@ -430,12 +450,14 @@ describe('AudioSynthesizer', () => {
       };
 
       // speakersエンドポイントのモック
-      (global.fetch as unknown).mockResolvedValueOnce({
-        ok: false,
-        status: 500,
-        statusText: 'Internal Server Error',
-        text: async () => 'Internal Server Error',
-      });
+      vi.mocked(global.fetch).mockResolvedValueOnce(
+        createMockResponse({
+          ok: false,
+          status: 500,
+          statusText: 'Internal Server Error',
+          text: async () => 'Internal Server Error',
+        })
+      );
 
       await expect(
         audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0)
@@ -453,7 +475,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as unknown).mockRejectedValueOnce(new Error('Network error'));
+      vi.mocked(global.fetch).mockRejectedValueOnce(new Error('Network error'));
 
       await expect(
         audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0)
@@ -477,10 +499,12 @@ describe('AudioSynthesizer', () => {
       };
 
       // synthesisエンドポイントのモック
-      (global.fetch as unknown).mockResolvedValue({
-        ok: true,
-        arrayBuffer: async () => mockAudioBuffer,
-      });
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockResponse({
+          ok: true,
+          arrayBuffer: async () => mockAudioBuffer,
+        })
+      );
 
       const results: AudioResult[] = [];
       for await (const result of audioSynthesizer.synthesizeStream(text, voiceConfig, 1.0)) {
@@ -515,7 +539,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as unknown).mockResolvedValue({
+      vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });
@@ -536,7 +560,7 @@ describe('AudioSynthesizer', () => {
 
       // 各結果にオーディオバッファが含まれていることを確認
       results.forEach(result => {
-        expect(result.audioBuffer).toBe(mockAudioBuffer);
+        expect(result.audioBuffer).toStrictEqual(mockAudioBuffer);
         expect(result.latency).toBeGreaterThanOrEqual(0); // モック環境では0でも許容
       });
     });
@@ -552,11 +576,13 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as unknown).mockResolvedValue({
-        ok: true,
-        json: async () => [],
-        arrayBuffer: async () => new ArrayBuffer(0),
-      });
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockResponse({
+          ok: true,
+          json: async () => [],
+          arrayBuffer: async () => new ArrayBuffer(0),
+        })
+      );
 
       const results: AudioResult[] = [];
       for await (const result of audioSynthesizer.synthesizeStream('', voiceConfig, 1.0)) {
@@ -583,7 +609,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as unknown).mockResolvedValue({
+      vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });
@@ -595,7 +621,7 @@ describe('AudioSynthesizer', () => {
 
       expect(results).toHaveLength(1);
       expect(results[0].chunk.text).toBe('あ');
-      expect(results[0].audioBuffer).toBe(mockAudioBuffer);
+      expect(results[0].audioBuffer).toStrictEqual(mockAudioBuffer);
     });
 
     test('特殊文字を含むテキストでも正常に処理されること', async () => {
@@ -612,7 +638,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as unknown).mockResolvedValue({
+      vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });
@@ -640,7 +666,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as unknown).mockResolvedValue({
+      vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });
@@ -660,17 +686,19 @@ describe('AudioSynthesizer', () => {
       const longText = 'a'.repeat(150); // 複数チャンクに分割される
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      (global.fetch as unknown).mockResolvedValue({
-        ok: true,
-        json: async () => [
-          {
-            speakerUuid: 'test-speaker-1',
-            speakerName: 'テストキャラクター',
-            styles: [{ styleId: 0, styleName: 'ノーマル' }],
-          },
-        ],
-        arrayBuffer: async () => mockAudioBuffer,
-      });
+      vi.mocked(global.fetch).mockResolvedValue(
+        createMockResponse({
+          ok: true,
+          json: async () => [
+            {
+              speakerUuid: 'test-speaker-1',
+              speakerName: 'テストキャラクター',
+              styles: [{ styleId: 0, styleName: 'ノーマル' }],
+            },
+          ],
+          arrayBuffer: async () => mockAudioBuffer,
+        })
+      );
 
       // テキスト分割
       const chunks = audioSynthesizer.splitTextIntoChunks(longText);
@@ -712,7 +740,7 @@ describe('AudioSynthesizer', () => {
         selectedStyleId: 0,
       };
 
-      (global.fetch as unknown).mockResolvedValue({
+      vi.mocked(global.fetch).mockResolvedValue({
         ok: true,
         arrayBuffer: async () => mockAudioBuffer,
       });
