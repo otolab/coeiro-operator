@@ -29,5 +29,5 @@ export {
   type SpeakerProvider
 } from './environment/speaker-provider.js';
 
-// Test utilities (only for development)
+// Test utilities
 export * from './test-utils/test-env.js';
