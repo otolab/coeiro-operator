@@ -42,7 +42,7 @@ interface ToolResponse {
     type: 'text';
     text: string;
   }>;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 // コマンドライン引数の解析

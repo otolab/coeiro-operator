@@ -45,7 +45,7 @@ export class FileOperationManager<T> {
   /**
    * JSONファイルを安全に書き込み（アトミック操作）
    */
-  async writeJsonFile(filePath: string, data: unknown): Promise<void> {
+  async writeJsonFile(filePath: string, data: any): Promise<void> {
     const tempFile = `${filePath}.tmp`;
     await writeFile(tempFile, JSON.stringify(data, null, 2), 'utf8');
 

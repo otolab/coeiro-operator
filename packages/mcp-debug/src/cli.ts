@@ -187,7 +187,7 @@ class MCPDebugCLI {
           const capabilities = this.client.getServerCapabilities();
           if (capabilities && typeof capabilities === 'object' && 'tools' in capabilities && capabilities.tools) {
             console.log('🔧 Available Tools:');
-            for (const [name, schema] of Object.entries(capabilities.tools as Record<string, unknown>)) {
+            for (const [name, schema] of Object.entries(capabilities.tools as Record<string, any>)) {
               console.log(`   - ${name}`);
             }
           } else {
@@ -228,7 +228,7 @@ class MCPDebugCLI {
   /**
    * 非インタラクティブモードの入力を処理
    */
-  private async handleNonInteractiveInput(message: unknown): Promise<void> {
+  private async handleNonInteractiveInput(message: any): Promise<void> {
     if (!this.client) {
       const error = {
         jsonrpc: '2.0',

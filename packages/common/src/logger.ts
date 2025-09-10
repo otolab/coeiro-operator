@@ -9,7 +9,7 @@ interface LogEntry {
   timestamp: string;
   level: LogLevel;
   message: string;
-  args?: unknown[];
+  args?: any[];
   formatted: string;
 }
 
@@ -77,7 +77,7 @@ class Logger {
     return this.LOG_LEVELS[level] <= this.LOG_LEVELS[targetLevel];
   }
 
-  private formatMessage(level: LogLevel, message: string, ...args: unknown[]): string {
+  private formatMessage(level: LogLevel, message: string, ...args: any[]): string {
     const timestamp = new Date().toISOString();
     const prefix = this.config.prefix ? `[${this.config.prefix}] ` : '';
     const formattedArgs =
@@ -90,7 +90,7 @@ class Logger {
     return `${timestamp} ${level.toUpperCase()} ${prefix}${message}${formattedArgs}`;
   }
 
-  private writeLog(level: LogLevel, message: string, ...args: unknown[]): void {
+  private writeLog(level: LogLevel, message: string, ...args: any[]): void {
     const shouldOutput = this.shouldLog(level);
     const shouldAccumulate =
       this.config.accumulate && this.shouldLogAtLevel(level, this.config.accumulateLevel);
@@ -150,28 +150,28 @@ class Logger {
   }
 
   // ログレベル別メソッド
-  error(message: string, ...args: unknown[]): void {
+  error(message: string, ...args: any[]): void {
     this.writeLog('error', message, ...args);
   }
 
-  warn(message: string, ...args: unknown[]): void {
+  warn(message: string, ...args: any[]): void {
     this.writeLog('warn', message, ...args);
   }
 
-  info(message: string, ...args: unknown[]): void {
+  info(message: string, ...args: any[]): void {
     this.writeLog('info', message, ...args);
   }
 
-  verbose(message: string, ...args: unknown[]): void {
+  verbose(message: string, ...args: any[]): void {
     this.writeLog('verbose', message, ...args);
   }
 
-  debug(message: string, ...args: unknown[]): void {
+  debug(message: string, ...args: any[]): void {
     this.writeLog('debug', message, ...args);
   }
 
   // verboseのエイリアスとしてlogメソッドを追加
-  log(message: string, ...args: unknown[]): void {
+  log(message: string, ...args: any[]): void {
     this.writeLog('verbose', message, ...args);
   }
 

@@ -28,11 +28,11 @@ export interface FullConfig {
     latencyMode?: 'ultra-low' | 'balanced' | 'quality';
     splitMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
     bufferSize?: number;
-    processing?: Record<string, unknown>;
-    splitSettings?: Record<string, unknown>;
-    bufferSettings?: Record<string, unknown>;
-    paddingSettings?: Record<string, unknown>;
-    crossfadeSettings?: Record<string, unknown>;
+    processing?: Record<string, any>;
+    splitSettings?: Record<string, any>;
+    bufferSettings?: Record<string, any>;
+    paddingSettings?: Record<string, any>;
+    crossfadeSettings?: Record<string, any>;
   };
   operator: {
     rate: number;
@@ -56,7 +56,7 @@ interface UnifiedConfig {
       maxConcurrency?: number;
       pauseUntilFirstComplete?: boolean;
     };
-    [key: string]: unknown;
+    [key: string]: any;
   };
   operator?: {
     rate?: number; // 話速（WPM）
@@ -104,7 +104,7 @@ export class ConfigManager {
   /**
    * JSONファイルを安全に書き込み
    */
-  async writeJsonFile(filePath: string, data: unknown): Promise<void> {
+  async writeJsonFile(filePath: string, data: any): Promise<void> {
     const tempFile = `${filePath}.tmp`;
     await writeFile(tempFile, JSON.stringify(data, null, 2), 'utf8');
 
@@ -257,7 +257,7 @@ export class ConfigManager {
   /**
    * 音声設定を取得
    */
-  async getAudioConfig(): Promise<Record<string, unknown>> {
+  async getAudioConfig(): Promise<Record<string, any>> {
     const config = await this.loadConfig();
     return config.audio || {};
   }
