@@ -17,68 +17,10 @@ const CONNECTION_SETTINGS = {
   DEFAULT_PORT: '50032',
 } as const;
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
+import { AudioConfig, FullConfig as BaseFullConfig } from '../types.js';
 
-// オーディオ設定の詳細な型定義
-interface AudioProcessingSettings {
-  normalize?: boolean;
-  amplifyDb?: number;
-  pitchShift?: number;
-  speedScale?: number;
-}
-
-interface AudioSplitSettings {
-  delimiter?: string;
-  maxLength?: number;
-  overlapLength?: number;
-}
-
-interface AudioBufferSettings {
-  size?: number;
-  maxQueueSize?: number;
-  preloadCount?: number;
-}
-
-interface AudioPaddingSettings {
-  start?: number;
-  end?: number;
-  between?: number;
-}
-
-interface AudioCrossfadeSettings {
-  enabled?: boolean;
-  duration?: number;
-  type?: 'linear' | 'exponential' | 'logarithmic';
-}
-
-interface AudioConfig {
-  latencyMode?: 'ultra-low' | 'balanced' | 'quality';
-  splitMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
-  bufferSize?: number;
-  processing?: AudioProcessingSettings;
-  splitSettings?: AudioSplitSettings;
-  bufferSettings?: AudioBufferSettings;
-  paddingSettings?: AudioPaddingSettings;
-  crossfadeSettings?: AudioCrossfadeSettings;
-  parallelGeneration?: {
-    maxConcurrency?: number;
-    pauseUntilFirstComplete?: boolean;
-    delayBetweenRequests?: number;
-    bufferAheadCount?: number;
-  };
-}
-
-// FullConfig型の定義（audioパッケージのConfig型と互換）
-export interface FullConfig {
-  connection: {
-    host: string;
-    port: string;
-  };
-  audio: AudioConfig;
-  operator: {
-    rate: number;
-    timeout: number;
-    assignmentStrategy: 'random';
-  };
+// FullConfig型の定義（BaseFullConfigを拡張）
+export interface FullConfig extends Omit<BaseFullConfig, 'characters'> {
   characters: Record<string, BaseCharacterConfig | CharacterConfig>;
 }
 

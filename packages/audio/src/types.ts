@@ -2,62 +2,13 @@
  * src/say/types.ts: 音声合成システムの型定義
  */
 
-export interface Config {
-  connection: ConnectionConfig;
-  audio: AudioConfig;
-  operator: {
-    rate: number; // 話速（WPM）
-    timeout: number;
-    assignmentStrategy: 'random';
-  };
-  characters: Record<string, any>;
-}
+import { FullConfig, AudioConfig, ConnectionConfig } from '@coeiro-operator/core';
 
-export interface ConnectionConfig {
-  host: string;
-  port: string;
-}
+// Config型はFullConfig型のエイリアス
+export type Config = FullConfig;
 
-export interface AudioConfig {
-  latencyMode?: 'ultra-low' | 'balanced' | 'quality';
-  splitMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
-  bufferSize?: number;
-  processing?: {
-    synthesisRate?: number;
-    playbackRate?: number;
-    noiseReduction?: boolean;
-    lowpassFilter?: boolean;
-    lowpassCutoff?: number;
-  };
-  splitSettings?: {
-    smallSize?: number; // smallモード時の分割サイズ
-    mediumSize?: number; // mediumモード時の分割サイズ
-    largeSize?: number; // largeモード時の分割サイズ
-    overlapRatio?: number; // オーバーラップ比率（0.0-1.0）
-  };
-  bufferSettings?: {
-    highWaterMark?: number;
-    lowWaterMark?: number;
-    dynamicAdjustment?: boolean;
-  };
-  paddingSettings?: {
-    enabled?: boolean;
-    prePhonemeLength?: number;
-    postPhonemeLength?: number;
-    firstChunkOnly?: boolean;
-  };
-  crossfadeSettings?: {
-    enabled?: boolean;
-    skipFirstChunk?: boolean;
-    overlapSamples?: number;
-  };
-  parallelGeneration?: {
-    maxConcurrency?: number; // 最大並行生成数（1=逐次、2以上=並行）
-    delayBetweenRequests?: number; // リクエスト間隔（ms）
-    bufferAheadCount?: number; // 先読みチャンク数
-    pauseUntilFirstComplete?: boolean; // 初回チャンク完了まで並行生成をポーズ
-  };
-}
+// 再エクスポート
+export type { AudioConfig, ConnectionConfig };
 
 export interface StreamConfig {
   chunkSizeChars: number;

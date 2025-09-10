@@ -5,6 +5,9 @@
 // Config and paths
 export * from './common/config-paths.js';
 
+// Common types
+export * from './types.js';
+
 // Logger (re-export from common)
 export { logger, LoggerPresets } from '@coeiro-operator/common';
 
@@ -18,7 +21,7 @@ export * from './dictionary/default-dictionaries.js';
 export * from './operator/index.js';
 export * from './operator/character-info-service.js';
 export * from './operator/character-defaults.js';
-export * from './operator/config-manager.js';
+export { default as ConfigManager } from './operator/config-manager.js';
 export * from './operator/file-operation-manager.js';
 
 // Environment (Speakerは除外してcharacter-info-serviceから使用)
