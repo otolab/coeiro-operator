@@ -14,7 +14,7 @@ describe('COEIRO Operator with MCP Debug Integration E2E Tests', () => {
   let tester: MCPServiceE2ETester;
 
   beforeEach(async () => {
-    const serverPath = path.resolve(__dirname, '../../dist/mcp/server.js');
+    const serverPath = path.resolve(__dirname, '../../packages/mcp/dist/server.js');
     
     // E2Eアダプタを使用してMCPサーバーを起動
     tester = await createMCPTester({ 
