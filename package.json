@@ -59,7 +59,7 @@
   "type": "module",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
-    "@types/commander": "^2.12.0",
+    "@types/commander": "^2.12.5",
     "commander": "^14.0.0",
     "dsp.js": "^1.0.1",
     "echogarden": "^2.9.0",
