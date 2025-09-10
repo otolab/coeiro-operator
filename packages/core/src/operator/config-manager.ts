@@ -25,8 +25,8 @@ export interface FullConfig {
     port: string;
   };
   audio: {
-    latencyMode?: string;
-    splitMode?: string;
+    latencyMode?: 'ultra-low' | 'balanced' | 'quality';
+    splitMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
     bufferSize?: number;
     processing?: Record<string, unknown>;
     splitSettings?: Record<string, unknown>;
@@ -37,7 +37,7 @@ export interface FullConfig {
   operator: {
     rate: number;
     timeout: number;
-    assignmentStrategy: string;
+    assignmentStrategy: 'random';
   };
   characters: Record<string, BaseCharacterConfig | CharacterConfig>;
 }
@@ -49,8 +49,8 @@ interface UnifiedConfig {
     port?: string;
   };
   audio?: {
-    latencyMode?: string;
-    splitMode?: string;
+    latencyMode?: 'ultra-low' | 'balanced' | 'quality';
+    splitMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
     bufferSize?: number;
     parallelGeneration?: {
       maxConcurrency?: number;

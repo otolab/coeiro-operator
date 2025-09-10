@@ -155,8 +155,8 @@ export class MCPServiceE2ETester {
    */
   getAvailableTools(): string[] {
     const capabilities = this.client.getServerCapabilities();
-    if (capabilities?.tools) {
-      return Object.keys(capabilities.tools);
+    if (capabilities && typeof capabilities === 'object' && 'tools' in capabilities && capabilities.tools) {
+      return Object.keys(capabilities.tools as Record<string, unknown>);
     }
     return [];
   }

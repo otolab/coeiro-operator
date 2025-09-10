@@ -4,7 +4,7 @@
  * MCPサーバーのデバッグ・テストツール
  */
 
-import { createInterface } from 'readline';
+import { createInterface, Interface as ReadlineInterface } from 'readline';
 import path from 'path';
 import { promises as fs } from 'fs';
 import { MCPDebugClient } from './core/mcp-debug-client.js';
@@ -22,7 +22,7 @@ interface CLIOptions {
 
 class MCPDebugCLI {
   private client?: MCPDebugClient;
-  private readline?: unknown;
+  private readline?: ReadlineInterface;
   private isShuttingDown = false;
 
   constructor(private options: CLIOptions) {}
@@ -114,9 +114,9 @@ class MCPDebugCLI {
       this.showPrompt();
     });
 
-    this.readline.on('close', () => {
+    this.readline.on('close', async () => {
       console.log('\n👋 Goodbye!');
-      this.shutdown();
+      await this.shutdown();
     });
 
     this.showPrompt();
@@ -185,9 +185,9 @@ class MCPDebugCLI {
 
         case 'tools': {
           const capabilities = this.client.getServerCapabilities();
-          if (capabilities?.tools) {
+          if (capabilities && typeof capabilities === 'object' && 'tools' in capabilities && capabilities.tools) {
             console.log('🔧 Available Tools:');
-            for (const [name, schema] of Object.entries(capabilities.tools)) {
+            for (const [name, schema] of Object.entries(capabilities.tools as Record<string, unknown>)) {
               console.log(`   - ${name}`);
             }
           } else {
@@ -236,7 +236,7 @@ class MCPDebugCLI {
           code: -32603,
           message: 'Client not initialized',
         },
-        id: message.id || null,
+        id: (message as any)?.id || null,
       };
       console.log(JSON.stringify(error));
       return;
@@ -252,7 +252,7 @@ class MCPDebugCLI {
           code: -32603,
           message: (error as Error).message,
         },
-        id: message.id || null,
+        id: (message as any)?.id || null,
       };
       console.log(JSON.stringify(errorResponse));
     }
@@ -267,7 +267,7 @@ class MCPDebugCLI {
     }
 
     // メソッドに応じて処理
-    const { method, params, id } = request;
+    const { method, params, id } = request as any;
 
     let result;
 
@@ -278,7 +278,7 @@ class MCPDebugCLI {
 
       case 'tools/list': {
         const capabilities = this.client.getServerCapabilities();
-        result = { tools: Object.keys(capabilities?.tools || {}) };
+        result = { tools: Object.keys((capabilities as any)?.tools || {}) };
         break;
       }
 

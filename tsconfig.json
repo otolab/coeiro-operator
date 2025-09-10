@@ -38,6 +38,7 @@
     "**/*.test.ts",
     "**/*.spec.ts",
     "coverage",
-    "eslint.config.js"
+    "eslint.config.js",
+    "packages/mcp-debug/src/test/**/*"
   ]
 }
