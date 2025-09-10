@@ -6,25 +6,27 @@ export default defineConfig({
         testTimeout: 30000,
         // MCP Debug専用テストファイル
         include: [
-            'src/mcp-debug/test/**/*.test.ts'
+            'packages/mcp-debug/src/**/*.test.ts'
         ],
         // 除外パターン
         exclude: [
             'node_modules/**',
             'dist/**',
-            'coverage/**'
+            'coverage/**',
+            'packages/mcp-debug/src/test/**'
         ],
-        // セットアップファイル
-        setupFiles: ['src/mcp-debug/test/setup.ts'],
+        // セットアップファイル（必要な場合）
+        // setupFiles: ['packages/mcp-debug/src/test/setup.ts'],
         // カバレッジ設定
         coverage: {
             provider: 'v8',
             include: [
-                'src/mcp-debug/**/*.ts'
+                'packages/mcp-debug/src/**/*.ts'
             ],
             exclude: [
-                'src/mcp-debug/**/*.test.ts',
-                'src/mcp-debug/**/*.d.ts'
+                'packages/mcp-debug/src/**/*.test.ts',
+                'packages/mcp-debug/src/**/*.d.ts',
+                'packages/mcp-debug/src/test/**'
             ],
             reportsDirectory: 'coverage/mcp-debug'
         },

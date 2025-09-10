@@ -57,16 +57,6 @@
   "author": "",
   "license": "MIT",
   "type": "module",
-  "os": [
-    "darwin",
-    "linux",
-    "win32"
-  ],
-  "cpu": [
-    "x64",
-    "arm64",
-    "ia32"
-  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
     "@types/commander": "^2.12.0",
