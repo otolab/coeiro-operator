@@ -423,9 +423,9 @@ say-coeiroink "またセクシースタイルに戻る"
 
 ## 関連ファイル
 
-- **キャラクター詳細情報**: [CHARACTERS.md](CHARACTERS.md)
-- **音声ID更新手順**: [../prompts/UPDATE_CHARACTER_SETTINGS.md](../prompts/UPDATE_CHARACTER_SETTINGS.md)
-- **インストールガイド**: [../README.md](../README.md)
+- **キャラクター詳細情報**: [../user-guide/CHARACTERS.md](../user-guide/CHARACTERS.md)
+- **音声ID更新手順**: [../../prompts/UPDATE_CHARACTER_SETTINGS.md](../../prompts/UPDATE_CHARACTER_SETTINGS.md)
+- **インストールガイド**: [../../README.md](../../README.md)
 
 ---
 **作成日**: 2025年8月5日  

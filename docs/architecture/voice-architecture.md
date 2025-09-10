@@ -328,12 +328,12 @@ await say({ message: "通常スタイルで話すよ", style: "のーまる" });
 
 詳細な設定方法については以下のドキュメントを参照：
 
-- [設定ガイド](configuration-guide.md) - 基本設定とカスタマイズ
-- [キャラクター詳細](CHARACTERS.md) - 各キャラクターの詳細情報
-- [オペレータ仕様](operator-assignment-specification.md) - オペレータ管理の詳細
+- [設定ガイド](../getting-started/configuration-guide.md) - 基本設定とカスタマイズ
+- [キャラクター詳細](../user-guide/CHARACTERS.md) - 各キャラクターの詳細情報
+- [オペレータ仕様](./operator-assignment-specification.md) - オペレータ管理の詳細
 
 ## 📚 関連ドキュメント
 
-- [README.md](../README.md) - プロジェクト概要
-- [開発Tips](development-tips.md) - 開発者向け情報
-- [テストガイド](testing-guide.md) - テスト方法
+- [README.md](../../README.md) - プロジェクト概要
+- [開発Tips](../development/development-tips.md) - 開発者向け情報
+- [テストガイド](../development/testing-guide.md) - テスト方法
