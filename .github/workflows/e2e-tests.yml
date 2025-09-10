@@ -3,6 +3,8 @@ name: E2E Tests
 on:
   pull_request:
     paths:
+      - 'packages/**/*.ts'
+      - 'packages/**/*.js'
       - 'src/**/*.ts'
       - 'src/**/*.js'
       - 'package*.json'
@@ -34,10 +36,12 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev
       
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install
+          npm install @rollup/rollup-linux-x64-gnu --no-save
       
-      - name: Build project
-        run: npm run build
+      - name: Build all packages
+        run: npm run build:all
       
       - name: Run all E2E tests
         run: npm run test:e2e
