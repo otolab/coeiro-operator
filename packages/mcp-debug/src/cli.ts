@@ -10,6 +10,31 @@ import { promises as fs } from 'fs';
 import { MCPDebugClient } from './core/mcp-debug-client.js';
 import { MCPServerState } from './core/state-manager.js';
 
+// MCP\u30c4\u30fc\u30eb\u306e\u30b9\u30ad\u30fc\u30de\u578b
+interface ToolSchema {
+  name: string;
+  description?: string;
+  inputSchema?: {
+    type: string;
+    properties?: Record<string, unknown>;
+    required?: string[];
+  };
+}
+
+// JSON-RPC\u30e1\u30c3\u30bb\u30fc\u30b8\u578b
+interface JsonRpcMessage {
+  jsonrpc: string;
+  id?: string | number | null;
+  method?: string;
+  params?: unknown;
+  result?: unknown;
+  error?: {
+    code: number;
+    message: string;
+    data?: unknown;
+  };
+}
+
 interface CLIOptions {
   targetServerPath: string;
   debugMode: boolean;
@@ -228,7 +253,7 @@ class MCPDebugCLI {
   /**
    * 非インタラクティブモードの入力を処理
    */
-  private async handleNonInteractiveInput(message: any): Promise<void> {
+  private async handleNonInteractiveInput(message: JsonRpcMessage | unknown): Promise<void> {
     if (!this.client) {
       const error = {
         jsonrpc: '2.0',
@@ -236,7 +261,7 @@ class MCPDebugCLI {
           code: -32603,
           message: 'Client not initialized',
         },
-        id: (message as any)?.id || null,
+        id: typeof message === 'object' && message !== null && 'id' in message ? (message as JsonRpcMessage).id : null,
       };
       console.log(JSON.stringify(error));
       return;
@@ -252,7 +277,7 @@ class MCPDebugCLI {
           code: -32603,
           message: (error as Error).message,
         },
-        id: (message as any)?.id || null,
+        id: typeof message === 'object' && message !== null && 'id' in message ? (message as JsonRpcMessage).id : null,
       };
       console.log(JSON.stringify(errorResponse));
     }

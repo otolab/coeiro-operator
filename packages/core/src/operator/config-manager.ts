@@ -18,22 +18,62 @@ const CONNECTION_SETTINGS = {
 } as const;
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
 
+// オーディオ設定の詳細な型定義
+interface AudioProcessingSettings {
+  normalize?: boolean;
+  amplifyDb?: number;
+  pitchShift?: number;
+  speedScale?: number;
+}
+
+interface AudioSplitSettings {
+  delimiter?: string;
+  maxLength?: number;
+  overlapLength?: number;
+}
+
+interface AudioBufferSettings {
+  size?: number;
+  maxQueueSize?: number;
+  preloadCount?: number;
+}
+
+interface AudioPaddingSettings {
+  start?: number;
+  end?: number;
+  between?: number;
+}
+
+interface AudioCrossfadeSettings {
+  enabled?: boolean;
+  duration?: number;
+  type?: 'linear' | 'exponential' | 'logarithmic';
+}
+
+interface AudioConfig {
+  latencyMode?: 'ultra-low' | 'balanced' | 'quality';
+  splitMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
+  bufferSize?: number;
+  processing?: AudioProcessingSettings;
+  splitSettings?: AudioSplitSettings;
+  bufferSettings?: AudioBufferSettings;
+  paddingSettings?: AudioPaddingSettings;
+  crossfadeSettings?: AudioCrossfadeSettings;
+  parallelGeneration?: {
+    maxConcurrency?: number;
+    pauseUntilFirstComplete?: boolean;
+    delayBetweenRequests?: number;
+    bufferAheadCount?: number;
+  };
+}
+
 // FullConfig型の定義（audioパッケージのConfig型と互換）
 export interface FullConfig {
   connection: {
     host: string;
     port: string;
   };
-  audio: {
-    latencyMode?: 'ultra-low' | 'balanced' | 'quality';
-    splitMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
-    bufferSize?: number;
-    processing?: Record<string, any>;
-    splitSettings?: Record<string, any>;
-    bufferSettings?: Record<string, any>;
-    paddingSettings?: Record<string, any>;
-    crossfadeSettings?: Record<string, any>;
-  };
+  audio: AudioConfig;
   operator: {
     rate: number;
     timeout: number;
@@ -48,16 +88,7 @@ interface UnifiedConfig {
     host?: string;
     port?: string;
   };
-  audio?: {
-    latencyMode?: 'ultra-low' | 'balanced' | 'quality';
-    splitMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
-    bufferSize?: number;
-    parallelGeneration?: {
-      maxConcurrency?: number;
-      pauseUntilFirstComplete?: boolean;
-    };
-    [key: string]: any;
-  };
+  audio?: AudioConfig;
   operator?: {
     rate?: number; // 話速（WPM）
     timeout?: number; // タイムアウト（ミリ秒）
@@ -257,7 +288,7 @@ export class ConfigManager {
   /**
    * 音声設定を取得
    */
-  async getAudioConfig(): Promise<Record<string, any>> {
+  async getAudioConfig(): Promise<AudioConfig> {
     const config = await this.loadConfig();
     return config.audio || {};
   }
@@ -284,7 +315,7 @@ export class ConfigManager {
 
     return {
       connection: await this.getConnectionConfig(),
-      audio: await this.getAudioConfig(),
+      audio: await this.getAudioConfig() as AudioConfig,
       operator: {
         rate: config.operator?.rate || 200,
         timeout: config.operator?.timeout || 14400000,

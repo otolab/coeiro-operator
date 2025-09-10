@@ -42,7 +42,7 @@ interface ToolResponse {
     type: 'text';
     text: string;
   }>;
-  [key: string]: any;
+  [key: string]: unknown; // MCP SDK\u304c\u8ffd\u52a0\u30d5\u30a3\u30fc\u30eb\u30c9\u3092\u8a31\u53ef\u3059\u308b\u305f\u3081\u5fc5\u8981
 }
 
 // コマンドライン引数の解析
