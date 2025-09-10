@@ -28,6 +28,11 @@ Thumbs.db
 build/
 dist/
 
+# mcp-debug test build artifacts
+packages/mcp-debug/src/test/**/*.js
+packages/mcp-debug/src/test/**/*.d.ts
+packages/mcp-debug/src/test/**/*.map
+
 # code-bugs分析ファイル
 .code-bugs/
 
