@@ -15,9 +15,9 @@
   },
   "scripts": {
     "start": "node dist/mcp/server.js",
-    "build": "tsc --build",
+    "build": "tsc",
     "build:watch": "tsc --watch",
-    "build:all": "npm run build:packages && npm run build",
+    "build:all": "npm run build:packages",
     "build:packages": "npm run build:common && npm run build:core && npm run build:audio && npm run build:cli && npm run build:mcp && npm run build:mcp-debug",
     "build:common": "npm run build -w @coeiro-operator/common",
     "build:core": "npm run build -w @coeiro-operator/core",
