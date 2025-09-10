@@ -1,97 +1,64 @@
-# 📚 COEIRO Operator ドキュメント
+# coeiro-operator ドキュメント
 
-COEIRO Operatorの包括的なドキュメント集です。目的別に整理されているので、必要な情報を素早く見つけることができます。
+このディレクトリには、coeiro-operatorプロジェクトの技術文書が整理されています。
 
-## 🚀 はじめに
+## 📁 ドキュメント構成
 
-### クイックスタート
-- **[installation.md](installation.md)** - インストール・セットアップガイド
-- **[configuration-guide.md](configuration-guide.md)** - 基本設定・カスタマイズガイド
+### 🚀 [Getting Started](getting-started/)
+プロジェクトを始めるための基本情報
+- [インストールガイド](getting-started/installation.md) - セットアップ手順
+- [設定ガイド](getting-started/configuration-guide.md) - 設定方法
+- [トラブルシューティング](getting-started/troubleshooting.md) - 問題解決
 
-### キャラクター・オペレータ
-- **[CHARACTERS.md](CHARACTERS.md)** - 全オペレータキャラクター詳細
-- **[SETTINGS_SYNC_GUIDE.md](SETTINGS_SYNC_GUIDE.md)** - 設定同期ガイド
+### 📖 [ユーザーガイド](user-guide/)
+日常的な使用方法とカスタマイズ
+- [キャラクター一覧](user-guide/CHARACTERS.md) - 利用可能なキャラクター
+- [設定オプション一覧](user-guide/configuration-options.md) - 詳細設定
+- [ユーザー辞書ガイド](user-guide/user-dictionary-guide.md) - 読み方カスタマイズ
+- [デバッグガイド](user-guide/debugging-guide.md) - デバッグ方法
 
-## 🎵 音声・オーディオシステム
+### 🏗️ [アーキテクチャ](architecture/)
+システム設計と内部構造
+- [音声アーキテクチャ](architecture/voice-architecture.md) - 音声合成システム設計
+- [音声システム](architecture/audio-system.md) - 音声処理の仕組み
+- [音声キューシステム](architecture/speech-queue-system.md) - 非同期処理
+- [音声プロバイダーシステム](architecture/voice-provider-system.md) - 音声エンジン抽象化
+- [オペレータ割り当て仕様](architecture/operator-assignment-specification.md) - オペレータ管理
+- [汎用ファイル操作マネージャー](architecture/generic-file-operation-manager.md) - ファイル管理
 
-### 基本機能
-- **[voice-architecture.md](voice-architecture.md)** - 音声アーキテクチャ仕様書（Speaker, Character, VoiceConfig）
-- **[audio-system.md](audio-system.md)** - 音声システム詳細仕様
-- **[speech-queue-system.md](speech-queue-system.md)** - SpeechQueue統一実装システム
-- **[audio-streaming-guide.md](audio-streaming-guide.md)** - 音声ストリーミング機能ガイド
-- **[parallel-generation-system.md](parallel-generation-system.md)** - 並行チャンク生成システム
+### ⚡ [機能ガイド](features/)
+特定機能の詳細説明
+- [音声ストリーミングガイド](features/audio-streaming-guide.md) - リアルタイム音声
+- [並行生成システム](features/parallel-generation-system.md) - 高速化機能
+- [MCP非同期動作仕様](features/mcp-async-say-behavior.md) - MCP音声合成
+- [設定同期ガイド](features/SETTINGS_SYNC_GUIDE.md) - 設定の同期
 
-### 高度な機能
-- **[voice-provider-system.md](voice-provider-system.md)** - VoiceProviderシステム詳細
+### 👩‍💻 [開発者向け](development/)
+開発とテストのガイドライン
+- [開発のヒント](development/development-tips.md) - 開発効率化
+- [テストガイド](development/testing-guide.md) - テストの書き方
+- [テスト戦略ガイド](development/test-strategy-guide.md) - テスト設計
+- [テスト品質ガイドライン](development/test-quality-guidelines.md) - 品質基準
+- [ロギングガイドライン](development/logging-guidelines.md) - ログ出力
+- [メモリリーク検出ガイド](development/memory-leak-detection-guide.md) - メモリ管理
 
-## ⚙️ 設定・カスタマイズ
+### 🔧 [MCP Debug](mcp-debug/)
+MCPデバッグツール関連
+- [README](mcp-debug/README.md) - 概要
+- [アーキテクチャ](mcp-debug/architecture.md) - 設計
+- [MCPデバッグガイド](mcp-debug/mcp-debug-guide.md) - 使用方法
+- [テスト機能](mcp-debug/testing-features.md) - テスト
 
-### 設定ガイド
-- **[configuration-guide.md](configuration-guide.md)** - 設定・カスタマイズ完全ガイド
-- **[configuration-options.md](configuration-options.md)** - 設定オプション詳細リファレンス
-- **[user-dictionary-guide.md](user-dictionary-guide.md)** - ユーザー辞書登録ガイド（単語の読み方・アクセント設定）
+### 📝 [設定サンプル](config-samples/)
+用途別の設定ファイル例
+- [README](config-samples/README.md) - サンプルの説明
+- 各種設定ファイル（.json）
 
-### 設定サンプル
-- **[config-samples/](config-samples/)** - 用途別設定ファイルサンプル
-  - [ultra-low-latency.json](config-samples/ultra-low-latency.json) - 超低レイテンシ設定
-  - [balanced.json](config-samples/balanced.json) - バランス重視設定
-  - [high-quality.json](config-samples/high-quality.json) - 高品質重視設定
+## 🔍 クイックアクセス
 
-## 🛠️ 開発・テスト
-
-### 開発環境
-- **[development-tips.md](development-tips.md)** - 開発テクニック・Tips集
-- **[debugging-guide.md](debugging-guide.md)** - COEIRO Operatorデバッグガイド
-- **[mcp-debug-guide.md](mcp-debug-guide.md)** - MCPデバッグツール基本ガイド
-- **[mcp-debug/](mcp-debug/)** - MCPデバッグ詳細ドキュメント
-  - [MCPプロトコル仕様](mcp-debug/mcp-protocol-specification.md)
-  - [テスト機能](mcp-debug/testing-features.md)
-  - [アーキテクチャ設計](mcp-debug/architecture.md)
-
-### テスト・品質管理
-- **[testing-guide.md](testing-guide.md)** - テスト環境とmcp-debug統合
-- **[test-quality-guidelines.md](test-quality-guidelines.md)** - テスト品質の基本原則
-- **[memory-leak-detection-guide.md](memory-leak-detection-guide.md)** - メモリリーク検出・精密測定ガイド
-- **[logging-guidelines.md](logging-guidelines.md)** - ログ出力ガイドライン
-
-## 📖 リファレンス
-
-### アーキテクチャ・設計
-- **[voice-architecture.md](voice-architecture.md)** - 音声アーキテクチャ仕様書
-- **[operator-assignment-specification.md](operator-assignment-specification.md)** - オペレータ割り当て仕様
-- **[generic-file-operation-manager.md](generic-file-operation-manager.md)** - 汎用FileOperationManager<T>仕様
-
-### トラブルシューティング・サポート
-- **[troubleshooting.md](troubleshooting.md)** - 問題解決ガイド
-
-## 📋 プロジェクト情報
-
-### 変更履歴・リリース
-- **[../CHANGELOG.md](../CHANGELOG.md)** - 変更履歴・リリースノート
-
-## 🎯 用途別ガイド
-
-### 🏃 すぐに使いたい
-1. [installation.md](installation.md) でインストール
-2. [configuration-guide.md](configuration-guide.md) で基本設定
-3. [CHARACTERS.md](CHARACTERS.md) でキャラクター選択
-
-### 🔧 カスタマイズしたい
-1. [voice-architecture.md](voice-architecture.md) で型定義を理解
-2. [configuration-options.md](configuration-options.md) で設定詳細確認
-3. [config-samples/](config-samples/) で設定例参照
-4. [audio-system.md](audio-system.md) で音声システム理解
-
-### 🚀 開発に参加したい
-1. [development-tips.md](development-tips.md) で開発環境構築
-2. [testing-guide.md](testing-guide.md) でテスト方法確認
-3. [test-quality-guidelines.md](test-quality-guidelines.md) で品質基準確認
-
-### 🆘 問題が発生した
-1. [troubleshooting.md](troubleshooting.md) で解決方法検索
-2. [debugging-guide.md](debugging-guide.md) でデバッグ手順確認
-3. [mcp-debug-guide.md](mcp-debug-guide.md) でMCPツール使用
-4. [logging-guidelines.md](logging-guidelines.md) でログ確認方法確認
+**初めての方**: [インストール](getting-started/installation.md) → [設定](getting-started/configuration-guide.md)  
+**開発者**: [開発のヒント](development/development-tips.md) → [テスト](development/testing-guide.md)  
+**問題解決**: [デバッグ](user-guide/debugging-guide.md) → [トラブルシューティング](getting-started/troubleshooting.md)
 
 ---
 

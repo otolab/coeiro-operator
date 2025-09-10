@@ -267,4 +267,4 @@ const tester = await createMCPTester({
 ## 関連ドキュメント
 
 - [MCPプロトコル仕様](./mcp-protocol-specification.md)
-- [MCPデバッグガイド](../mcp-debug-guide.md)
+- [MCPデバッグガイド](./mcp-debug-guide.md)

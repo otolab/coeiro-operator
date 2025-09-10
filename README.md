@@ -161,8 +161,8 @@ operator-manager clear                               # 全クリア
 
 ### 詳細設定ガイド
 
-- **[docs/configuration-guide.md](docs/configuration-guide.md)** - 設定・カスタマイズ完全ガイド
-- **[docs/CHARACTERS.md](docs/CHARACTERS.md)** - オペレータキャラクター詳細
+- **[docs/getting-started/configuration-guide.md](docs/getting-started/configuration-guide.md)** - 設定・カスタマイズ完全ガイド
+- **[docs/user-guide/CHARACTERS.md](docs/user-guide/CHARACTERS.md)** - オペレータキャラクター詳細
 
 ## オペレータキャラクター
 
@@ -184,7 +184,7 @@ operator-manager clear                               # 全クリア
 | AI声優-青葉 | プロフェッショナルながら感情表現も豊か | クリアで感情豊かな声 |
 | AI声優-銀芽 | 知的でクール、感情表現のバリエーションが豊富 | クリアで多様な表現力 |
 
-詳細は [docs/CHARACTERS.md](docs/CHARACTERS.md) を参照。
+詳細は [docs/user-guide/CHARACTERS.md](docs/user-guide/CHARACTERS.md) を参照。
 
 注意: 利用可能なキャラクターはCOEIROINK環境にインストールされた音声ライブラリに依存します。
 
@@ -229,30 +229,30 @@ COEIROINK API → WAV → PCM → リサンプリング → ローパスフィ�
 - **[docs/README.md](docs/README.md)** - ドキュメント完全インデックス（用途別・カテゴリ別ガイド）
 
 ### 音声・オーディオ
-- **[docs/audio-streaming-guide.md](docs/audio-streaming-guide.md)** - 音声ストリーミング機能ガイド
-- **[docs/audio-system.md](docs/audio-system.md)** - 音声システム詳細仕様
-- **[docs/parallel-generation-system.md](docs/parallel-generation-system.md)** - 並行チャンク生成システム
+- **[docs/features/audio-streaming-guide.md](docs/features/audio-streaming-guide.md)** - 音声ストリーミング機能ガイド
+- **[docs/architecture/audio-system.md](docs/architecture/audio-system.md)** - 音声システム詳細仕様
+- **[docs/features/parallel-generation-system.md](docs/features/parallel-generation-system.md)** - 並行チャンク生成システム
 
 ### 開発・運用
-- **[docs/development-tips.md](docs/development-tips.md)** - 開発テクニック・Tips集
-- **[docs/mcp-debug-guide.md](docs/mcp-debug-guide.md)** - MCPデバッグ環境ガイド
-- **[docs/troubleshooting.md](docs/troubleshooting.md)** - トラブルシューティング
+- **[docs/development/development-tips.md](docs/development/development-tips.md)** - 開発テクニック・Tips集
+- **[docs/mcp-debug/mcp-debug-guide.md](docs/mcp-debug/mcp-debug-guide.md)** - MCPデバッグ環境ガイド
+- **[docs/getting-started/troubleshooting.md](docs/getting-started/troubleshooting.md)** - トラブルシューティング
 
 ### リファレンス
-- **[docs/configuration-guide.md](docs/configuration-guide.md)** - 設定・カスタマイズガイド
-- **[docs/voice-provider-system.md](docs/voice-provider-system.md)** - VoiceProviderシステム
+- **[docs/getting-started/configuration-guide.md](docs/getting-started/configuration-guide.md)** - 設定・カスタマイズガイド
+- **[docs/architecture/voice-provider-system.md](docs/architecture/voice-provider-system.md)** - VoiceProviderシステム
 
 ### プロジェクト情報
 - **[CHANGELOG.md](CHANGELOG.md)** - 変更履歴・リリースノート
-- **[docs/testing-guide.md](docs/testing-guide.md)** - テスト環境ガイド
+- **[docs/development/testing-guide.md](docs/development/testing-guide.md)** - テスト環境ガイド
 
 ## 開発者向け情報
 
 開発に参加される方は、以下のドキュメントを参照してください：
 
-- **[docs/development-tips.md](docs/development-tips.md)** - 開発環境構築・テクニック・Tips集
-- **[docs/testing-guide.md](docs/testing-guide.md)** - テスト環境とmcp-debug統合
-- **[docs/test-quality-guidelines.md](docs/test-quality-guidelines.md)** - テスト品質の基本原則
+- **[docs/development/development-tips.md](docs/development/development-tips.md)** - 開発環境構築・テクニック・Tips集
+- **[docs/development/testing-guide.md](docs/development/testing-guide.md)** - テスト環境とmcp-debug統合
+- **[docs/development/test-quality-guidelines.md](docs/development/test-quality-guidelines.md)** - テスト品質の基本原則
 
 ### クイック開発セットアップ
 
@@ -263,7 +263,7 @@ cd coeiro-operator
 npm install && npm run build
 ```
 
-詳細な事前要件・開発環境構築は **[docs/development-tips.md](docs/development-tips.md)** を参照。
+詳細な事前要件・開発環境構築は **[docs/development/development-tips.md](docs/development/development-tips.md)** を参照。
 
 ## ドキュメント構造
 

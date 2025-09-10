@@ -110,7 +110,7 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments"
 
 ## 📖 関連ドキュメント
 
-- [../mcp-debug-guide.md](../mcp-debug-guide.md) - 基本的な使用ガイド
+- [mcp-debug-guide.md](./mcp-debug-guide.md) - 基本的な使用ガイド
 - [../../src/mcp-debug/README.md](../../src/mcp-debug/README.md) - 実装の詳細
 - [MCP公式仕様](https://modelcontextprotocol.io/specification) - プロトコル仕様
 
