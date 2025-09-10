@@ -30,16 +30,58 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev
       
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install
+          npm install @rollup/rollup-linux-x64-gnu --no-save
       
-      - name: Build
-        run: npm run build
+      - name: Build all packages
+        run: npm run build:all
       
       - name: Type check
         run: npm run type-check
       
-      - name: Run tests
-        run: npm test
+      - name: Lint
+        run: npm run lint
+      
+      - name: Run tests - Common package
+        run: npm run test:common
         env:
           NODE_ENV: test
           CI: true
+      
+      - name: Run tests - Core package
+        run: npm run test:core
+        env:
+          NODE_ENV: test
+          CI: true
+      
+      - name: Run tests - Audio package
+        run: npm run test:audio
+        env:
+          NODE_ENV: test
+          CI: true
+      
+      - name: Run tests - CLI package
+        run: npm run test:cli
+        env:
+          NODE_ENV: test
+          CI: true
+      
+      - name: Run tests - MCP package
+        run: npm run test:mcp
+        env:
+          NODE_ENV: test
+          CI: true
+      
+      - name: Run tests - MCP Debug package
+        run: npm run test:mcp-debug
+        env:
+          NODE_ENV: test
+          CI: true
+      
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          NODE_ENV: test
+          CI: true
+          COEIRO_TEST_MODE: true

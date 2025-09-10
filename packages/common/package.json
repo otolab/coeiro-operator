@@ -1,0 +1,36 @@
+{
+  "name": "@coeiro-operator/common",
+  "version": "1.0.0",
+  "description": "Common utilities and logger for COEIRO Operator",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64",
+    "ia32"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.4"
+  },
+  "keywords": [
+    "common",
+    "utilities",
+    "logger"
+  ],
+  "license": "MIT"
+}

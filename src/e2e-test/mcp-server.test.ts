@@ -6,15 +6,15 @@
  */
 
 import { describe, test, expect, beforeEach, afterEach } from 'vitest';
-import { createMCPTester, MCPServiceE2ETester } from '../mcp-debug/e2e/index.js';
+import { createMCPTester, MCPServiceE2ETester } from '@coeiro-operator/mcp-debug';
 import * as path from 'path';
-import { getTestEnvironment } from '../test-utils/test-env.js';
+import { getTestEnvironment } from '@coeiro-operator/core';
 
 describe('COEIRO Operator with MCP Debug Integration E2E Tests', () => {
   let tester: MCPServiceE2ETester;
 
   beforeEach(async () => {
-    const serverPath = path.resolve(__dirname, '../../dist/mcp/server.js');
+    const serverPath = path.resolve(__dirname, '../../packages/mcp/dist/server.js');
     
     // E2Eアダプタを使用してMCPサーバーを起動
     tester = await createMCPTester({ 

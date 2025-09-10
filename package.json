@@ -2,6 +2,10 @@
   "name": "coeiro-operator",
   "version": "2.0.0",
   "description": "MCP server for COEIROINK voice synthesis and operator management",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
   "main": "dist/mcp/server.js",
   "bin": {
     "coeiro-operator": "./dist/mcp/server.js",
@@ -13,6 +17,14 @@
     "start": "node dist/mcp/server.js",
     "build": "tsc",
     "build:watch": "tsc --watch",
+    "build:all": "npm run build:packages",
+    "build:packages": "npm run build:common && npm run build:core && npm run build:audio && npm run build:cli && npm run build:mcp && npm run build:mcp-debug",
+    "build:common": "npm run build -w @coeiro-operator/common",
+    "build:core": "npm run build -w @coeiro-operator/core",
+    "build:audio": "npm run build -w @coeiro-operator/audio",
+    "build:cli": "npm run build -w @coeiro-operator/cli",
+    "build:mcp": "npm run build -w @coeiro-operator/mcp",
+    "build:mcp-debug": "npm run build -w @coeiro-operator/mcp-debug",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest --config vitest.coverage.config.ts --run",
@@ -22,10 +34,15 @@
     "test:mcp-debug": "vitest --config vitest.mcp-debug.config.ts",
     "test:e2e": "vitest --config vitest.e2e.config.ts --run",
     "test:e2e:watch": "vitest --config vitest.e2e.config.ts --watch",
-    "test:all": "npm run test:coeiro && npm run test:mcp-debug",
+    "test:all": "npm run test:common && npm run test:core && npm run test:audio && npm run test:cli && npm run test:mcp && npm run test:mcp-debug",
+    "test:common": "npm run test -w @coeiro-operator/common",
+    "test:core": "npm run test -w @coeiro-operator/core",
+    "test:audio": "npm run test -w @coeiro-operator/audio",
+    "test:cli": "npm run test -w @coeiro-operator/cli",
+    "test:mcp": "npm run test -w @coeiro-operator/mcp",
     "type-check": "tsc --noEmit",
-    "lint": "eslint src --ext .ts,.js",
-    "lint:fix": "eslint src --ext .ts,.js --fix",
+    "lint": "eslint packages/*/src/**/*.ts",
+    "lint:fix": "eslint packages/*/src/**/*.ts --fix",
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
     "format:check": "prettier --check \"src/**/*.{ts,js,json,md}\"",
     "prepublishOnly": "npm run build"
@@ -40,8 +57,6 @@
   "author": "",
   "license": "MIT",
   "type": "module",
-  "os": ["darwin", "linux", "win32"],
-  "cpu": ["x64", "arm64", "ia32"],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.17.0",
     "@types/commander": "^2.12.0",
@@ -52,6 +67,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@eslint/js": "^9.35.0",
     "@types/express": "^5.0.3",
     "@types/node": "^24.2.0",
     "@types/uuid": "^10.0.0",
@@ -61,8 +77,10 @@
     "@vitest/ui": "^3.2.4",
     "eslint": "^9.34.0",
     "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.3.0",
     "prettier": "^3.6.2",
     "typescript": "^5.9.2",
+    "typescript-eslint": "^8.42.0",
     "vitest": "^3.2.4"
   }
 }

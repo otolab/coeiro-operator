@@ -7,8 +7,6 @@
     "esModuleInterop": true,
     "allowJs": true,
     "checkJs": false,
-    "outDir": "./dist",
-    "rootDir": "./src",
     "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
@@ -23,13 +21,14 @@
     "forceConsistentCasingInFileNames": true,
     "types": ["node"]
   },
-  "include": [
-    "src/**/*"
-  ],
   "exclude": [
     "node_modules",
     "dist",
+    "**/dist",
     "**/*.test.ts",
-    "src/mcp-debug/test/**/*"
+    "**/*.spec.ts",
+    "coverage",
+    "eslint.config.js",
+    "packages/mcp-debug/src/test/**/*"
   ]
 }

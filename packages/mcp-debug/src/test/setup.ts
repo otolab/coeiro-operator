@@ -1,0 +1,30 @@
+/**
+ * Test Setup for MCP Debug Environment
+ * MCPデバッグ環境のテストセットアップ
+ */
+
+import { beforeAll, afterAll } from 'vitest';
+
+// グローバルテスト設定
+beforeAll(() => {
+  // テスト環境の設定
+  process.env.NODE_ENV = 'test';
+  process.env.MCP_DEBUG_TEST_MODE = 'true';
+});
+
+afterAll(() => {
+  // テスト環境のクリーンアップ
+  delete process.env.MCP_DEBUG_TEST_MODE;
+});
+
+// 非同期操作のためのヘルパー
+interface GlobalWithTestHelpers extends NodeJS.Global {
+  waitFor: (ms: number) => Promise<void>;
+  getTestPort: () => number;
+}
+
+const globalWithHelpers = global as unknown as GlobalWithTestHelpers;
+globalWithHelpers.waitFor = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// テスト用ポート範囲（他のテストとの競合を避ける）
+globalWithHelpers.getTestPort = () => Math.floor(Math.random() * 1000) + 9000;
