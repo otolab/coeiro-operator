@@ -188,34 +188,8 @@ node dist/mcp-debug/cli.js --debug dist/mcp/server.js 2>&1 | \
 
 ### 自動テストスクリプト
 
-```bash
-#!/bin/bash
-# test-mcp-server.sh
-
-set -e
-
-echo "Testing MCP Server..."
-
-# 1. Initialize test
-INIT_RESULT=$(echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}}},"id":1}' | \
-  timeout 5 node dist/mcp-debug/cli.js dist/mcp/server.js 2>/dev/null)
-
-if ! echo "$INIT_RESULT" | jq -e '.result.capabilities' > /dev/null; then
-  echo "❌ Initialization failed"
-  exit 1
-fi
-
-# 2. Tool execution test
-TOOL_RESULT=$(echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":2}' | \
-  timeout 5 node dist/mcp-debug/cli.js dist/mcp/server.js 2>/dev/null)
-
-if ! echo "$TOOL_RESULT" | jq -e '.result' > /dev/null; then
-  echo "❌ Tool execution failed"
-  exit 1
-fi
-
-echo "✅ All tests passed"
-```
+CI/CD環境でMCPサーバーの自動テストを実行するスクリプトを作成できます。
+テストスクリプトでは、初期化テスト、ツール実行テストを行い、結果を検証します。
 
 ### GitHub Actions統合
 
@@ -238,26 +212,11 @@ jobs:
 
 ### レスポンスタイム測定
 
-```bash
-# 100回のリクエストを送信して統計を取得
-for i in {1..100}; do
-  time echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"test"}},"id":'$i'}' | \
-    node dist/mcp-debug/cli.js dist/mcp/server.js 2>/dev/null
-done | awk '{sum+=$1; count++} END {print "Average:", sum/count, "seconds"}'
-```
+複数リクエストを送信して平均レスポンスタイムを測定できます。
 
 ### メモリ使用量監視
 
-```bash
-# プロセスのメモリ使用量を監視
-node dist/mcp-debug/cli.js --interactive dist/mcp/server.js &
-PID=$!
-
-while kill -0 $PID 2>/dev/null; do
-  ps -o pid,vsz,rss,comm -p $PID
-  sleep 1
-done
-```
+MCPサーバープロセスのメモリ使用量をリアルタイムで監視できます。
 
 ## トラブルシューティング
 
@@ -285,7 +244,5 @@ done
    ```
 
 3. **プロトコルトレース**
-   ```bash
-   # すべての通信をファイルに記録
-   node dist/mcp-debug/cli.js dist/mcp/server.js 2>protocol.log
-   ```
+   
+   すべての通信をファイルに記録して後で分析できます。

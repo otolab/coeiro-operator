@@ -20,7 +20,6 @@ const tester = await createMCPTester({
 
 // ツールを呼び出し
 const result = await tester.callTool('operator_status', {});
-console.log(result);
 
 // 必ずクリーンアップ
 await tester.cleanup();
@@ -179,8 +178,7 @@ try {
   const results = await tester.callToolsConcurrently(calls);
   const duration = Date.now() - start;
   
-  console.log(`100 calls in ${duration}ms`);
-  console.log(`Average: ${duration / 100}ms per call`);
+  // パフォーマンス測定結果の処理
 } finally {
   await tester.cleanup();
 }
@@ -195,7 +193,7 @@ try {
   const result = await tester.callTool('invalid_tool', {});
   
   if (!result.success) {
-    console.error('Tool call failed:', result.error);
+    // エラー処理
   }
 } finally {
   await tester.cleanup();
@@ -216,17 +214,12 @@ try {
   
   // 全ログを取得
   const allLogs = tester.getLogs();
-  console.log(`Total logs: ${allLogs.length}`);
   
   // stderrログのみ取得
   const errorLogs = tester.getLogs({ level: 'stderr' });
-  console.log(`Error logs: ${errorLogs.length}`);
   
   // 最新10件のログ
   const recentLogs = tester.getLogs({ limit: 10 });
-  recentLogs.forEach(log => {
-    console.log(`[${log.level}] ${log.message}`);
-  });
   
   // 特定時刻以降のログ
   const since = new Date(Date.now() - 5000); // 5秒前

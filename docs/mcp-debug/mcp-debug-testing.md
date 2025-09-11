@@ -22,7 +22,6 @@ node dist/mcp/server.js --debug
 ### 1. デバッグモードでサーバー起動
 
 ```bash
-cd /Users/naoto.kato/Develop/otolab/coeiro-operator
 npm run build
 node dist/mcp/server.js --debug
 ```
@@ -83,9 +82,7 @@ node dist/mcp/server.js --debug
 ### splitModeが期待通りに動作しない場合
 
 1. **設定ファイルの確認**:
-   ```bash
-   cat ~/.coeiro-operator/coeiroink-config.json
-   ```
+   設定ファイルを確認: `~/.coeiro-operator/coeiroink-config.json`
 
 2. **フォールバック処理の確認**:
    - `config.audio.splitMode`が`undefined`の場合、`'punctuation'`にフォールバックされるはず

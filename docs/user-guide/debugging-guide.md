@@ -41,6 +41,6 @@ Claude Code起動時のMCPサーバーインスタンスが古いため。開発
 
 ## 関連ドキュメント
 
-- [mcp-debug テスト機能](./mcp-debug/testing-features.md)
-- [トラブルシューティング](./troubleshooting.md)
-- [開発Tips](./development-tips.md)
+- [mcp-debug テスト機能](../mcp-debug/testing-features.md)
+- [トラブルシューティング](../getting-started/troubleshooting.md)
+- [開発Tips](../development/development-tips.md)

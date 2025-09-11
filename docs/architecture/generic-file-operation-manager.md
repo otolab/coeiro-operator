@@ -60,11 +60,6 @@ async store(data: T): Promise<void>
 3. データの保存（現在時刻でupdated_at更新）
 4. ファイル書き込み
 
-**用途例:**
-```typescript
-const operatorStorage = new FileOperationManager<string>('/tmp/operators.json', 'sessionId');
-await operatorStorage.store('tsukuyomi');
-```
 
 ### 2. データ取得 (restore)
 
@@ -78,13 +73,6 @@ async restore(): Promise<T | null>
 3. 自分のキーのデータを取得
 4. 期限内であればデータを返却、期限切れならnull
 
-**用途例:**
-```typescript
-const operatorId = await operatorStorage.restore();
-if (operatorId) {
-  console.log(`Current operator: ${operatorId}`);
-}
-```
 
 ### 3. 期限延長 (refresh)
 
@@ -98,11 +86,6 @@ async refresh(): Promise<boolean>
 3. 自分のキーのupdated_atを現在時刻に更新
 4. 成功時はtrue、データが存在しない場合はfalse
 
-**用途例:**
-```typescript
-const refreshed = await operatorStorage.refresh();
-console.log(`Timeout extended: ${refreshed}`);
-```
 
 ### 4. データ削除 (remove)
 
@@ -128,11 +111,6 @@ async getOtherEntries(): Promise<Record<string, T>>
 3. 自分以外のキーのデータを取得
 4. 有効なデータのみを返却
 
-**用途例:**
-```typescript
-const otherOperators = await operatorStorage.getOtherEntries();
-console.log('Other sessions:', Object.keys(otherOperators));
-```
 
 ## 実装例
 

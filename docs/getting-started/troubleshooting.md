@@ -69,5 +69,5 @@ npm rebuild
 
 ## 関連ドキュメント
 
-- [デバッグガイド](./debugging-guide.md)
-- [開発Tips](./development-tips.md)
+- [デバッグガイド](../user-guide/debugging-guide.md)
+- [開発Tips](../development/development-tips.md)
