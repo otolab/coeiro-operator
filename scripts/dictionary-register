@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# operator-manager: オペレータ管理システムコマンドラインツール
-# packages/cli/dist/operator-manager.jsを実行するシェルスクリプト
+# dictionary-register: COEIROINK辞書登録コマンドラインツール
+# packages/cli/dist/dictionary-register.jsを実行するシェルスクリプト
 
 # スクリプトの場所を取得（シンボリックリンク対応）
 SCRIPT_PATH="$(readlink -f "$0")"
@@ -10,4 +10,4 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 # Node.jsでCLIを実行（コンパイル済みファイル使用）
 # punycode非推奨警告を抑制
-exec node --no-deprecation "$PROJECT_ROOT/packages/cli/dist/operator-manager.js" "$@"
+exec node --no-deprecation "$PROJECT_ROOT/packages/cli/dist/dictionary-register.js" "$@"

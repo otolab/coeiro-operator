@@ -28,10 +28,17 @@ Thumbs.db
 build/
 dist/
 
-# mcp-debug test build artifacts
-packages/mcp-debug/src/test/**/*.js
-packages/mcp-debug/src/test/**/*.d.ts
-packages/mcp-debug/src/test/**/*.map
+# TypeScript build artifacts in source directories
+packages/*/src/**/*.js
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
+packages/*/src/**/*.js.map
+*.js
+*.d.ts
+*.d.ts.map
+*.js.map
+!vitest.*.ts
+!scripts/**/*.js
 
 # code-bugs分析ファイル
 .code-bugs/
