@@ -57,8 +57,8 @@ for (let i = 0; i < 100; i++) {
 
 // 最終検出
 const result = detector.detect();
-console.log(`メモリリーク検出: ${result.isLeakDetected ? 'あり' : 'なし'}`);
-console.log(`メモリ増加: ${(result.memoryGrowth / 1024).toFixed(2)}KB`);
+// result.isLeakDetected でリークの有無を確認
+// result.memoryGrowth でメモリ増加量を取得
 ```
 
 ### 2. MemoryPressureTester クラス
@@ -81,8 +81,7 @@ const tester = new MemoryPressureTester(30); // 30MB上限
 const hasLeak = await tester.runPressureTest(async () => {
   await yourTestFunction();
 });
-
-console.log(`プレッシャーテスト結果: ${hasLeak ? 'リーク検出' : '正常'}`);
+// hasLeak がtrueの場合メモリリークが検出された
 ```
 
 ## 実行方法

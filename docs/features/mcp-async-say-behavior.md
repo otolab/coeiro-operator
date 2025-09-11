@@ -26,38 +26,15 @@ COEIRO Operatorは、SpeechQueueを基盤とした統一実装により、CLIツ
 - **動作フロー**: SpeechQueueにタスク投稿のみ
 - **特徴**: 即座にレスポンス、ウォームアップ・完了待機なし
 
-## 変更内容
-
-### 修正前（同期的動作）
-```typescript
-// 音声合成の完了を待つ
-const result = await sayCoeiroink.synthesizeTextAsync(message, options);
-return { content: [{ type: "text", text: `発声完了: タスクID ${result.taskId}` }] };
-```
-
-### 修正後（非同期実行）
-```typescript
-// 非同期で音声合成を開始（awaitしない）
-const speechPromise = sayCoeiroink.synthesizeTextAsync(message, options);
-
-// 完了ログを非同期で処理
-speechPromise
-  .then(result => logger.info(`発声完了 - タスクID: ${result.taskId}`))
-  .catch(error => logger.error(`音声合成エラー: ${error.message}`));
-
-// 即座にレスポンスを返す
-return { content: [{ type: "text", text: "音声合成を開始しました" }] };
-```
-
-## 動作の変更点
+## 動作の特徴
 
 ### レスポンス時間
-- **修正前**: 音声合成完了まで数秒待機
-- **修正後**: 即座にレスポンス（< 100ms）
+- **CLI**: 音声合成完了まで待機（数秒）
+- **MCP**: 即座にレスポンス（< 100ms）
 
 ### レスポンス内容
-- **修正前**: `発声完了: タスクID 12345, オペレータ: tsukuyomi`
-- **修正後**: `音声合成を開始しました - オペレータ: tsukuyomi`
+- **CLI**: 完了後に結果を表示
+- **MCP**: タスク投稿の確認のみ
 
 ### ログ出力
 - 音声合成の完了ログは非同期で出力されます
@@ -75,17 +52,3 @@ return { content: [{ type: "text", text: "音声合成を開始しました" }] 
 - 音声合成の完了確認は、ログまたは音声出力の開始で判断してください
 - エラーが発生した場合、ツールのレスポンスではなくログに記録されます
 - 音声合成の結果（成功/失敗）はツールのレスポンスには含まれません
-
-## デバッグ
-
-デバッグモードでMCPサーバーを起動すると、音声合成の完了ログを確認できます：
-
-```bash
-node dist/mcp/server.js --debug
-```
-
-ログ例：
-```
-音声合成を開始しました - オペレータ: tsukuyomi
-発声完了 - オペレータ: tsukuyomi, タスクID: 12345
-```
