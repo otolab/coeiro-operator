@@ -8,10 +8,10 @@
   ],
   "main": "dist/mcp/server.js",
   "bin": {
-    "coeiro-operator": "./dist/mcp/server.js",
+    "coeiro-operator": "./scripts/coeiro-operator",
     "operator-manager": "./scripts/operator-manager",
     "say-coeiroink": "./scripts/say-coeiroink",
-    "dictionary-register": "./dist/cli/dictionary-register.js"
+    "dictionary-register": "./scripts/dictionary-register"
   },
   "scripts": {
     "start": "node dist/mcp/server.js",

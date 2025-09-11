@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# coeiro-operator: COEIROINK MCP サーバー
+# packages/mcp/dist/server.jsを実行するシェルスクリプト
+
+# スクリプトの場所を取得（シンボリックリンク対応）
+SCRIPT_PATH="$(readlink -f "$0")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+# Node.jsでMCPサーバーを実行（コンパイル済みファイル使用）
+# punycode非推奨警告を抑制
+exec node --no-deprecation "$PROJECT_ROOT/packages/mcp/dist/server.js" "$@"
