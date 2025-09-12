@@ -256,6 +256,42 @@ describe('DictionaryClient', () => {
       const callBody = JSON.parse((global.fetch as unknown).mock.calls[0][1].body);
       expect(callBody.dictionaryWords[0].word).toBe('ｓｅｂａｓ－ｃｈａｎ');
     });
+
+    it('各種記号を全角に変換する', async () => {
+      const testCases = [
+        { input: 'user@example', expected: 'ｕｓｅｒ＠ｅｘａｍｐｌｅ' },
+        { input: 'tag#1', expected: 'ｔａｇ＃１' },
+        { input: 'path/to/file', expected: 'ｐａｔｈ／ｔｏ／ｆｉｌｅ' },
+        { input: 'C++', expected: 'Ｃ＋＋' },
+        { input: 'v1.0.0', expected: 'ｖ１．０．０' },
+        { input: '100%', expected: '１００％' },
+        { input: 'A&B', expected: 'Ａ＆Ｂ' },
+        { input: '[KARTE]', expected: '［ＫＡＲＴＥ］' },
+        { input: '{json}', expected: '｛ｊｓｏｎ｝' },
+        { input: 'key:value', expected: 'ｋｅｙ：ｖａｌｕｅ' },
+        { input: 'test!', expected: 'ｔｅｓｔ！' },
+        { input: 'Q?', expected: 'Ｑ？' },
+      ];
+
+      for (let i = 0; i < testCases.length; i++) {
+        const { input, expected } = testCases[i];
+        vi.clearAllMocks(); // 各テストケースの前にモックをクリア
+        
+        const words: DictionaryWord[] = [
+          { word: input, yomi: 'テスト', accent: 0, numMoras: 3 }
+        ];
+
+        (global.fetch as unknown).mockResolvedValueOnce({
+          ok: true,
+          status: 200
+        });
+
+        await client.registerWords(words);
+
+        const callBody = JSON.parse((global.fetch as unknown).mock.calls[0][1].body);
+        expect(callBody.dictionaryWords[0].word).toBe(expected);
+      }
+    });
   });
 });
 
