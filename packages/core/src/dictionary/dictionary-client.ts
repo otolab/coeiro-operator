@@ -117,7 +117,14 @@ export class DictionaryClient {
    * @returns 全角変換後の文字列
    */
   private toFullWidth(str: string): string {
-    return str.replace(/[A-Za-z0-9.]/g, char => {
+    // 正規表現を分割して、ハイフンを別処理
+    let result = str;
+    
+    // まずハイフンを変換
+    result = result.replace(/-/g, String.fromCharCode(0xff0d));
+    
+    // 次に英数字とピリオドを変換
+    result = result.replace(/[A-Za-z0-9.]/g, char => {
       const code = char.charCodeAt(0);
       // 大文字アルファベット
       if (code >= 65 && code <= 90) {
@@ -137,6 +144,8 @@ export class DictionaryClient {
       }
       return char;
     });
+    
+    return result;
   }
 
   /**
