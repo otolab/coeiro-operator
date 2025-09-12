@@ -129,7 +129,7 @@ export class DictionaryClient {
       switch (char) {
         case ' ': return '　';  // 半角スペース → 全角スペース (U+3000)
         case '"': return '"';   // ダブルクォート
-        case '\'': return `＇`;  // シングルクォート → 全角アポストロフィ (U+FF07)
+        case '\'': return `'`;  // シングルクォート → 右シングル引用符 (U+2019)
         case '\\': return '＼';  // バックスラッシュ
         case '~': return '～';   // チルダ
         default:

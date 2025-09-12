@@ -271,7 +271,7 @@ describe('DictionaryClient', () => {
         { input: 'key:value', expected: 'ｋｅｙ：ｖａｌｕｅ' },
         { input: 'test!', expected: 'ｔｅｓｔ！' },
         { input: 'Q?', expected: 'Ｑ？' },
-        { input: "don't", expected: 'ｄｏｎ＇ｔ' },  // シングルクォートのテスト
+        { input: "don't", expected: `ｄｏｎ'ｔ` },  // シングルクォートのテスト
       ];
 
       for (let i = 0; i < testCases.length; i++) {
