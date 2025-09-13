@@ -32,7 +32,7 @@
     "@coeiro-operator/common": "*",
     "@coeiro-operator/core": "*",
     "@coeiro-operator/audio": "*",
-    "commander": "^14.0.0"
+    "commander": "^14.0.1"
   },
   "devDependencies": {
     "@types/node": "^22.13.1",
