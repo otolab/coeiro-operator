@@ -77,7 +77,7 @@ export class ConfigManager {
   /**
    * JSONファイルを安全に書き込み
    */
-  async writeJsonFile(filePath: string, data: any): Promise<void> {
+  async writeJsonFile(filePath: string, data: unknown): Promise<void> {
     const tempFile = `${filePath}.tmp`;
     await writeFile(tempFile, JSON.stringify(data, null, 2), 'utf8');
 

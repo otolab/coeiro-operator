@@ -117,7 +117,7 @@ export class DictionaryClient {
    * @returns 全角変換後の文字列
    */
   private toFullWidth(str: string): string {
-    return str.replace(/[A-Za-z0-9!-\/:-@\[-`{-~]/g, char => {
+    return str.replace(/[A-Za-z0-9!-/:-@[-`{-~]/g, char => {
       const code = char.charCodeAt(0);
       
       // ASCII文字（0x21-0x7E）は基本的に0xFEE0を加算で全角に変換可能
@@ -129,7 +129,7 @@ export class DictionaryClient {
       switch (char) {
         case ' ': return '　';  // 半角スペース → 全角スペース (U+3000)
         case '"': return '"';   // ダブルクォート
-        case '\'': return `'`;  // シングルクォート → 右シングル引用符 (U+2019)
+        case '\'': return `’`;  // シングルクォート
         case '\\': return '＼';  // バックスラッシュ
         case '~': return '～';   // チルダ
         default:
