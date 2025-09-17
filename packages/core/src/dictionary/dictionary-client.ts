@@ -110,32 +110,35 @@ export class DictionaryClient {
   }
 
   /**
-   * 半角英数字を全角に変換
+   * 半角英数字・記号を全角に変換
    * COEIROINKのAPI制限により、半角英数字では辞書登録が効かないため
    *
    * @param str 変換する文字列
    * @returns 全角変換後の文字列
    */
   private toFullWidth(str: string): string {
-    return str.replace(/[A-Za-z0-9.]/g, char => {
+    return str.replace(/[A-Za-z0-9!-/:-@[-`{-~]/g, char => {
       const code = char.charCodeAt(0);
-      // 大文字アルファベット
-      if (code >= 65 && code <= 90) {
-        return String.fromCharCode(code + 0xfee0);
+      
+      // ASCII文字（0x21-0x7E）は基本的に0xFEE0を加算で全角に変換可能
+      // ただし、一部の文字は個別対応が必要
+      
+      // スペース（0x20）は対象外なのでここでは処理しない
+      
+      // 特殊な変換が必要な文字
+      switch (char) {
+        case ' ': return '　';  // 半角スペース → 全角スペース (U+3000)
+        case '"': return '"';   // ダブルクォート
+        case '\'': return `’`;  // シングルクォート
+        case '\\': return '＼';  // バックスラッシュ
+        case '~': return '～';   // チルダ
+        default:
+          // その他のASCII印字可能文字（! から ~ まで）
+          if (code >= 0x21 && code <= 0x7E) {
+            return String.fromCharCode(code + 0xFEE0);
+          }
+          return char;
       }
-      // 小文字アルファベット
-      if (code >= 97 && code <= 122) {
-        return String.fromCharCode(code + 0xfee0);
-      }
-      // 数字
-      if (code >= 48 && code <= 57) {
-        return String.fromCharCode(code + 0xfee0);
-      }
-      // ピリオド
-      if (code === 46) {
-        return '．';
-      }
-      return char;
     });
   }
 

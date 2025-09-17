@@ -68,7 +68,7 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
       });
 
       // サーバー機能を保存
-      this.serverCapabilities = (response as any).capabilities;
+      this.serverCapabilities = (response as { capabilities: unknown }).capabilities;
 
       // initialized 通知を送信（仕様に従いnotifications/initializedを使用）
       this.sendNotification('notifications/initialized');
