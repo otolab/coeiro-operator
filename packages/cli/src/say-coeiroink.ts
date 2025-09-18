@@ -218,7 +218,7 @@ Examples:
     }
 
     // 音声合成タスクをキューに追加
-    await this.sayCoeiroink.synthesize(text, {
+    this.sayCoeiroink.synthesize(text, {
       voice: options.voice || null,
       rate: options.rate,
       outputFile: options.outputFile || null,

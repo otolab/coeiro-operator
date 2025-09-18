@@ -527,23 +527,17 @@ server.registerTool(
       // - synthesize() はキューに追加して即座にレスポンス
       // - 実際の音声合成・再生は背景のSpeechQueueで非同期処理
       // - CLIとは異なり、MCPではウォームアップ・完了待機は実行しない
-      const speechPromise = sayCoeiroink.synthesize(message, {
+      const result = sayCoeiroink.synthesize(message, {
         voice: voice || null,
         rate: rate || undefined,
         style: style || undefined,
         allowFallback: false, // MCPツールではオペレータが必須
       });
 
-      // 完了ログを非同期で処理
-      speechPromise
-        .then(result => {
-          logger.debug(`Result: ${JSON.stringify(result)}`);
-          const modeInfo = `発声完了 - オペレータ: ${currentOperator.characterId}, タスクID: ${result.taskId}`;
-          logger.info(modeInfo);
-        })
-        .catch(error => {
-          logger.error(`音声合成非同期処理エラー: ${(error as Error).message}`);
-        });
+      // 結果をログ出力
+      logger.debug(`Result: ${JSON.stringify(result)}`);
+      const modeInfo = `発声キューに追加 - オペレータ: ${currentOperator.characterId}, タスクID: ${result.taskId}`;
+      logger.info(modeInfo);
 
       logger.debug('=== SAY TOOL DEBUG END ===');
 

@@ -12,43 +12,17 @@ export class SpeechQueue {
   private taskIdCounter: number = Date.now();
 
   constructor(
-    private processCallback: (task: SpeechTask) => Promise<void>,
-    private warmupCallback?: () => Promise<void>
+    private processCallback: (task: SpeechTask) => Promise<void>
   ) {}
 
   /**
    * 音声タスクをキューに追加
    */
-  async enqueue(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
-    return this.enqueueTask('speech', text, options);
-  }
-
-  /**
-   * ウォームアップタスクをキューに追加
-   */
-  async enqueueWarmup(): Promise<SynthesizeResult> {
-    return this.enqueueTask('warmup', '', {});
-  }
-
-  /**
-   * 完了待機タスクをキューに追加（CLI用）
-   */
-  async enqueueCompletionWait(): Promise<SynthesizeResult> {
-    return this.enqueueTask('completion_wait', '', {});
-  }
-
-  /**
-   * タスクをキューに追加（内部用）
-   */
-  private async enqueueTask(
-    type: SpeechTaskType,
-    text: string,
-    options: SynthesizeOptions = {}
-  ): Promise<SynthesizeResult> {
+  enqueue(text: string, options: SynthesizeOptions = {}): SynthesizeResult {
     const taskId = this.taskIdCounter++;
     const task: SpeechTask = {
       id: taskId,
-      type,
+      type: 'speech',
       text,
       options,
       timestamp: Date.now(),
@@ -66,43 +40,17 @@ export class SpeechQueue {
     };
   }
 
+
   /**
    * 音声タスクをキューに追加して完了を待つ
    */
   async enqueueAndWait(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
-    return this.enqueueTaskAndWait('speech', text, options);
-  }
-
-  /**
-   * キューに入っているすべてのタスクの完了を待つ
-   */
-  async waitForAllTasks(): Promise<void> {
-    return new Promise((resolve) => {
-      const checkQueue = () => {
-        if (this.speechQueue.length === 0 && !this.isProcessing) {
-          resolve();
-        } else {
-          setTimeout(checkQueue, 100);
-        }
-      };
-      checkQueue();
-    });
-  }
-
-  /**
-   * タスクをキューに追加して完了を待つ（内部用）
-   */
-  private async enqueueTaskAndWait(
-    type: SpeechTaskType,
-    text: string,
-    options: SynthesizeOptions = {}
-  ): Promise<SynthesizeResult> {
     const taskId = this.taskIdCounter++;
 
     return new Promise((resolve, reject) => {
       const task: SpeechTask = {
         id: taskId,
-        type,
+        type: 'speech',
         text,
         options,
         timestamp: Date.now(),
@@ -121,6 +69,23 @@ export class SpeechQueue {
       setTimeout(() => this.processQueue(), 0);
     });
   }
+
+  /**
+   * キューに入っているすべてのタスクの完了を待つ
+   */
+  async waitForAllTasks(): Promise<void> {
+    return new Promise((resolve) => {
+      const checkQueue = () => {
+        if (this.speechQueue.length === 0 && !this.isProcessing) {
+          resolve();
+        } else {
+          setTimeout(checkQueue, 100);
+        }
+      };
+      checkQueue();
+    });
+  }
+
 
   /**
    * キューの処理を開始
@@ -162,30 +127,11 @@ export class SpeechQueue {
   }
 
   /**
-   * タスクタイプ別の処理を実行
+   * タスクの処理を実行
    */
   private async processTask(task: SpeechTask): Promise<void> {
-    switch (task.type) {
-      case 'speech':
-        await this.processCallback(task);
-        break;
-
-      case 'warmup':
-        if (this.warmupCallback) {
-          await this.warmupCallback();
-        } else {
-          logger.warn('ウォームアップコールバックが設定されていません');
-        }
-        break;
-
-      case 'completion_wait':
-        // バッファ処理完了のため500ms待機
-        await new Promise(resolve => setTimeout(resolve, 500));
-        break;
-
-      default:
-        logger.warn(`未知のタスクタイプ: ${task.type}`);
-    }
+    // 音声合成タスクの処理
+    await this.processCallback(task);
   }
 
   /**

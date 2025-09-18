@@ -65,13 +65,10 @@ export class SayCoeiroink {
       this.audioPlayer = new AudioPlayer(this.config);
       this.audioSynthesizer = new AudioSynthesizer(this.config);
       
-      // SpeechQueueを初期化（処理コールバックとウォームアップコールバックを渡す）
+      // SpeechQueueを初期化（処理コールバックを渡す）
       this.speechQueue = new SpeechQueue(
         async (task: SpeechTask) => {
           await this.processSynthesis(task.text, task.options);
-        },
-        async () => {
-          await this.audioPlayer!.warmupAudioDriver();
         }
       );
       
@@ -322,23 +319,23 @@ export class SayCoeiroink {
    * 使用例:
    * - CLI:
    *   await sayCoeiroink.warmup();
-   *   await sayCoeiroink.synthesize(text);
+   *   sayCoeiroink.synthesize(text);
    *   await sayCoeiroink.waitCompletion();
    *
    * - MCP:
-   *   sayCoeiroink.synthesize(text);  // Promiseを無視
+   *   sayCoeiroink.synthesize(text);
    *
    * @param text 合成するテキスト
    * @param options 合成オプション
-   * @returns タスクID付きの結果Promise
+   * @returns タスクID付きの結果（同期的に返る）
    */
-  async synthesize(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+  synthesize(text: string, options: SynthesizeOptions = {}): SynthesizeResult {
     if (!this.speechQueue) {
       throw new Error('SpeechQueue is not initialized. Call initialize() first.');
     }
 
     // キューにタスクを追加（即座に返る）
-    return await this.speechQueue.enqueue(text, options);
+    return this.speechQueue.enqueue(text, options);
   }
 
 

@@ -45,7 +45,7 @@ export interface VoiceConfig {
   selectedStyleId: number; // 選択されたスタイルID
 }
 
-export type SpeechTaskType = 'speech' | 'warmup' | 'completion_wait';
+export type SpeechTaskType = 'speech';
 
 export interface SpeechTask {
   id: number;
