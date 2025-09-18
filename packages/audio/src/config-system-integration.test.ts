@@ -158,7 +158,7 @@ describe('設定システム統合テスト', () => {
       await sayCoeiroink.initialize();
 
       // 基本動作確認
-      const result = await sayCoeiroink.synthesizeText('設定テスト', {
+      const result = await sayCoeiroink.synthesize('設定テスト', {
         voice: 'test-speaker-1',
       });
 
@@ -209,7 +209,7 @@ describe('設定システム統合テスト', () => {
       await sayCoeiroink.initialize();
 
       // カスタム設定での動作確認
-      const result = await sayCoeiroink.synthesizeText('カスタム設定テスト', {
+      const result = await sayCoeiroink.synthesize('カスタム設定テスト', {
         voice: 'test-speaker-1',
         chunkMode: 'small',
       });
@@ -244,7 +244,7 @@ describe('設定システム統合テスト', () => {
       await sayCoeiroink.initialize();
 
       // 無効状態でのテスト
-      const disabledResult = await sayCoeiroink.synthesizeText(
+      const disabledResult = await sayCoeiroink.synthesize(
         '並行生成無効テスト。複数の文を含むテスト。処理確認。',
         { voice: 'test-speaker-1' }
       );
@@ -276,7 +276,7 @@ describe('設定システム統合テスト', () => {
       await enabledSayCoeiroink.initialize();
 
       // 有効状態でのテスト
-      const enabledResult = await enabledSayCoeiroink.synthesizeText(
+      const enabledResult = await enabledSayCoeiroink.synthesize(
         '並行生成有効テスト。複数の文を含むテスト。処理確認。',
         { voice: 'test-speaker-1' }
       );
@@ -312,7 +312,7 @@ describe('設定システム統合テスト', () => {
         const testSayCoeiroink = new SayCoeiroink(configManager);
         await testSayCoeiroink.initialize();
 
-        const result = await testSayCoeiroink.synthesizeText(
+        const result = await testSayCoeiroink.synthesize(
           `並行数${maxConcurrency}テスト。複数の文を含む。処理効果確認。動作検証。`,
           { voice: 'test-speaker-1' }
         );
@@ -347,7 +347,7 @@ describe('設定システム統合テスト', () => {
         await testSayCoeiroink.initialize();
 
         const startTime = Date.now();
-        const result = await testSayCoeiroink.synthesizeText(
+        const result = await testSayCoeiroink.synthesize(
           `レイテンシモード${latencyMode}テスト`,
           { voice: 'test-speaker-1' }
         );
@@ -394,7 +394,7 @@ describe('設定システム統合テスト', () => {
         const testSayCoeiroink = new SayCoeiroink(configManager);
         await testSayCoeiroink.initialize();
 
-        const result = await testSayCoeiroink.synthesizeText(
+        const result = await testSayCoeiroink.synthesize(
           `分割モード${splitMode}での動作テスト。複数の文を含む長めのテキストです。`,
           { voice: 'test-speaker-1' }
         );
@@ -488,7 +488,7 @@ describe('設定システム統合テスト', () => {
         const testSayCoeiroink = new SayCoeiroink(configManager);
         await testSayCoeiroink.initialize();
 
-        const result = await testSayCoeiroink.synthesizeText(
+        const result = await testSayCoeiroink.synthesize(
           `${name}設定でのテストです。複数の文を含む処理で動作を確認します。設定の組み合わせ効果を測定します。`,
           { voice: 'test-speaker-1' }
         );
@@ -510,7 +510,7 @@ describe('設定システム統合テスト', () => {
         await sayCoeiroink.initialize();
 
         // デフォルト設定でフォールバック
-        const result = await sayCoeiroink.synthesizeText('フォールバックテスト', {
+        const result = await sayCoeiroink.synthesize('フォールバックテスト', {
           voice: 'test-speaker-1',
         });
 
@@ -534,7 +534,7 @@ describe('設定システム統合テスト', () => {
       sayCoeiroink = new SayCoeiroink(configManager);
       await sayCoeiroink.initialize();
 
-      const result = await sayCoeiroink.synthesizeText('デフォルト設定テスト', {
+      const result = await sayCoeiroink.synthesize('デフォルト設定テスト', {
         voice: 'test-speaker-1',
       });
 
@@ -568,7 +568,7 @@ describe('設定システム統合テスト', () => {
       sayCoeiroink = new SayCoeiroink(configManager);
       await sayCoeiroink.initialize();
 
-      const result = await sayCoeiroink.synthesizeText(
+      const result = await sayCoeiroink.synthesize(
         '境界値設定でのテストです。最大並行数と最小遅延での動作を確認します。',
         { voice: 'test-speaker-1' }
       );

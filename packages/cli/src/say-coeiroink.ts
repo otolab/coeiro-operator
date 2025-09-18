@@ -211,8 +211,14 @@ Examples:
     const options = await this.parseArguments(args);
     const text = await this.getInputText(options);
 
-    // Queue統一版：ウォームアップ → 音声合成 → 完了待機を全てqueue経由で処理
-    await this.sayCoeiroink.synthesizeText(text, {
+    // ファイル出力の場合はウォームアップ不要
+    if (!options.outputFile) {
+      // オーディオドライバーのウォームアップ
+      await this.sayCoeiroink.warmup();
+    }
+
+    // 音声合成タスクをキューに追加
+    this.sayCoeiroink.synthesize(text, {
       voice: options.voice || null,
       rate: options.rate,
       outputFile: options.outputFile || null,
@@ -224,7 +230,9 @@ Examples:
     if (options.outputFile) {
       console.error(`Audio saved to: ${options.outputFile}`);
     }
-    // 注：音声再生時の完了待機は synthesizeText() 内で自動実行される
+
+    // すべてのタスクの完了を待つ
+    await this.sayCoeiroink.waitCompletion();
   }
 }
 

@@ -140,7 +140,7 @@ describe('テキスト分割モード統合テスト', () => {
       ];
 
       for (const text of testTexts) {
-        const result = await sayCoeiroink.synthesizeText(text, {
+        const result = await sayCoeiroink.synthesize(text, {
           voice: 'test-speaker-1',
           chunkMode: 'punctuation',
         });
@@ -154,7 +154,7 @@ describe('テキスト分割モード統合テスト', () => {
       // 句読点のない150文字を超える長文
       const longTextWithoutPunctuation = 'あ'.repeat(200);
 
-      const result = await sayCoeiroink.synthesizeText(longTextWithoutPunctuation, {
+      const result = await sayCoeiroink.synthesize(longTextWithoutPunctuation, {
         voice: 'test-speaker-1',
         chunkMode: 'punctuation',
       });
@@ -167,7 +167,7 @@ describe('テキスト分割モード統合テスト', () => {
       const shortTexts = ['短い', 'テスト', '123', '！？'];
 
       for (const text of shortTexts) {
-        const result = await sayCoeiroink.synthesizeText(text, {
+        const result = await sayCoeiroink.synthesize(text, {
           voice: 'test-speaker-1',
           chunkMode: 'punctuation',
         });
@@ -183,7 +183,7 @@ describe('テキスト分割モード統合テスト', () => {
       const longText =
         'これは30文字を超える長いテキストです。小分割モードでの処理を確認するためのテストテキストです。';
 
-      const result = await sayCoeiroink.synthesizeText(longText, {
+      const result = await sayCoeiroink.synthesize(longText, {
         voice: 'test-speaker-1',
         chunkMode: 'small',
       });
@@ -196,7 +196,7 @@ describe('テキスト分割モード統合テスト', () => {
       const longText =
         'これは50文字を大きく超える非常に長いテキストです。中分割モードでの処理を確認するためのテストテキストです。文章を複数含んでいて分割効果を測定します。';
 
-      const result = await sayCoeiroink.synthesizeText(longText, {
+      const result = await sayCoeiroink.synthesize(longText, {
         voice: 'test-speaker-1',
         chunkMode: 'medium',
       });
@@ -211,7 +211,7 @@ describe('テキスト分割モード統合テスト', () => {
         '大分割モードでの処理を確認するためのテストテキストです。' +
         '複数の文章を含んでいて、安定性を重視した分割動作を測定します。';
 
-      const result = await sayCoeiroink.synthesizeText(longText, {
+      const result = await sayCoeiroink.synthesize(longText, {
         voice: 'test-speaker-1',
         chunkMode: 'large',
       });
@@ -229,7 +229,7 @@ describe('テキスト分割モード統合テスト', () => {
 
       for (const text of testTexts) {
         try {
-          const result = await sayCoeiroink.synthesizeText(text, {
+          const result = await sayCoeiroink.synthesize(text, {
             voice: 'test-speaker-1',
             chunkMode: 'auto',
           });
@@ -240,7 +240,7 @@ describe('テキスト分割モード統合テスト', () => {
           expect(error).toBeInstanceOf(Error);
 
           // フォールバック動作確認
-          const fallbackResult = await sayCoeiroink.synthesizeText(text, {
+          const fallbackResult = await sayCoeiroink.synthesize(text, {
             voice: 'test-speaker-1',
             chunkMode: 'medium',
           });
@@ -257,7 +257,7 @@ describe('テキスト分割モード統合テスト', () => {
         '分割なしモードでは全体を一つのチャンクとして処理します。' +
         '自然な音声品質が期待されます。';
 
-      const result = await sayCoeiroink.synthesizeText(longText, {
+      const result = await sayCoeiroink.synthesize(longText, {
         voice: 'test-speaker-1',
         chunkMode: 'none',
       });
@@ -270,7 +270,7 @@ describe('テキスト分割モード統合テスト', () => {
     test('短文でも適切に処理されること', async () => {
       const shortText = '短い文章です。';
 
-      const result = await sayCoeiroink.synthesizeText(shortText, {
+      const result = await sayCoeiroink.synthesize(shortText, {
         voice: 'test-speaker-1',
         chunkMode: 'none',
       });
@@ -292,7 +292,7 @@ describe('テキスト分割モード統合テスト', () => {
         const startTime = Date.now();
 
         try {
-          const result = await sayCoeiroink.synthesizeText(testText, {
+          const result = await sayCoeiroink.synthesize(testText, {
             voice: 'test-speaker-1',
             chunkMode: mode,
           });
@@ -324,7 +324,7 @@ describe('テキスト分割モード統合テスト', () => {
       const modes = ['small', 'medium', 'large'] as const;
 
       for (const mode of modes) {
-        const result = await sayCoeiroink.synthesizeText(boundaryText, {
+        const result = await sayCoeiroink.synthesize(boundaryText, {
           voice: 'test-speaker-1',
           chunkMode: mode,
         });
@@ -341,7 +341,7 @@ describe('テキスト分割モード統合テスト', () => {
 
       for (const mode of modes) {
         try {
-          const result = await sayCoeiroink.synthesizeText('', {
+          const result = await sayCoeiroink.synthesize('', {
             voice: 'test-speaker-1',
             chunkMode: mode,
           });
@@ -365,7 +365,7 @@ describe('テキスト分割モード統合テスト', () => {
       ];
 
       for (const text of specialTexts) {
-        const result = await sayCoeiroink.synthesizeText(text, {
+        const result = await sayCoeiroink.synthesize(text, {
           voice: 'test-speaker-1',
           chunkMode: 'punctuation',
         });
@@ -376,7 +376,7 @@ describe('テキスト分割モード統合テスト', () => {
 
     test('無効な分割モード指定での適切なエラー処理', async () => {
       try {
-        await sayCoeiroink.synthesizeText('テスト', {
+        await sayCoeiroink.synthesize('テスト', {
           voice: 'test-speaker-1',
           chunkMode: 'invalid' as unknown,
         });
@@ -399,7 +399,7 @@ describe('テキスト分割モード統合テスト', () => {
 
       for (const chunkMode of chunkModes) {
         for (const bufferSize of bufferSizes) {
-          const result = await sayCoeiroink.synthesizeText(testText, {
+          const result = await sayCoeiroink.synthesize(testText, {
             voice: 'test-speaker-1',
             chunkMode,
             bufferSize,

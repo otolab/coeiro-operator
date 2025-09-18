@@ -13,9 +13,15 @@ COEIROINK API → WAV → PCM → リサンプリング → ローパスフィ�
 
 ### コンポーネント構成
 
+#### コアコンポーネント
 - **SpeechQueue**: 音声タスクの統一キュー管理（Queue統一実装の中核）
 - **AudioSynthesizer**: COEIROINK API連携・音声生成
 - **AudioPlayer**: ストリーミング処理・音声出力
+
+#### 責務分離コンポーネント（v2.0以降）
+- **VoiceResolver**: 音声設定の解決（オペレータ/キャラクター → VoiceConfig）
+- **SynthesisProcessor**: 音声合成処理の実行（ファイル出力/ストリーミング）
+- **SayCoeiroink**: 軽量ファサード（主要APIの提供）
 
 ### Queue統一実装アーキテクチャ
 

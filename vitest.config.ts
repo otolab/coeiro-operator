@@ -23,7 +23,8 @@ export default defineConfig({
 
     // テストファイルパターン
     include: [
-      'src/**/*.test.ts'
+      'src/**/*.test.ts',
+      'packages/**/*.test.ts'
     ],
     
     // 除外パターン

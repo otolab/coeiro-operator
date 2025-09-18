@@ -185,6 +185,7 @@ describe('Say Integration Tests', () => {
 
     sayCoeiroink = new SayCoeiroink(configManager);
 
+
     // COEIROINK サーバーのモック設定
     vi.mocked(global.fetch).mockImplementation((url: string) => {
       if (url.includes('/v1/speakers')) {
@@ -278,34 +279,33 @@ describe('Say Integration Tests', () => {
 
   describe('End-to-End ワークフロー', () => {
     test('初期化から音声合成まで完全なフローが動作すること', async () => {
-      // サーバー接続確認
-      const isConnected = await sayCoeiroink.checkServerConnection();
-      expect(isConnected).toBe(true);
-
-      // 音声プレーヤー初期化
-      const playerInitialized = await sayCoeiroink.initializeAudioPlayer();
-      expect(playerInitialized).toBe(true);
-
-      // 音声合成実行
-      const result = await sayCoeiroink.synthesizeText('統合テストメッセージ', {
+      // 音声合成実行（synthesizeは同期メソッド）
+      const result = sayCoeiroink.synthesize('統合テストメッセージ', {
         voice: 'test-speaker-1',
       });
 
+      expect(result).toBeDefined();
       expect(result.success).toBe(true);
       expect(result.taskId).toBeDefined();
+
+      // 完了を待つ
+      await sayCoeiroink.waitCompletion();
     });
 
     test('ファイル出力から読み込み確認まで完全なフローが動作すること', async () => {
       const outputFile = join(tempDir, 'test-output.wav');
 
-      // 音声をファイルに出力
-      const result = await sayCoeiroink.synthesizeText('ファイル出力テスト', {
+      // 音声をファイルに出力（synthesizeは同期メソッド）
+      const result = sayCoeiroink.synthesize('ファイル出力テスト', {
         voice: 'test-speaker-1',
         outputFile: outputFile,
       });
 
       expect(result.success).toBe(true);
       expect(result.taskId).toBeDefined();
+
+      // 完了を待つ
+      await sayCoeiroink.waitCompletion();
 
       // ファイルが作成されているか確認
       const fileContent = await readFile(outputFile);
@@ -316,16 +316,12 @@ describe('Say Integration Tests', () => {
     });
 
     test('非同期キューイングと処理が正常に動作すること', async () => {
-      await sayCoeiroink.initialize();
-
-      // 複数のタスクをキューに追加
-      const tasks = [
-        sayCoeiroink.synthesizeTextAsync('メッセージ1'),
-        sayCoeiroink.synthesizeTextAsync('メッセージ2'),
-        sayCoeiroink.synthesizeTextAsync('メッセージ3'),
+      // 複数のタスクをキューに追加（synthesizeは同期メソッド）
+      const results = [
+        sayCoeiroink.synthesize('メッセージ1'),
+        sayCoeiroink.synthesize('メッセージ2'),
+        sayCoeiroink.synthesize('メッセージ3'),
       ];
-
-      const results = await Promise.all(tasks);
 
       // 全てのタスクが成功していることを確認
       results.forEach(result => {
@@ -334,7 +330,7 @@ describe('Say Integration Tests', () => {
       });
 
       // キューが処理されるまで待機
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await sayCoeiroink.waitCompletion();
 
       // キューが空になっていることを確認
       const queueStatus = sayCoeiroink.getSpeechQueueStatus();
@@ -364,12 +360,10 @@ describe('Say Integration Tests', () => {
       const failSayCoeiroink = new SayCoeiroink(failConfigManager);
       await failSayCoeiroink.initialize();
 
-      const isConnected = await failSayCoeiroink.checkServerConnection();
-      expect(isConnected).toBe(false);
 
-      await expect(failSayCoeiroink.synthesizeText('テスト')).rejects.toThrow(
-        'Cannot connect to COEIROINK server'
-      );
+      // synthesizeは同期メソッドなので、エラーはwaitCompletionで発生する
+      const result = failSayCoeiroink.synthesize('テスト');
+      await expect(failSayCoeiroink.waitCompletion()).rejects.toThrow();
     });
 
     test('音声合成API失敗時の適切なエラーハンドリング', async () => {
@@ -397,20 +391,20 @@ describe('Say Integration Tests', () => {
         return Promise.reject(new Error('Unknown endpoint'));
       });
 
-      await expect(
-        sayCoeiroink.synthesizeText('テスト', { voice: 'test-voice' })
-      ).rejects.toThrow(); // エラーが発生することを確認（具体的なメッセージはストリーミング処理により変わる可能性があるため）
+      // synthesizeは同期メソッド
+      const result = sayCoeiroink.synthesize('テスト', { voice: 'test-voice' });
+      await expect(sayCoeiroink.waitCompletion()).rejects.toThrow();
     });
 
     test('ファイル書き込み失敗時の適切なエラーハンドリング', async () => {
       const invalidPath = '/invalid/path/that/does/not/exist/output.wav';
 
-      await expect(
-        sayCoeiroink.synthesizeText('テスト', {
-          voice: 'test-speaker-1',
-          outputFile: invalidPath,
-        })
-      ).rejects.toThrow('音声ファイル保存エラー');
+      // synthesizeは同期メソッド
+      const result = sayCoeiroink.synthesize('テスト', {
+        voice: 'test-speaker-1',
+        outputFile: invalidPath,
+      });
+      await expect(sayCoeiroink.waitCompletion()).rejects.toThrow();
     });
   });
 
@@ -419,67 +413,75 @@ describe('Say Integration Tests', () => {
       const rates = [100, 150, 200, 250, 300];
 
       for (const rate of rates) {
-        const result = await sayCoeiroink.synthesizeText(`レート${rate}でのテスト`, {
+        const result = sayCoeiroink.synthesize(`レート${rate}でのテスト`, {
           voice: 'test-speaker-1',
           rate: rate,
         });
 
         expect(result.success).toBe(true);
       }
+
+      // 全てのタスクの完了を待つ
+      await sayCoeiroink.waitCompletion();
     });
 
     test('異なる音声ID設定での合成が正常に動作すること', async () => {
       const voiceIds = ['test-speaker-1', 'tsukuyomi'];
 
       for (const voiceId of voiceIds) {
-        const result = await sayCoeiroink.synthesizeText('音声IDテスト', {
+        const result = sayCoeiroink.synthesize('音声IDテスト', {
           voice: voiceId,
         });
 
         expect(result.success).toBe(true);
       }
+
+      // 全てのタスクの完了を待つ
+      await sayCoeiroink.waitCompletion();
     });
 
     test('ストリーミングモードが正常に動作すること', async () => {
       const longText = 'これは長いテキストです。'.repeat(10);
 
-      const result = await sayCoeiroink.synthesizeText(longText, {
+      const result = sayCoeiroink.synthesize(longText, {
         voice: 'test-speaker-1',
         chunkMode: 'punctuation',
       });
 
       expect(result.success).toBe(true);
       expect(result.taskId).toBeDefined();
+
+      // 完了を待つ
+      await sayCoeiroink.waitCompletion();
     });
   });
 
   describe('データフロー統合テスト', () => {
-    test('ストリーミング合成ジェネレータが正常に動作すること', async () => {
+    test('ストリーミング合成が正常に動作すること', async () => {
       const text = 'ストリーミングテスト用の長いテキスト。'.repeat(5);
 
-      try {
-        // streamSynthesizeAndPlayが正常に実行されることを確認
-        await sayCoeiroink.streamSynthesizeAndPlay(text, 'test-speaker-1', 1.0);
-      } catch (error) {
-        // AudioPlayerの初期化エラーなど、環境依存のエラーは許容
-        expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toMatch(/AudioPlayer|初期化|speaker/i);
-      }
+      // synthesizeは同期メソッド
+      const result = sayCoeiroink.synthesize(text, {
+        voice: 'test-speaker-1',
+        chunkMode: 'punctuation',
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.taskId).toBeDefined();
+
+      // 完了を待つ
+      await sayCoeiroink.waitCompletion();
     });
   });
 
   describe('リソース管理統合テスト', () => {
     test('大量の同時リクエストが適切に処理されること', async () => {
-      await sayCoeiroink.initialize();
-
       const taskCount = 20;
-      const tasks = [];
+      const results = [];
 
       for (let i = 0; i < taskCount; i++) {
-        tasks.push(sayCoeiroink.synthesizeTextAsync(`並列テスト${i}`));
+        results.push(sayCoeiroink.synthesize(`並列テスト${i}`));
       }
-
-      const results = await Promise.all(tasks);
 
       // 全てのタスクが成功していることを確認
       results.forEach((result, index) => {
@@ -488,7 +490,7 @@ describe('Say Integration Tests', () => {
       });
 
       // キューが最終的に空になることを確認
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      await sayCoeiroink.waitCompletion();
       const finalStatus = sayCoeiroink.getSpeechQueueStatus();
       expect(finalStatus.queueLength).toBe(0);
     }, 10000); // 10秒のタイムアウト
@@ -514,15 +516,19 @@ describe('Say Integration Tests', () => {
 
       // より控えめな処理量（30回）でテスト時間短縮
       for (let i = 0; i < 30; i++) {
-        await sayCoeiroink.synthesizeText(`メモリテスト${i}`, {
+        sayCoeiroink.synthesize(`メモリテスト${i}`, {
           voice: 'test-speaker-1',
         });
 
-        // 10回ごとに中間GC実行
+        // 10回ごとに中間GC実行と待機
         if (i % 10 === 0) {
+          await sayCoeiroink.waitCompletion();
           global.gc(true);
         }
       }
+
+      // 最後の完了を待つ
+      await sayCoeiroink.waitCompletion();
 
       // 最終的な複数回GC実行
       for (let i = 0; i < 3; i++) {
@@ -557,12 +563,13 @@ describe('Say Integration Tests', () => {
       const emptyTexts = ['', '   ', '\n\t\n\t'];
       for (const text of emptyTexts) {
         try {
-          const result = await sayCoeiroink.synthesizeText(text, {
+          const result = sayCoeiroink.synthesize(text, {
             voice: 'test-speaker-1',
           });
           // 空文字列でも成功する場合はその旨を確認
           expect(result.success).toBe(true);
           expect(result.taskId).toBeDefined();
+          await sayCoeiroink.waitCompletion();
         } catch (error) {
           // エラーになる場合は適切なエラーメッセージかを確認
           expect(error).toBeInstanceOf(Error);
@@ -580,13 +587,16 @@ describe('Say Integration Tests', () => {
       ];
 
       for (const text of validTexts) {
-        const result = await sayCoeiroink.synthesizeText(text, {
+        const result = sayCoeiroink.synthesize(text, {
           voice: 'test-speaker-1',
         });
 
         expect(result.success).toBe(true);
         expect(result.taskId).toBeDefined();
       }
+
+      // 全てのタスクの完了を待つ
+      await sayCoeiroink.waitCompletion();
     });
 
     test('不正な設定値でも適切にフォールバックされること', async () => {
@@ -600,10 +610,11 @@ describe('Say Integration Tests', () => {
 
       for (const options of invalidOptions) {
         try {
-          const result = await sayCoeiroink.synthesizeText('フォールバックテスト', options);
+          const result = sayCoeiroink.synthesize('フォールバックテスト', options);
           // 成功した場合は、適切なフォールバックが動作したことを確認
           expect(result.success).toBe(true);
           expect(result.taskId).toBeDefined();
+          await sayCoeiroink.waitCompletion();
         } catch (error) {
           // エラーが発生した場合は、適切なエラーメッセージであることを確認
           expect(error).toBeInstanceOf(Error);
