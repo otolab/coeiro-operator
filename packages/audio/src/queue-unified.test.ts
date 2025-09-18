@@ -78,7 +78,7 @@ describe('Queue統一実装テスト', () => {
   });
 
   test('ウォームアップ同期実行', async () => {
-    const result = await speechQueue.enqueueWarmupAndWait();
+    const result = await speechQueue.enqueueAndWaitWarmup();
 
     expect(result.success).toBe(true);
     expect(warmupCallbacks).toBe(1);
@@ -87,7 +87,7 @@ describe('Queue統一実装テスト', () => {
   test('完了待機同期実行', async () => {
     const startTime = Date.now();
 
-    const result = await speechQueue.enqueueCompletionWaitAndWait();
+    const result = await speechQueue.enqueueAndWaitCompletion();
 
     const elapsedTime = Date.now() - startTime;
 
@@ -97,9 +97,9 @@ describe('Queue統一実装テスト', () => {
 
   test('複合タスクの順次実行', async () => {
     // ウォームアップ → 音声 → 完了待機の順で実行
-    await speechQueue.enqueueWarmupAndWait();
+    await speechQueue.enqueueAndWaitWarmup();
     await speechQueue.enqueueAndWait('メインメッセージ');
-    await speechQueue.enqueueCompletionWaitAndWait();
+    await speechQueue.enqueueAndWaitCompletion();
 
     expect(warmupCallbacks).toBe(1);
     expect(processCallbacks).toHaveLength(1);

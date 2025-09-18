@@ -335,9 +335,9 @@ export class SayCoeiroink {
     }
 
     // 音声再生時：ウォームアップ → 音声合成 → 完了待機
-    await this.speechQueue.enqueueWarmupAndWait();
+    await this.speechQueue.enqueueAndWaitWarmup();
     const result = await this.speechQueue.enqueueAndWait(text, options);
-    await this.speechQueue.enqueueCompletionWaitAndWait();
+    await this.speechQueue.enqueueAndWaitCompletion();
 
     return result;
   }

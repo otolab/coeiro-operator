@@ -76,14 +76,14 @@ export class SpeechQueue {
   /**
    * ウォームアップタスクをキューに追加して完了を待つ
    */
-  async enqueueWarmupAndWait(): Promise<SynthesizeResult> {
+  async enqueueAndWaitWarmup(): Promise<SynthesizeResult> {
     return this.enqueueTaskAndWait('warmup', '', {});
   }
 
   /**
    * 完了待機タスクをキューに追加して完了を待つ
    */
-  async enqueueCompletionWaitAndWait(): Promise<SynthesizeResult> {
+  async enqueueAndWaitCompletion(): Promise<SynthesizeResult> {
     return this.enqueueTaskAndWait('completion_wait', '', {});
   }
 
