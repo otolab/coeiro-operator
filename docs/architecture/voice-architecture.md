@@ -204,6 +204,87 @@ AudioSynthesizer.synthesize(VoiceConfig)
     └→ COEIROINK API呼び出し
 ```
 
+## 🏗️ コンポーネント分離設計（v2.0以降）
+
+### 責務の分離
+
+v2.0から、SayCoeiroinkクラスの責務を以下の3つのコンポーネントに分離しました：
+
+#### 1. VoiceResolver（音声設定解決）
+
+**責務:** 音声設定の解決に特化
+- オペレータ/キャラクターからVoiceConfigへの変換
+- スタイル選択ロジックの実装
+- セッション情報の読み取り
+
+```typescript
+class VoiceResolver {
+    // オペレータの音声設定を取得
+    async getCurrentVoiceConfig(styleName?: string): Promise<VoiceConfig | null>
+
+    // CharacterIdからVoiceConfigを生成
+    async resolveCharacterToConfig(characterId: string, styleName?: string): Promise<VoiceConfig>
+
+    // 音声設定を統一的に解決
+    async resolveVoiceConfig(
+        voice: string | VoiceConfig | null,
+        style?: string,
+        allowFallback: boolean
+    ): Promise<VoiceConfig>
+}
+```
+
+#### 2. SynthesisProcessor（音声合成処理）
+
+**責務:** 実際の音声合成処理の実行
+- オプション解析とバリデーション
+- サーバー接続確認
+- ファイル出力/ストリーミング再生の実行
+
+```typescript
+class SynthesisProcessor {
+    // 音声合成処理のメインメソッド
+    async process(text: string, options: SynthesizeOptions): Promise<SynthesizeResult>
+
+    // AudioPlayer初期化と設定
+    private async initializeAudioPlayer(): Promise<boolean>
+
+    // ファイル出力処理
+    private async processFileOutput(...): Promise<SynthesizeResult>
+
+    // ストリーミング再生処理
+    private async processStreamingOutput(...): Promise<SynthesizeResult>
+}
+```
+
+#### 3. SayCoeiroink（ファサード）
+
+**責務:** 軽量なファサードとして主要APIを提供
+- 初期化とコンポーネント管理
+- シンプルな公開API（warmup, synthesize, waitCompletion）
+- 内部実装の詳細を隠蔽
+
+```typescript
+class SayCoeiroink {
+    // 主要API
+    async warmup(): Promise<void>
+    synthesize(text: string, options?: SynthesizeOptions): SynthesizeResult
+    async waitCompletion(): Promise<void>
+
+    // ユーティリティ
+    async listVoices(): Promise<void>
+    getSpeechQueueStatus(): QueueStatus
+    clearSpeechQueue(): void
+}
+```
+
+### 利点
+
+1. **単一責任原則**: 各クラスが明確な責務を持つ
+2. **テスタビリティ**: 各コンポーネントを独立してテスト可能
+3. **保守性**: 600行以上のクラスから200行以下に簡素化
+4. **再利用性**: VoiceResolverやSynthesisProcessorを個別に使用可能
+
 ## 💾 データ保存
 
 ### OperatorSession（オペレータセッション）
