@@ -287,7 +287,7 @@ describe('Say Integration Tests', () => {
       expect(playerInitialized).toBe(true);
 
       // 音声合成実行
-      const result = await sayCoeiroink.synthesizeText('統合テストメッセージ', {
+      const result = await sayCoeiroink.synthesize('統合テストメッセージ', {
         voice: 'test-speaker-1',
       });
 
@@ -299,7 +299,7 @@ describe('Say Integration Tests', () => {
       const outputFile = join(tempDir, 'test-output.wav');
 
       // 音声をファイルに出力
-      const result = await sayCoeiroink.synthesizeText('ファイル出力テスト', {
+      const result = await sayCoeiroink.synthesize('ファイル出力テスト', {
         voice: 'test-speaker-1',
         outputFile: outputFile,
       });
@@ -367,7 +367,7 @@ describe('Say Integration Tests', () => {
       const isConnected = await failSayCoeiroink.checkServerConnection();
       expect(isConnected).toBe(false);
 
-      await expect(failSayCoeiroink.synthesizeText('テスト')).rejects.toThrow(
+      await expect(failSayCoeiroink.synthesize('テスト')).rejects.toThrow(
         'Cannot connect to COEIROINK server'
       );
     });
@@ -398,7 +398,7 @@ describe('Say Integration Tests', () => {
       });
 
       await expect(
-        sayCoeiroink.synthesizeText('テスト', { voice: 'test-voice' })
+        sayCoeiroink.synthesize('テスト', { voice: 'test-voice' })
       ).rejects.toThrow(); // エラーが発生することを確認（具体的なメッセージはストリーミング処理により変わる可能性があるため）
     });
 
@@ -406,7 +406,7 @@ describe('Say Integration Tests', () => {
       const invalidPath = '/invalid/path/that/does/not/exist/output.wav';
 
       await expect(
-        sayCoeiroink.synthesizeText('テスト', {
+        sayCoeiroink.synthesize('テスト', {
           voice: 'test-speaker-1',
           outputFile: invalidPath,
         })
@@ -419,7 +419,7 @@ describe('Say Integration Tests', () => {
       const rates = [100, 150, 200, 250, 300];
 
       for (const rate of rates) {
-        const result = await sayCoeiroink.synthesizeText(`レート${rate}でのテスト`, {
+        const result = await sayCoeiroink.synthesize(`レート${rate}でのテスト`, {
           voice: 'test-speaker-1',
           rate: rate,
         });
@@ -432,7 +432,7 @@ describe('Say Integration Tests', () => {
       const voiceIds = ['test-speaker-1', 'tsukuyomi'];
 
       for (const voiceId of voiceIds) {
-        const result = await sayCoeiroink.synthesizeText('音声IDテスト', {
+        const result = await sayCoeiroink.synthesize('音声IDテスト', {
           voice: voiceId,
         });
 
@@ -443,7 +443,7 @@ describe('Say Integration Tests', () => {
     test('ストリーミングモードが正常に動作すること', async () => {
       const longText = 'これは長いテキストです。'.repeat(10);
 
-      const result = await sayCoeiroink.synthesizeText(longText, {
+      const result = await sayCoeiroink.synthesize(longText, {
         voice: 'test-speaker-1',
         chunkMode: 'punctuation',
       });
@@ -514,7 +514,7 @@ describe('Say Integration Tests', () => {
 
       // より控えめな処理量（30回）でテスト時間短縮
       for (let i = 0; i < 30; i++) {
-        await sayCoeiroink.synthesizeText(`メモリテスト${i}`, {
+        await sayCoeiroink.synthesize(`メモリテスト${i}`, {
           voice: 'test-speaker-1',
         });
 
@@ -557,7 +557,7 @@ describe('Say Integration Tests', () => {
       const emptyTexts = ['', '   ', '\n\t\n\t'];
       for (const text of emptyTexts) {
         try {
-          const result = await sayCoeiroink.synthesizeText(text, {
+          const result = await sayCoeiroink.synthesize(text, {
             voice: 'test-speaker-1',
           });
           // 空文字列でも成功する場合はその旨を確認
@@ -580,7 +580,7 @@ describe('Say Integration Tests', () => {
       ];
 
       for (const text of validTexts) {
-        const result = await sayCoeiroink.synthesizeText(text, {
+        const result = await sayCoeiroink.synthesize(text, {
           voice: 'test-speaker-1',
         });
 
@@ -600,7 +600,7 @@ describe('Say Integration Tests', () => {
 
       for (const options of invalidOptions) {
         try {
-          const result = await sayCoeiroink.synthesizeText('フォールバックテスト', options);
+          const result = await sayCoeiroink.synthesize('フォールバックテスト', options);
           // 成功した場合は、適切なフォールバックが動作したことを確認
           expect(result.success).toBe(true);
           expect(result.taskId).toBeDefined();

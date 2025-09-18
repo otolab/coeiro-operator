@@ -342,39 +342,6 @@ export class SayCoeiroink {
     return result;
   }
 
-  /**
-   * 互換性のための旧メソッド（非推奨）
-   * @deprecated synthesize() を使用してください
-   */
-  async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
-    return this.synthesize(text, options);
-  }
-
-  /**
-   * 互換性のための旧メソッド（非推奨）
-   * MCPモードでは音声合成をキューに入れて即座に返す
-   * @deprecated synthesize() を使用してPromiseを無視してください
-   */
-  async synthesizeTextAsync(
-    text: string,
-    options: SynthesizeOptions = {}
-  ): Promise<SynthesizeResult> {
-    return await this.enqueueSpeech(text, options);
-  }
-
-  /**
-   * 互換性のための旧メソッド（非推奨）
-   * @deprecated synthesize() を使用してください
-   */
-  async synthesizeTextAsyncAndWait(
-    text: string,
-    options: SynthesizeOptions = {}
-  ): Promise<SynthesizeResult> {
-    if (!this.speechQueue) {
-      throw new Error('SpeechQueue is not initialized. Call initialize() first.');
-    }
-    return await this.speechQueue.enqueueAndWait(text, options);
-  }
 
   // オプション解析とデバッグログ出力
   private resolveAndLogOptions(options: SynthesizeOptions): {

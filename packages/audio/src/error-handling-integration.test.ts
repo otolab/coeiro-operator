@@ -214,7 +214,7 @@ describe('エラーハンドリング統合テスト', () => {
       } as any);
 
       // サーバー接続エラーを期待（Character解決エラーかCOEIROINKサーバー接続エラー）
-      await expect(sayCoeiroink.synthesizeText('接続失敗テスト', {
+      await expect(sayCoeiroink.synthesize('接続失敗テスト', {
         voice: 'test-speaker-1',
       })).rejects.toThrow();
     });
@@ -249,7 +249,7 @@ describe('エラーハンドリング統合テスト', () => {
       });
 
       // API失敗時のエラーを期待
-      await expect(sayCoeiroink.synthesizeText('API失敗テスト', {
+      await expect(sayCoeiroink.synthesize('API失敗テスト', {
         voice: 'test-speaker-1',
       })).rejects.toThrow(); // HTTPエラーが発生することを確認
     });
@@ -276,7 +276,7 @@ describe('エラーハンドリング統合テスト', () => {
       });
 
       // タイムアウトエラーを期待
-      await expect(sayCoeiroink.synthesizeText('タイムアウトテスト', {
+      await expect(sayCoeiroink.synthesize('タイムアウトテスト', {
         voice: 'test-speaker-1',
       })).rejects.toThrow(); // タイムアウトエラーが発生することを確認
     });
@@ -313,7 +313,7 @@ describe('エラーハンドリング統合テスト', () => {
       });
 
       try {
-        await sayCoeiroink.synthesizeText('ファイル書き込み失敗テスト', {
+        await sayCoeiroink.synthesize('ファイル書き込み失敗テスト', {
           voice: 'test-speaker-1',
           outputFile: invalidPath,
         });
@@ -332,7 +332,7 @@ describe('エラーハンドリング統合テスト', () => {
       const readOnlyPath = '/root/readonly-test.wav';
 
       try {
-        await sayCoeiroink.synthesizeText('権限エラーテスト', {
+        await sayCoeiroink.synthesize('権限エラーテスト', {
           voice: 'test-speaker-1',
           outputFile: readOnlyPath,
         });
@@ -400,7 +400,7 @@ describe('エラーハンドリング統合テスト', () => {
 
       // Speakerエラーは内部で処理されるため、正常に完了することを確認
       // SpeechQueueにタスクが登録されるため、successが返る
-      const result = await sayCoeiroink.synthesizeText('Speaker失敗テスト', {
+      const result = await sayCoeiroink.synthesize('Speaker失敗テスト', {
         voice: 'test-speaker-1',
       });
       expect(result.success).toBe(true);
@@ -434,7 +434,7 @@ describe('エラーハンドリング統合テスト', () => {
       });
 
       try {
-        const result = await sayCoeiroink.synthesizeText('音声データ形式エラーテスト', {
+        const result = await sayCoeiroink.synthesize('音声データ形式エラーテスト', {
           voice: 'test-speaker-1',
         });
 
@@ -486,7 +486,7 @@ describe('エラーハンドリング統合テスト', () => {
 
       for (let i = 0; i < 3; i++) {
         try {
-          await sayCoeiroink.synthesizeText(`復旧テスト ${i + 1}`, {
+          await sayCoeiroink.synthesize(`復旧テスト ${i + 1}`, {
             voice: 'test-speaker-1',
           });
           successCount++;

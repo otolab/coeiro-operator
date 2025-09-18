@@ -166,7 +166,7 @@ describe('並行チャンク生成システム統合テスト', () => {
 
       // 並行生成でのパフォーマンス測定
       const parallelStartTime = Date.now();
-      const parallelResult = await sayCoeiroink.synthesizeText(longText, {
+      const parallelResult = await sayCoeiroink.synthesize(longText, {
         voice: 'test-speaker-1',
         chunkMode: 'punctuation',
       });
@@ -203,7 +203,7 @@ describe('並行チャンク生成システム統合テスト', () => {
 
       const longText = 'テスト文1。テスト文2。テスト文3。';
 
-      const result = await sequentialSayCoeiroink.synthesizeText(longText, {
+      const result = await sequentialSayCoeiroink.synthesize(longText, {
         voice: 'test-speaker-1',
       });
 
@@ -232,7 +232,7 @@ describe('並行チャンク生成システム統合テスト', () => {
       const bufferSayCoeiroink = new SayCoeiroink(configManager);
       await bufferSayCoeiroink.initialize();
 
-      const result = await bufferSayCoeiroink.synthesizeText(
+      const result = await bufferSayCoeiroink.synthesize(
         'バッファ先読みテスト1。バッファ先読みテスト2。バッファ先読みテスト3。バッファ先読みテスト4。',
         { voice: 'test-speaker-1' }
       );
@@ -261,7 +261,7 @@ describe('並行チャンク生成システム統合テスト', () => {
       const disabledSayCoeiroink = new SayCoeiroink(configManager);
       await disabledSayCoeiroink.initialize();
 
-      const result = await disabledSayCoeiroink.synthesizeText(
+      const result = await disabledSayCoeiroink.synthesize(
         'フォールバックテスト1。フォールバックテスト2。',
         { voice: 'test-speaker-1' }
       );
@@ -312,7 +312,7 @@ describe('並行チャンク生成システム統合テスト', () => {
       });
 
       await expect(
-        sayCoeiroink.synthesizeText('エラーテスト1。エラーテスト2。エラーテスト3。', {
+        sayCoeiroink.synthesize('エラーテスト1。エラーテスト2。エラーテスト3。', {
           voice: 'test-speaker-1',
         })
       ).rejects.toThrow(); // エラーが適切に伝播されることを確認
@@ -339,7 +339,7 @@ describe('並行チャンク生成システム統合テスト', () => {
       const edgeCaseSayCoeiroink = new SayCoeiroink(configManager);
       await edgeCaseSayCoeiroink.initialize();
 
-      const result = await edgeCaseSayCoeiroink.synthesizeText(
+      const result = await edgeCaseSayCoeiroink.synthesize(
         '境界値テストです。' + '長い文章を繰り返して境界値での動作を確認します。'.repeat(5),
         { voice: 'test-speaker-1' }
       );
@@ -356,7 +356,7 @@ describe('並行チャンク生成システム統合テスト', () => {
 
       // 複数回の並行生成を実行
       for (let i = 0; i < 5; i++) {
-        const result = await sayCoeiroink.synthesizeText(
+        const result = await sayCoeiroink.synthesize(
           `メモリテスト${i}。複数の文を含む処理。リソース解放確認。`,
           { voice: 'test-speaker-1' }
         );

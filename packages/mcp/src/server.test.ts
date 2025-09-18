@@ -19,7 +19,7 @@ describe('MCP Server allowFallback behavior', () => {
         
         // モックインスタンスを作成
         mockSayCoeiroinkInstance = {
-            synthesizeTextAsync: vi.fn(),
+            enqueueSpeech: vi.fn(),
             initialize: vi.fn(),
             buildDynamicConfig: vi.fn()
         } as unknown;
@@ -31,7 +31,7 @@ describe('MCP Server allowFallback behavior', () => {
         test('allowFallback=false が設定されてオペレータ未アサイン時にエラーになること', async () => {
             // オペレータが割り当てられていない状況をシミュレート
             const expectedError = new Error('オペレータが割り当てられていません。まず operator_assign を実行してください。');
-            mockSayCoeiroinkInstance.synthesizeTextAsync.mockRejectedValue(expectedError);
+            mockSayCoeiroinkInstance.enqueueSpeech.mockRejectedValue(expectedError);
 
             // MCPのsayツール呼び出しをシミュレート
             const mockMessage = 'テストメッセージ';
@@ -43,12 +43,12 @@ describe('MCP Server allowFallback behavior', () => {
                 allowFallback: false  // MCPでは明示的にfalse
             };
 
-            // synthesizeTextAsync が正しい引数で呼ばれることを確認
+            // enqueueSpeech が正しい引数で呼ばれることを確認
             await expect(
-                mockSayCoeiroinkInstance.synthesizeTextAsync(mockMessage, mcpOptions)
+                mockSayCoeiroinkInstance.enqueueSpeech(mockMessage, mcpOptions)
             ).rejects.toThrow('オペレータが割り当てられていません。まず operator_assign を実行してください。');
 
-            expect(mockSayCoeiroinkInstance.synthesizeTextAsync).toHaveBeenCalledWith(
+            expect(mockSayCoeiroinkInstance.enqueueSpeech).toHaveBeenCalledWith(
                 mockMessage,
                 expect.objectContaining({
                     allowFallback: false
@@ -63,7 +63,7 @@ describe('MCP Server allowFallback behavior', () => {
                 queueLength: 1
             };
             
-            mockSayCoeiroinkInstance.synthesizeTextAsync.mockResolvedValue(expectedResult);
+            mockSayCoeiroinkInstance.enqueueSpeech.mockResolvedValue(expectedResult);
 
             const mockMessage = 'テストメッセージ';
             const mcpOptions = {
@@ -74,10 +74,10 @@ describe('MCP Server allowFallback behavior', () => {
                 allowFallback: false
             };
 
-            const result = await mockSayCoeiroinkInstance.synthesizeTextAsync(mockMessage, mcpOptions);
+            const result = await mockSayCoeiroinkInstance.enqueueSpeech(mockMessage, mcpOptions);
 
             expect(result).toEqual(expectedResult);
-            expect(mockSayCoeiroinkInstance.synthesizeTextAsync).toHaveBeenCalledWith(
+            expect(mockSayCoeiroinkInstance.enqueueSpeech).toHaveBeenCalledWith(
                 mockMessage,
                 expect.objectContaining({
                     allowFallback: false
@@ -94,7 +94,7 @@ describe('MCP Server allowFallback behavior', () => {
                 latency: 100
             };
             
-            mockSayCoeiroinkInstance.synthesizeTextAsync.mockResolvedValue(expectedResult);
+            mockSayCoeiroinkInstance.enqueueSpeech.mockResolvedValue(expectedResult);
 
             // CLIからの呼び出しをシミュレート（allowFallbackは未指定またはtrue）
             const mockMessage = 'テストメッセージ';
@@ -106,10 +106,10 @@ describe('MCP Server allowFallback behavior', () => {
                 // allowFallbackは指定されない（デフォルトtrue）
             };
 
-            const result = await mockSayCoeiroinkInstance.synthesizeTextAsync(mockMessage, cliOptions);
+            const result = await mockSayCoeiroinkInstance.enqueueSpeech(mockMessage, cliOptions);
 
             expect(result).toEqual(expectedResult);
-            expect(mockSayCoeiroinkInstance.synthesizeTextAsync).toHaveBeenCalledWith(
+            expect(mockSayCoeiroinkInstance.enqueueSpeech).toHaveBeenCalledWith(
                 mockMessage,
                 expect.not.objectContaining({
                     allowFallback: false
@@ -130,17 +130,17 @@ describe('MCP Server allowFallback behavior', () => {
                 // allowFallback未指定（デフォルトtrue）
             };
 
-            mockSayCoeiroinkInstance.synthesizeTextAsync
+            mockSayCoeiroinkInstance.enqueueSpeech
                 .mockResolvedValueOnce({ success: true, taskId: 1, queueLength: 1 })
                 .mockResolvedValueOnce({ success: true, mode: 'normal' });
 
             // MCP呼び出し
-            await mockSayCoeiroinkInstance.synthesizeTextAsync('MCPテスト', mcpOptions);
+            await mockSayCoeiroinkInstance.enqueueSpeech('MCPテスト', mcpOptions);
             
             // CLI呼び出し
-            await mockSayCoeiroinkInstance.synthesizeTextAsync('CLIテスト', cliOptions);
+            await mockSayCoeiroinkInstance.enqueueSpeech('CLIテスト', cliOptions);
 
-            expect(mockSayCoeiroinkInstance.synthesizeTextAsync).toHaveBeenNthCalledWith(
+            expect(mockSayCoeiroinkInstance.enqueueSpeech).toHaveBeenNthCalledWith(
                 1,
                 'MCPテスト',
                 expect.objectContaining({
@@ -148,7 +148,7 @@ describe('MCP Server allowFallback behavior', () => {
                 })
             );
 
-            expect(mockSayCoeiroinkInstance.synthesizeTextAsync).toHaveBeenNthCalledWith(
+            expect(mockSayCoeiroinkInstance.enqueueSpeech).toHaveBeenNthCalledWith(
                 2,
                 'CLIテスト',
                 expect.not.objectContaining({
@@ -161,7 +161,7 @@ describe('MCP Server allowFallback behavior', () => {
     describe('エラーメッセージの確認', () => {
         test('MCPでのオペレータ未アサインエラーメッセージが適切であること', async () => {
             const expectedError = new Error('オペレータが割り当てられていません。まず operator_assign を実行してください。');
-            mockSayCoeiroinkInstance.synthesizeTextAsync.mockRejectedValue(expectedError);
+            mockSayCoeiroinkInstance.enqueueSpeech.mockRejectedValue(expectedError);
 
             const mcpOptions = {
                 voice: null,
@@ -169,7 +169,7 @@ describe('MCP Server allowFallback behavior', () => {
             };
 
             await expect(
-                mockSayCoeiroinkInstance.synthesizeTextAsync('テスト', mcpOptions)
+                mockSayCoeiroinkInstance.enqueueSpeech('テスト', mcpOptions)
             ).rejects.toThrow('オペレータが割り当てられていません。まず operator_assign を実行してください。');
         });
 
@@ -181,14 +181,14 @@ describe('MCP Server allowFallback behavior', () => {
                 latency: 100
             };
             
-            mockSayCoeiroinkInstance.synthesizeTextAsync.mockResolvedValue(expectedResult);
+            mockSayCoeiroinkInstance.enqueueSpeech.mockResolvedValue(expectedResult);
 
             const cliOptions = {
                 voice: null
                 // allowFallback未指定（デフォルトtrue）
             };
 
-            const result = await mockSayCoeiroinkInstance.synthesizeTextAsync('テスト', cliOptions);
+            const result = await mockSayCoeiroinkInstance.enqueueSpeech('テスト', cliOptions);
 
             expect(result).toEqual(expectedResult);
             expect(result.success).toBe(true);
