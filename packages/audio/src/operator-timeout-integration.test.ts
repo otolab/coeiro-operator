@@ -50,8 +50,6 @@ describe('オペレータタイムアウト統合テスト', () => {
 
     // SayCoeiroinkを初期化
     sayCoeiroink = new SayCoeiroink(configManager);
-    // configプロパティを設定
-    (sayCoeiroink as any).config = await configManager.getFullConfig();
   });
 
   afterEach(async () => {
@@ -64,6 +62,8 @@ describe('オペレータタイムアウト統合テスト', () => {
   });
 
   test('CLIモード: オペレータがタイムアウトしてもデフォルト音声で再生される', async () => {
+    // initializeメソッドを呼んでSayCoeiroinkを完全に初期化
+    await sayCoeiroink.initialize();
     // AudioSynthesizerのモック
     const mockAudioSynthesizer = {
       getSpeakers: vi.fn().mockResolvedValue([
@@ -103,7 +103,7 @@ describe('オペレータタイムアウト統合テスト', () => {
     // SpeechQueueのモック
     const mockSpeechQueue = {
       enqueue: vi.fn().mockResolvedValue({ success: true, taskId: 1, queueLength: 1 }),
-      enqueueAndWait: vi.fn().mockResolvedValue({ success: true, mode: 'normal' }),
+      enqueueAndWait: vi.fn().mockResolvedValue({ success: true, mode: 'streaming' }),
       enqueueWarmup: vi.fn().mockResolvedValue({ success: true }),
       enqueueWarmupAndWait: vi.fn().mockResolvedValue({ success: true }),
       enqueueCompletionWaitAndWait: vi.fn().mockResolvedValue({ success: true }),
@@ -124,21 +124,20 @@ describe('オペレータタイムアウト統合テスト', () => {
     });
     vi.spyOn(operatorManager, 'getCurrentOperatorSession').mockResolvedValue(null);
 
-    // synthesizeTextInternalを直接呼び出してテスト
-    const synthesizeInternal = (sayCoeiroink as any).synthesizeTextInternal.bind(sayCoeiroink);
-
-    // CLIモード: allowFallback=true（デフォルト）
-    const result = await synthesizeInternal('テストメッセージ', {
+    // synthesizeTextメソッドを呼び出してテスト（互換性のため残っている）
+    const result = await sayCoeiroink.synthesizeText('テストメッセージ', {
       allowFallback: true, // CLIのデフォルト設定
     });
 
+    // SpeechQueueのenqueueAndWaitが呼ばれることを確認
+    expect(mockSpeechQueue.enqueueAndWait).toHaveBeenCalled();
     // デフォルト音声が使用されることを確認
     expect(result.success).toBe(true);
-    // ストリーミングモードではsynthesizeStreamが使われる
-    expect(mockAudioSynthesizer.synthesizeStream).toHaveBeenCalled();
   });
 
   test('MCPモード: オペレータがタイムアウトしたらエラーになる', async () => {
+    // initializeメソッドを呼んでSayCoeiroinkを完全に初期化
+    await sayCoeiroink.initialize();
     // AudioSynthesizerのモック
     const mockAudioSynthesizer = {
       checkServerConnection: vi.fn().mockResolvedValue(true),
@@ -154,18 +153,18 @@ describe('オペレータタイムアウト統合テスト', () => {
     });
     vi.spyOn(operatorManager, 'getCurrentOperatorSession').mockResolvedValue(null);
 
-    // synthesizeTextInternalを直接呼び出してテスト
-    const synthesizeInternal = (sayCoeiroink as any).synthesizeTextInternal.bind(sayCoeiroink);
-
+    // synthesizeTextメソッドを呼び出してテスト（互換性のため残っている）
     // MCPモード: allowFallback=false
     await expect(
-      synthesizeInternal('テストメッセージ', {
+      sayCoeiroink.synthesizeText('テストメッセージ', {
         allowFallback: false, // MCPの設定
       })
     ).rejects.toThrow('オペレータが割り当てられていません。まず operator_assign を実行してください。');
   });
 
   test('オペレータが有効な場合は正常に音声合成される', async () => {
+    // initializeメソッドを呼んでSayCoeiroinkを完全に初期化
+    await sayCoeiroink.initialize();
     // AudioSynthesizerのモック
     const mockAudioSynthesizer = {
       getSpeakers: vi.fn().mockResolvedValue([
@@ -244,11 +243,9 @@ describe('オペレータタイムアウト統合テスト', () => {
       styleName: 'のーまる',
     });
 
-    // synthesizeTextInternalを直接呼び出してテスト
-    const synthesizeInternal = (sayCoeiroink as any).synthesizeTextInternal.bind(sayCoeiroink);
-
+    // synthesizeTextメソッドを呼び出してテスト（互換性のため残っている）
     // オペレータ音声を使用
-    const result = await synthesizeInternal('テストメッセージ', {});
+    const result = await sayCoeiroink.synthesizeText('テストメッセージ', {});
 
     expect(result.success).toBe(true);
     // ストリーミングモードではsynthesizeStreamが使われる

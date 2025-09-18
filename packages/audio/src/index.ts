@@ -68,7 +68,7 @@ export class SayCoeiroink {
       // SpeechQueueを初期化（処理コールバックとウォームアップコールバックを渡す）
       this.speechQueue = new SpeechQueue(
         async (task: SpeechTask) => {
-          await this.synthesizeTextInternal(task.text, task.options);
+          await this.processSynthesis(task.text, task.options);
         },
         async () => {
           await this.audioPlayer!.warmupAudioDriver();
@@ -310,19 +310,25 @@ export class SayCoeiroink {
   }
 
   // ========================================================================
-  // CLI/MCP 実行モード別メソッド
+  // 統合された音声合成メソッド
   // ========================================================================
 
   /**
-   * CLIからの完全同期実行用メソッド
-   * - ウォームアップ → 音声合成 → 完了待機を全てqueueで処理
-   * - 同期的な動作でユーザーが完了を確認できる
+   * 音声合成の統一エントリーポイント
+   *
+   * 使用例:
+   * - 同期的に使用（CLI）: await synthesize(text, options)
+   * - 非同期的に使用（MCP）: synthesize(text, options) // Promiseを無視
+   *
+   * @param text 合成するテキスト
+   * @param options 合成オプション
+   * @returns 合成結果のPromise - 完了を待つ場合はawait、待たない場合はPromiseを無視
    */
-  async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+  async synthesize(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
     if (!this.speechQueue) {
       throw new Error('SpeechQueue is not initialized. Call initialize() first.');
     }
-    
+
     // ファイル出力時はウォームアップと完了待機をスキップ
     if (options.outputFile) {
       return await this.speechQueue.enqueueAndWait(text, options);
@@ -337,11 +343,17 @@ export class SayCoeiroink {
   }
 
   /**
-   * MCPサーバから呼び出される非同期キューイング版メソッド
-   * - SpeechQueueにタスクを投稿のみ（即座にレスポンス）
-   * - 実際の音声合成・再生は背景で非同期実行
-   * - Claude Codeの応答性を重視した設計
-   * - ウォームアップや完了待機は実行しない
+   * 互換性のための旧メソッド（非推奨）
+   * @deprecated synthesize() を使用してください
+   */
+  async synthesizeText(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
+    return this.synthesize(text, options);
+  }
+
+  /**
+   * 互換性のための旧メソッド（非推奨）
+   * MCPモードでは音声合成をキューに入れて即座に返す
+   * @deprecated synthesize() を使用してPromiseを無視してください
    */
   async synthesizeTextAsync(
     text: string,
@@ -351,9 +363,8 @@ export class SayCoeiroink {
   }
 
   /**
-   * デバッグ用：キュー処理完了を待つ版メソッド
-   * - テスト環境などで音声合成の完了確認が必要な場合に使用
-   * - 通常のMCP動作では使用しない
+   * 互換性のための旧メソッド（非推奨）
+   * @deprecated synthesize() を使用してください
    */
   async synthesizeTextAsyncAndWait(
     text: string,
@@ -470,8 +481,8 @@ export class SayCoeiroink {
     return { success: true, mode: 'streaming' };
   }
 
-  // 内部用の実際の音声合成処理（分割後のメインメソッド）
-  async synthesizeTextInternal(
+  // 内部用の実際の音声合成処理
+  private async processSynthesis(
     text: string,
     options: SynthesizeOptions = {}
   ): Promise<SynthesizeResult> {
