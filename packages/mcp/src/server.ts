@@ -524,10 +524,10 @@ server.registerTool(
       logger.debug('==============================');
 
       // MCP設計: 音声合成タスクをキューに投稿のみ（再生完了を待たない）
-      // - synthesize() はキューに追加して即座にレスポンス（Promiseを無視）
+      // - synthesize() はキューに追加して即座にレスポンス
       // - 実際の音声合成・再生は背景のSpeechQueueで非同期処理
       // - CLIとは異なり、MCPではウォームアップ・完了待機は実行しない
-      const speechPromise = sayCoeiroink.enqueueSpeech(message, {
+      const speechPromise = sayCoeiroink.synthesize(message, {
         voice: voice || null,
         rate: rate || undefined,
         style: style || undefined,

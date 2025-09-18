@@ -122,13 +122,23 @@ export class SayCoeiroink {
   }
 
   /**
-   * ウォームアップタスクをキューに追加
+   * オーディオドライバーのウォームアップ
    */
-  async enqueueWarmup(): Promise<SynthesizeResult> {
+  async warmup(): Promise<void> {
+    if (!this.audioPlayer) {
+      throw new Error('AudioPlayer is not initialized. Call initialize() first.');
+    }
+    await this.audioPlayer.warmupAudioDriver();
+  }
+
+  /**
+   * キューに入っているすべてのタスクの完了を待つ
+   */
+  async waitCompletion(): Promise<void> {
     if (!this.speechQueue) {
       throw new Error('SpeechQueue is not initialized. Call initialize() first.');
     }
-    return await this.speechQueue.enqueueWarmup();
+    await this.speechQueue.waitForAllTasks();
   }
 
   async getCurrentVoiceConfig(styleName?: string | null): Promise<VoiceConfig | null> {
@@ -285,13 +295,6 @@ export class SayCoeiroink {
     return await this.audioSynthesizer.checkServerConnection();
   }
 
-  // SpeechQueue の enqueue メソッドを使用
-  async enqueueSpeech(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
-    if (!this.speechQueue) {
-      throw new Error('SpeechQueue is not initialized. Call initialize() first.');
-    }
-    return await this.speechQueue.enqueue(text, options);
-  }
 
   // SpeechQueue のステータスを取得
   getSpeechQueueStatus() {
@@ -314,32 +317,28 @@ export class SayCoeiroink {
   // ========================================================================
 
   /**
-   * 音声合成の統一エントリーポイント
+   * 音声合成タスクをキューに追加
    *
    * 使用例:
-   * - 同期的に使用（CLI）: await synthesize(text, options)
-   * - 非同期的に使用（MCP）: synthesize(text, options) // Promiseを無視
+   * - CLI:
+   *   await sayCoeiroink.warmup();
+   *   await sayCoeiroink.synthesize(text);
+   *   await sayCoeiroink.waitCompletion();
+   *
+   * - MCP:
+   *   sayCoeiroink.synthesize(text);  // Promiseを無視
    *
    * @param text 合成するテキスト
    * @param options 合成オプション
-   * @returns 合成結果のPromise - 完了を待つ場合はawait、待たない場合はPromiseを無視
+   * @returns タスクID付きの結果Promise
    */
   async synthesize(text: string, options: SynthesizeOptions = {}): Promise<SynthesizeResult> {
     if (!this.speechQueue) {
       throw new Error('SpeechQueue is not initialized. Call initialize() first.');
     }
 
-    // ファイル出力時はウォームアップと完了待機をスキップ
-    if (options.outputFile) {
-      return await this.speechQueue.enqueueAndWait(text, options);
-    }
-
-    // 音声再生時：ウォームアップ → 音声合成 → 完了待機
-    await this.speechQueue.enqueueAndWaitWarmup();
-    const result = await this.speechQueue.enqueueAndWait(text, options);
-    await this.speechQueue.enqueueAndWaitCompletion();
-
-    return result;
+    // キューにタスクを追加（即座に返る）
+    return await this.speechQueue.enqueue(text, options);
   }
 
 

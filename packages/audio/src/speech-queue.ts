@@ -74,17 +74,19 @@ export class SpeechQueue {
   }
 
   /**
-   * ウォームアップタスクをキューに追加して完了を待つ
+   * キューに入っているすべてのタスクの完了を待つ
    */
-  async enqueueAndWaitWarmup(): Promise<SynthesizeResult> {
-    return this.enqueueTaskAndWait('warmup', '', {});
-  }
-
-  /**
-   * 完了待機タスクをキューに追加して完了を待つ
-   */
-  async enqueueAndWaitCompletion(): Promise<SynthesizeResult> {
-    return this.enqueueTaskAndWait('completion_wait', '', {});
+  async waitForAllTasks(): Promise<void> {
+    return new Promise((resolve) => {
+      const checkQueue = () => {
+        if (this.speechQueue.length === 0 && !this.isProcessing) {
+          resolve();
+        } else {
+          setTimeout(checkQueue, 100);
+        }
+      };
+      checkQueue();
+    });
   }
 
   /**
