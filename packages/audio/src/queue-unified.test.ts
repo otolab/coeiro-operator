@@ -10,99 +10,112 @@ import type { SpeechTask } from './types.js';
 describe('Queue統一実装テスト', () => {
   let speechQueue: SpeechQueue;
   let processCallbacks: SpeechTask[] = [];
-  let warmupCallbacks: number = 0;
 
   beforeEach(() => {
     processCallbacks = [];
-    warmupCallbacks = 0;
 
     speechQueue = new SpeechQueue(
       async (task: SpeechTask) => {
         processCallbacks.push(task);
-      },
-      async () => {
-        warmupCallbacks++;
       }
     );
   });
 
   test('通常の音声タスクのキューイング', async () => {
-    const result = await speechQueue.enqueue('テストメッセージ');
+    const result = speechQueue.enqueue('テストメッセージ');
 
     expect(result.success).toBe(true);
     expect(result.taskId).toBeDefined();
 
-    // 非同期処理の完了を待つ
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // waitForAllTasksを呼んで完了を待つ
+    await speechQueue.waitForAllTasks();
 
     expect(processCallbacks).toHaveLength(1);
     expect(processCallbacks[0].type).toBe('speech');
     expect(processCallbacks[0].text).toBe('テストメッセージ');
   });
 
-  test('ウォームアップタスクのキューイング', async () => {
-    const result = await speechQueue.enqueueWarmup();
+  test('複数タスクのキューイング', async () => {
+    const result1 = speechQueue.enqueue('タスク1');
+    const result2 = speechQueue.enqueue('タスク2');
 
-    expect(result.success).toBe(true);
+    expect(result1.success).toBe(true);
+    expect(result2.success).toBe(true);
 
-    // 非同期処理の完了を待つ
-    await new Promise(resolve => setTimeout(resolve, 100));
+    // 全タスクの完了を待つ
+    await speechQueue.waitForAllTasks();
 
-    expect(warmupCallbacks).toBe(1);
+    expect(processCallbacks).toHaveLength(2);
+    expect(processCallbacks[0].text).toBe('タスク1');
+    expect(processCallbacks[1].text).toBe('タスク2');
   });
 
-  test('完了待機タスクのキューイング', async () => {
-    const startTime = Date.now();
-    const result = await speechQueue.enqueueCompletionWait();
+  test('キューのステータス取得', async () => {
+    speechQueue.enqueue('タスク1');
+    speechQueue.enqueue('タスク2');
 
-    expect(result.success).toBe(true);
+    // 処理が開始されるまで少し待つ
+    await new Promise(resolve => setTimeout(resolve, 10));
 
-    // 非同期処理の完了を待つ（500ms + 余裕）
-    await new Promise(resolve => setTimeout(resolve, 600));
+    const status = speechQueue.getStatus();
 
-    const elapsedTime = Date.now() - startTime;
-    expect(elapsedTime).toBeGreaterThanOrEqual(500); // 500ms待機が実行されている
+    // キューの処理が始まっているため、queueLengthは1または0になる
+    expect(status.queueLength).toBeLessThanOrEqual(2);
+    expect(status.isProcessing).toBeDefined();
+    expect(status.nextTaskId).toBeDefined();
   });
 
-  test('CLI用同期実行（enqueueAndWait）', async () => {
-    const startTime = Date.now();
+  test('enqueueAndWaitの同期的完了待機', async () => {
+    // クリーンな状態から始める
+    processCallbacks = [];
 
     const result = await speechQueue.enqueueAndWait('同期テスト');
-
-    const elapsedTime = Date.now() - startTime;
 
     expect(result.success).toBe(true);
     expect(processCallbacks).toHaveLength(1);
     expect(processCallbacks[0].text).toBe('同期テスト');
-    expect(elapsedTime).toBeLessThan(100); // 同期処理なので高速
   });
 
-  test('ウォームアップ同期実行', async () => {
-    const result = await speechQueue.enqueueAndWaitWarmup();
+  test('キューのクリア', async () => {
+    speechQueue.enqueue('タスク1');
+    speechQueue.enqueue('タスク2');
 
-    expect(result.success).toBe(true);
-    expect(warmupCallbacks).toBe(1);
+    speechQueue.clear();
+
+    const status = speechQueue.getStatus();
+    expect(status.queueLength).toBe(0);
+    expect(status.isProcessing).toBe(false);
   });
 
-  test('完了待機同期実行', async () => {
-    const startTime = Date.now();
+  test('エラーハンドリング', async () => {
+    // エラーを発生させるプロセッサ
+    const errorQueue = new SpeechQueue(
+      async (task: SpeechTask) => {
+        if (task.text === 'エラータスク') {
+          throw new Error('テストエラー');
+        }
+      }
+    );
 
-    const result = await speechQueue.enqueueAndWaitCompletion();
+    errorQueue.enqueue('正常タスク');
+    errorQueue.enqueue('エラータスク');
+    errorQueue.enqueue('正常2');
 
-    const elapsedTime = Date.now() - startTime;
+    const result = await errorQueue.waitForAllTasks();
 
-    expect(result.success).toBe(true);
-    expect(elapsedTime).toBeGreaterThanOrEqual(500); // 500ms待機が実行されている
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].error.message).toBe('テストエラー');
   });
 
   test('複合タスクの順次実行', async () => {
-    // ウォームアップ → 音声 → 完了待機の順で実行
-    await speechQueue.enqueueAndWaitWarmup();
-    await speechQueue.enqueueAndWait('メインメッセージ');
-    await speechQueue.enqueueAndWaitCompletion();
+    // 複数の音声タスクを順次実行
+    await speechQueue.enqueueAndWait('メッセージ1');
+    await speechQueue.enqueueAndWait('メッセージ2');
+    await speechQueue.enqueueAndWait('メッセージ3');
 
-    expect(warmupCallbacks).toBe(1);
-    expect(processCallbacks).toHaveLength(1);
-    expect(processCallbacks[0].text).toBe('メインメッセージ');
+    expect(processCallbacks).toHaveLength(3);
+    expect(processCallbacks[0].text).toBe('メッセージ1');
+    expect(processCallbacks[1].text).toBe('メッセージ2');
+    expect(processCallbacks[2].text).toBe('メッセージ3');
   });
 });

@@ -112,12 +112,20 @@ export class SayCoeiroink {
 
   /**
    * キューに入っているすべてのタスクの完了を待つ
+   * エラーが発生した場合は最初のエラーを投げる
    */
   async waitCompletion(): Promise<void> {
     if (!this.speechQueue) {
       throw new Error('SpeechQueue is not initialized. Call initialize() first.');
     }
-    await this.speechQueue.waitForAllTasks();
+    const result = await this.speechQueue.waitForAllTasks();
+
+    // エラーがある場合は最初のエラーを投げる
+    if (result.errors.length > 0) {
+      const firstError = result.errors[0];
+      logger.warn(`音声処理中に${result.errors.length}件のエラーが発生しました`);
+      throw firstError.error;
+    }
   }
 
   // ========================================================================

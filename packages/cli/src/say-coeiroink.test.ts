@@ -23,7 +23,9 @@ describe('SayCoeiroinkCLI', () => {
         // SayCoeiroinkのモックインスタンス
         mockSayCoeiroink = {
             initialize: vi.fn().mockResolvedValue(undefined),
-            synthesizeText: vi.fn().mockResolvedValue({ success: true }),
+            warmup: vi.fn().mockResolvedValue(undefined),
+            synthesize: vi.fn().mockReturnValue({ success: true, taskId: 1, queueLength: 1 }),
+            waitCompletion: vi.fn().mockResolvedValue(undefined),
             listVoices: vi.fn().mockResolvedValue(undefined),
             buildDynamicConfig: vi.fn().mockResolvedValue(undefined),
         };
@@ -216,7 +218,7 @@ describe('SayCoeiroinkCLI', () => {
             const args = ['テストメッセージ'];
             await cli.run(args);
 
-            expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith('テストメッセージ', {
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith('テストメッセージ', {
                 voice: null,
                 rate: 200,
                 outputFile: null,
@@ -233,7 +235,7 @@ describe('SayCoeiroinkCLI', () => {
             await cli.run(args);
 
             expect(mockReadFile).toHaveBeenCalledWith('input.txt', 'utf8');
-            expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith('ファイル内容', {
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith('ファイル内容', {
                 voice: null,
                 rate: 200,
                 outputFile: null,
@@ -247,7 +249,7 @@ describe('SayCoeiroinkCLI', () => {
             const args = ['-r', '150', '-v', 'custom-voice', '--style', 'ひそひそ', 'メッセージ'];
             await cli.run(args);
 
-            expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith('メッセージ', {
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith('メッセージ', {
                 voice: 'custom-voice',
                 rate: 150,
                 outputFile: null,
@@ -261,7 +263,7 @@ describe('SayCoeiroinkCLI', () => {
             const args = ['-o', 'output.wav', 'テスト'];
             await cli.run(args);
 
-            expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith('テスト', {
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith('テスト', {
                 voice: null,
                 rate: 200,
                 outputFile: 'output.wav',
@@ -274,7 +276,7 @@ describe('SayCoeiroinkCLI', () => {
 
         test('音声合成エラー時に適切にハンドリングされること', async () => {
             const args = ['エラーテスト'];
-            mockSayCoeiroink.synthesizeText.mockRejectedValue(new Error('Synthesis failed'));
+            mockSayCoeiroink.waitCompletion.mockRejectedValue(new Error('Synthesis failed'));
 
             await expect(cli.run(args)).rejects.toThrow('Synthesis failed');
         });
@@ -293,7 +295,7 @@ describe('SayCoeiroinkCLI', () => {
             
             await cli.run(args);
 
-            expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith(longText, expect.anything(Object));
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(longText, expect.anything(Object));
         });
 
         test('特殊文字を含むテキストでも正常に処理されること', async () => {
@@ -302,15 +304,15 @@ describe('SayCoeiroinkCLI', () => {
             
             await cli.run(args);
 
-            expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalledWith(specialText, expect.anything(Object));
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(specialText, expect.anything(Object));
         });
 
         test('境界値のレート設定でも正常に処理されること', async () => {
             const args = ['-r', '50', 'テスト'];
             await cli.run(args);
 
-            expect(mockSayCoeiroink.synthesizeText).toHaveBeenCalled();
-            const callArgs = mockSayCoeiroink.synthesizeText.mock.calls[0][1];
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalled();
+            const callArgs = mockSayCoeiroink.synthesize.mock.calls[0][1];
             expect(callArgs.rate).toBe(50);
         });
     });

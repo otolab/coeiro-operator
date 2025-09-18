@@ -10,16 +10,18 @@ export class SpeechQueue {
   private speechQueue: SpeechTask[] = [];
   private isProcessing: boolean = false;
   private taskIdCounter: number = Date.now();
+  private errors: Array<{taskId: number; error: Error}> = [];
 
   constructor(
     private processCallback: (task: SpeechTask) => Promise<void>
   ) {}
 
   /**
-   * 音声タスクをキューに追加
+   * 音声タスクをキューに追加（同期的）
    */
   enqueue(text: string, options: SynthesizeOptions = {}): SynthesizeResult {
     const taskId = this.taskIdCounter++;
+
     const task: SpeechTask = {
       id: taskId,
       type: 'speech',
@@ -30,16 +32,15 @@ export class SpeechQueue {
 
     this.speechQueue.push(task);
 
-    // キュー処理を開始（非同期、わずかに遅延させてテスト時の状態確認を可能にする）
+    // キュー処理を開始
     setTimeout(() => this.processQueue(), 0);
 
     return {
       success: true,
       taskId,
-      queueLength: this.speechQueue.length, // 現在のキュー長
+      queueLength: this.speechQueue.length,
     };
   }
-
 
   /**
    * 音声タスクをキューに追加して完了を待つ
@@ -72,12 +73,16 @@ export class SpeechQueue {
 
   /**
    * キューに入っているすべてのタスクの完了を待つ
+   * @returns エラーが発生した場合はエラーリストを含む結果を返す
    */
-  async waitForAllTasks(): Promise<void> {
+  async waitForAllTasks(): Promise<{ errors: Array<{taskId: number; error: Error}> }> {
     return new Promise((resolve) => {
       const checkQueue = () => {
         if (this.speechQueue.length === 0 && !this.isProcessing) {
-          resolve();
+          // エラーリストを返してクリア
+          const errors = [...this.errors];
+          this.errors = [];
+          resolve({ errors });
         } else {
           setTimeout(checkQueue, 100);
         }
@@ -115,6 +120,12 @@ export class SpeechQueue {
         }
       } catch (error) {
         logger.error(`音声タスクエラー: ${task.id} (${task.type}), ${(error as Error).message}`);
+
+        // エラーを保存
+        this.errors.push({
+          taskId: task.id,
+          error: error as Error
+        });
 
         // CLI用エラー通知
         if (task.reject) {
