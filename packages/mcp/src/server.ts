@@ -4,13 +4,14 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import * as path from 'path';
 import { SayCoeiroink } from '@coeiro-operator/audio';
-import { 
+import {
   ConfigManager,
   getConfigDir,
   OperatorManager,
   DictionaryService
 } from '@coeiro-operator/core';
 import { logger, LoggerPresets } from '@coeiro-operator/common';
+import { TerminalBackground } from '../../cli/dist/terminal-background.js';
 import type { Character } from '@coeiro-operator/core';
 
 // デバッグ: 環境変数を確認
@@ -99,12 +100,16 @@ logger.info('Initializing COEIRO Operator services...');
 let sayCoeiroink: SayCoeiroink;
 let operatorManager: OperatorManager;
 let dictionaryService: DictionaryService;
+let terminalBackground: TerminalBackground | null = null;
 
 try {
   const configDir = configPath ? path.dirname(configPath) : await getConfigDir();
   const configManager = new ConfigManager(configDir);
   await configManager.buildDynamicConfig();
-  
+
+  // TerminalBackgroundを初期化
+  terminalBackground = new TerminalBackground(configManager);
+
   sayCoeiroink = new SayCoeiroink(configManager);
 
   logger.info('Initializing SayCoeiroink...');
@@ -305,6 +310,13 @@ server.registerTool(
         characterId: assignResult.characterId,
         characterName: assignResult.characterName,
       });
+
+      // 背景画像を切り替え
+      if (terminalBackground && await terminalBackground.isEnabled()) {
+        await terminalBackground.switchCharacter(assignResult.characterId);
+        logger.info('背景画像切り替え完了', { characterId: assignResult.characterId });
+      }
+
       const character = await operatorManager.getCharacterInfo(assignResult.characterId);
 
       if (!character) {
@@ -337,6 +349,13 @@ server.registerTool(
   async (): Promise<ToolResponse> => {
     try {
       await operatorManager.releaseOperator();
+
+      // 背景画像をクリア
+      if (terminalBackground && await terminalBackground.isEnabled()) {
+        terminalBackground.clearBackground();
+        logger.info('背景画像クリア完了');
+      }
+
       return {
         content: [
           {

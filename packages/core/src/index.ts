@@ -21,7 +21,7 @@ export * from './dictionary/default-dictionaries.js';
 export * from './operator/index.js';
 export * from './operator/character-info-service.js';
 export * from './operator/character-defaults.js';
-export { default as ConfigManager } from './operator/config-manager.js';
+export { default as ConfigManager, TerminalBackgroundConfig } from './operator/config-manager.js';
 export * from './operator/file-operation-manager.js';
 
 // Environment (Speakerは除外してcharacter-info-serviceから使用)

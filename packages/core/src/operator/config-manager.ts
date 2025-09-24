@@ -24,6 +24,20 @@ export interface FullConfig extends Omit<BaseFullConfig, 'characters'> {
   characters: Record<string, BaseCharacterConfig | CharacterConfig>;
 }
 
+// ターミナル背景設定の型定義
+export interface TerminalBackgroundConfig {
+  enabled: boolean;
+  backgroundImages?: {
+    [characterId: string]: string; // キャラクターIDごとの背景画像パス
+  };
+  operatorImage?: {
+    display: 'api' | 'file' | 'none'; // API取得/ファイル指定/表示なし
+    position: 'top-right' | 'bottom-right'; // 表示位置
+    opacity: number; // 透明度 (0.0 - 1.0)
+    filePath?: string; // display: 'file'の場合のパス
+  };
+}
+
 // 統一設定ファイルの型定義
 interface UnifiedConfig {
   connection?: {
@@ -35,6 +49,9 @@ interface UnifiedConfig {
     rate?: number; // 話速（WPM）
     timeout?: number; // タイムアウト（ミリ秒）
     assignmentStrategy?: 'random';
+  };
+  terminal?: {
+    background?: TerminalBackgroundConfig;
   };
   characters?: Record<
     string,
@@ -228,11 +245,13 @@ export class ConfigManager {
   }
 
   /**
-   * 音声設定を取得
+   * ターミナル背景設定を取得
    */
-  async getAudioConfig(): Promise<AudioConfig> {
+  async getTerminalBackgroundConfig(): Promise<TerminalBackgroundConfig> {
     const config = await this.loadConfig();
-    return config.audio || {};
+    return config.terminal?.background || {
+      enabled: false
+    };
   }
 
   /**
@@ -242,8 +261,16 @@ export class ConfigManager {
     const config = await this.loadConfig();
     return {
       host: config.connection?.host || CONNECTION_SETTINGS.DEFAULT_HOST,
-      port: config.connection?.port || CONNECTION_SETTINGS.DEFAULT_PORT,
+      port: config.connection?.port || CONNECTION_SETTINGS.DEFAULT_PORT
     };
+  }
+
+  /**
+   * 音声設定を取得
+   */
+  async getAudioConfig(): Promise<AudioConfig> {
+    const config = await this.loadConfig();
+    return config.audio || {};
   }
 
   /**

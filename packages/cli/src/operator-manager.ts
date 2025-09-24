@@ -5,7 +5,9 @@
  * operator-managerスクリプトのJavaScript版
  */
 
-import { OperatorManager } from '@coeiro-operator/core';
+import { OperatorManager, ConfigManager } from '@coeiro-operator/core';
+import { TerminalBackground } from './terminal-background.js';
+import { getConfigDir } from '@coeiro-operator/core';
 
 interface AssignResult {
   characterId: string; // キャラクターID（例: 'tsukuyomi'）
@@ -35,6 +37,8 @@ interface ParsedArgs {
 
 class OperatorManagerCLI {
   private manager: OperatorManager;
+  private terminalBackground: TerminalBackground | null = null;
+  private configManager: ConfigManager | null = null;
 
   constructor() {
     this.manager = new OperatorManager();
@@ -65,6 +69,10 @@ class OperatorManagerCLI {
           `スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`
         );
       }
+      // 背景画像を切り替え
+      if (this.terminalBackground && await this.terminalBackground.isEnabled()) {
+        await this.terminalBackground.switchCharacter(result.characterId);
+      }
     } else {
       const currentStatus: StatusResult = await this.manager.showCurrentOperator();
       if (currentStatus.characterId) {
@@ -76,6 +84,10 @@ class OperatorManagerCLI {
           console.log(
             `スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`
           );
+        }
+        // 背景画像を切り替え
+        if (this.terminalBackground && await this.terminalBackground.isEnabled()) {
+          await this.terminalBackground.switchCharacter(result.characterId);
         }
       }
     }
@@ -92,6 +104,11 @@ class OperatorManagerCLI {
 
   async run(args: string[]): Promise<void> {
     await this.manager.initialize();
+
+    // ConfigManagerとTerminalBackgroundを初期化
+    const configDir = await getConfigDir();
+    this.configManager = new ConfigManager(configDir);
+    this.terminalBackground = new TerminalBackground(this.configManager);
 
     const command = args[0];
 
@@ -135,6 +152,11 @@ class OperatorManagerCLI {
   async handleRelease(): Promise<void> {
     const result: ReleaseResult = await this.manager.releaseOperator();
     console.log(`オペレータ返却: ${result.characterName}`);
+
+    // 背景画像をクリア
+    if (this.terminalBackground && await this.terminalBackground.isEnabled()) {
+      this.terminalBackground.clearBackground();
+    }
   }
 
   async handleStatus(): Promise<void> {

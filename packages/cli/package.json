@@ -29,14 +29,15 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
+    "@coeiro-operator/audio": "*",
     "@coeiro-operator/common": "*",
     "@coeiro-operator/core": "*",
-    "@coeiro-operator/audio": "*",
+    "@coeiro-operator/term-bg": "*",
     "commander": "^14.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.13.1",
     "@types/commander": "^2.12.5",
+    "@types/node": "^22.13.1",
     "typescript": "^5.7.3",
     "vitest": "^3.2.4"
   },
