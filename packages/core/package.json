@@ -24,7 +24,8 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@coeiro-operator/common": "*"
+    "@coeiro-operator/common": "*",
+    "@coeiro-operator/term-bg": "*"
   },
   "devDependencies": {
     "@types/node": "^22.13.1",

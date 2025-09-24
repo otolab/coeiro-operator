@@ -5,9 +5,7 @@
  * operator-managerスクリプトのJavaScript版
  */
 
-import { OperatorManager, ConfigManager } from '@coeiro-operator/core';
-import { TerminalBackground } from './terminal-background.js';
-import { getConfigDir } from '@coeiro-operator/core';
+import { OperatorManager, ConfigManager, TerminalBackground, getConfigDir } from '@coeiro-operator/core';
 
 interface AssignResult {
   characterId: string; // キャラクターID（例: 'tsukuyomi'）

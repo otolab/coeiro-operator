@@ -1,7 +1,9 @@
 import { TerminalBackground as TermBg } from '@coeiro-operator/term-bg';
 import { join } from 'path';
 import { writeFile } from 'fs/promises';
-import { ConfigManager, type TerminalBackgroundConfig, getSpeakerProvider } from '@coeiro-operator/core';
+import { ConfigManager } from '../operator/config-manager.js';
+import { getSpeakerProvider } from '../environment/speaker-provider.js';
+import type { TerminalBackgroundConfig } from '../operator/config-manager.js';
 
 export class TerminalBackground {
   private currentCharacterId: string | null = null;

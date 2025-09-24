@@ -8,10 +8,10 @@ import {
   ConfigManager,
   getConfigDir,
   OperatorManager,
-  DictionaryService
+  DictionaryService,
+  TerminalBackground
 } from '@coeiro-operator/core';
 import { logger, LoggerPresets } from '@coeiro-operator/common';
-import { TerminalBackground } from '../../cli/dist/terminal-background.js';
 import type { Character } from '@coeiro-operator/core';
 
 // デバッグ: 環境変数を確認

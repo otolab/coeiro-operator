@@ -32,7 +32,6 @@
     "@coeiro-operator/audio": "*",
     "@coeiro-operator/common": "*",
     "@coeiro-operator/core": "*",
-    "@coeiro-operator/term-bg": "*",
     "commander": "^14.0.0"
   },
   "devDependencies": {

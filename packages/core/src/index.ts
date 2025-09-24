@@ -25,12 +25,15 @@ export { default as ConfigManager, TerminalBackgroundConfig } from './operator/c
 export * from './operator/file-operation-manager.js';
 
 // Environment (Speakerは除外してcharacter-info-serviceから使用)
-export { 
+export {
   VoiceStyle,
   ConnectionConfig,
   getSpeakerProvider,
   type SpeakerProvider
 } from './environment/speaker-provider.js';
+
+// Terminal
+export { TerminalBackground } from './terminal/terminal-background.js';
 
 // Test utilities
 export * from './test-utils/test-env.js';
