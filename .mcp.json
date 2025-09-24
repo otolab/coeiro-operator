@@ -29,9 +29,8 @@
     },
     "coeiro-operator": {
       "type": "stdio",
-      "command": "packages/mcp/dist/server.js",
-      "args": [],
-      "env": {}
+      "command": "node",
+      "args": ["packages/mcp/dist/server.js", "--debug"]
     }
   }
 }

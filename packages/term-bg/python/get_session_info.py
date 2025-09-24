@@ -26,7 +26,6 @@ async def main(connection):
         "session_id": session.session_id,
         "window_id": window.window_id,
         "tab_id": tab.tab_id,
-        "is_tmux": session.is_tmux_session,
     }
 
     # 環境変数からも情報を取得

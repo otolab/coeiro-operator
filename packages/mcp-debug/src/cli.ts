@@ -70,6 +70,7 @@ class MCPDebugCLI {
       this.client = new MCPDebugClient({
         serverPath: this.options.targetServerPath,
         args: this.options.childArgs,
+        env: process.env,  // 現在の環境変数を引き継ぐ
         timeout: this.options.timeout,
         requestTimeout: this.options.requestTimeout,
         debug: this.options.debugMode,
