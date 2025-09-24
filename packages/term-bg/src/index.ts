@@ -8,6 +8,7 @@ export interface BackgroundConfig {
   mode?: 'stretch' | 'tile' | 'fit' | 'fill';
   position?: 'bottom-right' | 'top-right' | 'bottom-left' | 'top-left' | 'center';
   scale?: number;  // 0.0 - 1.0 (画像のサイズ比率)
+  sessionId?: string;  // 対象セッションID（省略時は現在のセッション）
 }
 
 export class TerminalBackground {
@@ -37,8 +38,14 @@ export class TerminalBackground {
         return;
       }
 
+      // sessionIdをconfigに含める（存在する場合）
+      const configWithSession = { ...config };
+      if (config.sessionId) {
+        configWithSession.sessionId = config.sessionId;
+      }
+
       // 設定をJSON文字列に変換
-      const configJson = JSON.stringify(config);
+      const configJson = JSON.stringify(configWithSession);
 
       // uvでPythonスクリプトを実行
       const pythonProjectDir = path.resolve(path.dirname(this.pythonScriptPath));
@@ -150,8 +157,59 @@ export class TerminalBackground {
   /**
    * 背景画像をクリア
    */
-  async clearBackground(): Promise<void> {
-    return this.setBackground({ imagePath: '' });
+  async clearBackground(sessionId?: string): Promise<void> {
+    return this.setBackground({ imagePath: '', sessionId });
+  }
+
+  /**
+   * 現在のセッション情報を取得
+   */
+  async getSessionInfo(): Promise<any> {
+    return new Promise((resolve, reject) => {
+      if (!this.isUvAvailable()) {
+        reject(new Error('uv is not available'));
+        return;
+      }
+
+      const packageRoot = path.join(__dirname, '..');
+      const getSessionScript = path.join(packageRoot, 'python', 'get_session_info.py');
+      const pythonProjectDir = path.resolve(path.join(packageRoot, 'python'));
+
+      const proc = spawn('uv', ['run', '--project', pythonProjectDir, 'python', getSessionScript]);
+
+      let stdout = '';
+      let stderr = '';
+
+      proc.stdout.on('data', (data: any) => {
+        stdout += data.toString();
+      });
+
+      proc.stderr.on('data', (data: any) => {
+        stderr += data.toString();
+      });
+
+      proc.on('close', (code: any) => {
+        if (code !== 0) {
+          reject(new Error(`Failed to get session info: ${stderr}`));
+          return;
+        }
+
+        try {
+          const result = JSON.parse(stdout);
+          if (result.error) {
+            reject(new Error(result.error));
+          } else {
+            resolve(result);
+          }
+        } catch (error) {
+          reject(new Error(`Failed to parse response: ${stdout}`));
+        }
+      });
+
+      proc.on('error', (error: any) => {
+        reject(new Error(`Failed to spawn Python process: ${error.message}`));
+      });
+    });
   }
 
   /**

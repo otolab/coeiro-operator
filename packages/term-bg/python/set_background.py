@@ -22,14 +22,33 @@ async def main(connection):
 
     app = await iterm2.async_get_app(connection)
 
-    # 現在のウィンドウとセッションを取得
-    window = app.current_terminal_window
-    if not window:
-        print(json.dumps({"error": "No current window found"}))
-        return
+    # セッションIDが指定されている場合は、そのセッションを取得
+    session = None
+    if "sessionId" in config and config["sessionId"]:
+        # 指定されたセッションIDでセッションを検索
+        for window in app.windows:
+            for tab in window.tabs:
+                for s in tab.sessions:
+                    if s.session_id == config["sessionId"]:
+                        session = s
+                        break
+                if session:
+                    break
+            if session:
+                break
 
-    tab = window.current_tab
-    session = tab.current_session
+        if not session:
+            print(json.dumps({"error": f"Session with ID {config['sessionId']} not found"}))
+            return
+    else:
+        # セッションIDが指定されていない場合は現在のセッションを使用
+        window = app.current_terminal_window
+        if not window:
+            print(json.dumps({"error": "No current window found"}))
+            return
+
+        tab = window.current_tab
+        session = tab.current_session
 
     # 設定を変更
     change = iterm2.LocalWriteOnlyProfile()
@@ -58,6 +77,7 @@ async def main(connection):
 
     print(json.dumps({
         "success": True,
+        "sessionId": session.session_id,
         "imagePath": config.get("imagePath"),
         "opacity": config.get("opacity"),
         "mode": config.get("mode")

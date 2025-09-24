@@ -9,10 +9,24 @@ export class TerminalBackground {
   private currentCharacterId: string | null = null;
   private configManager: ConfigManager;
   private termBg: TermBg;
+  private sessionId: string | undefined;
 
-  constructor(configManager: ConfigManager) {
+  constructor(configManager: ConfigManager, sessionId?: string) {
     this.configManager = configManager;
     this.termBg = new TermBg();
+    this.sessionId = sessionId || this.getSessionId();
+  }
+
+  /**
+   * セッションIDを取得（OperatorManagerと同じロジック）
+   */
+  private getSessionId(): string | undefined {
+    if (process.env.ITERM_SESSION_ID) {
+      return process.env.ITERM_SESSION_ID;
+    } else if (process.env.TERM_SESSION_ID) {
+      return process.env.TERM_SESSION_ID;
+    }
+    return undefined;
   }
 
   /**
@@ -71,10 +85,11 @@ export class TerminalBackground {
         opacity: opacity ?? 0.3,  // デフォルト30%の不透明度
         position: 'bottom-right',  // 右下に配置
         scale: 0.15,  // 15%のサイズに縮小
-        mode: 'fit'  // アスペクト比を保持
+        mode: 'fit',  // アスペクト比を保持
+        sessionId: this.sessionId  // SessionIDを指定
       });
 
-      console.log(`背景画像を設定しました: ${absolutePath}`);
+      console.log(`背景画像を設定しました: ${absolutePath}${this.sessionId ? ` (Session: ${this.sessionId})` : ''}`);
     } catch (error) {
       console.error(`背景画像の設定に失敗しました: ${error}`);
     }
@@ -141,9 +156,9 @@ export class TerminalBackground {
     }
 
     try {
-      await this.termBg.clearBackground();
+      await this.termBg.clearBackground(this.sessionId);
       this.currentCharacterId = null;
-      console.log('背景画像をクリアしました');
+      console.log(`背景画像をクリアしました${this.sessionId ? ` (Session: ${this.sessionId})` : ''}`);
     } catch (error) {
       console.error(`背景のクリアに失敗しました: ${error}`);
     }
