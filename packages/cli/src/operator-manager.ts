@@ -153,7 +153,7 @@ class OperatorManagerCLI {
 
     // 背景画像をクリア
     if (this.terminalBackground && await this.terminalBackground.isEnabled()) {
-      this.terminalBackground.clearBackground();
+      await this.terminalBackground.clearBackground();
     }
   }
 

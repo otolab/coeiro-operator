@@ -352,7 +352,7 @@ server.registerTool(
 
       // 背景画像をクリア
       if (terminalBackground && await terminalBackground.isEnabled()) {
-        terminalBackground.clearBackground();
+        await terminalBackground.clearBackground();
         logger.info('背景画像クリア完了');
       }
 
