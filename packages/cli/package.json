@@ -32,11 +32,11 @@
     "@coeiro-operator/audio": "*",
     "@coeiro-operator/common": "*",
     "@coeiro-operator/core": "*",
-    "commander": "^14.0.0"
+    "commander": "^14.0.1"
   },
   "devDependencies": {
     "@types/commander": "^2.12.5",
-    "@types/node": "^22.13.1",
+    "@types/node": "^22.18.3",
     "typescript": "^5.7.3",
     "vitest": "^3.2.4"
   },
