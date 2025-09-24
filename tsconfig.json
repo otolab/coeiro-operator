@@ -19,8 +19,12 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
+    "types": ["node"],
+    "noEmit": true
   },
+  "include": [
+    "packages/*/src/**/*"
+  ],
   "exclude": [
     "node_modules",
     "dist",
