@@ -4,7 +4,6 @@ import { writeFile } from 'fs/promises';
 import { ConfigManager } from '../operator/config-manager.js';
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
 import { logger } from '@coeiro-operator/common';
-import type { TerminalBackgroundConfig } from '../operator/config-manager.js';
 
 export class TerminalBackground {
   private currentCharacterId: string | null = null;
