@@ -31,7 +31,7 @@
     "@coeiro-operator/common": "*",
     "@coeiro-operator/core": "*",
     "@coeiro-operator/audio": "*",
-    "@modelcontextprotocol/sdk": "^1.17.0"
+    "@modelcontextprotocol/sdk": "^1.18.1"
   },
   "devDependencies": {
     "@types/node": "^22.18.3",
