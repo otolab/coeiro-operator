@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
 import { getDirname } from '@coeiro-operator/common';
@@ -227,7 +227,6 @@ export class TerminalBackground {
    */
   private isUvAvailable(): boolean {
     try {
-      const { execSync } = require('child_process');
       execSync('which uv', { stdio: 'ignore' });
       return true;
     } catch {
