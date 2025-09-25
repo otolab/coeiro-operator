@@ -9,6 +9,9 @@ import { describe, test, expect, beforeEach, afterEach } from 'vitest';
 import { createMCPTester, MCPServiceE2ETester } from '@coeiro-operator/mcp-debug';
 import * as path from 'path';
 import { getTestEnvironment } from '@coeiro-operator/core';
+import { getDirname } from '@coeiro-operator/common';
+
+const __dirname = getDirname(import.meta.url);
 
 describe('COEIRO Operator with MCP Debug Integration E2E Tests', () => {
   let tester: MCPServiceE2ETester;

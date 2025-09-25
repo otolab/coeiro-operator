@@ -6,6 +6,9 @@
 import { beforeEach, afterEach } from 'vitest';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
+import { getDirname } from '@coeiro-operator/common';
+
+const __dirname = getDirname(import.meta.url);
 
 export interface McpTestConfig {
   timeout?: number;

@@ -6,6 +6,9 @@
 import { spawn } from 'child_process';
 import * as path from 'path';
 import { describe, it, expect } from 'vitest';
+import { getDirname } from '@coeiro-operator/common';
+
+const __dirname = getDirname(import.meta.url);
 
 describe('MCP Debug Non-Interactive Mode', () => {
   // 既存のecho-serverを使用

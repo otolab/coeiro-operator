@@ -9,7 +9,9 @@
     "postinstall": "node scripts/setup-python-env.js",
     "clean": "rm -rf dist"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@coeiro-operator/common": "*"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0"

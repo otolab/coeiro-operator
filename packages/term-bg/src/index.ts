@@ -1,6 +1,7 @@
 import { spawn } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import { getDirname } from '@coeiro-operator/common';
 
 export interface BackgroundConfig {
   imagePath?: string;
@@ -10,6 +11,8 @@ export interface BackgroundConfig {
   scale?: number;  // 0.0 - 1.0 (画像のサイズ比率)
   sessionId?: string;  // 対象セッションID（省略時は現在のセッション）
 }
+
+const __dirname = getDirname(import.meta.url);
 
 export class TerminalBackground {
   private pythonScriptPath: string;

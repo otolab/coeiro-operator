@@ -4,3 +4,6 @@
 
 // Logger
 export * from './logger.js';
+
+// Utils
+export * from './utils/dirname.js';
