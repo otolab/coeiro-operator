@@ -16,7 +16,7 @@
     "ia32"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "type-check": "tsc --noEmit",
@@ -24,7 +24,8 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@coeiro-operator/common": "*"
+    "@coeiro-operator/common": "*",
+    "@coeiro-operator/term-bg": "*"
   },
   "devDependencies": {
     "@types/node": "^22.18.3",

@@ -7,6 +7,9 @@
 import { createInterface } from 'readline';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
+import { getDirname } from '@coeiro-operator/common';
+
+const __dirname = getDirname(import.meta.url);
 
 interface TestResult {
   command: string;

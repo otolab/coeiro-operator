@@ -54,6 +54,27 @@ exit      # 終了
 | `--auto-reload, -r` | ファイル変更時の自動リロード | false |
 | `--` | 以降のオプションを子プロセスに渡す | - |
 
+## MCPサーバー開発時の重要事項
+
+### Claude CodeのMCPサーバーキャッシュ
+
+Claude Codeは起動時にMCPサーバーを一度だけロードし、メモリにキャッシュします。これにより以下の開発上の制約が生じます：
+
+```bash
+# 期待する動作
+1. コードを編集
+2. npm run build
+3. 変更が反映される
+
+# 実際の動作（Claude Code内で実行した場合）
+1. コードを編集
+2. npm run build
+3. mcp__your_server__tool を実行
+   → 古いコード（起動時のキャッシュ）が実行される
+```
+
+この問題を回避するため、開発・テスト時はmcp-debugを使用してください。mcp-debugは毎回新しいプロセスを起動するため、最新のコードが実行されます。
+
 ## 実用例
 
 ### MCPサーバーコード更新後のテスト
@@ -62,15 +83,13 @@ exit      # 終了
 # 1. ビルド
 npm run build
 
-# 2. 特定のMCPツールをテスト
+# 2. 特定のMCPツールをテスト（最新コードで実行される）
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":1}' | \
 node dist/mcp-debug/cli.js dist/mcp/server.js
 
 # 3. インタラクティブモードでデバッグ
 node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
 ```
-
-**重要**: Claude Code起動中のMCPツールでは編集したコードの変更が反映されません。開発・テスト時は必ずmcp-debugを使用してください。
 
 ### 複数のツールを順次テスト
 

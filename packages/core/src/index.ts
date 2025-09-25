@@ -21,16 +21,19 @@ export * from './dictionary/default-dictionaries.js';
 export * from './operator/index.js';
 export * from './operator/character-info-service.js';
 export * from './operator/character-defaults.js';
-export { default as ConfigManager } from './operator/config-manager.js';
+export { default as ConfigManager, TerminalBackgroundConfig } from './operator/config-manager.js';
 export * from './operator/file-operation-manager.js';
 
 // Environment (Speakerは除外してcharacter-info-serviceから使用)
-export { 
+export {
   VoiceStyle,
   ConnectionConfig,
   getSpeakerProvider,
   type SpeakerProvider
 } from './environment/speaker-provider.js';
+
+// Terminal
+export { TerminalBackground } from './terminal/terminal-background.js';
 
 // Test utilities
 export * from './test-utils/test-env.js';

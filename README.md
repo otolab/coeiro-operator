@@ -18,6 +18,18 @@ COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシ�
 - **動的設定管理**: COEIROINKサーバーから音声フォントを自動検出
 - **セッション管理**: 複数セッション間でのオペレータ重複防止
 - **MCPデバッグ環境**: 包括的なテスト・デバッグシステム
+- **ターミナル背景画像機能**: iTerm2でオペレータの立ち絵を背景表示（macOS限定）
+
+## 動作環境
+
+### 基本要件
+- Node.js 18以上
+- COEIROINK本体（[公式サイト](https://coeiroink.com/)）
+
+### ターミナル背景画像機能（オプション）
+- macOS + iTerm2
+- Python 3.12以上
+- [uv](https://github.com/astral-sh/uv)（Pythonパッケージマネージャー）
 
 ## クイックスタート
 
@@ -129,8 +141,8 @@ operator-manager clear                               # 全クリア
 
 ```
 ~/.coeiro-operator/
-├── coeiroink-config.json      # COEIROINK・音声設定
-└── operator-config.json       # オペレータ管理設定
+├── config.json                # 統一設定ファイル（全設定を一元管理）
+└── active-operators.json      # セッション状態管理（自動生成）
 
 /tmp/
 └── coeiroink-operators-<hostname>.json  # セッション状態（一時保存、最大4時間）
@@ -158,6 +170,31 @@ operator-manager clear                               # 全クリア
   }
 }
 ```
+
+### ターミナル背景画像設定（iTerm2）
+
+config.jsonに以下を追加：
+
+```json
+{
+  "terminal": {
+    "background": {
+      "enabled": true,
+      "backgroundImages": {
+        // キャラクターIDごとの背景画像パス（オプション）
+        "tsukuyomi": "/path/to/tsukuyomi-bg.png"
+      },
+      "operatorImage": {
+        "display": "api",      // "api": COEIROINKから取得, "file": ファイル指定, "none": 非表示
+        "opacity": 0.3,        // 透明度（0.0-1.0）
+        "filePath": "/path/to/operator.png"  // display: "file"の場合のパス
+      }
+    }
+  }
+}
+```
+
+注意：オペレータ画像は右下に15%のサイズで表示されます（現在固定値）。
 
 ### 詳細設定ガイド
 

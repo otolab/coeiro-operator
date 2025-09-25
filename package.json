@@ -2,6 +2,7 @@
   "name": "coeiro-operator",
   "version": "2.0.0",
   "description": "MCP server for COEIROINK voice synthesis and operator management",
+  "type": "module",
   "private": true,
   "workspaces": [
     "packages/*"
@@ -15,13 +16,14 @@
   },
   "scripts": {
     "start": "node dist/mcp/server.js",
-    "build": "tsc",
-    "build:watch": "tsc --watch",
-    "build:all": "npm run build:packages",
-    "build:packages": "npm run build:common && npm run build:core && npm run build:audio && npm run build:cli && npm run build:mcp && npm run build:mcp-debug",
+    "build": "tsc --build",
+    "build:watch": "tsc --build --watch",
+    "build:all": "tsc --build --force",
+    "build:packages": "npm run build:common && npm run build:core && npm run build:audio && npm run build:term-bg && npm run build:cli && npm run build:mcp && npm run build:mcp-debug",
     "build:common": "npm run build -w @coeiro-operator/common",
     "build:core": "npm run build -w @coeiro-operator/core",
     "build:audio": "npm run build -w @coeiro-operator/audio",
+    "build:term-bg": "npm run build -w @coeiro-operator/term-bg",
     "build:cli": "npm run build -w @coeiro-operator/cli",
     "build:mcp": "npm run build -w @coeiro-operator/mcp",
     "build:mcp-debug": "npm run build -w @coeiro-operator/mcp-debug",

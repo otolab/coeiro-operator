@@ -4,19 +4,15 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 import * as path from 'path';
 import { SayCoeiroink } from '@coeiro-operator/audio';
-import { 
+import {
   ConfigManager,
   getConfigDir,
   OperatorManager,
-  DictionaryService
+  DictionaryService,
+  TerminalBackground
 } from '@coeiro-operator/core';
 import { logger, LoggerPresets } from '@coeiro-operator/common';
 import type { Character } from '@coeiro-operator/core';
-
-// デバッグ: 環境変数を確認
-if (process.env.NODE_ENV === 'test' || process.env.CI === 'true') {
-  console.error(`[MCP Server] Environment: NODE_ENV=${process.env.NODE_ENV}, CI=${process.env.CI}`);
-}
 
 interface StyleInfo {
   id: string;
@@ -96,15 +92,27 @@ const server = new McpServer(
 // top-level awaitを使用した同期的初期化
 logger.info('Initializing COEIRO Operator services...');
 
+// 環境変数のデバッグ出力
+logger.debug('Environment variables check:', {
+  TERM_PROGRAM: process.env.TERM_PROGRAM,
+  ITERM_SESSION_ID: process.env.ITERM_SESSION_ID,
+  TERM_SESSION_ID: process.env.TERM_SESSION_ID,
+  NODE_ENV: process.env.NODE_ENV
+});
+
 let sayCoeiroink: SayCoeiroink;
 let operatorManager: OperatorManager;
 let dictionaryService: DictionaryService;
+let terminalBackground: TerminalBackground | null = null;
 
 try {
   const configDir = configPath ? path.dirname(configPath) : await getConfigDir();
   const configManager = new ConfigManager(configDir);
   await configManager.buildDynamicConfig();
-  
+
+  // TerminalBackgroundを初期化
+  terminalBackground = new TerminalBackground(configManager);
+
   sayCoeiroink = new SayCoeiroink(configManager);
 
   logger.info('Initializing SayCoeiroink...');
@@ -132,7 +140,10 @@ try {
     const fallbackConfigDir = await getConfigDir();
     const fallbackConfigManager = new ConfigManager(fallbackConfigDir);
     await fallbackConfigManager.buildDynamicConfig();
-    
+
+    // TerminalBackgroundを初期化
+    terminalBackground = new TerminalBackground(fallbackConfigManager);
+
     sayCoeiroink = new SayCoeiroink(fallbackConfigManager);
     await sayCoeiroink.initialize();
     await sayCoeiroink.buildDynamicConfig();
@@ -305,6 +316,24 @@ server.registerTool(
         characterId: assignResult.characterId,
         characterName: assignResult.characterName,
       });
+
+      // 背景画像を切り替え
+      if (terminalBackground) {
+        logger.error('🔧 TerminalBackground instance exists');
+        const isEnabled = await terminalBackground.isEnabled();
+        logger.error('📊 Terminal background enabled check:', { isEnabled });
+
+        if (isEnabled) {
+          logger.error('🔄 Switching background for character:', assignResult.characterId);
+          await terminalBackground.switchCharacter(assignResult.characterId);
+          logger.error('✅ 背景画像切り替え完了', { characterId: assignResult.characterId });
+        } else {
+          logger.error('⚠️ Terminal background is not enabled');
+        }
+      } else {
+        logger.error('❌ TerminalBackground instance is null');
+      }
+
       const character = await operatorManager.getCharacterInfo(assignResult.characterId);
 
       if (!character) {
@@ -337,6 +366,15 @@ server.registerTool(
   async (): Promise<ToolResponse> => {
     try {
       await operatorManager.releaseOperator();
+
+      // 背景画像をクリア
+      if (terminalBackground) {
+        if (await terminalBackground.isEnabled()) {
+          await terminalBackground.clearBackground();
+          logger.info('背景画像クリア完了');
+        }
+      }
+
       return {
         content: [
           {

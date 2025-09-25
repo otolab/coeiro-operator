@@ -18,6 +18,7 @@ export interface Speaker {
   speakerName: string;
   speakerUuid: string;
   styles: VoiceStyle[];
+  base64Portrait?: string; // 立ち絵画像のbase64データ
 }
 
 export interface ConnectionConfig {
@@ -86,6 +87,15 @@ export class SpeakerProvider {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       throw new Error(`Failed to fetch speakers: ${errorMessage}`);
     }
+  }
+
+  /**
+   * 特定のSpeakerの立ち絵画像を取得
+   */
+  async getSpeakerPortrait(speakerId: string): Promise<string | null> {
+    const speakers = await this.getSpeakers();
+    const speaker = speakers.find(s => s.speakerUuid === speakerId);
+    return speaker?.base64Portrait || null;
   }
 
   /**

@@ -70,6 +70,7 @@ class MCPDebugCLI {
       this.client = new MCPDebugClient({
         serverPath: this.options.targetServerPath,
         args: this.options.childArgs,
+        env: process.env,  // 現在の環境変数を引き継ぐ
         timeout: this.options.timeout,
         requestTimeout: this.options.requestTimeout,
         debug: this.options.debugMode,
@@ -157,8 +158,9 @@ class MCPDebugCLI {
     });
 
     let inputBuffer = '';
+    let currentRequestPromise: Promise<void> | null = null;
 
-    readline.on('line', async (line: string) => {
+    readline.on('line', (line: string) => {
       inputBuffer += line + '\n';
 
       // 完全なJSONオブジェクトかチェック
@@ -166,8 +168,20 @@ class MCPDebugCLI {
         const message = JSON.parse(inputBuffer);
         inputBuffer = '';
 
-        // JSON-RPCリクエストを処理
-        await this.handleNonInteractiveInput(message);
+        // JSON-RPCリクエストを処理（Promiseを保持）
+        currentRequestPromise = this.handleNonInteractiveInput(message).then(() => {
+          // 非インタラクティブモードでは、レスポンス送信後に終了
+          if (!process.stdout.isTTY) {
+            // 少し待機してからシャットダウン（出力バッファのフラッシュを確実にする）
+            setTimeout(() => {
+              this.shutdown();
+            }, 10);
+          }
+        }).catch((error) => {
+          console.error('Error handling request:', error);
+        }).finally(() => {
+          currentRequestPromise = null;
+        });
       } catch (error) {
         // JSONが不完全な場合は次の行を待つ
         if (!(error instanceof SyntaxError)) {
@@ -177,7 +191,15 @@ class MCPDebugCLI {
       }
     });
 
-    readline.on('close', () => {
+    readline.on('close', async () => {
+      // リクエスト処理中の場合は待機
+      if (currentRequestPromise) {
+        try {
+          await currentRequestPromise;
+        } catch (error) {
+          console.error('Error waiting for request completion:', error);
+        }
+      }
       this.shutdown();
     });
   }

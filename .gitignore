@@ -27,6 +27,7 @@ Thumbs.db
 # ビルド成果物
 build/
 dist/
+*.tsbuildinfo
 
 # TypeScript build artifacts in source directories
 packages/*/src/**/*.js

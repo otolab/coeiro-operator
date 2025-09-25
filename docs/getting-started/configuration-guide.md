@@ -14,8 +14,7 @@ COEIRO Operatorの詳細な設定方法とカスタマイズオプションに�
 ### 設定ファイルの場所
 ```
 ~/.coeiro-operator/
-├── coeiroink-config.json      # COEIROINK・音声設定
-├── operator-config.json       # オペレータ管理設定  
+├── config.json                # 統一設定ファイル（全設定を一元管理）
 └── active-operators.json      # 利用状況管理（自動生成）
 ```
 
@@ -24,70 +23,54 @@ COEIRO Operatorの詳細な設定方法とカスタマイズオプションに�
 2. **動的音声検出** (自動): COEIROINKサーバーから音声情報取得（speakerIdでマッチング）
 3. **ユーザー設定** (カスタマイズ): `~/.coeiro-operator/operator-config.json`
 
-## オペレータ設定（キャラクター管理）
+## 統一設定ファイル（config.json）
 
-### operator-config.json（部分オーバーライド設定）
+### 設定値一覧表
 
-**目的**: 内蔵設定の部分的なカスタマイズ（全項目の定義は不要）
+| セクション | 設定項目 | 型 | デフォルト値 | 説明 |
+|------------|----------|------|-------------|------|
+| **connection** | | | | COEIROINK接続設定 |
+| | `host` | String | `"localhost"` | COEIROINKサーバーのホスト |
+| | `port` | String | `"50032"` | COEIROINKサーバーのポート |
+| **audio** | | | | 音声処理設定 |
+| | `latencyMode` | String | `"balanced"` | レイテンシモード: `"ultra-low"`, `"low"`, `"balanced"`, `"quality"` |
+| | `splitMode` | String | `"punctuation"` | テキスト分割モード: `"none"`, `"punctuation"`, `"small"`, `"medium"`, `"large"`, `"auto"` |
+| | `bufferSize` | Number | `1024` | バッファサイズ（256-4096） |
+| | `processing.synthesisRate` | Number | `24000` | 合成サンプリングレート |
+| | `processing.playbackRate` | Number | `48000` | 再生サンプリングレート |
+| | `processing.lowpassFilter` | Boolean | `true` | ローパスフィルター有効化 |
+| | `processing.lowpassCutoff` | Number | `24000` | ローパスフィルターカットオフ周波数 |
+| | `processing.noiseReduction` | Boolean | `false` | ノイズリダクション有効化 |
+| **operator** | | | | オペレータ管理設定 |
+| | `rate` | Number | `200` | 話速（WPM） |
+| | `timeout` | Number | `14400000` | オペレータ予約タイムアウト（ミリ秒、4時間） |
+| | `assignmentStrategy` | String | `"random"` | 割り当て戦略（現在は`"random"`のみ） |
+| **terminal.background** | | | | ターミナル背景設定（iTerm2限定） |
+| | `enabled` | Boolean | `false` | 背景画像機能の有効化 |
+| | `backgroundImages[id]` | String | - | キャラクターIDごとの背景画像パス |
+| | `operatorImage.display` | String | `"api"` | オペレータ画像取得方法: `"api"`, `"file"`, `"none"` |
+| | `operatorImage.opacity` | Number | `0.3` | 透明度（0.0-1.0） |
+| | `operatorImage.filePath` | String | - | 画像ファイルパス（`display: "file"`の場合） |
+| **characters[id]** | | | | キャラクター個別設定 |
+| | `name` | String | 内蔵設定 | 表示名 |
+| | `personality` | String | 内蔵設定 | 性格設定 |
+| | `speakingStyle` | String | 内蔵設定 | 話し方の特徴 |
+| | `greeting` | String | 内蔵設定 | アサイン時の挨拶 |
+| | `farewell` | String | 内蔵設定 | 解放時のお別れ |
+| | `defaultStyle` | String | 内蔵設定 | デフォルトスタイル名 |
+| | `disabled` | Boolean | `false` | キャラクターの無効化 |
 
-#### 最小設定例（一部カスタマイズ）
+### 最小設定例
 
 ```json
 {
-  "characterSettings": {
-    "assignmentStrategy": "random"
-  },
   "characters": {
     "tsukuyomi": {
-      "greeting": "カスタマイズされた挨拶メッセージ"
-    },
-    "angie": {
-      "disabled": true
+      "greeting": "カスタマイズされた挨拶"
     }
   }
 }
 ```
-
-#### 複数キャラクターのカスタマイズ例
-
-```json
-{
-  "operatorTimeout": 14400000,
-  "characterSettings": {
-    "assignmentStrategy": "random"
-  },
-  "characters": {
-    "tsukuyomi": {
-      "personality": "カスタマイズされた性格設定",
-      "speakingStyle": "カスタマイズされた話し方",
-      "greeting": "カスタマイズされた挨拶",
-      "farewell": "カスタマイズされたお別れ"
-    },
-    "angie": {
-      "greeting": "元気いっぱいで今日もよろしく！"
-    },
-    "mana": {
-      "disabled": true
-    }
-  }
-}
-```
-
-#### 設定項目詳細
-
-| 項目 | カスタマイズ可能 | 型 | 説明 |
-|------|------|----|----|
-| `operatorTimeout` | ✓ | Number | オペレータ予約タイムアウト（ミリ秒、デフォルト4時間） |
-| `characterSettings` | ✓ | Object | グローバルなキャラクター動作設定 |
-| `characterSettings.assignmentStrategy` | ✓ | String | オペレータ割り当て戦略 (現在はrandomのみ) |
-| `characters` | ✓ | Object | キャラクター設定のオーバーライド |
-| `characters[id].name` | ✓ | String | 表示名（通常は変更不要） |
-| `characters[id].personality` | ✓ | String | 性格設定（MCP出力時に表示） |
-| `characters[id].speakingStyle` | ✓ | String | 話し方の特徴（MCP出力時に表示） |
-| `characters[id].greeting` | ✓ | String | アサイン時の挨拶メッセージ |
-| `characters[id].farewell` | ✓ | String | 解放時のお別れメッセージ |
-| `characters[id].defaultStyle` | ✓ | String | デフォルトスタイル名（スタイル未指定時のデフォルト） |
-| `characters[id].disabled` | ✓ | Boolean | キャラクターの無効化フラグ |
 
 **注意**: 
 - キャラクターIDは`tsukuyomi`のような識別子で、内蔵キャラクターは固定です
@@ -134,66 +117,27 @@ MCPツールの`say`でスタイルを一時的に指定可能：
 
 利用可能なスタイルは自動検出され、無効なスタイル指定時はデフォルトスタイルが使用されます。
 
-## COEIROINK・音声設定
+## 音声処理詳細設定
 
-### coeiroink-config.json
-
-#### 設定ファイル構造（v2.1.0+）
-
-最新の設定は以下の構造を使用します：
-
-```json
-{
-  "connection": {
-    "host": "localhost",
-    "port": "50032"
-  },
-  "voice": {
-    "default_speaker_id": "3c37646f-3881-5374-2a83-149267990abc",
-    "default_style_id": 0,
-    "rate": 200
-  },
-  "audio": {
-    "latencyMode": "balanced",
-    "splitMode": "punctuation",
-    "bufferSize": 1024,
-    "processing": {
-      "synthesisRate": 24000,
-      "playbackRate": 48000,
-      "lowpassFilter": true,
-      "lowpassCutoff": 24000,
-      "noiseReduction": false
-    },
-    "splitSettings": {
-      "smallSize": 30,
-      "mediumSize": 50,
-      "largeSize": 100,
-      "overlapRatio": 0.1
-    }
-  }
-}
-```
-
-#### 分割モード（splitMode）
+### 分割モード（splitMode）
 
 - **punctuation** (デフォルト): 句読点ベースの自然分割
 - **none**: 分割なし
 - **small/medium/large**: 文字数ベース分割
 - **auto**: 自動判定
 
-### 音質プリセット
+### レイテンシモード（latencyMode）
+
+- **ultra-low**: 超低遅延（品質を犠牲にして応答速度を最優先）
+- **low**: 低遅延
+- **balanced**: バランス（デフォルト、品質と遅延のバランス）
+- **quality**: 高品質（遅延よりも品質を優先）
+
+### 音質プリセット例
 
 #### 高品質設定
 ```json
 {
-  "connection": {
-    "host": "localhost",
-    "port": "50032"
-  },
-  "voice": {
-    "default_speaker_id": "your-speaker-id",
-    "rate": 200
-  },
   "audio": {
     "latencyMode": "quality",
     "splitMode": "large",
@@ -212,12 +156,7 @@ MCPツールの`say`でスタイルを一時的に指定可能：
 #### 超低遅延設定
 ```json
 {
-  "connection": {
-    "host": "localhost",
-    "port": "50032"
-  },
-  "voice": {
-    "default_speaker_id": "your-speaker-id",
+  "operator": {
     "rate": 180
   },
   "audio": {
@@ -234,31 +173,50 @@ MCPツールの`say`でスタイルを一時的に指定可能：
 }
 ```
 
-#### バランス設定（推奨）
+#### バランス設定（推奨・デフォルト値）
 ```json
 {
-  "connection": {
-    "host": "localhost",
-    "port": "50032"
-  },
-  "voice": {
-    "default_speaker_id": "your-speaker-id",
-    "rate": 200
-  },
   "audio": {
     "latencyMode": "balanced",
     "splitMode": "punctuation",
-    "bufferSize": 1024,
-    "processing": {
-      "synthesisRate": 24000,
-      "playbackRate": 48000,
-      "lowpassFilter": true,
-      "lowpassCutoff": 24000,
-      "noiseReduction": false
+    "bufferSize": 1024
+  }
+}
+```
+
+## ターミナル背景画像設定（iTerm2限定）
+
+オペレータの立ち絵をiTerm2の背景に表示する機能です。
+
+### 必要環境
+- macOS + iTerm2
+- Python 3.12以上
+- [uv](https://github.com/astral-sh/uv)（Pythonパッケージマネージャー）
+
+### 設定例
+
+```json
+{
+  "terminal": {
+    "background": {
+      "enabled": true,
+      "backgroundImages": {
+        "tsukuyomi": "/path/to/tsukuyomi-bg.png"
+      },
+      "operatorImage": {
+        "display": "api",
+        "opacity": 0.3
+      }
     }
   }
 }
 ```
+
+### 動作仕様
+- オペレータ切り替え時に自動で背景画像を更新
+- オペレータ画像は右下に15%のサイズで表示（現在固定値）
+- セッションIDを使用して特定のターミナルウィンドウに背景を設定
+- backgroundImagesで指定した画像が優先、なければoperatorImageを使用
 
 ## 設定の動作確認
 
@@ -272,19 +230,19 @@ operator-manager available
 ls -la ~/.coeiro-operator/
 
 # ユーザー設定の内容確認（存在する場合）
-cat ~/.coeiro-operator/operator-config.json 2>/dev/null || echo "ユーザー設定なし（内蔵設定を使用）"
+cat ~/.coeiro-operator/config.json 2>/dev/null || echo "ユーザー設定なし（内蔵設定を使用）"
 
 # 現在利用可能な音声確認
 curl -s -X GET "http://localhost:50032/v1/speakers" | jq -r '.[].speakerName'
 ```
 
-### 設定の階層構造確認
+### 設定の階層構造
 
 システムは以下の順序で設定をマージします：
 
 1. **内蔵デフォルト設定** - 13キャラクターの基本設定
 2. **動的音声検出** - COEIROINKサーバーから取得
-3. **ユーザー設定** - `~/.coeiro-operator/operator-config.json`
+3. **ユーザー設定** - `~/.coeiro-operator/config.json`
 
 各段階で設定が重ね合わされ、最終的な設定が決定されます。
 
@@ -303,7 +261,7 @@ mkdir -p ~/.coeiro-operator
 
 ```bash
 # 設定ファイルを作成
-cat > ~/.coeiro-operator/operator-config.json << 'EOF'
+cat > ~/.coeiro-operator/config.json << 'EOF'
 {
   "characters": {
     "tsukuyomi": {
@@ -318,11 +276,30 @@ EOF
 
 ```bash
 # 特定キャラクターを無効化
-cat > ~/.coeiro-operator/operator-config.json << 'EOF'
+cat > ~/.coeiro-operator/config.json << 'EOF'
 {
   "characters": {
     "angie": {
       "disabled": true
+    }
+  }
+}
+EOF
+```
+
+#### 背景画像の有効化（iTerm2）
+
+```bash
+# ターミナル背景画像を有効化
+cat > ~/.coeiro-operator/config.json << 'EOF'
+{
+  "terminal": {
+    "background": {
+      "enabled": true,
+      "operatorImage": {
+        "display": "api",
+        "opacity": 0.3
+      }
     }
   }
 }
