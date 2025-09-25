@@ -16,7 +16,7 @@
     "ia32"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "type-check": "tsc --noEmit",

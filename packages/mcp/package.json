@@ -19,7 +19,7 @@
     "coeiro-operator": "./dist/server.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build",
     "start": "node dist/server.js",
     "test": "vitest",
     "test:watch": "vitest --watch",
