@@ -2,6 +2,7 @@
   "name": "coeiro-operator",
   "version": "2.0.0",
   "description": "MCP server for COEIROINK voice synthesis and operator management",
+  "type": "module",
   "private": true,
   "workspaces": [
     "packages/*"

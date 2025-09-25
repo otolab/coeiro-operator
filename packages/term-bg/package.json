@@ -2,6 +2,7 @@
   "name": "@coeiro-operator/term-bg",
   "version": "1.0.0",
   "description": "Terminal background image controller for iTerm2",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
