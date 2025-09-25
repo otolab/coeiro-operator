@@ -1,39 +1,16 @@
 {
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "es2022",
-    "module": "esnext",
-    "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "allowJs": true,
-    "checkJs": false,
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "types": ["node"],
     "noEmit": true
   },
-  "include": [
-    "packages/*/src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist",
-    "**/dist",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "coverage",
-    "eslint.config.js",
-    "packages/mcp-debug/src/test/**/*",
-    "**/scripts/**/*"
+  "files": [],
+  "references": [
+    { "path": "./packages/common" },
+    { "path": "./packages/term-bg" },
+    { "path": "./packages/core" },
+    { "path": "./packages/audio" },
+    { "path": "./packages/cli" },
+    { "path": "./packages/mcp" },
+    { "path": "./packages/mcp-debug" }
   ]
 }
