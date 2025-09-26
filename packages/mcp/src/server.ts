@@ -365,9 +365,18 @@ server.registerTool(
   },
   async (): Promise<ToolResponse> => {
     try {
-      await operatorManager.releaseOperator();
+      const result = await operatorManager.releaseOperator();
 
-      // 背景画像をクリア
+      let releaseMessage: string;
+      if (result.wasAssigned) {
+        releaseMessage = `オペレータを解放しました: ${result.characterName}`;
+        logger.info(`オペレータ解放: ${result.characterId}`);
+      } else {
+        releaseMessage = 'オペレータは割り当てられていません';
+        logger.info('オペレータ未割り当て状態');
+      }
+
+      // 背景画像をクリア（オペレータの有無に関わらず実行）
       if (terminalBackground) {
         if (await terminalBackground.isEnabled()) {
           await terminalBackground.clearBackground();
@@ -379,7 +388,7 @@ server.registerTool(
         content: [
           {
             type: 'text',
-            text: 'オペレータを解放しました',
+            text: releaseMessage,
           },
         ],
       };
