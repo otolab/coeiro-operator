@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 /**
  * オブジェクトを再帰的にマージするユーティリティ
  *
@@ -16,7 +18,7 @@ export function deepMerge<T extends Record<string, any>>(
   const result: any = { ...target };
 
   for (const key in source) {
-    if (source.hasOwnProperty(key)) {
+    if (Object.prototype.hasOwnProperty.call(source, key)) {
       const sourceValue = source[key];
       const targetValue = target[key];
 
