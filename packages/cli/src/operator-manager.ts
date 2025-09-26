@@ -20,7 +20,10 @@ interface AssignResult {
 }
 
 interface ReleaseResult {
-  characterName: string;
+  characterId?: string;
+  characterName?: string;
+  farewell?: string;
+  wasAssigned: boolean;
 }
 
 interface StatusResult {
@@ -149,9 +152,14 @@ class OperatorManagerCLI {
 
   async handleRelease(): Promise<void> {
     const result: ReleaseResult = await this.manager.releaseOperator();
-    console.log(`オペレータ返却: ${result.characterName}`);
 
-    // 背景画像をクリア
+    if (result.wasAssigned) {
+      console.log(`オペレータ返却: ${result.characterName}`);
+    } else {
+      console.log('オペレータは割り当てられていません');
+    }
+
+    // 背景画像をクリア（オペレータの有無に関わらず実行）
     if (this.terminalBackground && await this.terminalBackground.isEnabled()) {
       await this.terminalBackground.clearBackground();
     }

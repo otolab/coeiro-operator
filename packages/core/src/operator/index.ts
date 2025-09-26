@@ -40,9 +40,10 @@ interface AssignResult {
 }
 
 interface ReleaseResult {
-  characterId: string; // キャラクターID
-  characterName: string; // キャラクター表示名
-  farewell: string;
+  characterId?: string; // キャラクターID（未割り当ての場合はundefined）
+  characterName?: string; // キャラクター表示名（未割り当ての場合はundefined）
+  farewell?: string; // お別れメッセージ（未割り当ての場合はundefined）
+  wasAssigned: boolean; // オペレータが割り当てられていたかどうか
 }
 
 interface StatusResult {
@@ -199,12 +200,16 @@ export class OperatorManager {
 
   /**
    * オペレータを返却
+   * オペレータが割り当てられていない場合も正常として扱う（時間切れ自動解放のケースがあるため）
    */
   async releaseOperator(): Promise<ReleaseResult> {
     const operatorSession = await this.getCurrentOperatorSession();
 
     if (!operatorSession) {
-      throw new Error('このセッションにはオペレータが割り当てられていません');
+      // オペレータが割り当てられていない場合も正常として扱う
+      return {
+        wasAssigned: false,
+      };
     }
 
     const characterId = operatorSession.characterId;
@@ -226,6 +231,7 @@ export class OperatorManager {
       characterId,
       characterName: character?.speaker?.speakerName || characterId,
       farewell: character?.farewell || '',
+      wasAssigned: true,
     };
   }
 
