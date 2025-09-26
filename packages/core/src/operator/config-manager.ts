@@ -11,13 +11,9 @@ import {
   BaseCharacterConfig,
   CharacterConfig,
 } from './character-defaults.js';
-// CONNECTION_SETTINGSを直接定義（循環参照を避けるため）
-const CONNECTION_SETTINGS = {
-  DEFAULT_HOST: 'localhost',
-  DEFAULT_PORT: '50032',
-} as const;
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
 import { AudioConfig, FullConfig as BaseFullConfig } from '../types.js';
+import { deepMerge } from '@coeiro-operator/common';
 
 // FullConfig型の定義（BaseFullConfigを拡張）
 export interface FullConfig extends Omit<BaseFullConfig, 'characters'> {
@@ -38,26 +34,53 @@ export interface TerminalBackgroundConfig {
   };
 }
 
-// 統一設定ファイルの型定義
-interface UnifiedConfig {
-  connection?: {
-    host?: string;
-    port?: string;
+// 完全な設定の型定義
+interface Config {
+  connection: {
+    host: string;
+    port: string;
   };
-  audio?: AudioConfig;
-  operator?: {
-    rate?: number; // 話速（WPM）
-    timeout?: number; // タイムアウト（ミリ秒）
-    assignmentStrategy?: 'random';
+  audio: AudioConfig;
+  operator: {
+    rate: number;
+    timeout: number;
+    assignmentStrategy: 'random';
   };
-  terminal?: {
-    background?: TerminalBackgroundConfig;
+  terminal: {
+    background: TerminalBackgroundConfig;
   };
-  characters?: Record<
+  characters: Record<
     string,
     Partial<BaseCharacterConfig> & { speakerId?: string; disabled?: boolean }
   >;
 }
+
+// ユーザー設定の型定義（すべてオプショナル）
+type UserConfig = Partial<Config>;
+
+// デフォルト設定の定義（必須フィールドのみ）
+const DEFAULT_CONFIG = {
+  connection: {
+    host: 'localhost',
+    port: '50032',
+  },
+  operator: {
+    rate: 200,
+    timeout: 14400000, // 4時間
+    assignmentStrategy: 'random' as const,
+  },
+  terminal: {
+    background: {
+      enabled: true,
+      operatorImage: {
+        display: 'api' as const,
+        position: 'bottom-right' as const,
+        opacity: 0.3,
+      },
+    },
+  },
+  // audio と characters はオプショナルなので、実装で必要に応じて設定
+} as const;
 
 interface MergedConfig {
   characters: Record<string, CharacterConfig>;
@@ -110,8 +133,8 @@ export class ConfigManager {
   /**
    * 統一設定ファイルを読み込み
    */
-  async loadConfig(): Promise<UnifiedConfig> {
-    return await this.readJsonFile<UnifiedConfig>(this.configFile, {});
+  async loadConfig(): Promise<UserConfig> {
+    return await this.readJsonFile<UserConfig>(this.configFile, {});
   }
 
   /**
@@ -119,12 +142,8 @@ export class ConfigManager {
    */
   private async updateVoiceProviderConnection(): Promise<void> {
     try {
-      const config = await this.loadConfig();
-
-      const host = config.connection?.host || CONNECTION_SETTINGS.DEFAULT_HOST;
-      const port = config.connection?.port || CONNECTION_SETTINGS.DEFAULT_PORT;
-
-      this.speakerProvider.updateConnection({ host, port });
+      const connectionConfig = await this.getConnectionConfig();
+      this.speakerProvider.updateConnection(connectionConfig);
     } catch (error) {
       console.error(`接続設定更新エラー: ${(error as Error).message}`);
     }
@@ -165,11 +184,12 @@ export class ConfigManager {
         };
       }
 
+      const operatorConfig = await this.getOperatorConfig();
       this.mergedConfig = {
         characters: dynamicCharacters,
-        operatorTimeout: config.operator?.timeout || 14400000,
+        operatorTimeout: operatorConfig.timeout,
         characterSettings: {
-          assignmentStrategy: config.operator?.assignmentStrategy || 'random',
+          assignmentStrategy: operatorConfig.assignmentStrategy,
         },
       };
     } catch (error) {
@@ -219,10 +239,8 @@ export class ConfigManager {
    * オペレータのタイムアウト時間を取得
    */
   async getOperatorTimeout(): Promise<number> {
-    if (!this.mergedConfig) {
-      await this.buildDynamicConfig();
-    }
-    return this.mergedConfig?.operatorTimeout || 14400000;
+    const operatorConfig = await this.getOperatorConfig();
+    return operatorConfig.timeout;
   }
 
   /**
@@ -240,8 +258,8 @@ export class ConfigManager {
    * 話速（rate）を取得
    */
   async getRate(): Promise<number> {
-    const config = await this.loadConfig();
-    return config.operator?.rate || 200;
+    const operatorConfig = await this.getOperatorConfig();
+    return operatorConfig.rate;
   }
 
   /**
@@ -249,9 +267,7 @@ export class ConfigManager {
    */
   async getTerminalBackgroundConfig(): Promise<TerminalBackgroundConfig> {
     const config = await this.loadConfig();
-    return config.terminal?.background || {
-      enabled: false
-    };
+    return deepMerge(DEFAULT_CONFIG.terminal.background, config.terminal?.background);
   }
 
   /**
@@ -259,10 +275,7 @@ export class ConfigManager {
    */
   async getConnectionConfig(): Promise<{ host: string; port: string }> {
     const config = await this.loadConfig();
-    return {
-      host: config.connection?.host || CONNECTION_SETTINGS.DEFAULT_HOST,
-      port: config.connection?.port || CONNECTION_SETTINGS.DEFAULT_PORT
-    };
+    return deepMerge(DEFAULT_CONFIG.connection, config.connection);
   }
 
   /**
@@ -274,22 +287,25 @@ export class ConfigManager {
   }
 
   /**
+   * オペレータ設定を取得
+   */
+  async getOperatorConfig(): Promise<typeof DEFAULT_CONFIG.operator> {
+    const config = await this.loadConfig();
+    return deepMerge(DEFAULT_CONFIG.operator, config.operator);
+  }
+
+  /**
    * 完全なConfig型を取得（SayCoeiroink用）
    */
   async getFullConfig(): Promise<FullConfig> {
-    const config = await this.loadConfig();
     if (!this.mergedConfig) {
       await this.buildDynamicConfig();
     }
 
     return {
       connection: await this.getConnectionConfig(),
-      audio: await this.getAudioConfig() as AudioConfig,
-      operator: {
-        rate: config.operator?.rate || 200,
-        timeout: config.operator?.timeout || 14400000,
-        assignmentStrategy: config.operator?.assignmentStrategy || 'random',
-      },
+      audio: await this.getAudioConfig(),
+      operator: await this.getOperatorConfig(),
       characters: this.mergedConfig?.characters || {},
     };
   }
