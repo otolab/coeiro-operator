@@ -486,6 +486,14 @@ server.registerTool(
       // Issue #58: オペレータ未アサイン時の再アサイン促進メッセージ
       const currentOperator = await operatorManager.showCurrentOperator();
       if (!currentOperator.characterId) {
+        // オペレータ未割り当て時に背景画像をクリア
+        if (terminalBackground) {
+          if (await terminalBackground.isEnabled()) {
+            await terminalBackground.clearBackground();
+            logger.info('オペレータ未割り当てのため背景画像をクリア');
+          }
+        }
+
         // 利用可能なオペレータを取得
         let availableOperators: string[] = [];
         try {
