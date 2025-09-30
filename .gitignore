@@ -49,3 +49,6 @@ coverage/
 
 # Vitest generated type definitions
 vitest.*.d.ts
+
+# Claude設定
+.claude/

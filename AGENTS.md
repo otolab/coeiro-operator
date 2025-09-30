@@ -3,72 +3,14 @@
 AI Agent（Claude Code等）向けのプロジェクト開発リファレンス・インデックス
 
 以下のファイルを読み込んでください:
-* @README.md
 * @prompts/README.md
   - 作業内容が確定したら必要なガイドを読み込んでください
 * @docs/README.md
+* @prompts/docs-code-sync.md - ドキュメントとコードの同期に関する重要な指針
 
 ## 📋 基本情報
 
-**プロジェクト詳細**: `README.md` を参照（ユーザ向け包括情報）
-
-## 🔧 開発コマンド
-
-```bash
-# ビルド・型チェック
-npm run build
-npm run type-check
-
-# テスト実行
-npm test
-npm run test:e2e
-./scripts/test-mcp-debug.sh
-```
-
-## 📁 プロジェクト構成
-
-**詳細**: `docs/development-tips.md#プロジェクト構成` を参照
-
-### 統合アーキテクチャ (2025年9月更新)
-
-#### 主要な型定義
-- **Speaker**: COEIROINKの声の単位（純粋な音声モデル）
-- **Character**: Speakerに性格や口調の情報を付与したもの
-- **VoiceConfig**: 音声合成に必要な最小限の情報（Speaker + selectedStyleId）
-
-詳細: `docs/voice-architecture.md` を参照
-
-#### OperatorManager統合構造
-```
-OperatorManager (統合管理クラス)
-├── FileOperationManager<string> (内部状態管理)
-├── CharacterInfoService (キャラクター情報)
-└── ConfigManager (設定管理)
-```
-
-#### 主要変更点
-- **OperatorStateManager**: OperatorManagerに統合
-- **VoiceSelectionService**: CharacterInfoServiceに名前変更
-- **FileOperationManager**: 汎用期限付きKVストレージ `FileOperationManager<T>` に再設計
-- **音声処理**: string型のCharacterIdを入力層でVoiceConfigに変換
-
-### Queue統一実装アーキテクチャ
-
-- **SpeechQueue**: 音声タスクの一元管理（`src/core/say/speech-queue.ts`）
-- **CLI実行**: 同期処理（ウォームアップ→音声→完了待機）
-- **MCP実行**: 非同期キューイング（音声タスクのみ即座にレスポンス）
-- **タスクタイプ**: `speech` | `warmup` | `completion_wait`
-
-## 🎛️ 設定システム
-
-**音声設定**: `~/.coeiro-operator/coeiroink-config.json`
-
-### 重要パラメータ
-
-- `audio.splitMode`: `'punctuation'` (デフォルト、句読点分割)
-- `audio.latencyMode`: `'ultra-low'` | `'balanced'` | `'quality'`
-- `audio.parallelGeneration.maxConcurrency`: 並行生成数（1=逐次、2以上=並行）
-- `audio.parallelGeneration.pauseUntilFirstComplete`: 初回ポーズ（デフォルト: `true`）
+**プロジェクト詳細**: `README.md` を参照
 
 ## 🛠️ MCPサーバー開発
 
@@ -89,62 +31,66 @@ OperatorManager (統合管理クラス)
 ### 開発テスト方法
 **⚠️ 重要：** Claude Code起動中のMCPツールでは編集したコードの変更が反映されません。
 
-開発・テスト時は以下を使用：
+この問題を解決するため、`packages/mcp-debug` にデバッグ用CLIツールを提供しています。
+
+**詳細**: `docs/mcp-debug/mcp-debug-guide.md` を参照
+
+開発・テスト時の例（非インタラクティブモード）：
 ```bash
-# 直接MCPサーバー実行（推奨）
-node dist/mcp/server.js --debug
-
-# mcp-debug CLI使用（インタラクティブモード）
-node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
-
-# 短時間テスト（10秒で自動終了、timeoutコマンド不要）
-node dist/mcp-debug/cli.js --timeout 10000 dist/mcp/server.js -- --debug
+# MCPツールをテスト
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト"}},"id":1}' | \
+  node dist/mcp-debug/cli.js dist/mcp/server.js
 ```
-
 
 ## 📖 ドキュメントインデックス
 
-### 📋 完全インデックス
+### 📑 メインインデックス
 - `prompts/README.md` - プロンプト・ガイドインデックス
-- `docs/README.md` - ドキュメント完全インデックス（詳細・用途別）
+- `docs/README.md` - ドキュメント完全インデックス
 
-### MCP・開発
-- `prompts/MCP_TOOLS_USAGE_GUIDE.md` - MCPツール使用ガイド
-- `docs/development-tips.md` - 開発テクニック・Tips集
-- `docs/mcp-debug-guide.md` - MCPデバッグ環境
+### 📖 ユーザーガイド (`docs/user-guide/`)
+- `installation.md` - インストールガイド
+- `configuration-guide.md` - 設定・カスタマイズガイド
+- `CHARACTERS.md` - オペレータキャラクター詳細
+- `user-dictionary-guide.md` - ユーザー辞書ガイド
+- `debugging-guide.md` - デバッグガイド
 
-### 音声・システム
-- `docs/voice-architecture.md` - 音声アーキテクチャ仕様書 🆕
-- `docs/audio-streaming-guide.md` - 音声ストリーミング機能
-- `docs/parallel-generation-system.md` - 並行チャンク生成システム
-- `docs/voice-provider-system.md` - VoiceProviderシステム
+### 🏗️ アーキテクチャ (`docs/architecture/`)
+- `voice-architecture.md` - 音声アーキテクチャ仕様書
+- `audio-system.md` - 音声システム設計
+- `speech-queue-system.md` - 音声キューシステム
+- `voice-provider-system.md` - VoiceProviderシステム
+- `operator-assignment-specification.md` - オペレータ割当仕様
+- `generic-file-operation-manager.md` - 汎用ファイル操作管理
 
-### 設定・運用
-- `docs/configuration-guide.md` - 設定・カスタマイズ完全ガイド
-- `docs/testing-guide.md` - テスト環境とmcp-debug統合
-- `docs/test-quality-guidelines.md` - テスト品質の基本原則
+### ⚡ 機能ガイド (`docs/features/`)
+- `audio-streaming-guide.md` - 音声ストリーミング機能
+- `parallel-generation-system.md` - 並行チャンク生成システム
+- `mcp-async-say-behavior.md` - MCP非同期音声出力
 
-### API・リファレンス
-- `docs/CHARACTERS.md` - オペレータキャラクター詳細
+### 👩‍💻 開発者向け (`docs/development/`)
+- `development-tips.md` - 開発テクニック・Tips集
+- `testing-guide.md` - テストガイド
+- `test-strategy-guide.md` - テスト戦略ガイド
+- `test-quality-guidelines.md` - テスト品質ガイドライン
+- `logging-guidelines.md` - ロギングガイドライン
+- `memory-leak-detection-guide.md` - メモリリーク検出ガイド
+- `synthesis-methods-analysis.md` - 音声合成手法分析
 
-## 🔍 開発フロー
+### 🔧 MCP Debug (`docs/mcp-debug/`)
+- `README.md` - MCP Debug概要
+- `mcp-debug-guide.md` - MCPデバッグガイド
+- `architecture.md` - MCP Debugアーキテクチャ
+- `testing-features.md` - テスト機能
+- `mcp-debug-testing.md` - MCPデバッグテスト
+- `e2e-testing.md` - E2Eテスト
+- `mcp-protocol-specification.md` - MCPプロトコル仕様
 
-### Queue統一実装での開発プロセス
-
-1. **コード修正** (特にSpeechQueue関連)
-2. **ビルド**: `npm run build`
-3. **テスト**: APIレスポンス構造変更確認 (`result.taskId` vs 従来の `result.mode`)
-4. **mcp-debugでテスト** → 詳細は[mcp-debug-guide.md](docs/mcp-debug-guide.md)参照：
-   ```bash
-   # 特定のツールをテスト
-   echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト"}},"id":1}' | \
-     node dist/mcp-debug/cli.js --timeout 3000 dist/mcp/server.js
-   ```
-5. **動作確認後、必要に応じてClaude Codeで最終確認**
-
-### テスト時の注意点
-- 統合テストではAPIレスポンス構造が `{ success, taskId }` に変更
-- レガシーメソッド（`synthesizeTextInternal`）削除によるテスト修正済み
-- SpeechQueueのタスク管理により非同期処理の動作が変更
-
-**詳細**: `docs/development-tips.md#推奨開発フロー` を参照
+### 📋 プロンプト・レシピ (`prompts/`)
+- `MCP_TOOLS_USAGE_GUIDE.md` - MCPツール使用ガイド
+- `OPERATOR_SYSTEM.md` - オペレータシステム仕様
+- `UPDATE_CHARACTER_SETTINGS.md` - キャラクター設定更新ガイド
+- `recipes/operator-mode.md` - オペレータモード動作仕様
+- `PR_CREATION_GUIDE.md` - PR作成ガイド
+- `docs-code-sync.md` - ドキュメントコード同期
+- `TERMINOLOGY.md` - 用語集

@@ -43,6 +43,10 @@ npm install -g coeiro-operator
 
 # MCPサーバー登録（Claude Code）
 claude mcp add -s user coeiro-operator
+
+# AI Agent用の設定（Claude Code利用時）
+# 音声対話が必要な場合、prompts/recipes/operator-mode.mdを
+# AI Agentに読み込ませてください
 ```
 
 ### 2. COEIROINK準備
