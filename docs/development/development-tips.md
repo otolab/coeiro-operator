@@ -42,26 +42,26 @@ npm run test:e2e               # E2Eテスト
 ### プロジェクト構成
 
 ```
-src/
-├── cli/                    # CLIツール
-├── core/                   # コア機能
-│   ├── operator/           # オペレータ管理 (統合アーキテクチャ)
-│   │   ├── index.ts        # 🔄 OperatorManager (統合管理クラス)
-│   │   ├── file-operation-manager.ts # 🔄 汎用期限付きKVストレージ<T>
-│   │   ├── character-info-service.ts # 🔄 キャラクター情報管理 (旧VoiceSelectionService)
-│   │   ├── config-manager.ts # 設定管理
-│   │   └── character-defaults.ts # キャラクターデフォルト設定
-│   ├── say/               # 音声合成システム (Queue統一実装)
-│   │   ├── speech-queue.ts # 🆕 統一音声タスクキュー
-│   │   ├── index.ts        # SayCoeiroink (CLI/MCP実行モード別)
-│   │   └── ...             # 音声処理コンポーネント
-│   └── environment/       # 環境情報管理
+packages/
+├── audio/                 # 音声処理システム
+├── cli/                   # CLIツール
+├── common/                # 共通ユーティリティ
+├── core/                  # コア機能
+│   ├── src/
+│   │   ├── operator/     # オペレータ管理
+│   │   │   ├── index.ts  # OperatorManager
+│   │   │   ├── config-manager.ts # 設定管理
+│   │   │   ├── file-operation-manager.ts # 期限付きKVストレージ
+│   │   │   └── character-info-service.ts # キャラクター情報
+│   │   ├── dictionary/   # 辞書管理
+│   │   ├── environment/  # 環境情報
+│   │   └── terminal-background/ # ターミナル背景画像
 ├── mcp/                   # MCPサーバー
 ├── mcp-debug/             # MCPデバッグ環境
-└── utils/                 # ユーティリティ
+└── term-bg/               # iTerm2背景画像制御
 ```
 
-### 統合アーキテクチャ (2025年8月更新)
+### 統合アーキテクチャ
 
 #### OperatorManager統合構造
 ```
@@ -73,35 +73,30 @@ OperatorManager (統合管理クラス)
 
 #### 主要コンポーネント
 
-- **OperatorManager** (`src/core/operator/index.ts`): オペレータ統合管理
+- **OperatorManager** (`packages/core/src/operator/index.ts`): オペレータ統合管理
   - 状態管理、キャラクター情報、設定管理を統合
   - 外部公開API：予約、解放、状態確認、設定更新
-  - 内部で FileOperationManager<string> を使用
+  - 内部で FileOperationManager<CharacterSession> を使用
 
-- **FileOperationManager<T>** (`src/core/operator/file-operation-manager.ts`): 汎用期限付きKVストレージ
+- **FileOperationManager<T>** (`packages/core/src/operator/file-operation-manager.ts`): 汎用期限付きKVストレージ
   - ジェネリクス対応: 任意のデータ型T
   - タイムアウト管理: 自動期限切れ処理
   - API: `store(data: T)`, `restore(): T | null`, `refresh(): boolean`
 
-- **CharacterInfoService** (`src/core/operator/character-info-service.ts`): キャラクター情報専門
-  - 旧VoiceSelectionServiceから名前変更・機能整理
+- **CharacterInfoService** (`packages/core/src/operator/character-info-service.ts`): キャラクター情報専門
   - キャラクター情報取得、スタイル選択、音声設定更新
 
-#### 旧構造からの変更点
-- **OperatorStateManager**: OperatorManagerに統合
-- **VoiceSelectionService**: CharacterInfoServiceに名前変更
-- **FileOperationManager**: 汎用的な期限付きKVストレージに再設計
 
 ### Queue統一実装の主要コンポーネント
 
-- **SpeechQueue** (`src/core/say/speech-queue.ts`): 音声タスクの統一管理
+- **SpeechQueue** (`packages/audio/src/speech-queue.ts`): 音声タスクの統一管理
   - タスクタイプ: `speech`, `warmup`, `completion_wait`
   - CLI/MCP実行モード対応
   - 同期/非同期処理の抽象化
 
-- **実行モード別API**:
-  - `synthesizeText()`: CLI用同期処理（ウォームアップ→音声→完了待機）
-  - `synthesizeTextAsync()`: MCP用非同期キューイング（即座にレスポンス）
+- **SayCoeiroink** (`packages/audio/src/index.ts`): 音声合成システム
+  - CLI用: `synthesizeText()` 同期処理（ウォームアップ→音声→完了待機）
+  - MCP用: `synthesize()` 非同期キューイング（即座にレスポンス）
 
 ## MCP サーバー開発
 
@@ -225,7 +220,7 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":
 echo '{"jsonrpc":"2.0","method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{"tools":{}},"clientInfo":{"name":"test-client","version":"1.0.0"}},"id":1}' | node dist/mcp/server.js
 
 # 2. サーバー初期化完了通知
-echo '{"jsonrpc":"2.0","method":"initialized","params":{}}' | node dist/mcp/server.js
+echo '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}' | node dist/mcp/server.js
 
 # 3. オペレータ割り当て
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_assign","arguments":{}},"id":2}' | node dist/mcp/server.js
@@ -291,7 +286,7 @@ npm run test:all
 #### E2Eテストの特徴
 - **Echo Back MCPサーバー**: 制御コマンド、JSON-RPC、出力分離のテスト
 - **パフォーマンステスト**: ログシステムの性能検証（500ログ/秒以上）
-- **統合テスト**: 既存システムとMCPデバッグ環境の互換性確認
+- **統合テスト**: システム全体の動作確認
 - **エラーハンドリング**: 異常系処理の確認
 
 ### 推奨開発フロー
@@ -404,5 +399,5 @@ ps aux | grep "node dist/mcp/server.js"
 
 **対処方法：**
 1. COEIROINKサーバーが起動していることを確認
-2. 設定ファイル `~/.coeiro-operator/coeiroink-config.json` でサーバー情報を確認
+2. 設定ファイル `~/.coeiro-operator/config.json` でサーバー情報を確認
 3. ネットワーク接続を確認

@@ -13,7 +13,7 @@ COEIRO Operatorプロジェクトにおけるテスト設計の方針と実装�
 - **実行**: `npm test`
 
 ```typescript
-// 例: src/core/utils/text-utils.test.ts
+// 例: packages/core/src/utils/text-utils.test.ts
 describe('splitText', () => {
   it('句読点で文章を分割する', () => {
     const result = splitText('こんにちは。元気ですか？');
@@ -27,7 +27,7 @@ describe('splitText', () => {
 
 - **対象**: サービス間連携、データフロー、設定システム
 - **モック使用**: 外部API・ファイルシステムのみモック
-- **配置**: `src/integration-test/` または各モジュール内
+- **配置**: `packages/*/src/integration-test/` または各モジュール内
 - **実行**: `npm test`
 
 ```typescript
@@ -46,7 +46,7 @@ describe('OperatorManager Integration', () => {
 
 - **対象**: MCPツール起動、CLI実行、初期化処理
 - **モック使用**: 外部サービス（COEIROINK API、音声再生）のみ
-- **配置**: `src/e2e-test/`、`src/*/e2e/`
+- **配置**: `packages/*/src/test/`、`packages/mcp-debug/src/test/`
 - **実行**: `npm run test:e2e`
 
 ## E2E テスト設計の原則
@@ -73,7 +73,8 @@ it('初期化→アサイン→音声再生の一連フローが動作する', a
 ```typescript
 describe('MCP Server E2E', () => {
   it('サーバー起動時に必要なツールが登録される', async () => {
-    const tester = await createMCPTester({ serverPath: MCP_SERVER_PATH });
+    const tester = new CoeirocoperatorMCPDebugTestRunner();
+    await tester.startCOEIROOperatorWithDebug(['--debug']);
     
     const tools = tester.getAvailableTools();
     expect(tools.length).toBeGreaterThan(0);
@@ -136,7 +137,7 @@ it('長文の分割処理が正しく動作する', async () => {
 ### E2Eテストでのモック
 
 ```typescript
-// src/e2e-test/mocks/coeiroink-mock.ts
+// packages/mcp-debug/src/test/mocks/coeiroink-mock.ts
 export class COEIROINKMockServer {
   private app: express.Application;
   private synthesisCount = 0;
@@ -188,7 +189,7 @@ it('sayツールが動作する', async () => {
 {
   "scripts": {
     "test": "vitest",                    // ユニット・統合テスト（高速）
-    "test:e2e": "vitest --run src/e2e-test/ src/*/e2e/",  // E2Eテスト（低速）
+    "test:e2e": "npm run test:mcp-debug:enhanced",  // E2Eテスト（低速）
     "test:all": "npm test && npm run test:e2e",  // 全テスト
     "test:ci": "npm run test:all --coverage"     // CI用（カバレッジ付き）
   }

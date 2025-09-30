@@ -1,24 +1,26 @@
 # COEIRO Operator
 
-COEIROINK音声合成システムの高機能MCPサーバー・オペレータシステム
+COEIROINKと連携する音声オペレータシステム
+
+> **Note**: このプロジェクトは生成AIエージェントによる開発の実験として行われています。
 
 ## 概要
 
-COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシステムです。Claude Codeでの作業時に、複数のキャラクターによる高品質な音声通知とコミュニケーションを提供します。
+COEIRO OperatorはCOEIROINKの音声合成を活用し、端末セッションに音声キャラクターを固定できるツールです。CLIとMCPサーバーの両方で動作し、長文テキストの音声化にも対応しています。
 
 ### 主な機能
 
-- **統合音声キューシステム**: SpeechQueueによる一元化された音声タスク管理
-- **高品質音声処理**: 24kHz→48kHz リサンプリング + デジタルフィルタリング
-- **音声オペレータシステム**: 複数のキャラクターによる音声通知
-- **クロスプラットフォーム対応**: Windows / macOS / Linux ネイティブ音声出力
-- **MCPサーバー**: Claude Codeとの完全統合
-- **低レイテンシストリーミング**: 非同期音声合成・並行チャンク生成
-- **CLI/MCP実行モード**: 同期/非同期動作の最適化
-- **動的設定管理**: COEIROINKサーバーから音声フォントを自動検出
-- **セッション管理**: 複数セッション間でのオペレータ重複防止
-- **MCPデバッグ環境**: 包括的なテスト・デバッグシステム
-- **ターミナル背景画像機能**: iTerm2でオペレータの立ち絵を背景表示（macOS限定）
+- **端末キャラクター固定**: 各ターミナルセッションに特定のキャラクターを割り当て
+- **CLI/MCPサーバー**: コマンドラインとClaude Code MCPの両方で利用可能
+- **長文音声合成**: COEIROINKサーバーへの長文テキスト分割送信に対応
+- **ターミナル背景画像**: iTerm2でキャラクター立ち絵を背景表示（macOS）
+
+### その他の実装機能
+
+- **音声リサンプリング**: 24kHz→48kHz高品質アップサンプリング
+- **並行チャンク生成**: 複数音声チャンクの同時生成でレイテンシ削減
+- **ユーザー辞書**: 固有名詞の読み方登録（永続化対応）
+- **セッション管理**: 複数端末でのオペレータ排他制御
 
 ## 動作環境
 
@@ -40,7 +42,11 @@ COEIRO OperatorはCOEIROINKと連携して動作する音声オペレータシ�
 npm install -g coeiro-operator
 
 # MCPサーバー登録（Claude Code）
-claude mcp add coeiro-operator
+claude mcp add -s user coeiro-operator
+
+# AI Agent用の設定（Claude Code利用時）
+# 音声対話が必要な場合、prompts/recipes/operator-mode.mdを
+# AI Agentに読み込ませてください
 ```
 
 ### 2. COEIROINK準備
@@ -141,11 +147,10 @@ operator-manager clear                               # 全クリア
 
 ```
 ~/.coeiro-operator/
-├── config.json                # 統一設定ファイル（全設定を一元管理）
-└── active-operators.json      # セッション状態管理（自動生成）
+└── config.json                # 統一設定ファイル（全設定を一元管理）
 
 /tmp/
-└── coeiroink-operators-<hostname>.json  # セッション状態（一時保存、最大4時間）
+└── coeiroink-operators-<hostname>.json  # セッション状態管理（一時保存、最大4時間）
 ```
 
 ### 基本設定例
@@ -198,65 +203,27 @@ config.jsonに以下を追加：
 
 ### 詳細設定ガイド
 
-- **[docs/getting-started/configuration-guide.md](docs/getting-started/configuration-guide.md)** - 設定・カスタマイズ完全ガイド
+- **[docs/user-guide/configuration-guide.md](docs/user-guide/configuration-guide.md)** - 設定・カスタマイズ完全ガイド
 - **[docs/user-guide/CHARACTERS.md](docs/user-guide/CHARACTERS.md)** - オペレータキャラクター詳細
 
 ## オペレータキャラクター
 
-利用可能なキャラクター（COEIROINK環境に依存）：
+利用可能なキャラクターはCOEIROINK環境にインストールされた音声ライブラリに依存します。
+キャラクター一覧と詳細は [docs/user-guide/CHARACTERS.md](docs/user-guide/CHARACTERS.md) を参照してください。
 
-| キャラクター | 特徴 | 音声の傾向 |
-|---|---|---|
-| つくよみちゃん | 冷静で丁寧、知的で落ち着いた司会進行 | 安定感のある上品な声 |
-| アンジーさん | フレンドリーで親しみやすい、明るく積極的 | 明るく元気な声 |
-| アルマちゃん | 表裏の感情表現が豊か、二重人格的な特徴 | 表：明るく上品、裏：クールな声 |
-| AI声優-朱花 | プロフェッショナル、効率重視でビジネスライク | クールで知的な声 |
-| ディアちゃん | 優しく思いやりがある、母性的で包容力がある | 温かく優しい癒し系の声 |
-| KANA | クールでスマート、論理的でAI的な存在 | 冷静で機械的な声 |
-| AI声優-金苗 | 上品で知的、お嬢様的な品格 | 上品で洗練された声 |
-| リリンちゃん | 元気で活発、ポジティブで生意気・強気な面も | 元気いっぱいの活発な声 |
-| MANA | 穏やかで包容力、のんびりで母性的・癒し系 | 穏やかで癒し系の声 |
-| おふとんP | 多様な感情表現が可能、表現力豊かなナレーター | 20種類以上の多彩なスタイル |
-| クロワちゃん | 騎士らしい気高さと誇り、状況に応じて異なる人格 | 若々しく力強い騎士の声 |
-| AI声優-青葉 | プロフェッショナルながら感情表現も豊か | クリアで感情豊かな声 |
-| AI声優-銀芽 | 知的でクール、感情表現のバリエーションが豊富 | クリアで多様な表現力 |
+## 技術詳細
 
-詳細は [docs/user-guide/CHARACTERS.md](docs/user-guide/CHARACTERS.md) を参照。
+### 音声処理
 
-注意: 利用可能なキャラクターはCOEIROINK環境にインストールされた音声ライブラリに依存します。
-
-## 技術アーキテクチャ
-
-### 統合音声キューシステム（Queue統一実装）
-
-```
-CLI呼び出し:  ウォームアップ → 音声合成 → 完了待機 (同期実行)
-MCP呼び出し:         音声合成のみ             (非同期キューイング)
-              ↓
-           SpeechQueue (一元管理)
-              ↓
-     [speech|warmup|completion_wait] タスク処理
-```
-
-### 音声処理パイプライン
-
-```
-COEIROINK API → WAV → PCM → リサンプリング → ローパスフィルター → Speaker出力
-    (24kHz)                   (24→48kHz)      (24kHz カットオフ)     (48kHz)
-```
-
-### 並行チャンク生成システム
-
-```
-テキスト分割 → 並行音声合成 → ストリーミング再生
-     ↓              ↓              ↓
-  [チャンク1-5]   [同時生成]    [順次再生]
-```
+- **リサンプリング**: 24kHz→48kHz（node-libsamplerate使用）
+- **フィルタリング**: ローパスフィルター（24kHz カットオフ）
+- **並行生成**: 複数チャンクの同時音声合成
+- **ストリーミング**: 生成済みチャンクから順次再生
 
 ### 主要ライブラリ
 
 - **speaker**: クロスプラットフォーム音声出力
-- **node-libsamplerate**: 高品質リサンプリング  
+- **node-libsamplerate**: 高品質リサンプリング
 - **dsp.js**: デジタル信号処理・フィルタリング
 - **echogarden**: ノイズリダクション（オプション）
 
@@ -273,10 +240,9 @@ COEIROINK API → WAV → PCM → リサンプリング → ローパスフィ�
 ### 開発・運用
 - **[docs/development/development-tips.md](docs/development/development-tips.md)** - 開発テクニック・Tips集
 - **[docs/mcp-debug/mcp-debug-guide.md](docs/mcp-debug/mcp-debug-guide.md)** - MCPデバッグ環境ガイド
-- **[docs/getting-started/troubleshooting.md](docs/getting-started/troubleshooting.md)** - トラブルシューティング
 
 ### リファレンス
-- **[docs/getting-started/configuration-guide.md](docs/getting-started/configuration-guide.md)** - 設定・カスタマイズガイド
+- **[docs/user-guide/configuration-guide.md](docs/user-guide/configuration-guide.md)** - 設定・カスタマイズガイド
 - **[docs/architecture/voice-provider-system.md](docs/architecture/voice-provider-system.md)** - VoiceProviderシステム
 
 ### プロジェクト情報
@@ -313,12 +279,6 @@ npm install && npm run build
 
 各README.mdファイルが、それぞれの対象に応じた情報へのインデックスとして機能します。
 
-## サポート・コミュニティ
-
-- **Issue報告**: [GitHub Issues](https://github.com/otolab/coeiro-operator/issues)
-- **機能要望**: [GitHub Issues](https://github.com/otolab/coeiro-operator/issues/new)
-- **プルリクエスト**: 歓迎いたします！
-
 ## ライセンス
 
 MIT License
@@ -328,6 +288,3 @@ MIT License
 - **[COEIROINK](https://coeiroink.com/)** - 音声合成エンジン本体
 - **[Claude Code](https://claude.ai/code)** - AI開発支援ツール（MCP対応）
 
----
-
-素晴らしい音声体験をお楽しみください。

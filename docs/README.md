@@ -4,16 +4,11 @@
 
 ## 📁 ドキュメント構成
 
-### 🚀 [Getting Started](getting-started/)
-プロジェクトを始めるための基本情報
-- [インストールガイド](getting-started/installation.md) - セットアップ手順
-- [設定ガイド](getting-started/configuration-guide.md) - 設定方法
-- [トラブルシューティング](getting-started/troubleshooting.md) - 問題解決
-
 ### 📖 [ユーザーガイド](user-guide/)
-日常的な使用方法とカスタマイズ
+セットアップから日常使用まで
+- [インストールガイド](user-guide/installation.md) - セットアップ手順
+- [設定ガイド](user-guide/configuration-guide.md) - 設定方法
 - [キャラクター一覧](user-guide/CHARACTERS.md) - 利用可能なキャラクター
-- [設定オプション一覧](user-guide/configuration-options.md) - 詳細設定
 - [ユーザー辞書ガイド](user-guide/user-dictionary-guide.md) - 読み方カスタマイズ
 - [デバッグガイド](user-guide/debugging-guide.md) - デバッグ方法
 
@@ -31,7 +26,6 @@
 - [音声ストリーミングガイド](features/audio-streaming-guide.md) - リアルタイム音声
 - [並行生成システム](features/parallel-generation-system.md) - 高速化機能
 - [MCP非同期動作仕様](features/mcp-async-say-behavior.md) - MCP音声合成
-- [設定同期ガイド](features/SETTINGS_SYNC_GUIDE.md) - 設定の同期
 
 ### 👩‍💻 [開発者向け](development/)
 開発とテストのガイドライン
@@ -56,9 +50,9 @@ MCPデバッグツール関連
 
 ## 🔍 クイックアクセス
 
-**初めての方**: [インストール](getting-started/installation.md) → [設定](getting-started/configuration-guide.md)  
+**初めての方**: [インストール](user-guide/installation.md) → [設定](user-guide/configuration-guide.md)
 **開発者**: [開発のヒント](development/development-tips.md) → [テスト](development/testing-guide.md)  
-**問題解決**: [デバッグ](user-guide/debugging-guide.md) → [トラブルシューティング](getting-started/troubleshooting.md)
+**問題解決**: [デバッグ](user-guide/debugging-guide.md)
 
 ---
 

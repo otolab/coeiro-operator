@@ -224,44 +224,6 @@ export function getVoiceProvider(): VoiceProvider {
 - 設定変更時の自動無効化
 - GCフレンドリーな実装
 
-## 移行ガイド
-
-### 従来コードからの移行
-
-#### Before (分散していた実装)
-```typescript
-// config-manager.ts
-async fetchAvailableVoices(): Promise<void> {
-    const response = await fetch(`http://${host}:${port}/v1/speakers`);
-    // ...
-}
-
-// audio-synthesizer.ts  
-async listVoices(): Promise<void> {
-    const response = await fetch(url);
-    // ...
-}
-
-async synthesizeChunk(): Promise<AudioResult> {
-    const speakersResponse = await fetch(speakersUrl);
-    // ...
-}
-```
-
-#### After (統一された実装)
-```typescript
-// 全ての箇所で共通
-const voiceProvider = getVoiceProvider();
-
-// 設定管理
-const voices = await voiceProvider.getVoicesForConfig();
-
-// 音声リスト表示
-await voiceProvider.logAvailableVoices();
-
-// スタイルID取得
-const styleId = await voiceProvider.getFirstStyleId(voiceId);
-```
 
 ## テスト対応
 

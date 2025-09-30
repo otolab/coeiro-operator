@@ -55,15 +55,6 @@ npm link
 which coeiro-operator
 ```
 
-### 3. Docker環境（実験的）
-
-```bash
-# Dockerイメージビルド
-docker build -t coeiro-operator .
-
-# コンテナ実行
-docker run -p 3000:3000 coeiro-operator
-```
 
 ## COEIROINK設定
 
@@ -90,7 +81,7 @@ export COEIROINK_HOST=localhost
 export COEIROINK_PORT=50032
 
 # または設定ファイル
-~/.coeiro-operator/coeiroink-config.json
+~/.coeiro-operator/config.json
 ```
 
 ## MCP統合設定
@@ -99,7 +90,7 @@ export COEIROINK_PORT=50032
 
 ```bash
 # MCPサーバー追加
-claude mcp add coeiro-operator coeiro-operator
+claude mcp add -s user coeiro-operator
 
 # 登録確認
 claude mcp list
@@ -132,13 +123,12 @@ claude mcp test coeiro-operator
 
 ```
 ~/.coeiro-operator/
-├── coeiroink-config.json     # COEIROINK接続設定
-└── operator-config.json      # オペレータ設定
+└── config.json               # 統一設定ファイル
 ```
 
 ### 基本設定例
 
-**coeiroink-config.json**:
+**config.json**:
 ```json
 {
   "connection": {
@@ -146,25 +136,17 @@ claude mcp test coeiro-operator
     "port": "50032"
   },
   "voice": {
-    "rate": 200,
-    "default_speaker_id": "speaker-uuid-here"
+    "rate": 200
   },
   "audio": {
     "latencyMode": "balanced",
     "splitMode": "punctuation",
     "bufferSize": 1024
-  }
-}
-```
-
-**operator-config.json**:
-```json
-{
-  "sessionId": "default",
-  "maxOperators": 13,
-  "assignmentStrategy": "random",
-  "characterSettings": {
-    "styleSelection": "random"
+  },
+  "characters": {
+    "tsukuyomi": {
+      "greeting": "カスタマイズされた挨拶"
+    }
   }
 }
 ```
@@ -195,71 +177,7 @@ say-coeiroink "音声テスト"
 say-coeiroink -r 150 "ゆっくり音声テストです"
 ```
 
-### 3. MCPツール確認
 
-Claude Codeで以下をテスト:
-```typescript
-// オペレータ割り当て
-await mcp.call('operator_assign');
-
-// 音声出力
-await mcp.call('say', { 
-  text: "MCPテストです" 
-});
-```
-
-## トラブルシューティング
-
-### インストール問題
-
-#### ネイティブモジュールビルドエラー
-```bash
-# キャッシュクリア
-npm cache clean --force
-
-# 再ビルド
-npm rebuild
-
-# Python設定（Windows）
-npm config set python C:\Python\python.exe
-```
-
-#### 権限エラー（Linux/macOS）
-```bash
-# npm権限設定
-sudo chown -R $(whoami) ~/.npm
-sudo chown -R $(whoami) /usr/local/lib/node_modules
-
-# または npm-prefix変更
-npm config set prefix ~/.npm-global
-export PATH=~/.npm-global/bin:$PATH
-```
-
-### 音声出力問題
-
-#### 音声が出力されない
-1. システム音量・ミュート確認
-2. 音声デバイス確認
-3. COEIROINKサーバー状態確認
-4. ファイアウォール設定確認
-
-#### 音質が悪い
-1. サンプルレート設定確認
-2. オーディオドライバー更新
-3. システム音響設定確認
-
-### ログ・デバッグ
-
-```bash
-# 詳細ログ有効化
-DEBUG=coeiro* say-coeiroink "デバッグテスト"
-
-# 基本動作確認
-say-coeiroink "デバッグテスト"
-
-# 設定確認
-operator-manager config
-```
 
 ## アップデート
 
@@ -276,16 +194,6 @@ npm update -g coeiro-operator
 coeiro-operator --version
 ```
 
-### 設定ファイル移行
-
-メジャーアップデート時は設定ファイルのバックアップ推奨:
-```bash
-# バックアップ
-cp -r ~/.coeiro-operator ~/.coeiro-operator.backup
-
-# 設定クリア（必要に応じて）
-operator-manager clear
-```
 
 ## パフォーマンス最適化
 
