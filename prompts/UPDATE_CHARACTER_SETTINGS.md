@@ -5,13 +5,13 @@ COEIRO Operatorのキャラクター設定データの更新・メンテナン�
 ## 目的
 
 このドキュメントは**開発者向け**のキャラクター設定データメンテナンス手順です。  
-**ユーザー向け設定方法**については [@../docs/CONFIGURATION.md](../docs/CONFIGURATION.md) を参照してください。
+**ユーザー向け設定方法**については [docs/user-guide/configuration-guide.md](../docs/user-guide/configuration-guide.md) を参照してください。
 
 ## メンテナンス対象
 
 ### 1. キャラクター詳細情報（CHARACTERS.md）
 
-**ファイル**: `docs/CHARACTERS.md`
+**ファイル**: `docs/user-guide/CHARACTERS.md`
 
 **目的**: 全キャラクターの性格・特徴・利用ガイドなどの詳細情報
 
@@ -23,56 +23,60 @@ COEIRO Operatorのキャラクター設定データの更新・メンテナン�
 
 2. **CHARACTERS.mdの更新**：
    ```bash
-   $EDITOR docs/CHARACTERS.md
+   $EDITOR docs/user-guide/CHARACTERS.md
    ```
 
 3. **整合性確認**：
    - character-defaults.jsとの設定整合性
    - 新キャラクター追加時はcharacter-defaults.jsも同時更新
 
-### 2. 内蔵キャラクター設定（character-defaults.js）
+### 2. 内蔵キャラクター設定（character-info-service.ts）
 
-**ファイル**: `src/operator/character-defaults.js`
+**ファイル**: `packages/core/src/operator/character-info-service.ts`
 
 **目的**: システム内蔵のキャラクター基本設定（挨拶・性格など）
 
 #### 設定構造
 
-```javascript
-export const BUILTIN_CHARACTER_CONFIGS = {
-    character_id: {
-        name: "表示名",
-        personality: "性格設定（MCP出力時に表示）",
-        speaking_style: "話し方の特徴（MCP出力時に表示）",
-        greeting: "アサイン時の挨拶メッセージ",
-        farewell: "解放時のお別れメッセージ",
-        default_style: "normal",        // デフォルトスタイル
-        style_selection: "default"      // default/random
-    }
-};
+```typescript
+interface CharacterConfig {
+    id: string;
+    name: string;
+    speakerId: string;  // COEIROINK Speaker UUID
+    personality: string;
+    speakingStyle: string;
+    greeting: string;
+    farewell: string;
+    defaultStyle?: string;
+    disabled?: boolean;
+}
 
-export const SPEAKER_NAME_TO_ID_MAP = {
-    "つくよみちゃん": "tsukuyomi",
-    "アンジーさん": "angie",
-    // 音声名 → character_idのマッピング
-};
+const DEFAULT_CHARACTERS: CharacterConfig[] = [
+    {
+        id: 'tsukuyomi',
+        name: 'つくよみちゃん',
+        speakerId: '3c37646f-3881-5374-2a83-149267990abc',
+        personality: '冷静で丁寧、知的で落ち着いた司会進行',
+        speakingStyle: '安定感のある上品な声',
+        greeting: 'こんにちは。つくよみちゃんです。',
+        farewell: 'お疲れ様でした。'
+    },
+    // ...
+];
 ```
 
 #### 更新手順
 
 1. **設定ファイル編集**：
    ```bash
-   $EDITOR src/operator/character-defaults.js
+   $EDITOR packages/core/src/operator/character-info-service.ts
    ```
 
 2. **設定確認**：
    ```bash
-   node -e "
-   import('./src/operator/character-defaults.js').then(mod => {
-     console.log('利用可能キャラクター:', Object.keys(mod.BUILTIN_CHARACTER_CONFIGS));
-     console.log('音声マッピング:', mod.SPEAKER_NAME_TO_ID_MAP);
-   });
-   "
+   # ビルド後に確認
+   npm run build
+   operator-manager available
    ```
 
 3. **動作テスト**：
@@ -89,7 +93,7 @@ export const SPEAKER_NAME_TO_ID_MAP = {
 
 ### 1. キャラクター詳細情報の追加
 
-1. **[docs/CHARACTERS.md](../docs/CHARACTERS.md)に詳細情報を追加**：
+1. **[docs/user-guide/CHARACTERS.md](../docs/user-guide/CHARACTERS.md)に詳細情報を追加**：
    - キャラクター名・特徴
    - 性格・話し方
    - 利用シーン・おすすめ用途
@@ -100,28 +104,23 @@ export const SPEAKER_NAME_TO_ID_MAP = {
 
 ### 2. 内蔵設定への追加
 
-1. **BUILTIN_CHARACTER_CONFIGSに追加**：
-   ```javascript
-   new_character: {
-       name: "新キャラクター名",
-       personality: "性格設定",
-       speaking_style: "話し方の特徴",
-       greeting: "こんにちは。新キャラクターです。",
-       farewell: "お疲れ様でした。",
-       default_style: "normal",
-       style_selection: "default"
+1. **DEFAULT_CHARACTERS配列に追加**：
+   ```typescript
+   {
+       id: 'new_character',
+       name: '新キャラクター名',
+       speakerId: 'speaker-uuid-here',  // COEIROINKから取得
+       personality: '性格設定',
+       speakingStyle: '話し方の特徴',
+       greeting: 'こんにちは。新キャラクターです。',
+       farewell: 'お疲れ様でした。'
    }
    ```
 
-2. **SPEAKER_NAME_TO_ID_MAPに追加**：
-   ```javascript
-   "新キャラクター音声名": "new_character"
-   ```
-
-3. **チェックリスト**：
-   - [ ] BUILTIN_CHARACTER_CONFIGSに追加
-   - [ ] SPEAKER_NAME_TO_ID_MAPに音声名マッピング追加
-   - [ ] [docs/CHARACTERS.md](../docs/CHARACTERS.md)に詳細情報記載
+2. **チェックリスト**：
+   - [ ] DEFAULT_CHARACTERS配列に追加
+   - [ ] speakerIdをCOEIROINKから確認
+   - [ ] [docs/user-guide/CHARACTERS.md](../docs/user-guide/CHARACTERS.md)に詳細情報記載
    - [ ] 動作テスト実行
    - [ ] README.mdのキャラクター数更新
 
@@ -140,7 +139,7 @@ export const SPEAKER_NAME_TO_ID_MAP = {
    - 挨拶・お別れメッセージの改善
 
 3. **一貫性の保持**：
-   - [docs/CHARACTERS.md](../docs/CHARACTERS.md)とcharacter-defaults.jsの整合性
+   - [docs/user-guide/CHARACTERS.md](../docs/user-guide/CHARACTERS.md)とcharacter-info-service.tsの整合性
    - 他キャラクターとのバランス
 
 ### 定期的なメンテナンス
@@ -159,25 +158,25 @@ export const SPEAKER_NAME_TO_ID_MAP = {
 
 ### 開発時の重要ポイント
 
-- **音声ID自動検出**: `voice_id`や`available_styles`は設定不要（動的検出）
+- **speakerId必須**: 各キャラクターにCOEIROINKのSpeaker UUIDが必要
 - **下位互換性**: 既存キャラクターIDの変更は避ける
-- **設定整合性**: personality/speaking_styleは[docs/CHARACTERS.md](../docs/CHARACTERS.md)と一致させる
-- **JSON形式**: character-defaults.jsはES Modulesだが、設定内容はJSONライクに保つ
+- **設定整合性**: personality/speakingStyleは[docs/user-guide/CHARACTERS.md](../docs/user-guide/CHARACTERS.md)と一致させる
+- **TypeScript形式**: character-info-service.tsはTypeScriptで型安全に管理
 
 ### データの役割分担
 
 | ファイル | 目的 | 更新頻度 |
 |----------|------|----------|
-| `docs/CHARACTERS.md` | ユーザー向け詳細情報・利用ガイド | 定期的 |
-| `character-defaults.js` | システム内蔵の基本設定 | キャラクター追加時 |
-| `CONFIGURATION.md` | ユーザー向け設定説明 | 機能変更時 |
+| `docs/user-guide/CHARACTERS.md` | ユーザー向け詳細情報・利用ガイド | 定期的 |
+| `character-info-service.ts` | システム内蔵の基本設定 | キャラクター追加時 |
+| `configuration-guide.md` | ユーザー向け設定説明 | 機能変更時 |
 
 ## 関連ファイル
 
-- **[docs/CHARACTERS.md](../docs/CHARACTERS.md)** - 内蔵キャラクター詳細情報
+- **[docs/user-guide/CHARACTERS.md](../docs/user-guide/CHARACTERS.md)** - 内蔵キャラクター詳細情報
 - **[../README.md](../README.md)** - インストール・基本使用方法ガイド
-- **[../docs/CONFIGURATION.md](../docs/CONFIGURATION.md)** - 設定ファイル仕様詳細
-- **[OPERATOR_SYSTEM.md](OPERATOR_SYSTEM.md)** - システム仕様
+- **[docs/user-guide/configuration-guide.md](../docs/user-guide/configuration-guide.md)** - 設定ファイル仕様詳細
+- **[packages/core/src/operator/character-info-service.ts](../packages/core/src/operator/character-info-service.ts)** - キャラクター設定実装
 
 ---
 **作成日**: 2025年8月5日  

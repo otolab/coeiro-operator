@@ -269,30 +269,6 @@ if (cachedData) {
 - **バックアップ機能**: 自動バックアップとリストア
 - **監視機能**: アクセス状況のモニタリング
 
-## 旧実装からの移行
-
-### 移行前 (統一ファイル管理)
-```typescript
-// 複雑な統一ファイル操作
-await fileManager.reserveOperatorUnified(operatorId, sessionId);
-await fileManager.getAvailableOperatorsUnified(allOperators, sessionId);
-await fileManager.cleanupStaleOperators(sessionId);
-```
-
-### 移行後 (汎用KVストレージ)
-```typescript
-// シンプルなKVストレージ操作
-const storage = new FileOperationManager<string>(filePath, sessionId, timeoutMs);
-await storage.store(operatorId);
-const operatorId = await storage.restore();
-await storage.refresh();
-```
-
-### 移行の利点
-- **コード量削減**: 約300行 → 150行 (50%削減)
-- **型安全性向上**: ジェネリクスによる型チェック
-- **再利用性向上**: 他のユースケースでも使用可能
-- **テスト容易性**: シンプルなAPIでテストが簡単
 
 ---
 

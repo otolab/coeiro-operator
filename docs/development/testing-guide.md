@@ -16,38 +16,31 @@ COEIRO Operatorプロジェクトのテスト構成とmcp-debug統合テスト�
 1. **COEIRO Operator Core Tests**: メインのCOEIRO Operator機能のテスト
 2. **MCP Debug Environment Tests**: MCPデバッグ環境自体のテスト
 
-### 📁 テストディレクトリ構成 (統合アーキテクチャ対応)
+### 📁 テストディレクトリ構成
 
 ```
-src/
-├── core/                           # COEIRO Operatorコアテスト
-│   ├── say/
-│   │   ├── *.test.ts              # 単体テスト
-│   │   ├── integration.test.ts    # 統合テスト
-│   │   └── mcp-debug-enhanced.test.ts  # 🆕 mcp-debug統合テスト
-│   └── operator/                   # 🔄 統合アーキテクチャ (2025年8月更新)
-│       ├── index.test.ts          # 🆕 OperatorManager統合テスト
-│       ├── character-info-service.test.ts  # キャラクター情報サービス
-│       ├── config-manager.test.ts # 基本設定管理
-│       ├── file-operation-manager.test.ts # 汎用KVストレージ + ロック機能
-│       └── dynamic-config.test.ts # 動的設定・VoiceProvider統合
-├── mcp/
+packages/
+├── audio/src/
+│   ├── *.test.ts                  # 音声処理テスト
+│   └── integration.test.ts        # 統合テスト
+├── core/src/
+│   └── operator/
+│       ├── index.test.ts          # OperatorManagerテスト
+│       ├── character-info-service.test.ts  # キャラクター情報
+│       ├── config-manager.test.ts # 設定管理
+│       ├── file-operation-manager.test.ts # KVストレージ
+│       └── dynamic-config.test.ts # 動的設定
+├── mcp/src/
 │   └── server.test.ts             # MCPサーバーテスト
-├── mcp-debug/                     # MCPデバッグ環境テスト
-│   └── test/
-│       ├── integration.test.ts    # Echo Backサーバーテスト
-│       ├── jest-e2e.test.ts       # JSON-RPC処理テスト
-│       ├── cli-wrapper.test.ts    # 🆕 CLIラッパーテスト
-│       └── coeiro-operator-e2e.test.ts # 🆕 ターゲットサーバーラッパーテスト
-└── utils/
-    └── logger.test.ts             # ログシステムテスト
+├── mcp-debug/src/test/
+│   ├── integration.test.ts        # Echo Backサーバー
+│   ├── jest-e2e.test.ts           # JSON-RPC処理
+│   ├── cli-wrapper.test.ts        # CLIラッパー
+│   └── coeiro-operator-e2e.test.ts # 統合E2E
+└── common/src/
+    └── logger.test.ts             # ログシステム
 ```
 
-#### 統合アーキテクチャのテスト構成変更点
-- **削除されたテスト**: 11ファイル → 5ファイル (55%削減)
-  - 旧デバッグテスト、重複テスト、統合されたテストファイル
-- **新構成**: ソースファイル1:1対応構成で管理性向上
-- **統合テスト**: `index.test.ts` でOperatorManager全体機能をカバー
 
 ## 🚀 テスト実行方法
 
@@ -92,7 +85,7 @@ npm run test:e2e
 
 ## 🆕 mcp-debug統合テストの特徴
 
-### COEIRO Operator統合テスト (`mcp-debug-enhanced.test.ts`)
+### COEIRO Operator統合テスト
 
 **新機能**: 実際のCOEIRO Operator MCPサーバーをmcp-debugの統合機能で制御してテスト
 

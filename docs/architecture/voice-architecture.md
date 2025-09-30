@@ -409,7 +409,7 @@ await say({ message: "通常スタイルで話すよ", style: "のーまる" });
 
 詳細な設定方法については以下のドキュメントを参照：
 
-- [設定ガイド](../getting-started/configuration-guide.md) - 基本設定とカスタマイズ
+- [設定ガイド](../user-guide/configuration-guide.md) - 基本設定とカスタマイズ
 - [キャラクター詳細](../user-guide/CHARACTERS.md) - 各キャラクターの詳細情報
 - [オペレータ仕様](./operator-assignment-specification.md) - オペレータ管理の詳細
 

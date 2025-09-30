@@ -24,8 +24,7 @@ node dist/mcp/server.js --debug
 
 ## 設定ファイルの場所
 
-- `~/.coeiro-operator/operator-config.json` - オペレータ設定
-- `~/.coeiro-operator/coeiroink-config.json` - COEIROINK設定
+- `~/.coeiro-operator/config.json` - 統一設定ファイル
 - `/tmp/coeiroink-operators-<hostname>.json` - セッション状態（一時ファイル、最大4時間）
 
 ## トラブルシューティング
@@ -42,5 +41,4 @@ Claude Code起動時のMCPサーバーインスタンスが古いため。開発
 ## 関連ドキュメント
 
 - [mcp-debug テスト機能](../mcp-debug/testing-features.md)
-- [トラブルシューティング](../getting-started/troubleshooting.md)
 - [開発Tips](../development/development-tips.md)
