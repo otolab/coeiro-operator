@@ -26,9 +26,11 @@
   "dependencies": {
     "@coeiro-operator/common": "*",
     "@coeiro-operator/core": "*",
+    "dsp.js": "^1.0.1",
+    "echogarden": "^2.10.1",
+    "node-fetch": "^3.3.2",
     "speaker": "^0.5.5",
-    "wav": "^1.0.2",
-    "node-fetch": "^3.3.2"
+    "wav": "^1.0.2"
   },
   "devDependencies": {
     "@types/node": "^22.18.3",

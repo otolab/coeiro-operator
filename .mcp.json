@@ -1,36 +1,9 @@
 {
   "mcpServers": {
-    "code-bugs-analysis": {
-      "type": "stdio",
-      "command": "code-bugs",
-      "args": [
-        "-M",
-        "analysis"
-      ],
-      "env": {}
-    },
-    "code-bugs-depcruise": {
-      "type": "stdio",
-      "command": "code-bugs",
-      "args": [
-        "-M",
-        "depcruise"
-      ],
-      "env": {}
-    },
-    "code-bugs-depcruise-analysis": {
-      "type": "stdio",
-      "command": "code-bugs",
-      "args": [
-        "-M",
-        "depcruise-analysis"
-      ],
-      "env": {}
-    },
     "coeiro-operator": {
       "type": "stdio",
       "command": "node",
-      "args": ["packages/mcp/dist/server.js", "--debug"]
+      "args": ["packages/mcp/dist/server.js"]
     }
   }
 }
