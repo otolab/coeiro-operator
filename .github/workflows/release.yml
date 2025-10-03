@@ -1,11 +1,21 @@
 name: Release
 
 on:
-  push:
-    branches:
-      - main
-      - release/*
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Release mode'
+        required: true
+        default: 'pr'
+        type: choice
+        options:
+          - pr      # Create release PR only
+          - publish # Directly publish without PR
+      createGithubRelease:
+        description: 'Create GitHub Release'
+        required: false
+        default: true
+        type: boolean
 
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
@@ -53,35 +63,37 @@ jobs:
       - name: Run tests
         run: npm test
 
-      - name: Create Release Pull Request or Publish
-        id: changesets
+      - name: Create Release Pull Request
+        if: github.event.inputs.mode == 'pr' || github.event.inputs.mode == ''
+        id: changesets_pr
         uses: changesets/action@v1
         with:
-          publish: npm run changeset:publish
           version: npm run changeset:version
           commit: 'chore: release packages'
           title: 'chore: release packages'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to npm
+        if: github.event.inputs.mode == 'publish'
+        id: changesets_publish
+        run: |
+          npm run changeset:version
+          git add .
+          git commit -m "chore: version packages" || echo "No changes to commit"
+          npm run changeset:publish
+        env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish to npm
-        if: steps.changesets.outputs.published == 'true'
-        run: echo "🎉 Packages have been published to npm!"
-
       - name: Create GitHub Release
-        if: steps.changesets.outputs.published == 'true'
-        uses: actions/create-release@v1
+        if: github.event.inputs.mode == 'publish' && github.event.inputs.createGithubRelease == 'true'
+        run: |
+          # Get the latest version from package.json
+          VERSION=$(node -p "require('./package.json').version")
+          gh release create "v${VERSION}" \
+            --title "Release v${VERSION}" \
+            --notes "See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details." \
+            --target main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: v${{ steps.changesets.outputs.publishedPackages[0].version }}
-          release_name: Release v${{ steps.changesets.outputs.publishedPackages[0].version }}
-          body: |
-            ## Published Packages
-            ${{ steps.changesets.outputs.publishedPackages }}
-
-            See [CHANGELOG](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
-          draft: false
-          prerelease: false

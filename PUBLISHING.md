@@ -24,9 +24,13 @@ Changesetを使用して各パッケージのバージョンを個別に管理�
 @coeiro-operator/mcp-debug (依存なし - 開発ツール)
 ```
 
-## 自動リリースフロー（推奨）
+## リリースフロー
 
-### 1. 変更を記録
+### 方法1: 手動リリース（推奨）
+
+リリースタイミングを完全に制御できます。
+
+#### 1. 変更を記録
 
 開発中の変更に対してChangesetを作成：
 
@@ -39,20 +43,27 @@ npm run changeset
 2. バージョンタイプを選択（major/minor/patch）
 3. 変更内容の説明を入力
 
-### 2. コミット＆プッシュ
+#### 2. mainブランチにマージ
 
-```bash
-git add .changeset/
-git commit -m "chore: add changeset for [feature/fix]"
-git push
-```
+通常通りPRを作成してmainにマージします。
 
-### 3. 自動リリース
+#### 3. リリース実行
 
-mainブランチにマージされると：
-1. GitHub Actionsが自動的にリリースPRを作成
-2. PRをレビュー＆マージ
-3. 自動的にnpmに公開される
+GitHubの Actions タブから手動でリリース：
+
+1. Actions → Release ワークフロー → Run workflow
+2. オプションを選択：
+   - **mode: pr** - リリースPRを作成（確認用）
+   - **mode: publish** - 直接npm公開
+3. Run workflow をクリック
+
+### 方法2: 自動リリースPR作成
+
+mainブランチにマージすると自動的にリリースPRが作成されます：
+
+1. Changesetを含むPRをmainにマージ
+2. 自動的にリリースPRが作成される
+3. リリースPRをレビュー＆マージで公開
 
 ## 手動公開（緊急時のみ）
 
