@@ -1,6 +1,6 @@
 {
   "name": "@coeiro-operator/audio",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Audio synthesis and playback module for COEIRO Operator",
   "type": "module",
   "main": "dist/index.js",
@@ -24,8 +24,8 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@coeiro-operator/common": "^1.0.0",
-    "@coeiro-operator/core": "^1.0.0",
+    "@coeiro-operator/common": "^2.0.0",
+    "@coeiro-operator/core": "^2.0.0",
     "dsp.js": "^1.0.1",
     "echogarden": "^2.10.1",
     "node-fetch": "^3.3.2",
