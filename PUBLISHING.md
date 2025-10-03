@@ -83,7 +83,9 @@ npm run changeset:publish
 
 ## 設定
 
-### NPM_TOKEN の設定
+### 必要なトークンの設定
+
+#### 1. NPM_TOKEN の設定
 
 GitHub Secretsに`NPM_TOKEN`を設定する必要があります：
 
@@ -94,6 +96,27 @@ GitHub Secretsに`NPM_TOKEN`を設定する必要があります：
 
 2. GitHubリポジトリの Settings > Secrets and variables > Actions
 3. `NPM_TOKEN`という名前でトークンを追加
+
+#### 2. GitHub Actions の権限設定
+
+以下のいずれかの方法で設定：
+
+**方法A: リポジトリ設定を変更（推奨）**
+1. Settings > Actions > General
+2. "Workflow permissions" セクション
+3. "Read and write permissions" を選択
+4. "Allow GitHub Actions to create and approve pull requests" にチェック
+
+**方法B: Personal Access Token を使用**
+1. GitHub Settings > Developer settings > Personal access tokens
+2. `repo`と`workflow`権限を持つトークンを生成
+3. リポジトリの Secrets に `PAT_TOKEN` として追加
+4. release.yml の checkout でこのトークンを使用：
+   ```yaml
+   - uses: actions/checkout@v4
+     with:
+       token: ${{ secrets.PAT_TOKEN }}
+   ```
 
 ### Changesetの設定
 
