@@ -1,0 +1,159 @@
+name: Release Branch Auto-Publish
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+permissions:
+  contents: write
+  packages: write
+  id-token: write
+
+jobs:
+  check-and-publish:
+    name: Check and Publish
+    # release/*ブランチがmainにマージされた時のみ実行
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install system dependencies
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y libasound2-dev
+          fi
+
+      - name: Install dependencies
+        run: |
+          rm -f package-lock.json
+          npm install
+
+      - name: Build packages
+        run: npm run build:all
+
+      - name: Version packages
+        run: |
+          npm run changeset:version
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: version packages [skip ci]" || echo "No changes to commit"
+
+      - name: Publish to npm
+        run: npm run changeset:publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Push version tags
+        run: |
+          git push --follow-tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        run: |
+          # Get version from root package.json
+          VERSION=$(node -p "require('./package.json').version")
+
+          # Extract changelog for this version
+          CHANGELOG=""
+          for pkg in packages/*/CHANGELOG.md; do
+            if [ -f "$pkg" ]; then
+              PKG_NAME=$(basename $(dirname "$pkg"))
+              CHANGELOG="${CHANGELOG}\n## @coeiro-operator/${PKG_NAME}\n"
+              CHANGELOG="${CHANGELOG}$(sed -n '/^## '"$VERSION"'/,/^## [0-9]/p' "$pkg" | head -n -1)"
+            fi
+          done
+
+          # Create release
+          gh release create "v${VERSION}" \
+            --title "Release v${VERSION}" \
+            --notes "$(echo -e "${CHANGELOG}")" \
+            --target main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  create-release-pr:
+    name: Create Release PR
+    # release/*ブランチへの直接プッシュ時にリリースPRを作成
+    if: |
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/heads/release/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          rm -f package-lock.json
+          npm install --no-optional
+
+      - name: Get branch name
+        id: branch
+        run: echo "name=${GITHUB_REF#refs/heads/}" >> $GITHUB_OUTPUT
+
+      - name: Version preview
+        run: |
+          echo "## 📦 Version Preview" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          npx changeset status >> $GITHUB_STEP_SUMMARY 2>&1 || true
+
+      - name: Create PR
+        run: |
+          gh pr create \
+            --base main \
+            --head "${{ steps.branch.outputs.name }}" \
+            --title "🚀 Release: ${{ steps.branch.outputs.name }}" \
+            --body "## 🚀 Release Branch
+
+          This PR will automatically publish packages to npm when merged.
+
+          ### 📦 Included Changesets
+
+          \`\`\`
+          $(npx changeset status 2>&1 || echo "No changesets found")
+          \`\`\`
+
+          ### ✅ Checklist
+
+          - [ ] Version numbers are correct
+          - [ ] CHANGELOG entries are accurate
+          - [ ] All tests pass
+          - [ ] Ready to publish to npm
+
+          ### ⚠️ Auto-Publish
+
+          **When this PR is merged, packages will be automatically published to npm.**
+          " || echo "PR already exists"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

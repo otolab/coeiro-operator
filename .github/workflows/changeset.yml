@@ -1,4 +1,4 @@
-name: Changeset
+name: Changeset PR Creator
 
 on:
   push:
@@ -8,13 +8,12 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  issues: write
 
 jobs:
   changeset:
-    name: Create Release PR
+    name: Create Changeset PR
     runs-on: ubuntu-latest
-    # mainブランチへの直接プッシュの場合のみ実行
+    # Changesetが存在する場合のみ実行
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Checkout
