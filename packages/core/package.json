@@ -1,6 +1,6 @@
 {
   "name": "@coeiro-operator/core",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "Core utilities and shared functionality for COEIRO Operator",
   "type": "module",
   "main": "dist/index.js",
@@ -24,8 +24,8 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@coeiro-operator/common": "^1.0.0",
-    "@coeiro-operator/term-bg": "^1.0.0"
+    "@coeiro-operator/common": "^2.0.0",
+    "@coeiro-operator/term-bg": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.18.3",
