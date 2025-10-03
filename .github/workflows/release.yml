@@ -30,8 +30,18 @@ jobs:
           cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
+      - name: Install system dependencies
+        run: |
+          if [ "$RUNNER_OS" == "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y libasound2-dev
+          fi
+
       - name: Install dependencies
-        run: npm ci
+        run: |
+          # Remove package-lock.json to avoid platform-specific issues
+          rm -f package-lock.json
+          # Install dependencies (speaker is now optional)
+          npm install
 
       - name: Build packages
         run: npm run build:all
