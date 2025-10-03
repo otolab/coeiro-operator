@@ -57,7 +57,11 @@
     "prepublishOnly": "npm run build",
     "version:check": "npm list --workspaces --depth=0",
     "publish:dry": "npm publish --workspaces --dry-run",
-    "publish:all": "npm publish --workspaces --access public"
+    "publish:all": "npm publish --workspaces --access public",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish",
+    "release": "npm run build:all && npm run changeset:publish"
   },
   "keywords": [
     "mcp",
@@ -68,8 +72,8 @@
   ],
   "author": "",
   "license": "MIT",
-  "dependencies": {},
   "devDependencies": {
+    "@changesets/cli": "^2.29.7",
     "@eslint/js": "^9.35.0",
     "@types/express": "^5.0.3",
     "@types/node": "^22.18.3",

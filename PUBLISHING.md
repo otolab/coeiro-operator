@@ -3,7 +3,7 @@
 ## 概要
 
 coeiro-operatorは、npm workspacesを使用したモノレポ構成です。
-複数の相互依存するパッケージから構成されており、適切な順序での公開が必要です。
+Changesetを使用して各パッケージのバージョンを個別に管理し、GitHub Actionsで自動公開します。
 
 ## パッケージ構成
 
@@ -24,86 +24,97 @@ coeiro-operatorは、npm workspacesを使用したモノレポ構成です。
 @coeiro-operator/mcp-debug (依存なし - 開発ツール)
 ```
 
-## 公開前の準備
+## 自動リリースフロー（推奨）
 
-### 1. ビルドとテスト
+### 1. 変更を記録
+
+開発中の変更に対してChangesetを作成：
 
 ```bash
-# クリーンビルド
-npm run build:all
+npm run changeset
+```
 
-# 全テストの実行
+プロンプトに従って：
+1. 変更したパッケージを選択
+2. バージョンタイプを選択（major/minor/patch）
+3. 変更内容の説明を入力
+
+### 2. コミット＆プッシュ
+
+```bash
+git add .changeset/
+git commit -m "chore: add changeset for [feature/fix]"
+git push
+```
+
+### 3. 自動リリース
+
+mainブランチにマージされると：
+1. GitHub Actionsが自動的にリリースPRを作成
+2. PRをレビュー＆マージ
+3. 自動的にnpmに公開される
+
+## 手動公開（緊急時のみ）
+
+### 1. 事前準備
+
+```bash
+# ビルドとテスト
+npm run build:all
 npm test
 
-# E2Eテストの実行
-npm run test:e2e
-```
-
-### 2. バージョンの確認
-
-```bash
-# 現在のバージョンを確認
-npm run version:check
-
-# バージョンを更新する場合（全パッケージ同時）
-npm version patch --workspaces --no-git-tag-version
-# または
-npm version minor --workspaces --no-git-tag-version
-# または
-npm version major --workspaces --no-git-tag-version
-```
-
-### 3. npmレジストリへのログイン
-
-```bash
+# npmログイン
 npm login
 ```
 
-## 公開方法
-
-### オプション1: 一括公開（推奨）
-
-依存関係を考慮して、npmが自動的に適切な順序で公開します：
+### 2. バージョン更新
 
 ```bash
-# ドライラン（実際には公開しない）
-npm run publish:dry
-
-# 実際に公開
-npm run publish:all
+# Changesetを使ってバージョン更新
+npm run changeset:version
 ```
 
-### オプション2: 個別公開（依存順）
-
-依存関係に問題がある場合は、以下の順序で個別に公開：
+### 3. 公開
 
 ```bash
-# 1. 依存関係がないパッケージ
-npm publish -w @coeiro-operator/common --access public
-npm publish -w @coeiro-operator/term-bg --access public
-
-# 2. coreパッケージ
-npm publish -w @coeiro-operator/core --access public
-
-# 3. audioパッケージ
-npm publish -w @coeiro-operator/audio --access public
-
-# 4. CLIとMCPパッケージ
-npm publish -w @coeiro-operator/cli --access public
-npm publish -w @coeiro-operator/mcp --access public
-
-# 5. 開発ツール（オプション）
-npm publish -w @coeiro-operator/mcp-debug --access public
+# Changesetを使って公開
+npm run changeset:publish
 ```
 
-### オプション3: メインパッケージのみ公開
+## 設定
 
-エンドユーザー向けにメインパッケージのみを公開する場合：
+### NPM_TOKEN の設定
 
-```bash
-# メインパッケージを公開
-npm publish --access public
-```
+GitHub Secretsに`NPM_TOKEN`を設定する必要があります：
+
+1. npmでトークンを生成：
+   ```bash
+   npm token create
+   ```
+
+2. GitHubリポジトリの Settings > Secrets and variables > Actions
+3. `NPM_TOKEN`という名前でトークンを追加
+
+### Changesetの設定
+
+`.changeset/config.json`で以下が設定されています：
+- `access`: "public" - スコープ付きパッケージを公開
+- `updateInternalDependencies`: "patch" - 内部依存を自動更新
+- `baseBranch`: "main" - メインブランチ
+
+## バージョン管理ポリシー
+
+### セマンティックバージョニング
+
+- **patch** (1.0.0 → 1.0.1): バグ修正、後方互換性のある修正
+- **minor** (1.0.0 → 1.1.0): 新機能追加、後方互換性のある変更
+- **major** (1.0.0 → 2.0.0): 破壊的変更、後方互換性のない変更
+
+### パッケージ個別管理
+
+各パッケージは独立してバージョン管理されます：
+- 変更があったパッケージのみバージョンが上がる
+- 内部依存は自動的に更新される
 
 ## 公開後の確認
 
