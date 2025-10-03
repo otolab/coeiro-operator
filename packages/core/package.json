@@ -38,5 +38,17 @@
     "config",
     "logger"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otolab/coeiro-operator.git",
+    "directory": "packages/core"
+  },
+  "homepage": "https://github.com/otolab/coeiro-operator#readme",
+  "bugs": {
+    "url": "https://github.com/otolab/coeiro-operator/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
