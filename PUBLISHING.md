@@ -24,72 +24,91 @@ Changesetを使用して各パッケージのバージョンを個別に管理�
 @coeiro-operator/mcp-debug (依存なし - 開発ツール)
 ```
 
-## リリースフロー
+## リリース手順（必須）
 
-### 方法1: 手動リリース（推奨）
+以下の手順を必ず守ってください。
 
-リリースタイミングを完全に制御できます。
+### 1. 変更を記録（Changeset作成）
 
-#### 1. 変更を記録
-
-開発中の変更に対してChangesetを作成：
+変更を行った後、必ずChangesetを作成します：
 
 ```bash
-npm run changeset
+npm run changeset:add -- \
+  --packages [パッケージ名:バージョンタイプ] \
+  --message "[変更の説明]"
 ```
 
-プロンプトに従って：
-1. 変更したパッケージを選択
-2. バージョンタイプを選択（major/minor/patch）
-3. 変更内容の説明を入力
-
-#### 2. mainブランチにマージ
-
-通常通りPRを作成してmainにマージします。
-
-#### 3. リリース実行
-
-GitHubの Actions タブから手動でリリース：
-
-1. Actions → Release ワークフロー → Run workflow
-2. オプションを選択：
-   - **mode: pr** - リリースPRを作成（確認用）
-   - **mode: publish** - 直接npm公開
-3. Run workflow をクリック
-
-### 方法2: 自動リリースPR作成
-
-mainブランチにマージすると自動的にリリースPRが作成されます：
-
-1. Changesetを含むPRをmainにマージ
-2. 自動的にリリースPRが作成される
-3. リリースPRをレビュー＆マージで公開
-
-## 手動公開（緊急時のみ）
-
-### 1. 事前準備
-
+例：
 ```bash
-# ビルドとテスト
-npm run build:all
-npm test
-
-# npmログイン
-npm login
+# audioパッケージにminor、cliパッケージにpatchの変更
+npm run changeset:add -- \
+  --packages @coeiro-operator/audio:minor,@coeiro-operator/cli:patch \
+  --message "Add voice speed control feature"
 ```
 
-### 2. バージョン更新
+### バージョンタイプの決定
+
+必ず以下の基準に従ってバージョンタイプを決定：
+
+| タイプ | バージョン変更 | 使用条件 |
+|--------|---------------|----------|
+| **patch** | 1.0.0 → 1.0.1 | バグ修正、ドキュメント更新、内部改善 |
+| **minor** | 1.0.0 → 1.1.0 | 新機能追加、後方互換性のある変更 |
+| **major** | 1.0.0 → 2.0.0 | 破壊的変更、API変更、互換性のない変更 |
+
+### 2. コミットとPR作成
 
 ```bash
-# Changesetを使ってバージョン更新
-npm run changeset:version
+# Changesetをコミット
+git add .changeset/
+git commit -m "chore: add changeset for [機能名]"
+
+# PRを作成してmainにマージ
+git push origin feature/[branch-name]
+gh pr create --base main
 ```
 
-### 3. 公開
+### 3. リリース実行
+
+mainにマージ後、GitHubの Actions タブから：
+
+1. **Release** ワークフローを選択
+2. **Run workflow** をクリック
+3. **mode: pr** を選択（リリースPRを作成）
+4. リリースPRをレビュー後マージ
+5. 自動的にnpmに公開される
+
+### 4. 必須確認事項
+
+リリース前に必ず確認：
 
 ```bash
-# Changesetを使って公開
-npm run changeset:publish
+# 現在のバージョンを確認
+npm run version:check
+
+# 次のバージョンを確認
+npx changeset status
+```
+
+## 重要な注意事項
+
+### Changeset作成は必須
+
+**すべての変更に対してChangesetの作成が必須です。**
+
+忘れた場合：
+```bash
+# 最後のコミットを取り消し
+git reset --soft HEAD~1
+
+# Changesetを作成
+npm run changeset:add -- \
+  --packages [パッケージ名:バージョンタイプ] \
+  --message "[変更の説明]"
+
+# 再度コミット
+git add .
+git commit -m "feat: [変更内容]"
 ```
 
 ## 設定

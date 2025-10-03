@@ -59,6 +59,7 @@
     "publish:dry": "npm publish --workspaces --dry-run",
     "publish:all": "npm publish --workspaces --access public",
     "changeset": "changeset",
+    "changeset:add": "node scripts/create-changeset.js",
     "changeset:version": "changeset version",
     "changeset:publish": "changeset publish",
     "release": "npm run build:all && npm run changeset:publish"
