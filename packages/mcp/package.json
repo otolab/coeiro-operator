@@ -28,9 +28,9 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@coeiro-operator/common": "*",
-    "@coeiro-operator/core": "*",
-    "@coeiro-operator/audio": "*",
+    "@coeiro-operator/common": "^1.0.0",
+    "@coeiro-operator/core": "^1.0.0",
+    "@coeiro-operator/audio": "^1.0.0",
     "@modelcontextprotocol/sdk": "^1.17.0"
   },
   "devDependencies": {
@@ -43,5 +43,17 @@
     "server",
     "coeiroink"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otolab/coeiro-operator.git",
+    "directory": "packages/mcp"
+  },
+  "homepage": "https://github.com/otolab/coeiro-operator#readme",
+  "bugs": {
+    "url": "https://github.com/otolab/coeiro-operator/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

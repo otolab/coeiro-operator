@@ -1,0 +1,120 @@
+name: Changeset Check
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+    branches:
+      - main
+
+jobs:
+  check:
+    name: Check for Changeset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          rm -f package-lock.json
+          npm install --no-optional
+
+      - name: Check for changesets
+        id: changesets
+        run: |
+          # Check if there are any changesets
+          if ls .changeset/*.md 2>/dev/null | grep -v README.md > /dev/null; then
+            echo "✅ Changeset found"
+            echo "has_changeset=true" >> $GITHUB_OUTPUT
+          else
+            echo "has_changeset=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check if changeset is needed
+        run: |
+          # Get changed files
+          CHANGED_FILES=$(git diff --name-only origin/main...HEAD)
+
+          # Check if any code files were changed
+          CODE_CHANGED=false
+          for file in $CHANGED_FILES; do
+            # Check for TypeScript/JavaScript files in packages
+            if [[ $file == packages/*/src/*.ts ]] || \
+               [[ $file == packages/*/src/*.js ]] || \
+               [[ $file == packages/*/src/**/*.ts ]] || \
+               [[ $file == packages/*/src/**/*.js ]]; then
+              CODE_CHANGED=true
+              break
+            fi
+          done
+
+          # If code changed but no changeset, fail
+          if [ "$CODE_CHANGED" = true ] && [ "${{ steps.changesets.outputs.has_changeset }}" = false ]; then
+            echo "❌ Error: Code changes detected but no changeset found!"
+            echo ""
+            echo "Please add a changeset by running:"
+            echo "  npm run changeset:add -- --packages [package:version] --message \"[description]\""
+            echo ""
+            echo "Example:"
+            echo "  npm run changeset:add -- --packages @coeiro-operator/audio:patch --message \"Fix memory leak\""
+            exit 1
+          fi
+
+          echo "✅ Changeset check passed"
+
+      - name: Comment PR
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const body = `## ⚠️ Changeset Required
+
+            This PR contains code changes but no changeset was found.
+
+            Please add a changeset by running:
+            \`\`\`bash
+            npm run changeset:add -- \\
+              --packages [package:version] \\
+              --message "[description]"
+            \`\`\`
+
+            ### Examples:
+
+            **Bug fix:**
+            \`\`\`bash
+            npm run changeset:add -- \\
+              --packages @coeiro-operator/audio:patch \\
+              --message "Fix memory leak in streaming mode"
+            \`\`\`
+
+            **New feature:**
+            \`\`\`bash
+            npm run changeset:add -- \\
+              --packages @coeiro-operator/audio:minor \\
+              --message "Add voice speed control"
+            \`\`\`
+
+            **Breaking change:**
+            \`\`\`bash
+            npm run changeset:add -- \\
+              --packages @coeiro-operator/core:major \\
+              --message "BREAKING: Change config format"
+            \`\`\`
+
+            After adding the changeset, commit and push the changes.`;
+
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });

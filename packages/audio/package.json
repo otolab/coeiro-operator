@@ -24,11 +24,15 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@coeiro-operator/common": "*",
-    "@coeiro-operator/core": "*",
-    "speaker": "^0.5.5",
-    "wav": "^1.0.2",
-    "node-fetch": "^3.3.2"
+    "@coeiro-operator/common": "^1.0.0",
+    "@coeiro-operator/core": "^1.0.0",
+    "dsp.js": "^1.0.1",
+    "echogarden": "^2.10.1",
+    "node-fetch": "^3.3.2",
+    "wav": "^1.0.2"
+  },
+  "optionalDependencies": {
+    "speaker": "^0.5.5"
   },
   "devDependencies": {
     "@types/node": "^22.18.3",
@@ -42,5 +46,17 @@
     "coeiroink",
     "tts"
   ],
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/otolab/coeiro-operator.git",
+    "directory": "packages/audio"
+  },
+  "homepage": "https://github.com/otolab/coeiro-operator#readme",
+  "bugs": {
+    "url": "https://github.com/otolab/coeiro-operator/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }
