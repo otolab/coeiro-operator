@@ -37,12 +37,21 @@ COEIRO OperatorはCOEIROINKの音声合成を活用し、端末セッション�
 
 ### 1. インストール
 
-```bash
-# NPMからのインストール
-npm install -g coeiro-operator
+#### CLIツール
 
-# MCPサーバー登録（Claude Code）
-claude mcp add -s user coeiro-operator
+```bash
+# CLIツールのインストール
+npm install -g @coeiro-operator/cli
+```
+
+#### MCPサーバー（Claude Code用）
+
+```bash
+# MCPサーバーのインストール
+npm install -g @coeiro-operator/mcp
+
+# MCPサーバー登録
+claude mcp add @coeiro-operator/mcp
 
 # AI Agent用の設定（Claude Code利用時）
 # 音声対話が必要な場合、prompts/recipes/operator-mode.mdを
