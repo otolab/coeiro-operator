@@ -3,6 +3,10 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
+
+# pnpm
+pnpm-lock.yaml
 
 # 設定ファイル
 .coeiroink/
