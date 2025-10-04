@@ -1,6 +1,6 @@
 {
   "name": "@coeiro-operator/common",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Common utilities and logger for COEIRO Operator",
   "type": "module",
   "main": "dist/index.js",
