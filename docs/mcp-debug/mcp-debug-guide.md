@@ -63,12 +63,12 @@ Claude Codeは起動時にMCPサーバーを一度だけロードし、メモリ
 ```bash
 # 期待する動作
 1. コードを編集
-2. npm run build
+2. pnpm build
 3. 変更が反映される
 
 # 実際の動作（Claude Code内で実行した場合）
 1. コードを編集
-2. npm run build
+2. pnpm build
 3. mcp__your_server__tool を実行
    → 古いコード（起動時のキャッシュ）が実行される
 ```
@@ -81,7 +81,7 @@ Claude Codeは起動時にMCPサーバーを一度だけロードし、メモリ
 
 ```bash
 # 1. ビルド
-npm run build
+pnpm build
 
 # 2. 特定のMCPツールをテスト（最新コードで実行される）
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":1}' | \

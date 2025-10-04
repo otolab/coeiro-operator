@@ -22,7 +22,7 @@ node dist/mcp/server.js --debug
 ### 1. デバッグモードでサーバー起動
 
 ```bash
-npm run build
+pnpm build
 node dist/mcp/server.js --debug
 ```
 
