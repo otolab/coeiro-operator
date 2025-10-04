@@ -28,10 +28,11 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@coeiro-operator/common": "^1.0.1",
-    "@coeiro-operator/core": "^1.0.1",
-    "@coeiro-operator/audio": "^1.0.1",
-    "@modelcontextprotocol/sdk": "^1.17.0"
+    "@coeiro-operator/common": "workspace:*",
+    "@coeiro-operator/core": "workspace:*",
+    "@coeiro-operator/audio": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.18.3",

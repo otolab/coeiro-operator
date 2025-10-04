@@ -24,8 +24,8 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@coeiro-operator/common": "^1.0.1",
-    "@coeiro-operator/core": "^1.0.1",
+    "@coeiro-operator/common": "workspace:*",
+    "@coeiro-operator/core": "workspace:*",
     "dsp.js": "^1.0.1",
     "echogarden": "^2.10.1",
     "node-fetch": "^3.3.2",

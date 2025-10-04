@@ -60,11 +60,11 @@ importers:
   packages/audio:
     dependencies:
       '@coeiro-operator/common':
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: workspace:*
+        version: link:../common
       '@coeiro-operator/core':
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: workspace:*
+        version: link:../core
       dsp.js:
         specifier: ^1.0.1
         version: 1.0.1
@@ -98,14 +98,14 @@ importers:
   packages/cli:
     dependencies:
       '@coeiro-operator/audio':
-        specifier: ^1.0.1
-        version: 1.0.1(zod@3.25.76)
+        specifier: workspace:*
+        version: link:../audio
       '@coeiro-operator/common':
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: workspace:*
+        version: link:../common
       '@coeiro-operator/core':
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: workspace:*
+        version: link:../core
       commander:
         specifier: ^14.0.1
         version: 14.0.1
@@ -138,11 +138,11 @@ importers:
   packages/core:
     dependencies:
       '@coeiro-operator/common':
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: workspace:*
+        version: link:../common
       '@coeiro-operator/term-bg':
-        specifier: ^1.0.0
-        version: 1.0.0
+        specifier: workspace:*
+        version: link:../term-bg
     devDependencies:
       '@types/node':
         specifier: ^22.18.3
@@ -157,17 +157,20 @@ importers:
   packages/mcp:
     dependencies:
       '@coeiro-operator/audio':
-        specifier: ^1.0.1
-        version: 1.0.1(zod@3.25.76)
+        specifier: workspace:*
+        version: link:../audio
       '@coeiro-operator/common':
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: workspace:*
+        version: link:../common
       '@coeiro-operator/core':
-        specifier: ^1.0.1
-        version: 1.0.1
+        specifier: workspace:*
+        version: link:../core
       '@modelcontextprotocol/sdk':
         specifier: ^1.17.0
         version: 1.19.1
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^22.18.3
@@ -184,6 +187,9 @@ importers:
       '@modelcontextprotocol/sdk':
         specifier: ^1.17.0
         version: 1.19.1
+      zod:
+        specifier: ^3.24.1
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^22.18.3
@@ -198,8 +204,8 @@ importers:
   packages/term-bg:
     dependencies:
       '@coeiro-operator/common':
-        specifier: '*'
-        version: 1.0.1
+        specifier: workspace:*
+        version: link:../common
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -433,25 +439,6 @@ packages:
 
   '@changesets/write@0.4.0':
     resolution: {integrity: sha512-CdTLvIOPiCNuH71pyDu3rA+Q0n65cmAbXnwWH84rKGiFumFzkmHNT8KHTMEchcxN+Kl8I54xGUhJ7l3E7X396Q==}
-
-  '@coeiro-operator/audio@1.0.1':
-    resolution: {integrity: sha512-2ZoDpXW+e/9hj/Imn6RA/wCBAUP9mAbk92vlwNkyXD2CmftFatGAXMlWhZca8wRS8HypoUBy9EZYsaoXqX3pfw==}
-    cpu: [x64, arm64, ia32]
-    os: [darwin, linux, win32]
-
-  '@coeiro-operator/common@1.0.1':
-    resolution: {integrity: sha512-2d3i0ZbE6wV/s+rZIOIDGYYkfKus7M28lgVudS5nqHcQO0xxUf7WlH99a86K301/nRo2O64WwW53Dk/AITUxEg==}
-    cpu: [x64, arm64, ia32]
-    os: [darwin, linux, win32]
-
-  '@coeiro-operator/core@1.0.1':
-    resolution: {integrity: sha512-z/8ofzqwCudpUc7guB4jko1Idei/NSGs9rFXTV4x2wJOHWAXOr1n/ZPJy54dpEygkBLmu5uhXJRH4A8+CCpdVg==}
-    cpu: [x64, arm64, ia32]
-    os: [darwin, linux, win32]
-
-  '@coeiro-operator/term-bg@1.0.0':
-    resolution: {integrity: sha512-xLpWuLXJKU9Q3lAg9JEAh5Fwnqt49T/GYBv6+ipkbI+TTMtRcX3pdCaAuPrs5pjtD6MUboTo4hQwEpdeGt3qtg==}
-    engines: {node: '>=18.0.0'}
 
   '@csstools/color-helpers@5.1.0':
     resolution: {integrity: sha512-S11EXWJyy0Mz5SYvRmY8nJYTFFd1LCNV+7cXyAgQtOOuzb4EsgfqDufL+9esx72/eLhsRdGZwaldu/h+E4t4BA==}
@@ -3907,38 +3894,6 @@ snapshots:
       fs-extra: 7.0.1
       human-id: 4.1.1
       prettier: 2.8.8
-
-  '@coeiro-operator/audio@1.0.1(zod@3.25.76)':
-    dependencies:
-      '@coeiro-operator/common': 1.0.1
-      '@coeiro-operator/core': 1.0.1
-      dsp.js: 1.0.1
-      echogarden: 2.10.1(zod@3.25.76)
-      node-fetch: 3.3.2
-      wav: 1.0.2
-    optionalDependencies:
-      speaker: 0.5.5
-    transitivePeerDependencies:
-      - '@echogarden/vosk'
-      - aws-crt
-      - bufferutil
-      - canvas
-      - encoding
-      - supports-color
-      - utf-8-validate
-      - winax
-      - zod
-
-  '@coeiro-operator/common@1.0.1': {}
-
-  '@coeiro-operator/core@1.0.1':
-    dependencies:
-      '@coeiro-operator/common': 1.0.1
-      '@coeiro-operator/term-bg': 1.0.0
-
-  '@coeiro-operator/term-bg@1.0.0':
-    dependencies:
-      '@coeiro-operator/common': 1.0.1
 
   '@csstools/color-helpers@5.1.0': {}
 
