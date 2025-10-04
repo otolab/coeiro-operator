@@ -20,6 +20,24 @@ gh pr create --base main
 
 ### 2. リリース時（release/*ブランチ）
 
+#### 自動化版（推奨）
+
+```bash
+# mainから最新を取得
+git checkout main && git pull
+
+# リリースブランチ作成＆プッシュ
+git checkout -b release/1.0.1
+git push -u origin release/1.0.1
+
+# 🤖 以下は自動実行されます:
+# - changeset versionの適用
+# - Version Packagesコミット
+# - PRの自動作成
+```
+
+#### 手動版（自動化が動作しない場合）
+
 ```bash
 # mainから最新を取得
 git checkout main && git pull
@@ -36,7 +54,7 @@ npx changeset version
 # 更新をコミット
 git add -A && git commit -m "Version Packages"
 
-# プッシュ（手動でPR作成が必要）
+# プッシュ
 git push -u origin release/1.0.1
 
 # PRを作成
