@@ -53,21 +53,23 @@ claude mcp add coeiro-operator
 - `debug_logs` - デバッグログの取得
 - `parallel_generation_control` - 並行生成制御
 
-## 使用例（Claude Code内）
+## 使用例（Claude Codeでの会話）
 
-```javascript
-// 音声で挨拶
-await say({ message: "こんにちは" });
-
-// オペレータを指定
-await operator_assign({ operator: "tsukuyomi" });
-
-// スタイル付き音声
-await say({
-  message: "お疲れ様でした",
-  style: "ひそひそ"
-});
 ```
+ユーザー: こんにちはと音声で言って
+
+Claude Code: [say ツールを使用して「こんにちは」を音声出力]
+
+ユーザー: つくよみちゃんに切り替えて
+
+Claude Code: [operator_assign ツールでtsukuyomiに切り替え]
+
+ユーザー: ひそひそ声でお疲れ様と言って
+
+Claude Code: [say ツールでstyle: "ひそひそ"を指定して音声出力]
+```
+
+※ MCPツールはClaude Codeが自動的に判断して使用します
 
 ## 動作要件
 
