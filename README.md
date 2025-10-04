@@ -50,8 +50,11 @@ npm install -g @coeiro-operator/cli
 # MCPサーバーのインストール
 npm install -g @coeiro-operator/mcp
 
-# MCPサーバー登録
-claude mcp add @coeiro-operator/mcp
+# MCPサーバー登録（グローバルインストール後）
+claude mcp add coeiro-operator
+
+# または、npxで直接実行する場合は手動設定
+# claude_desktop_config.jsonに追加
 
 # AI Agent用の設定（Claude Code利用時）
 # 音声対話が必要な場合、prompts/recipes/operator-mode.mdを
