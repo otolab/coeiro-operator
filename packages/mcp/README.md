@@ -31,6 +31,8 @@ claude mcp add coeiro-operator
 }
 ```
 
+※ `npx @coeiro-operator/mcp`は内部的に`coeiro-operator`コマンドを実行します
+
 ## 提供される機能
 
 ### 音声合成
