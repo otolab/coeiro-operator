@@ -36,7 +36,7 @@
   },
   "devDependencies": {
     "@types/commander": "^2.12.5",
-    "@types/node": "^22.18.3",
+    "@types/node": "^20.19.19",
     "typescript": "^5.7.3",
     "vitest": "^3.2.4"
   },
