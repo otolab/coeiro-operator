@@ -25,13 +25,25 @@ gh pr create --base main
 git checkout main && git pull
 
 # リリースブランチ作成
-git checkout -b release/1.0.0
+git checkout -b release/1.0.1
 
 # Changesetの確認
 npx changeset status
 
-# プッシュ（自動でPR作成）
-git push -u origin release/1.0.0
+# バージョン更新とCHANGELOG生成
+npx changeset version
+
+# 更新をコミット
+git add -A && git commit -m "Version Packages"
+
+# プッシュ（手動でPR作成が必要）
+git push -u origin release/1.0.1
+
+# PRを作成
+gh pr create --base main --title "Release v1.0.1" \
+  --body "## 🚀 Release
+
+⚠️ **Merging this PR will automatically publish to npm**"
 ```
 
 ### 3. 公開（自動）
