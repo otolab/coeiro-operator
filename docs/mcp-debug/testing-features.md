@@ -203,8 +203,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
-      - run: npm install
-      - run: npm run build
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
       - run: ./test-mcp-server.sh
 ```
 

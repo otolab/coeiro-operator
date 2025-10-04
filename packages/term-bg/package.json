@@ -11,7 +11,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@coeiro-operator/common": "*"
+    "@coeiro-operator/common": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

@@ -48,39 +48,39 @@ packages/
 
 ```bash
 # 全テスト実行（分離された両プロジェクト）
-npm run test:all
+pnpm test:all
 
 # COEIRO Operatorのみ
-npm run test:coeiro
+pnpm test:coeiro
 
 # MCPデバッグ環境のみ
-npm run test:mcp-debug
+pnpm test:mcp-debug
 
 # 従来方式（単一プロジェクト）
-npm test
+pnpm test
 ```
 
 ### カバレッジ付きテスト
 
 ```bash
 # 分離されたプロジェクトでカバレッジ計測
-npm run test:projects:coverage
+pnpm test:projects:coverage
 
 # COEIRO Operatorのカバレッジ
-npm run test:coeiro -- --coverage
+pnpm test:coeiro -- --coverage
 
 # MCPデバッグ環境のカバレッジ
-npm run test:mcp-debug -- --coverage
+pnpm test:mcp-debug -- --coverage
 ```
 
 ### 特定テストの実行
 
 ```bash
 # mcp-debug統合機能を活用したCOEIRO Operatorテスト
-npm run test:mcp-debug:enhanced
+pnpm test:mcp-debug:enhanced
 
 # 従来のe2eテスト
-npm run test:e2e
+pnpm test:e2e
 ```
 
 ## 🆕 mcp-debug統合テストの特徴
@@ -147,7 +147,7 @@ await testRunner.startEchoServer(true); // デバッグモード
 1. **テストタイムアウト**
    ```bash
    # より長いタイムアウトで実行
-   npm run test:mcp-debug:enhanced -- --testTimeout=30000
+   pnpm test:mcp-debug:enhanced -- --testTimeout=30000
    ```
 
 2. **ポート競合**
@@ -159,17 +159,17 @@ await testRunner.startEchoServer(true); // デバッグモード
 3. **ビルドエラー**
    ```bash
    # ビルド後にテスト実行
-   npm run build && npm run test:all
+   pnpm build && pnpm test:all
    ```
 
 ### デバッグモード
 
 ```bash
 # 詳細ログでテスト実行
-DEBUG=* npm run test:mcp-debug:enhanced
+DEBUG=* pnpm test:mcp-debug:enhanced
 
 # 特定ファイルのみ
-npm test src/core/say/mcp-debug-enhanced.test.ts -- --verbose
+pnpm test src/core/say/mcp-debug-enhanced.test.ts -- --verbose
 ```
 
 ## 📈 パフォーマンス最適化
@@ -178,10 +178,10 @@ npm test src/core/say/mcp-debug-enhanced.test.ts -- --verbose
 
 ```bash
 # Jest並列実行（デフォルト）
-npm run test:projects -- --maxWorkers=4
+pnpm test:projects -- --maxWorkers=4
 
 # 逐次実行（メモリ制約時）
-npm run test:projects -- --runInBand
+pnpm test:projects -- --runInBand
 ```
 
 ### CI/CD設定
@@ -190,9 +190,9 @@ npm run test:projects -- --runInBand
 # GitHub Actions例
 - name: Run separated tests
   run: |
-    npm run test:coeiro
-    npm run test:mcp-debug
-    npm run test:mcp-debug:enhanced
+    pnpm test:coeiro
+    pnpm test:mcp-debug
+    pnpm test:mcp-debug:enhanced
 ```
 
 ## 🎯 メリット

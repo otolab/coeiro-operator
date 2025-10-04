@@ -90,10 +90,10 @@ const hasLeak = await tester.runPressureTest(async () => {
 
 ```bash
 # GCフラグ付きでテスト実行
-NODE_OPTIONS="--expose-gc" npm test
+NODE_OPTIONS="--expose-gc" pnpm test
 
 # メモリリーク検出専用テスト
-npm run test:memory
+pnpm test:memory
 ```
 
 ### 2. 環境設定確認
@@ -243,10 +243,10 @@ Chrome DevToolsでの分析手順：
 
 ```bash
 # 詳細なGCログ付きでテスト実行
-NODE_OPTIONS="--expose-gc --trace-gc" npm run test:memory
+NODE_OPTIONS="--expose-gc --trace-gc" pnpm test:memory
 
 # メモリ使用量上限を設定
-NODE_OPTIONS="--expose-gc --max-old-space-size=100" npm test
+NODE_OPTIONS="--expose-gc --max-old-space-size=100" pnpm test
 ```
 
 ## 関連リソース

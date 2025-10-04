@@ -7,7 +7,7 @@ COEIRO Operatorの詳細なインストール手順とセットアップ方法�
 ### 必要な環境
 
 - **Node.js**: 18.0.0以上（推奨: LTS版）
-- **npm**: Node.jsに同梱
+- **pnpm**: 9.0以上（推奨パッケージマネージャー）
 - **COEIROINK**: 音声合成エンジン
 - **オーディオシステム**: システムレベル音声出力対応
 
@@ -42,14 +42,17 @@ say-coeiroink --version
 git clone https://github.com/otolab/coeiro-operator.git
 cd coeiro-operator
 
+# pnpmインストール（未インストールの場合）
+npm install -g pnpm
+
 # 依存関係インストール
-npm install
+pnpm install
 
 # ビルド
-npm run build
+pnpm build
 
 # グローバルリンク
-npm link
+pnpm link --global
 
 # インストール確認
 which coeiro-operator
