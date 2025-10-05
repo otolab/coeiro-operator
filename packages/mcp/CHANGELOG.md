@@ -1,5 +1,14 @@
 # @coeiro-operator/mcp
 
+## 1.0.2
+
+### Patch Changes
+
+- npm レジストリで破損した 1.0.1 パッケージを修正
+  - 1.0.1 のパブリッシュ時に発生した integrity checksum エラーを修正
+  - pnpm 移行により今後の並列パブリッシュ問題を防止
+  - パッケージの再パブリッシュにより正常なバージョンを提供
+
 ## 1.0.1
 
 ### Patch Changes
