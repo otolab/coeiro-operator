@@ -54,25 +54,33 @@ jobs:
   check-dependencies:
     name: Check Dependencies
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-      
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 20.x
-          cache: 'npm'
-      
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Check for security vulnerabilities
         run: |
-          npm audit --audit-level=moderate || true
+          pnpm audit --audit-level moderate || true
           echo "Note: Security vulnerabilities found. Please review and fix if critical."
-      
+
       - name: Check for outdated dependencies
         run: |
-          npx npm-check-updates --target minor || true
+          pnpm outdated || true
           echo "Note: Some dependencies may have updates available."
 
   validate-commits:
@@ -112,31 +120,34 @@ jobs:
   test-quick:
     name: Quick Tests
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-      
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 20.x
-          cache: 'npm'
-      
+          cache: 'pnpm'
+
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev
-      
+
       - name: Install dependencies
-        run: |
-          npm install
-          npm install @rollup/rollup-linux-x64-gnu --no-save
-      
+        run: pnpm install --frozen-lockfile
+
       - name: Build all packages
-        run: npm run build:all
-      
+        run: pnpm build:all
+
       - name: Run unit tests only
         run: |
           # ユニットテストのみを実行（E2Eを除外）
-          npm test -- --exclude="**/e2e/**" || npm test
+          pnpm test -- --exclude="**/e2e/**" || pnpm test
         env:
           COEIRO_TEST_MODE: true

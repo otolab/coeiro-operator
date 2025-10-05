@@ -30,8 +30,10 @@ export default defineConfig({
     // 除外パターン
     exclude: [
       'node_modules/**',
+      '**/node_modules/**',
       'dist/**',
-      'coverage/**'
+      'coverage/**',
+      'packages/*/node_modules/**'
     ],
 
     // カバレッジはデフォルトで無効（CI環境でのみ有効化）

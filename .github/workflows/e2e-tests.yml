@@ -25,26 +25,29 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-      
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 20.x
-          cache: 'npm'
-      
+          cache: 'pnpm'
+
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libasound2-dev
-      
+
       - name: Install dependencies
-        run: |
-          npm install
-          npm install @rollup/rollup-linux-x64-gnu --no-save
-      
+        run: pnpm install --frozen-lockfile
+
       - name: Build all packages
-        run: npm run build:all
-      
+        run: pnpm build:all
+
       - name: Run all E2E tests
-        run: npm run test:e2e
+        run: pnpm test:e2e
         env:
           COEIRO_TEST_MODE: true
           COEIROINK_OPERATOR_CONFIG_PATH: /tmp/test-operator-config-${{ github.run_id }}.json

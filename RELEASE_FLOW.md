@@ -6,7 +6,7 @@
 
 ```bash
 # 変更後、必ずChangesetを作成
-npm run changeset:add -- \
+pnpm changeset:add -- \
   --packages @coeiro-operator/audio:minor \
   --message "Add new feature"
 

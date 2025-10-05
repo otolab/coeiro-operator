@@ -272,10 +272,10 @@ config.jsonに以下を追加：
 ### クイック開発セットアップ
 
 ```bash
-# 基本要件: Node.js 18以上 + COEIROINK + ビルドツール
+# 基本要件: Node.js 18以上 + COEIROINK + pnpm + ビルドツール
 git clone https://github.com/otolab/coeiro-operator.git
 cd coeiro-operator
-npm install && npm run build
+pnpm install && pnpm build
 ```
 
 詳細な事前要件・開発環境構築は **[docs/development/development-tips.md](docs/development/development-tips.md)** を参照。

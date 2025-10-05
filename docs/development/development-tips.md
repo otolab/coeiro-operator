@@ -10,10 +10,11 @@
 ### 事前要件
 
 - **Node.js 18以上**
+- **pnpm 9以上** - 推奨パッケージマネージャー
 - **COEIROINK** - 音声合成エンジン（localhost:50032で動作）
 - **ビルドツール** - ネイティブモジュール構築用
   - Windows: Visual Studio Build Tools
-  - macOS: Xcode Command Line Tools  
+  - macOS: Xcode Command Line Tools
   - Linux: build-essential + ALSA/PulseAudio開発ライブラリ
 
 ### ソースからのインストール
@@ -21,21 +22,21 @@
 ```bash
 git clone https://github.com/otolab/coeiro-operator.git
 cd coeiro-operator
-npm install
-npm run build
-npm link
+pnpm install
+pnpm build
+pnpm link --global
 ```
 
 ### 基本開発コマンド
 
 ```bash
 # ビルド・型チェック
-npm run build
-npm run type-check
+pnpm build
+pnpm type-check
 
 # テスト実行
-npm test                        # 単体テスト
-npm run test:e2e               # E2Eテスト  
+pnpm test                        # 単体テスト
+pnpm test:e2e                   # E2Eテスト
 ./scripts/test-mcp-debug.sh    # MCPデバッグテスト
 ```
 
@@ -105,7 +106,7 @@ OperatorManager (統合管理クラス)
 **Claude Code起動中のMCPツール（sayツール等）は開発テストに使用できません**
 
 - Claude Code起動時からMCPサーバーインスタンスが起動したままのため
-- コードの更新（npm run build後）が反映されない
+- コードの更新（pnpm build後）が反映されない
 - 開発中の新機能や修正は確認できない
 
 **正しい開発テスト方法：**
@@ -295,7 +296,7 @@ npm run test:all
 
 ```bash
 # 1. コード修正
-npm run build
+pnpm build
 
 # 2. 開発テスト（以下のいずれかを使用）
 
@@ -367,7 +368,7 @@ node scripts/register-words.js
 ### ビルドとテストの自動化
 ```bash
 # 変更検出とビルド
-npm run build && npm run type-check && npm test
+pnpm build && pnpm type-check && pnpm test
 ```
 
 ### デバッグ用ログ出力

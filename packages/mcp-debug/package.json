@@ -27,7 +27,8 @@
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.17.0"
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^22.18.3",
