@@ -1,6 +1,6 @@
 {
   "name": "@coeiro-operator/term-bg",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Terminal background image controller for iTerm2",
   "type": "module",
   "main": "dist/index.js",
@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsc --build",
     "postinstall": "node scripts/setup-python-env.cjs",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "@coeiro-operator/common": "workspace:*"

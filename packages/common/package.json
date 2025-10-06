@@ -1,10 +1,13 @@
 {
   "name": "@coeiro-operator/common",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Common utilities and logger for COEIRO Operator",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "os": [
     "darwin",
     "linux",
@@ -19,7 +22,8 @@
     "build": "tsc --build",
     "test": "vitest",
     "test:watch": "vitest --watch",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {},
   "devDependencies": {
