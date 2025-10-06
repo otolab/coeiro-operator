@@ -1,10 +1,13 @@
 {
   "name": "@coeiro-operator/cli",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "CLI tools for COEIRO Operator",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "os": [
     "darwin",
     "linux",
@@ -26,7 +29,8 @@
     "test:watch": "vitest --watch",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.js",
-    "format": "prettier --write \"src/**/*.{ts,js,json,md}\""
+    "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "@coeiro-operator/audio": "workspace:*",
