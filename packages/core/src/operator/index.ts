@@ -450,10 +450,14 @@ export class OperatorManager {
   async refreshOperatorReservation(): Promise<boolean> {
     const operatorSession = await this.getCurrentOperatorSession();
     if (!operatorSession) {
+      console.log('[OperatorManager] Cannot refresh - no operator assigned');
       return false; // オペレータが割り当てられていない
     }
 
-    return this.dataStore.refresh();
+    console.log(`[OperatorManager] Refreshing reservation for: ${operatorSession.characterId}`);
+    const result = await this.dataStore.refresh();
+    console.log(`[OperatorManager] Refresh result: ${result ? 'success' : 'failed'}`);
+    return result;
   }
 }
 

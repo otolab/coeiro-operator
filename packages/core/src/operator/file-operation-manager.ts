@@ -204,11 +204,14 @@ export class FileOperationManager<T> {
       const cleaned = this.cleanupExpired(state);
       const entry = cleaned.storage[this.key];
       if (entry) {
+        const oldTimestamp = entry.updated_at;
         entry.updated_at = new Date().toISOString();
         await this.write(cleaned);
+        console.log(`[FileOperationManager] Timeout refreshed for key: ${this.key}, old: ${oldTimestamp}, new: ${entry.updated_at}`);
         return true;
       }
       await this.write(cleaned);
+      console.log(`[FileOperationManager] Cannot refresh - key not found: ${this.key}`);
       return false;
     });
   }
