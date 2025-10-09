@@ -1,5 +1,7 @@
 ---
 "@coeiro-operator/core": minor
+"@coeiro-operator/cli": minor
+"@coeiro-operator/mcp": minor
 ---
 
 オペレータ状態の保存場所を永続的な場所に変更
