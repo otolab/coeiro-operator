@@ -78,6 +78,9 @@ jobs:
           PR_NUMBER=$(gh pr list --head "$BRANCH_NAME" --json number -q '.[0].number')
 
           if [ -z "$PR_NUMBER" ]; then
+            # Get package status
+            PACKAGE_STATUS=$(npx changeset status --output /dev/stdout | grep -A 100 'packages to be bumped' || echo 'See changeset status for details')
+
             # Create new PR
             gh pr create \
               --base main \
@@ -88,7 +91,7 @@ jobs:
 This PR will automatically publish packages to npm when merged.
 
 ### Packages to be released:
-$(npx changeset status --output /dev/stdout | grep -A 100 'packages to be bumped' || echo 'See changeset status for details')
+$PACKAGE_STATUS
 
 ---
 ⚠️ **Merging this PR will automatically publish to npm**"

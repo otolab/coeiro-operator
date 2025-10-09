@@ -533,16 +533,16 @@ server.registerTool(
         .refreshOperatorReservation()
         .then(refreshSuccess => {
           if (refreshSuccess) {
-            logger.debug(`Operator reservation refreshed for: ${currentOperator.characterId}`);
+            logger.info(`Operator reservation refreshed for: ${currentOperator.characterId}`);
           } else {
-            logger.debug(
-              `Could not refresh operator reservation for: ${currentOperator.characterId} (not critical)`
+            logger.warn(
+              `Could not refresh operator reservation for: ${currentOperator.characterId} - operator may have already expired`
             );
           }
         })
         .catch(error => {
-          logger.debug(
-            `Operator reservation refresh failed: ${(error as Error).message} (not critical)`
+          logger.error(
+            `Operator reservation refresh failed: ${(error as Error).message} - operator timeout extension failed`
           );
         });
 
