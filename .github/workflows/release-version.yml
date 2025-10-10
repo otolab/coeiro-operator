@@ -88,13 +88,13 @@ jobs:
               --title "Release v$VERSION" \
               --body "## 🚀 Release v$VERSION
 
-This PR will automatically publish packages to npm when merged.
+          This PR will automatically publish packages to npm when merged.
 
-### Packages to be released:
-$PACKAGE_STATUS
+          ### Packages to be released:
+          $PACKAGE_STATUS
 
----
-⚠️ **Merging this PR will automatically publish to npm**"
+          ---
+          ⚠️ **Merging this PR will automatically publish to npm**"
           else
             echo "PR #$PR_NUMBER already exists"
           fi
