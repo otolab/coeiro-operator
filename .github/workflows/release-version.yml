@@ -75,8 +75,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Extract version from package.json
-          VERSION=$(node -p "require('./package.json').version")
+          # Extract version from the most significant package (core)
+          VERSION=$(node -p "require('./packages/core/package.json').version")
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
 
           # Check if PR already exists

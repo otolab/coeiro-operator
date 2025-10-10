@@ -1,0 +1,84 @@
+{
+  "changesets": [
+    {
+      "releases": [
+        {
+          "name": "@coeiro-operator/core",
+          "type": "minor"
+        },
+        {
+          "name": "@coeiro-operator/cli",
+          "type": "minor"
+        },
+        {
+          "name": "@coeiro-operator/mcp",
+          "type": "minor"
+        }
+      ],
+      "summary": "オペレータ状態の保存場所を永続的な場所に変更\n\n- 保存場所を/tmpから~/.coeiro-operator/state/に変更\n- タイムアウト機能により永続保存が安全になった\n- システム再起動後もオペレータ状態が維持される\n\nBREAKING CHANGE: オペレータ状態ファイルの保存場所が変更されました。既存の/tmp内の状態は引き継がれません。",
+      "id": "changeset-0eed87"
+    },
+    {
+      "releases": [
+        {
+          "name": "@coeiro-operator/core",
+          "type": "minor"
+        },
+        {
+          "name": "@coeiro-operator/cli",
+          "type": "minor"
+        },
+        {
+          "name": "@coeiro-operator/mcp",
+          "type": "minor"
+        }
+      ],
+      "summary": "オペレータ状態の保存場所を永続的な場所に変更\n\n- 保存場所を/tmpから~/.coeiro-operator/state/に変更\n- タイムアウト機能により永続保存が安全になった\n- システム再起動後もオペレータ状態が維持される\n\nBREAKING CHANGE: オペレータ状態ファイルの保存場所が変更されました。既存の/tmp内の状態は引き継がれません。",
+      "id": "changeset-5b6f2f"
+    },
+    {
+      "releases": [],
+      "summary": "## ワークフロー修正: mainブランチへのマージ時の自動npm公開を防止\n\n### 変更内容\n- `changeset-develop.yml`から`publish`パラメータを削除\n- mainブランチへのマージでは自動公開されないように修正\n- release/*ブランチ経由でのみnpm公開される設計を明確化\n\n### 背景\n- PR #121のマージ時に意図しない自動公開が発生\n- `changesets/action@v1`がchangesetなし＝未公開パッケージ公開と判断する仕様\n- 本来の設計意図（release/*ブランチ経由のみ公開）を実現するための修正",
+      "id": "fine-icons-mate"
+    }
+  ],
+  "releases": [
+    {
+      "name": "@coeiro-operator/core",
+      "type": "minor",
+      "oldVersion": "1.0.2",
+      "changesets": [
+        "changeset-0eed87",
+        "changeset-5b6f2f"
+      ],
+      "newVersion": "1.1.0"
+    },
+    {
+      "name": "@coeiro-operator/cli",
+      "type": "minor",
+      "oldVersion": "1.0.2",
+      "changesets": [
+        "changeset-0eed87",
+        "changeset-5b6f2f"
+      ],
+      "newVersion": "1.1.0"
+    },
+    {
+      "name": "@coeiro-operator/mcp",
+      "type": "minor",
+      "oldVersion": "1.0.3",
+      "changesets": [
+        "changeset-0eed87",
+        "changeset-5b6f2f"
+      ],
+      "newVersion": "1.1.0"
+    },
+    {
+      "name": "@coeiro-operator/audio",
+      "type": "patch",
+      "oldVersion": "1.0.2",
+      "changesets": [],
+      "newVersion": "1.0.3"
+    }
+  ]
+}
