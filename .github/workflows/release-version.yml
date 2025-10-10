@@ -39,14 +39,26 @@ jobs:
       - name: Check for changesets
         id: changesets
         run: |
-          if npx changeset status --output status.json 2>/dev/null; then
+          # Try to get changeset status
+          if npx changeset status --output status.json; then
+            echo "Changeset status command succeeded"
             # Check if there are any changesets (not if releases is empty)
-            if [ -f status.json ] && grep -q '"changesets":\[\]' status.json; then
-              echo "has_changesets=false" >> $GITHUB_OUTPUT
+            if [ -f status.json ]; then
+              echo "status.json exists, checking contents..."
+              cat status.json
+              if grep -q '"changesets":\[\]' status.json; then
+                echo "No changesets found"
+                echo "has_changesets=false" >> $GITHUB_OUTPUT
+              else
+                echo "Changesets found"
+                echo "has_changesets=true" >> $GITHUB_OUTPUT
+              fi
             else
-              echo "has_changesets=true" >> $GITHUB_OUTPUT
+              echo "status.json not found"
+              echo "has_changesets=false" >> $GITHUB_OUTPUT
             fi
           else
+            echo "Changeset status command failed"
             echo "has_changesets=false" >> $GITHUB_OUTPUT
           fi
 
