@@ -40,7 +40,8 @@ jobs:
         id: changesets
         run: |
           if npx changeset status --output status.json 2>/dev/null; then
-            if [ -f status.json ] && grep -q '"releases":\[\]' status.json; then
+            # Check if there are any changesets (not if releases is empty)
+            if [ -f status.json ] && grep -q '"changesets":\[\]' status.json; then
               echo "has_changesets=false" >> $GITHUB_OUTPUT
             else
               echo "has_changesets=true" >> $GITHUB_OUTPUT
