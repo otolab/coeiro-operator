@@ -95,11 +95,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   create-release-pr:
-    name: Create Release PR
-    # release/*ブランチへの直接プッシュ時にリリースPRを作成
-    if: |
-      github.event_name == 'push' &&
-      startsWith(github.ref, 'refs/heads/release/')
+    name: Create Release PR (Disabled)
+    # このジョブは無効化されています - release-version.ymlを使用してください
+    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: write
