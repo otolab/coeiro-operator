@@ -22,6 +22,12 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Fetch main branch
+        run: |
+          git fetch origin main:main
+          echo "Available branches:"
+          git branch -a
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -39,13 +45,12 @@ jobs:
       - name: Check for changesets
         id: changesets
         run: |
-          if npx changeset status --output status.json 2>/dev/null; then
-            if [ -f status.json ] && grep -q '"releases":\[\]' status.json; then
-              echo "has_changesets=false" >> $GITHUB_OUTPUT
-            else
-              echo "has_changesets=true" >> $GITHUB_OUTPUT
-            fi
+          # Check if changesets exist in the .changeset directory
+          if ls .changeset/*.md 2>/dev/null | grep -v README.md > /dev/null; then
+            echo "Changesets found in .changeset directory"
+            echo "has_changesets=true" >> $GITHUB_OUTPUT
           else
+            echo "No changesets found in .changeset directory"
             echo "has_changesets=false" >> $GITHUB_OUTPUT
           fi
 
@@ -70,8 +75,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Extract version from package.json
-          VERSION=$(node -p "require('./package.json').version")
+          # Extract version from the most significant package (core)
+          VERSION=$(node -p "require('./packages/core/package.json').version")
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
 
           # Check if PR already exists
@@ -88,13 +93,13 @@ jobs:
               --title "Release v$VERSION" \
               --body "## 🚀 Release v$VERSION
 
-This PR will automatically publish packages to npm when merged.
+          This PR will automatically publish packages to npm when merged.
 
-### Packages to be released:
-$PACKAGE_STATUS
+          ### Packages to be released:
+          $PACKAGE_STATUS
 
----
-⚠️ **Merging this PR will automatically publish to npm**"
+          ---
+          ⚠️ **Merging this PR will automatically publish to npm**"
           else
             echo "PR #$PR_NUMBER already exists"
           fi
