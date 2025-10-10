@@ -11,6 +11,7 @@ import FileOperationManager from './file-operation-manager.js';
 import { hostname } from 'os';
 import CharacterInfoService, { Character, Style } from './character-info-service.js';
 import { getConfigDir } from '../common/config-paths.js';
+import { mkdir } from 'fs/promises';
 
 // セッション情報（キャラクターとスタイルの組み合わせ）
 interface CharacterSession {
@@ -82,12 +83,8 @@ export class OperatorManager {
   constructor() {
     this.sessionId = getSessionId();
 
-    // ファイルパス生成（tmpディレクトリ）
-    const hostnameClean = hostname().replace(/[^a-zA-Z0-9]/g, '_');
-    const filePath = `/tmp/coeiroink-operators-${hostnameClean}.json`;
-
-    // デフォルト4時間のタイムアウトでFileOperationManagerを初期化
-    this.dataStore = new FileOperationManager<CharacterSession>(filePath, this.sessionId);
+    // 初期化時は一時的にnullを設定（initializeで正式に設定）
+    this.dataStore = null as any;
     this.characterInfoService = new CharacterInfoService();
   }
 
@@ -105,21 +102,24 @@ export class OperatorManager {
       console.warn(`OperatorManager dynamic config build failed:`, (error as Error).message);
     }
 
-    // dataStoreを初期化（設定からタイムアウト取得）
-    try {
-      const timeoutMs = await this.configManager.getOperatorTimeout();
-      const hostnameClean = hostname().replace(/[^a-zA-Z0-9]/g, '_');
-      const filePath = `/tmp/coeiroink-operators-${hostnameClean}.json`;
+    // dataStoreを初期化（設定ディレクトリ内に保存）
+    const timeoutMs = await this.configManager.getOperatorTimeout();
+    const hostnameClean = hostname().replace(/[^a-zA-Z0-9]/g, '_');
 
-      this.dataStore = new FileOperationManager<CharacterSession>(
-        filePath,
-        this.sessionId,
-        timeoutMs
-      );
-    } catch (error) {
-      console.warn('OperatorManager initialization warning:', (error as Error).message);
-      // 初期化に失敗してもデフォルト設定で続行
-    }
+    // オペレータ状態を永続的に保存するディレクトリを作成
+    const operatorStateDir = join(this.configDir, 'state');
+    await mkdir(operatorStateDir, { recursive: true });
+
+    // ファイルパスを設定ディレクトリ内に変更
+    const filePath = join(operatorStateDir, `operators-${hostnameClean}.json`);
+
+    this.dataStore = new FileOperationManager<CharacterSession>(
+      filePath,
+      this.sessionId,
+      timeoutMs
+    );
+
+    console.log(`[OperatorManager] State file path: ${filePath}`);
 
     // CharacterInfoServiceを初期化
     this.characterInfoService.initialize(this.configManager, this.coeiroinkConfigFile);

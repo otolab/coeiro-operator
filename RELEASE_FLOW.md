@@ -11,9 +11,14 @@
 
 ```bash
 # 変更後、必ずChangesetを作成
-pnpm changeset:add -- \
-  --packages @coeiro-operator/audio:minor \
+node scripts/create-changeset.js \
+  --packages "@coeiro-operator/audio:minor" \
   --message "Add new feature"
+
+# または複数パッケージの場合
+node scripts/create-changeset.js \
+  --packages "@coeiro-operator/audio:minor,@coeiro-operator/cli:patch" \
+  --message "Add new feature and fix CLI bug"
 
 # コミット＆PR
 git add .
@@ -76,13 +81,50 @@ gh pr create --base main --title "Release v1.0.1" \
    - 通常のPRマージでは公開されません
    - release/*ブランチからのPRのみが公開トリガーです
 
+## Changeset作成の詳細
+
+### コマンド形式
+
+```bash
+node scripts/create-changeset.js \
+  --packages "<package-name>:<version-type>" \
+  --message "<変更内容の説明>"
+```
+
+### パラメータ
+- `--packages`: パッケージ名とバージョンタイプをコロンで区切る
+  - 複数パッケージの場合はカンマ区切り
+  - 例: `"@coeiro-operator/core:minor,@coeiro-operator/mcp:patch"`
+- `--message`: 変更内容の説明（改行可能）
+
+### 実例
+
+```bash
+# 単一パッケージのminorアップデート
+node scripts/create-changeset.js \
+  --packages "@coeiro-operator/core:minor" \
+  --message "新機能を追加しました"
+
+# 複数パッケージの更新
+node scripts/create-changeset.js \
+  --packages "@coeiro-operator/audio:minor,@coeiro-operator/cli:patch" \
+  --message "音声機能を追加し、CLIのバグを修正"
+
+# 破壊的変更の場合
+node scripts/create-changeset.js \
+  --packages "@coeiro-operator/core:minor" \
+  --message "設定ファイルの場所を変更
+
+BREAKING CHANGE: 設定ファイルの場所が変更されました"
+```
+
 ## バージョンタイプ
 
 | タイプ | 変更 | 使用場面 |
 |--------|------|----------|
 | patch | 1.0.0→1.0.1 | バグ修正 |
-| minor | 1.0.0→1.1.0 | 新機能 |
-| major | 1.0.0→2.0.0 | 破壊的変更 |
+| minor | 1.0.0→1.1.0 | 新機能、破壊的変更（0.x.xの場合） |
+| major | 1.0.0→2.0.0 | 破壊的変更（1.x.x以降） |
 
 ## 設定
 
