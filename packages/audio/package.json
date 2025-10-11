@@ -39,7 +39,7 @@
     "speaker": "^0.5.5"
   },
   "devDependencies": {
-    "@types/node": "^22.18.3",
+    "@types/node": "^20.19.21",
     "@types/wav": "^1.0.4",
     "typescript": "^5.7.3",
     "vitest": "^3.2.4"
