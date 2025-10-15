@@ -1,5 +1,8 @@
 name: Release
 
+# 緊急時の手動リリース用ワークフロー
+# 通常はrelease-version.yml（PR作成）とrelease-branch.yml（npm公開）を使用
+# このワークフローは手動実行のみで、緊急時のバックアップとして残しています
 on:
   workflow_dispatch:
     inputs:
