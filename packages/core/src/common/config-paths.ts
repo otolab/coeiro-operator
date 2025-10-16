@@ -4,13 +4,14 @@
 
 import { mkdir } from 'fs/promises';
 import { join } from 'path';
+import { homedir } from 'os';
 
 /**
  * 設定ディレクトリを決定（ホームディレクトリベース）
  */
 export async function getConfigDir(): Promise<string> {
   // ホームディレクトリの ~/.coeiro-operator/ を優先
-  const homeDir = join(process.env.HOME || process.env.USERPROFILE || '~', '.coeiro-operator');
+  const homeDir = join(homedir(), '.coeiro-operator');
 
   try {
     await mkdir(homeDir, { recursive: true });
