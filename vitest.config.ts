@@ -5,12 +5,17 @@ export default defineConfig({
     // 基本設定
     environment: 'node',
     testTimeout: 20000,
-    
+
     // テスト環境変数の設定
     env: {
       NODE_ENV: 'test',
       CI: 'true'
     },
+
+    // テスト出力制御
+    // 環境変数TEST_VERBOSEが設定されていない限りサイレントモード
+    silent: process.env.TEST_VERBOSE !== 'true',
+    reporters: process.env.TEST_VERBOSE === 'true' ? 'verbose' : 'default',
     
     // Issue #50: メモリリーク検出のためのNode.jsオプション
     // シングルスレッド実行でGCフラグ対応

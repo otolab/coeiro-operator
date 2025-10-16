@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "build": "tsc --build",
-    "test": "vitest",
+    "test": "vitest --silent",
     "test:watch": "vitest --watch",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.js",
