@@ -77,6 +77,13 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":
 - `memory-leak-detection-guide.md` - メモリリーク検出ガイド
 - `synthesis-methods-analysis.md` - 音声合成手法分析
 
+### 📊 調査レポート (`docs/reports/`)
+- `deep-research.speaker-lifecycle.v1.md` - Speakerインスタンスライフサイクル深掘り調査
+- `research-report.playback-stop.v1.md` - 音声再生停止機能の実装提案
+- `research-report.issue135-phase2.v1.md` - Issue #135 Phase 2実装調査
+- `research.audio-queue-control.v1.md` - 音声キューコントロール調査
+- `research.playback-stop.v1.md` - 再生停止機能の初期調査メモ
+
 ### 🔧 MCP Debug (`docs/mcp-debug/`)
 - `README.md` - MCP Debug概要
 - `mcp-debug-guide.md` - MCPデバッグガイド
