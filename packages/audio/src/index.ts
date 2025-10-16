@@ -154,12 +154,14 @@ export class SayCoeiroink {
 
   /**
    * キューをクリア
+   * @param taskIds 削除するタスクIDの配列（省略時は全タスク削除）
+   * @returns 削除されたタスク数
    */
-  clearSpeechQueue(): void {
+  clearSpeechQueue(taskIds?: number[]): { removedCount: number } {
     if (!this.speechQueue) {
       throw new Error('SpeechQueue is not initialized. Call initialize() first.');
     }
-    this.speechQueue.clear();
+    return this.speechQueue.clear(taskIds);
   }
 
   // ========================================================================
@@ -220,7 +222,7 @@ export class SayCoeiroink {
 
     try {
       if (this.speechQueue) {
-        this.speechQueue.clear();
+        this.speechQueue.clear(); // 全タスククリア
       }
 
       if (this.audioPlayer) {

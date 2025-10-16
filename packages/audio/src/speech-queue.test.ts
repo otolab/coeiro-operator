@@ -164,8 +164,58 @@ describe('SpeechQueue', () => {
 
       expect(speechQueue.getStatus().queueLength).toBe(3);
 
-      speechQueue.clear();
+      const result = speechQueue.clear();
 
+      expect(result.removedCount).toBe(3);
+      expect(speechQueue.getStatus().queueLength).toBe(0);
+    });
+
+    test('特定のタスクIDのみ削除できること', async () => {
+      const result1 = await speechQueue.enqueue('メッセージ1', {});
+      const result2 = await speechQueue.enqueue('メッセージ2', {});
+      const result3 = await speechQueue.enqueue('メッセージ3', {});
+
+      // メッセージ2のみ削除
+      const clearResult = speechQueue.clear([result2.taskId]);
+
+      expect(clearResult.removedCount).toBe(1);
+      expect(speechQueue.getStatus().queueLength).toBe(2);
+
+      // 残っているタスクを確認
+      const status = speechQueue.getStatus();
+      expect(status.nextTaskId).toBe(result1.taskId);
+    });
+
+    test('複数のタスクIDを同時に削除できること', async () => {
+      const result1 = await speechQueue.enqueue('メッセージ1', {});
+      const result2 = await speechQueue.enqueue('メッセージ2', {});
+      const result3 = await speechQueue.enqueue('メッセージ3', {});
+      const result4 = await speechQueue.enqueue('メッセージ4', {});
+
+      // メッセージ1と3を削除
+      const clearResult = speechQueue.clear([result1.taskId, result3.taskId]);
+
+      expect(clearResult.removedCount).toBe(2);
+      expect(speechQueue.getStatus().queueLength).toBe(2);
+    });
+
+    test('存在しないタスクIDを指定しても安全に動作すること', async () => {
+      const result1 = await speechQueue.enqueue('メッセージ1', {});
+
+      // 存在しないIDを含む削除
+      const clearResult = speechQueue.clear([result1.taskId, 99999]);
+
+      expect(clearResult.removedCount).toBe(1);
+      expect(speechQueue.getStatus().queueLength).toBe(0);
+    });
+
+    test('空の配列を指定すると全削除と同じ動作をすること', async () => {
+      await speechQueue.enqueue('メッセージ1', {});
+      await speechQueue.enqueue('メッセージ2', {});
+
+      const clearResult = speechQueue.clear([]);
+
+      expect(clearResult.removedCount).toBe(2);
       expect(speechQueue.getStatus().queueLength).toBe(0);
     });
 
@@ -186,8 +236,9 @@ describe('SpeechQueue', () => {
       // 処理開始を待機
       await new Promise(resolve => setTimeout(resolve, 50));
 
-      speechQueue.clear();
+      const result = speechQueue.clear();
 
+      expect(result.removedCount).toBeGreaterThanOrEqual(0);
       const status = speechQueue.getStatus();
       expect(status.queueLength).toBe(0);
 
