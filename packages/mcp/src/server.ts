@@ -597,7 +597,10 @@ server.registerTool(
       logger.debug('=== SAY TOOL DEBUG END ===');
 
       // 即座にレスポンスを返す（音声合成の完了を待たない）
-      const responseText = `音声合成を開始しました - オペレータ: ${currentOperator.characterId}`;
+      // タスクIDとキュー長の情報も含める
+      const responseText = `音声合成を開始しました - オペレータ: ${currentOperator.characterId}\n` +
+                         `タスクID: ${result.taskId}\n` +
+                         `キュー長: ${result.queueLength} 個`;
 
       return {
         content: [
@@ -1008,6 +1011,84 @@ server.registerTool(
     } catch (error) {
       logger.error(`Dictionary registration error:`, error);
       throw new Error(`辞書登録エラー: ${(error as Error).message}`);
+    }
+  }
+);
+
+// キュー状態確認ツール
+server.registerTool(
+  'queue_status',
+  {
+    description:
+      '音声キューの状態を確認します。現在のキュー長、処理状況、次に処理されるタスクIDを取得できます。',
+    inputSchema: {},
+  },
+  async (): Promise<ToolResponse> => {
+    try {
+      const status = sayCoeiroink.getSpeechQueueStatus();
+
+      let statusText = '📊 音声キューステータス\n\n';
+      statusText += `キュー長: ${status.queueLength} 個\n`;
+      statusText += `処理状態: ${status.isProcessing ? '🔄 処理中' : '⏸️ 待機中'}\n`;
+
+      if (status.nextTaskId !== null) {
+        statusText += `次のタスクID: ${status.nextTaskId}\n`;
+      } else {
+        statusText += `次のタスク: なし\n`;
+      }
+
+      if (status.queueLength === 0 && !status.isProcessing) {
+        statusText += '\n💡 キューは空で、待機中です。';
+      } else if (status.isProcessing) {
+        statusText += '\n⚡ 音声処理が実行中です。';
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: statusText,
+          },
+        ],
+      };
+    } catch (error) {
+      throw new Error(`キューステータス取得エラー: ${(error as Error).message}`);
+    }
+  }
+);
+
+// キュークリアツール
+server.registerTool(
+  'queue_clear',
+  {
+    description:
+      '音声キューをクリアします。待機中のすべてのタスクを削除しますが、現在再生中の音声は停止しません。',
+    inputSchema: {},
+  },
+  async (): Promise<ToolResponse> => {
+    try {
+      const statusBefore = sayCoeiroink.getSpeechQueueStatus();
+      const clearedCount = statusBefore.queueLength;
+
+      sayCoeiroink.clearSpeechQueue();
+
+      let resultText = '🗑️ キューをクリアしました\n\n';
+      resultText += `削除されたタスク数: ${clearedCount} 個\n`;
+
+      if (statusBefore.isProcessing) {
+        resultText += '\n⚠️ 注意: 現在再生中の音声は継続されます。';
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: resultText,
+          },
+        ],
+      };
+    } catch (error) {
+      throw new Error(`キュークリアエラー: ${(error as Error).message}`);
     }
   }
 );
