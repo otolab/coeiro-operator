@@ -1112,6 +1112,41 @@ server.registerTool(
   }
 );
 
+// 再生停止ツール
+server.registerTool(
+  'playback_stop',
+  {
+    description:
+      '音声再生を停止します（チャンク境界で停止）。現在再生中のチャンクは最後まで再生され、次のチャンクから停止します。キューにあるタスクは削除されません。',
+    inputSchema: {},
+  },
+  async (): Promise<ToolResponse> => {
+    try {
+      sayCoeiroink.stopPlayback();
+
+      const status = sayCoeiroink.getSpeechQueueStatus();
+
+      let resultText = '⏹️ 音声再生の停止を要求しました\n\n';
+      resultText += '⚠️ 注意:\n';
+      resultText += '- 現在再生中のチャンク（文）は最後まで再生されます\n';
+      resultText += '- 次のチャンクからは再生されません\n';
+      resultText += `- キューにある ${status.queueLength} 個のタスクは削除されていません\n\n`;
+      resultText += '💡 タスクも削除する場合は queue_clear を使用してください';
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: resultText,
+          },
+        ],
+      };
+    } catch (error) {
+      throw new Error(`再生停止エラー: ${(error as Error).message}`);
+    }
+  }
+);
+
 // サーバーの起動
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();

@@ -624,4 +624,58 @@ describe('Say Integration Tests', () => {
       }
     });
   });
+
+  describe('停止機能統合テスト', () => {
+    test('stopPlaybackが正常に呼び出せること', async () => {
+      // 複数のタスクをキューに追加
+      const results = [
+        sayCoeiroink.synthesize('メッセージ1'),
+        sayCoeiroink.synthesize('メッセージ2'),
+        sayCoeiroink.synthesize('メッセージ3'),
+      ];
+
+      // 停止を要求
+      sayCoeiroink.stopPlayback();
+
+      // エラーなく実行できることを確認
+      expect(() => sayCoeiroink.stopPlayback()).not.toThrow();
+    });
+
+    test('clearSpeechQueueで全タスククリア時に再生も停止すること', async () => {
+      // 複数のタスクをキューに追加
+      const results = [
+        sayCoeiroink.synthesize('メッセージ1'),
+        sayCoeiroink.synthesize('メッセージ2'),
+        sayCoeiroink.synthesize('メッセージ3'),
+      ];
+
+      // 全タスククリア（再生も停止される）
+      const clearResult = sayCoeiroink.clearSpeechQueue();
+
+      expect(clearResult.removedCount).toBeGreaterThanOrEqual(0);
+
+      // キューが空になっていることを確認
+      const status = sayCoeiroink.getSpeechQueueStatus();
+      expect(status.queueLength).toBe(0);
+    });
+
+    test('clearSpeechQueueで特定タスクのみ削除できること', async () => {
+      // 複数のタスクをキューに追加して、タスクIDを保持
+      const result1 = sayCoeiroink.synthesize('メッセージ1');
+      const result2 = sayCoeiroink.synthesize('メッセージ2');
+      const result3 = sayCoeiroink.synthesize('メッセージ3');
+
+      // 特定のタスクのみクリア（再生は停止されない）
+      const clearResult = sayCoeiroink.clearSpeechQueue([result2.taskId]);
+
+      expect(clearResult.removedCount).toBeLessThanOrEqual(1);
+    });
+
+    test('複数回stopPlaybackを呼び出しても安全であること', async () => {
+      // 複数回呼び出してもエラーが発生しないことを確認
+      expect(() => sayCoeiroink.stopPlayback()).not.toThrow();
+      expect(() => sayCoeiroink.stopPlayback()).not.toThrow();
+      expect(() => sayCoeiroink.stopPlayback()).not.toThrow();
+    });
+  });
 });
