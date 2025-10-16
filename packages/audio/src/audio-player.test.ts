@@ -8,6 +8,7 @@ import type Speaker from 'speaker';
 import { readFile, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
+import { EventEmitter } from 'events';
 
 // モックの設定
 vi.mock('speaker', () => ({
@@ -166,9 +167,77 @@ describe('AudioPlayer', () => {
       );
     });
 
-    test.skip('Speaker再生エラー発生時のエラーハンドリング', async () => {
-      // 環境変数モックではエラーイベントが発生しないためスキップ
-      // forTestsモックを使う場合、Streamインターフェース全体の実装が必要
+    test('Speaker再生エラー発生時のエラーハンドリング', async () => {
+      // AudioPlayerを初期化
+      await audioPlayer.initialize();
+
+      // エラーを発生させるモックSpeakerを作成
+      const mockSpeaker = new EventEmitter() as any;
+      const errorHandlers: { [key: string]: Function } = {};
+
+      mockSpeaker.write = vi.fn().mockReturnValue(true);
+      mockSpeaker.end = vi.fn((chunk?: any, encoding?: any, callback?: any) => {
+        let cb;
+        if (typeof chunk === 'function') {
+          cb = chunk;
+        } else if (typeof encoding === 'function') {
+          cb = encoding;
+        } else {
+          cb = callback;
+        }
+
+        // エラーハンドラが登録されていればエラーを発火
+        setImmediate(() => {
+          if (errorHandlers.error) {
+            errorHandlers.error(new Error('Mock Speaker error'));
+          }
+        });
+
+        if (cb) cb();
+      });
+
+      // onceメソッドをモックしてハンドラを記録
+      mockSpeaker.once = vi.fn((event: string, handler: Function) => {
+        errorHandlers[event] = handler;
+        return mockSpeaker;
+      });
+
+      mockSpeaker.removeAllListeners = vi.fn(() => mockSpeaker);
+      mockSpeaker.pipe = vi.fn((destination: any) => destination);
+      mockSpeaker.unpipe = vi.fn(() => mockSpeaker);
+      mockSpeaker._writableState = { ended: false };
+      mockSpeaker.writable = true;
+      mockSpeaker.destroyed = false;
+      mockSpeaker.destroy = vi.fn();
+
+      // テスト用モックSpeakerを設定
+      forTests.mockSpeakerInstance = mockSpeaker;
+
+      // テスト用のAudioResultを作成
+      const buffer = new ArrayBuffer(44 + 1000);
+      const view = new DataView(buffer);
+
+      // RIFFヘッダー
+      view.setUint32(0, 0x52494646, false); // "RIFF"
+      view.setUint32(4, buffer.byteLength - 8, true);
+      view.setUint32(8, 0x57415645, false); // "WAVE"
+
+      // dataチャンク
+      view.setUint32(36, 0x64617461, false); // "data"
+      view.setUint32(40, 1000, true);
+
+      const audioResult: AudioResult = {
+        chunk: { text: 'test', index: 0, isFirst: true, isLast: true, overlap: 0 },
+        audioBuffer: buffer,
+        latency: 100,
+      };
+
+      // Speakerエラーが適切にハンドリングされることを確認
+      await expect(audioPlayer.playAudioStream(audioResult)).rejects.toThrow('Mock Speaker error');
+
+      // モックが適切に呼ばれたことを確認
+      expect(mockSpeaker.end).toHaveBeenCalled();
+      expect(mockSpeaker.once).toHaveBeenCalledWith('error', expect.any(Function));
     });
   });
 
