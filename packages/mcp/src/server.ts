@@ -1062,18 +1062,37 @@ server.registerTool(
   'queue_clear',
   {
     description:
-      '音声キューをクリアします。待機中のすべてのタスクを削除しますが、現在再生中の音声は停止しません。',
-    inputSchema: {},
+      '音声キューをクリアします。taskIdsを指定すると特定のタスクのみ削除できます。省略時は全タスクを削除します。現在再生中の音声は停止しません。',
+    inputSchema: {
+      taskIds: z
+        .array(z.number())
+        .optional()
+        .describe('削除するタスクIDのリスト（省略時は全タスク削除）'),
+    },
   },
-  async (): Promise<ToolResponse> => {
+  async (args): Promise<ToolResponse> => {
+    const { taskIds } = args || {};
+
     try {
       const statusBefore = sayCoeiroink.getSpeechQueueStatus();
-      const clearedCount = statusBefore.queueLength;
+      const result = sayCoeiroink.clearSpeechQueue(taskIds);
 
-      sayCoeiroink.clearSpeechQueue();
+      let resultText: string;
 
-      let resultText = '🗑️ キューをクリアしました\n\n';
-      resultText += `削除されたタスク数: ${clearedCount} 個\n`;
+      if (taskIds && taskIds.length > 0) {
+        // 特定タスクの削除
+        resultText = '🗑️ 指定されたタスクを削除しました\n\n';
+        resultText += `削除されたタスク数: ${result.removedCount} 個\n`;
+        resultText += `指定されたタスクID: ${taskIds.join(', ')}\n`;
+
+        if (result.removedCount < taskIds.length) {
+          resultText += `\n⚠️ 一部のタスクIDが見つかりませんでした。`;
+        }
+      } else {
+        // 全タスクの削除
+        resultText = '🗑️ キューをクリアしました\n\n';
+        resultText += `削除されたタスク数: ${result.removedCount} 個\n`;
+      }
 
       if (statusBefore.isProcessing) {
         resultText += '\n⚠️ 注意: 現在再生中の音声は継続されます。';

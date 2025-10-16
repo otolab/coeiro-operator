@@ -158,9 +158,30 @@ export class SpeechQueue {
 
   /**
    * キューをクリア
+   * @param taskIds 削除するタスクIDの配列（省略時は全タスク削除）
+   * @returns 削除されたタスク数
    */
-  clear(): void {
-    this.speechQueue = [];
-    this.isProcessing = false;
+  clear(taskIds?: number[]): { removedCount: number } {
+    if (!taskIds || taskIds.length === 0) {
+      // 既存の動作：全タスククリア
+      const count = this.speechQueue.length;
+      this.speechQueue = [];
+      this.isProcessing = false;
+      return { removedCount: count };
+    }
+
+    // 新機能：指定タスクのみ削除
+    const before = this.speechQueue.length;
+    this.speechQueue = this.speechQueue.filter(
+      task => !taskIds.includes(task.id)
+    );
+    const removedCount = before - this.speechQueue.length;
+
+    // キューが空になった場合は処理中フラグもリセット
+    if (this.speechQueue.length === 0) {
+      this.isProcessing = false;
+    }
+
+    return { removedCount };
   }
 }
