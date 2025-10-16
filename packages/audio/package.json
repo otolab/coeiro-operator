@@ -25,7 +25,8 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.js",
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
-    "prepublishOnly": "pnpm build"
+    "prepublishOnly": "pnpm build",
+    "postinstall": "node scripts/speaker-build.js || true"
   },
   "dependencies": {
     "@coeiro-operator/common": "workspace:*",
@@ -33,10 +34,8 @@
     "dsp.js": "^1.0.1",
     "echogarden": "^2.10.1",
     "node-fetch": "^3.3.2",
+    "speaker": "^0.5.5",
     "wav": "^1.0.2"
-  },
-  "optionalDependencies": {
-    "speaker": "^0.5.5"
   },
   "devDependencies": {
     "@types/node": "^22.18.3",
