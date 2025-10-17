@@ -79,8 +79,10 @@ vi.mock('@coeiro-operator/core', () => ({
     }),
   })),
 }));
-vi.mock('speaker', () => ({
-  default: vi.fn(),
+vi.mock('@echogarden/audio-io', () => ({
+  createAudioOutput: vi.fn().mockImplementation(async (config, handler) => ({
+    dispose: vi.fn(),
+  })),
 }));
 vi.mock('echogarden', () => ({
   default: {},
@@ -154,20 +156,6 @@ describe('エラーハンドリング統合テスト', () => {
 
     // OperatorManagerモックを設定
     (OperatorManager as unknown).mockImplementation(() => mockOperatorManager);
-
-    // Speaker モック設定
-    const SpeakerModule = await vi.importMock('speaker');
-    const MockSpeaker = SpeakerModule.default as unknown;
-    MockSpeaker.mockImplementation(() => ({
-      write: vi.fn(),
-      end: vi.fn(),
-      on: vi.fn((event, handler) => {
-        if (event === 'close') {
-          setTimeout(handler, 10);
-        }
-      }),
-      destroy: vi.fn(),
-    }));
 
     // fetchモックを設定（speakers APIは成功させる）
     vi.mocked(global.fetch).mockImplementation((url: string) => {
@@ -356,11 +344,10 @@ describe('エラーハンドリング統合テスト', () => {
   });
 
   describe('音声処理エラー処理', () => {
-    test('Speakerライブラリエラー時の適切な処理', async () => {
-      // Speakerエラーをシミュレート
-      const SpeakerModule = await vi.importMock('speaker');
-      const MockSpeaker = SpeakerModule.default as unknown;
-      MockSpeaker.mockImplementation(() => {
+    test('@echogarden/audio-ioライブラリエラー時の適切な処理', async () => {
+      // @echogarden/audio-ioエラーをシミュレート
+      const audioIoModule = await vi.importMock('@echogarden/audio-io');
+      audioIoModule.createAudioOutput.mockImplementation(async () => {
         throw new Error('Hardware audio device failure');
       });
 
