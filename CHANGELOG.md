@@ -154,6 +154,12 @@ await sayCoeiroink.synthesizeText("短いレスポンス", {
 
 ## [Unreleased]
 
+### 🧪 Testing & Quality
+- **テスト出力制御**: 環境変数`TEST_VERBOSE`によるサイレント/詳細モード切り替え
+  - デフォルトでサイレントモード（最小限の出力）
+  - `TEST_VERBOSE=true`で詳細出力（個別テスト名、実行時間、ログ）
+  - 全パッケージで一貫した出力制御を実現
+
 ### 🔮 Future Plans
 - Web Audio API対応による高度な音声制御
 - リアルタイム音声エフェクト

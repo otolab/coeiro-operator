@@ -36,6 +36,13 @@
 - [ロギングガイドライン](development/logging-guidelines.md) - ログ出力
 - [メモリリーク検出ガイド](development/memory-leak-detection-guide.md) - メモリ管理
 
+### 📊 [調査レポート](reports/)
+技術調査と実装提案
+- [Speakerライフサイクル調査](reports/deep-research.speaker-lifecycle.v1.md) - インスタンス管理
+- [再生停止機能提案](reports/research-report.playback-stop.v1.md) - 実装設計
+- [Issue #135 Phase 2調査](reports/research-report.issue135-phase2.v1.md) - キューキャンセル
+- [音声キューコントロール調査](reports/research.audio-queue-control.v1.md) - キュー管理
+
 ### 🔧 [MCP Debug](mcp-debug/)
 MCPデバッグツール関連
 - [README](mcp-debug/README.md) - 概要

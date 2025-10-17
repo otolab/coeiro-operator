@@ -161,7 +161,27 @@ export class SayCoeiroink {
     if (!this.speechQueue) {
       throw new Error('SpeechQueue is not initialized. Call initialize() first.');
     }
+
+    // 全タスククリアまたはタスクが残らない場合は再生も停止
+    if (!taskIds || taskIds.length === 0) {
+      // 全タスククリアの場合は再生も停止
+      if (this.audioPlayer) {
+        this.audioPlayer.stopPlayback();
+      }
+    }
+
     return this.speechQueue.clear(taskIds);
+  }
+
+  /**
+   * 音声再生を停止（チャンク境界で停止）
+   * 現在再生中のチャンクは最後まで再生され、次のチャンクから停止します
+   */
+  stopPlayback(): void {
+    if (!this.audioPlayer) {
+      throw new Error('AudioPlayer is not initialized. Call initialize() first.');
+    }
+    this.audioPlayer.stopPlayback();
   }
 
   // ========================================================================

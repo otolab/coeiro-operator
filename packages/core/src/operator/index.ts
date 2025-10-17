@@ -77,14 +77,14 @@ export class OperatorManager {
   private configDir: string | null = null;
   private coeiroinkConfigFile: string | null = null;
   private configManager: ConfigManager | null = null;
-  private dataStore: FileOperationManager<CharacterSession>;
+  private dataStore: FileOperationManager<CharacterSession> | null = null;
   private characterInfoService: CharacterInfoService;
 
   constructor() {
     this.sessionId = getSessionId();
 
-    // 初期化時は一時的にnullを設定（initializeで正式に設定）
-    this.dataStore = null as any;
+    // 初期化時はnullを設定（initializeで正式に設定）
+    this.dataStore = null;
     this.characterInfoService = new CharacterInfoService();
   }
 
@@ -162,7 +162,7 @@ export class OperatorManager {
    * 利用可能なオペレータを取得（仕事中のオペレータ情報も含む）
    */
   async getAvailableOperators(): Promise<{ available: string[]; busy: string[] }> {
-    if (!this.configManager) {
+    if (!this.configManager || !this.dataStore) {
       throw new Error('State manager is not initialized');
     }
 
@@ -188,6 +188,9 @@ export class OperatorManager {
     styleId?: number,
     styleName?: string
   ): Promise<boolean> {
+    if (!this.dataStore) {
+      throw new Error('State manager is not initialized');
+    }
     try {
       await this.dataStore.store({ characterId, styleId, styleName });
       return true;
@@ -214,6 +217,9 @@ export class OperatorManager {
 
     const characterId = operatorSession.characterId;
 
+    if (!this.dataStore) {
+      throw new Error('State manager is not initialized');
+    }
     await this.dataStore.remove();
 
     // お別れの挨拶情報を取得
@@ -239,6 +245,9 @@ export class OperatorManager {
    * 全ての利用状況をクリア
    */
   async clearAllOperators(): Promise<boolean> {
+    if (!this.dataStore) {
+      throw new Error('State manager is not initialized');
+    }
     await this.dataStore.clear();
     return true;
   }
@@ -247,6 +256,9 @@ export class OperatorManager {
    * 現在のセッションに割り当てられたオペレータIDを取得
    */
   async getCurrentOperatorId(): Promise<string | null> {
+    if (!this.dataStore) {
+      return null;
+    }
     const session = await this.dataStore.restore();
     return session ? session.characterId : null;
   }
@@ -255,6 +267,9 @@ export class OperatorManager {
    * 現在のセッション情報を取得
    */
   async getCurrentOperatorSession(): Promise<CharacterSession | null> {
+    if (!this.dataStore) {
+      return null;
+    }
     return this.dataStore.restore();
   }
 
@@ -284,6 +299,9 @@ export class OperatorManager {
         return null;
       }
 
+      if (!this.dataStore) {
+        return null;
+      }
       await this.dataStore.remove();
       return currentSession.characterId;
     } catch {
@@ -452,6 +470,11 @@ export class OperatorManager {
     if (!operatorSession) {
       console.log('[OperatorManager] Cannot refresh - no operator assigned');
       return false; // オペレータが割り当てられていない
+    }
+
+    if (!this.dataStore) {
+      console.log('[OperatorManager] Cannot refresh - dataStore not initialized');
+      return false;
     }
 
     console.log(`[OperatorManager] Refreshing reservation for: ${operatorSession.characterId}`);

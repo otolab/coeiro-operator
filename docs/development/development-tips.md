@@ -35,7 +35,8 @@ pnpm build
 pnpm type-check
 
 # テスト実行
-pnpm test                        # 単体テスト
+pnpm test                        # 単体テスト（サイレントモード）
+TEST_VERBOSE=true pnpm test      # 単体テスト（詳細出力）
 pnpm test:e2e                   # E2Eテスト
 ./scripts/test-mcp-debug.sh    # MCPデバッグテスト
 ```

@@ -39,6 +39,9 @@ export class AudioPlayer {
   private audioConfig: AudioConfig;
   private config: Config;
 
+  // チャンク境界での停止制御フラグ
+  private shouldStop: boolean = false;
+
   /**
    * AudioPlayerの初期化
    */
@@ -219,11 +222,11 @@ export class AudioPlayer {
     const streamSpeaker = await this.createSpeaker(this.playbackRate, BUFFER_SIZES.DEFAULT);
 
     return new Promise((resolve, reject) => {
-      streamSpeaker.on('close', () => {
+      streamSpeaker.once('close', () => {
         resolve();
       });
 
-      streamSpeaker.on('error', (error: Error) => {
+      streamSpeaker.once('error', (error: Error) => {
         logger.error(`ストリームスピーカーエラー: ${error.message}`);
         reject(new Error(`音声再生エラー: ${error.message}`));
       });
@@ -377,7 +380,16 @@ export class AudioPlayer {
         throw new Error('AudioPlayer is not initialized');
       }
 
+      // 再生開始時に停止フラグをリセット
+      this.shouldStop = false;
+
       for await (const audioResult of audioStream) {
+        // チャンク境界で停止チェック
+        if (this.shouldStop) {
+          logger.info('チャンク境界で再生を停止しました');
+          break;
+        }
+
         // PCMデータを抽出して即座に再生
         await this.playAudioStream(audioResult, bufferSize);
       }
@@ -386,42 +398,6 @@ export class AudioPlayer {
     }
   }
 
-  /**
-   * 並列ストリーミング再生（最初のチャンクから再生開始、以降は自動継続）
-   */
-  async playStreamingAudioParallel(audioStream: AsyncGenerator<AudioResult>): Promise<void> {
-    try {
-      if (!this.isInitialized) {
-        throw new Error('AudioPlayer is not initialized');
-      }
-
-      const playQueue: Promise<void>[] = [];
-
-      for await (const audioResult of audioStream) {
-        // 各チャンクを非同期で再生（順序は保たない、低レイテンシ優先）
-        const playPromise = this.playAudioStream(audioResult).catch((error: Error) => {
-          logger.warn(`チャンク${audioResult.chunk.index}再生エラー:`, error);
-        });
-
-        playQueue.push(playPromise);
-
-        // 最大3チャンクまでの並列再生
-        if (playQueue.length >= 3) {
-          await Promise.race(playQueue);
-          // 完了したプロミスを削除
-          const completedIndex = playQueue.findIndex(p => p === Promise.resolve());
-          if (completedIndex !== -1) {
-            playQueue.splice(completedIndex, 1);
-          }
-        }
-      }
-
-      // 残りのチャンクの再生完了を待機
-      await Promise.all(playQueue);
-    } catch (error) {
-      throw new Error(`並列ストリーミング音声再生エラー: ${(error as Error).message}`);
-    }
-  }
 
   /**
    * Speakerインスタンスを作成（環境変数によるモック対応）
@@ -807,6 +783,15 @@ export class AudioPlayer {
       logger.warn(`ドライバーウォームアップエラー: ${(error as Error).message}`);
       // エラーが発生しても処理を継続（ウォームアップは補助機能）
     }
+  }
+
+  /**
+   * 音声再生の停止（チャンク境界で停止）
+   * 現在再生中のチャンクは最後まで再生され、次のチャンクから停止します
+   */
+  async stopPlayback(): Promise<void> {
+    logger.info('音声再生の停止要求を受信しました');
+    this.shouldStop = true;
   }
 
   /**

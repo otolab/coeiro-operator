@@ -60,6 +60,41 @@ pnpm test:mcp-debug
 pnpm test
 ```
 
+### 📢 テスト出力制御
+
+テストはデフォルトでサイレントモード（最小限の出力）で実行されます。詳細な出力が必要な場合は環境変数 `TEST_VERBOSE` を使用します。
+
+```bash
+# サイレントモード（デフォルト）
+pnpm test
+
+# 詳細モード（個別テストとログ出力を表示）
+TEST_VERBOSE=true pnpm test
+
+# 特定パッケージの詳細出力
+TEST_VERBOSE=true pnpm test:audio
+```
+
+#### 出力モードの違い
+
+| モード | 環境変数 | 出力内容 |
+|---|---|---|
+| サイレント | 未設定または `TEST_VERBOSE=false` | テストファイル名と総計のみ |
+| 詳細 | `TEST_VERBOSE=true` | 個別テスト名、実行時間、ログ出力 |
+
+#### パッケージごとの設定
+
+各パッケージの `package.json` で `test` スクリプトに `--silent` オプションが設定されています：
+
+```json
+{
+  "scripts": {
+    "test": "vitest --silent",
+    "test:watch": "vitest --watch"
+  }
+}
+```
+
 ### カバレッジ付きテスト
 
 ```bash
@@ -168,8 +203,14 @@ await testRunner.startEchoServer(true); // デバッグモード
 # 詳細ログでテスト実行
 DEBUG=* pnpm test:mcp-debug:enhanced
 
+# TEST_VERBOSEと組み合わせて使用
+TEST_VERBOSE=true DEBUG=* pnpm test
+
 # 特定ファイルのみ
 pnpm test src/core/say/mcp-debug-enhanced.test.ts -- --verbose
+
+# Vitestのレポーター指定（TEST_VERBOSEを上書き）
+pnpm test -- --reporter=verbose
 ```
 
 ## 📈 パフォーマンス最適化
