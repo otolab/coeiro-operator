@@ -1,15 +1,14 @@
 /**
  * src/say/audio-player.ts: 音声再生管理
- * speakerライブラリによるネイティブ音声出力を担当
+ * @echogarden/audio-ioによる音声出力を担当
  */
 
 import { writeFile } from 'fs/promises';
 import * as Echogarden from 'echogarden';
 // @ts-ignore - dsp.jsには型定義がない
 import DSP from 'dsp.js';
-import type Speaker from 'speaker';
 import { Transform } from 'stream';
-import { EventEmitter } from 'events';
+import { createAudioOutput, type AudioOutput } from '@echogarden/audio-io';
 import type { AudioResult, Chunk, Config, AudioConfig } from './types.js';
 import { logger } from '@coeiro-operator/common';
 import {
@@ -20,11 +19,6 @@ import {
   CROSSFADE_SETTINGS,
   PADDING_SETTINGS,
 } from './constants.js';
-
-// テスト用のモックインスタンスを外部から注入可能にする
-export const forTests = {
-  mockSpeakerInstance: null as any,
-};
 
 export class AudioPlayer {
   private synthesisRate: number = SAMPLE_RATES.SYNTHESIS;
@@ -41,6 +35,11 @@ export class AudioPlayer {
 
   // チャンク境界での停止制御フラグ
   private shouldStop: boolean = false;
+
+  // @echogarden/audio-io関連
+  private audioOutput: AudioOutput | null = null;
+  private chunkQueue: Int16Array[] = [];
+  private currentChunkOffset: number = 0;
 
   /**
    * AudioPlayerの初期化
@@ -165,8 +164,9 @@ export class AudioPlayer {
       }
 
       logger.info(
-        `音声プレーヤー初期化: speakerライブラリ使用（ネイティブ出力）${this.noiseReductionEnabled ? ' + Echogarden' : ''} - Speaker遅延初期化`
+        `音声プレーヤー初期化: @echogarden/audio-io使用（プリコンパイル済みバイナリ）${this.noiseReductionEnabled ? ' + Echogarden' : ''}`
       );
+
       this.isInitialized = true;
       return true;
     } catch (error) {
@@ -213,61 +213,67 @@ export class AudioPlayer {
 
   /**
    * ストリーミング音声処理パイプライン
-   * 処理順序: 1) リサンプリング 2) ローパスフィルター 3) ノイズリダクション 4) Speaker出力
+   * 処理順序: 1) リサンプリング 2) ローパスフィルター 3) ノイズリダクション 4) 出力
    */
   private async processAudioStreamPipeline(pcmData: Uint8Array): Promise<void> {
     logger.log('高品質音声処理パイプライン開始');
 
-    // Speakerインスタンスを新規作成（エラーは上位に伝播）
-    let streamSpeaker: Speaker;
+    // Transform streamを通して処理し、最終的にキューに追加
+    const processedChunks: Buffer[] = [];
+
     try {
-      streamSpeaker = await this.createSpeaker(this.playbackRate, BUFFER_SIZES.DEFAULT);
-    } catch (error) {
-      logger.error(`Stream speaker creation failed: ${(error as Error).message}`);
-      throw error;
-    }
+      // 1. リサンプリング（Transform stream）
+      const resampleTransform = this.createResampleTransform();
 
-    return new Promise((resolve, reject) => {
-      streamSpeaker.once('close', () => {
-        resolve();
-      });
+      // 2. ローパスフィルター（Transform stream）
+      const lowpassTransform = this.createLowpassTransform();
 
-      streamSpeaker.once('error', (error: Error) => {
-        logger.error(`ストリームスピーカーエラー: ${error.message}`);
-        reject(new Error(`音声再生エラー: ${error.message}`));
-      });
+      // 3. ノイズリダクション（Transform stream）
+      const noiseReductionTransform = this.createNoiseReductionTransform();
 
-      try {
-        // 1. リサンプリング（Transform stream）
-        const resampleTransform = this.createResampleTransform();
+      // パイプライン構築: リサンプリング → ローパス → ノイズ除去
+      let pipeline = resampleTransform;
 
-        // 2. ローパスフィルター（Transform stream）
-        const lowpassTransform = this.createLowpassTransform();
+      if (this.lowpassFilterEnabled) {
+        pipeline = pipeline.pipe(lowpassTransform);
+      }
 
-        // 3. ノイズリダクション（Transform stream）
-        const noiseReductionTransform = this.createNoiseReductionTransform();
+      if (this.noiseReductionEnabled) {
+        pipeline = pipeline.pipe(noiseReductionTransform);
+      }
 
-        // パイプライン構築: リサンプリング → ローパス → ノイズ除去 → Speaker
-        let pipeline = resampleTransform;
+      // パイプラインの出力を収集
+      return new Promise((resolve, reject) => {
+        pipeline.on('data', (chunk: Buffer) => {
+          processedChunks.push(chunk);
+        });
 
-        if (this.lowpassFilterEnabled) {
-          pipeline = pipeline.pipe(lowpassTransform);
-        }
+        pipeline.on('end', async () => {
+          // すべての処理済みデータを結合
+          const combinedBuffer = Buffer.concat(processedChunks);
+          const int16Data = this.convertToInt16Array(new Uint8Array(combinedBuffer));
 
-        if (this.noiseReductionEnabled) {
-          pipeline = pipeline.pipe(noiseReductionTransform);
-        }
+          // AudioOutputを遅延作成
+          await this.ensureAudioOutput();
 
-        pipeline.pipe(streamSpeaker);
+          // チャンクをキューに追加
+          this.chunkQueue.push(int16Data);
+          logger.debug(`処理済みチャンクをキューに追加、現在のキューサイズ: ${this.chunkQueue.length}`);
+
+          resolve();
+        });
+
+        pipeline.on('error', (error: Error) => {
+          reject(new Error(`パイプライン処理エラー: ${error.message}`));
+        });
 
         // PCMデータをパイプラインに送信
         resampleTransform.write(Buffer.from(pcmData));
         resampleTransform.end();
-      } catch (error) {
-        logger.error(`パイプライン構築エラー: ${(error as Error).message}`);
-        reject(new Error(`パイプライン構築エラー: ${(error as Error).message}`));
-      }
-    });
+      });
+    } catch (error) {
+      throw new Error(`パイプライン構築エラー: ${(error as Error).message}`);
+    }
   }
 
   /**
@@ -399,167 +405,154 @@ export class AudioPlayer {
         // PCMデータを抽出して即座に再生
         await this.playAudioStream(audioResult, bufferSize);
       }
+
+      // すべてのチャンクが再生されるまで待機
+      await this.waitForCompletion();
     } catch (error) {
       throw new Error(`ストリーミング音声再生エラー: ${(error as Error).message}`);
     }
   }
 
+  /**
+   * キューが空になるまで待機（@echogarden/audio-io用）
+   */
+  private async waitForCompletion(): Promise<void> {
+    if (!this.audioOutput) return;
+
+    return new Promise((resolve) => {
+      const checkInterval = setInterval(() => {
+        if (this.chunkQueue.length === 0 && this.currentChunkOffset === 0) {
+          clearInterval(checkInterval);
+          resolve();
+        }
+      }, 50); // 50msごとにチェック
+    });
+  }
+
 
   /**
-   * Speakerインスタンスを作成（環境変数によるモック対応）
+   * @echogarden/audio-io用のaudioOutputを遅延作成
    */
-  private async createSpeaker(sampleRate: number, bufferSize: number): Promise<Speaker> {
-    logger.debug(
-      `新しいSpeaker作成: ${sampleRate}Hz, ${this.channels}ch, ${this.bitDepth}bit, buffer:${bufferSize}`
-    );
-    
-    const config = {
-      channels: this.channels,
-      bitDepth: this.bitDepth,
-      sampleRate: sampleRate,
-      highWaterMark: bufferSize,
-    };
-    
-    // テスト用のモックインスタンスが設定されている場合はそれを返す
-    if (forTests.mockSpeakerInstance) {
-      logger.debug('Using forTests.mockSpeakerInstance');
-      return forTests.mockSpeakerInstance;
+  private async ensureAudioOutput(): Promise<void> {
+    if (!this.audioOutput) {
+      logger.debug('AudioOutput作成中...');
+
+      // bufferDurationの計算（latencyModeに基づく）
+      let bufferDuration: number;
+      switch (this.audioConfig.latencyMode) {
+        case 'ultra-low':
+          bufferDuration = 20; // 20ms
+          break;
+        case 'quality':
+          bufferDuration = 200; // 200ms
+          break;
+        default: // balanced
+          bufferDuration = 100; // 100ms
+      }
+
+      this.audioOutput = await createAudioOutput({
+        sampleRate: this.playbackRate,
+        channelCount: this.channels,
+        bufferDuration,
+      }, this.audioOutputHandler);
+
+      logger.info(`AudioOutput作成完了: ${this.playbackRate}Hz, ${this.channels}ch, buffer: ${bufferDuration}ms`);
     }
-    
-    // CI環境またはテスト環境でモックSpeakerを返す
-    const isTestEnv = process.env.NODE_ENV === 'test';
-    const isCIEnv = process.env.CI === 'true';
-    
-    logger.debug(`Environment check - NODE_ENV: ${process.env.NODE_ENV}, CI: ${process.env.CI}, isTestEnv: ${isTestEnv}, isCIEnv: ${isCIEnv}`);
-    
-    if (isTestEnv || isCIEnv) {
-      logger.debug('Using mock Speaker for test/CI environment');
-      const mockSpeaker = new EventEmitter() as any;
-      
-      // Writable Streamの基本メソッド
-      mockSpeaker.write = (chunk: any, encoding?: any, callback?: any) => {
-        const cb = typeof encoding === 'function' ? encoding : callback;
-        if (cb) cb();
-        return true;
-      };
-      
-      mockSpeaker.end = (chunk?: any, encoding?: any, callback?: any) => {
-        let cb;
-        if (typeof chunk === 'function') {
-          cb = chunk;
-        } else if (typeof encoding === 'function') {
-          cb = encoding;
-        } else {
-          cb = callback;
+  }
+
+  /**
+   * @echogarden/audio-io用のコールバックハンドラ
+   */
+  private audioOutputHandler = (outputBuffer: Int16Array): void => {
+    let bufferOffset = 0;
+
+    while (bufferOffset < outputBuffer.length && !this.shouldStop) {
+      if (this.chunkQueue.length > 0) {
+        const currentChunk = this.chunkQueue[0];
+        const remainingInChunk = currentChunk.length - this.currentChunkOffset;
+        const remainingInBuffer = outputBuffer.length - bufferOffset;
+        const copyLength = Math.min(remainingInChunk, remainingInBuffer);
+
+        // データをコピー
+        outputBuffer.set(
+          currentChunk.subarray(this.currentChunkOffset, this.currentChunkOffset + copyLength),
+          bufferOffset
+        );
+
+        bufferOffset += copyLength;
+        this.currentChunkOffset += copyLength;
+
+        // チャンクを使い切ったら次へ
+        if (this.currentChunkOffset >= currentChunk.length) {
+          this.chunkQueue.shift();
+          this.currentChunkOffset = 0;
+          logger.debug(`チャンク消費完了、残りキュー: ${this.chunkQueue.length}`);
         }
-        
-        // endが呼ばれたら少し遅延してcloseイベントを発火
-        setImmediate(() => {
-          mockSpeaker.emit('close');
-        });
-        
-        if (cb) cb();
-      };
-      
-      // EventEmitterのメソッド
-      mockSpeaker.removeAllListeners = () => mockSpeaker;
-      
-      // pipe関連のメソッド（Transform Streamとの連携用）
-      mockSpeaker.pipe = (destination: any) => destination;
-      mockSpeaker.unpipe = () => mockSpeaker;
-      
-      // Writable Streamの状態
-      mockSpeaker._writableState = { ended: false };
-      mockSpeaker.writable = true;
-      mockSpeaker.destroyed = false;
-      
-      // destroyメソッド（リソース解放用）
-      mockSpeaker.destroy = (error?: Error) => {
-        mockSpeaker.destroyed = true;
-        if (error) {
-          mockSpeaker.emit('error', error);
-        }
-        mockSpeaker.emit('close');
-      };
-      
-      return mockSpeaker;
+      } else {
+        // キューが空なら無音で埋める
+        outputBuffer.fill(0, bufferOffset);
+        break;
+      }
     }
 
-    // 本番環境では実際のSpeakerを動的インポート
-    try {
-      logger.debug('Dynamically importing real Speaker (production mode)');
-      const SpeakerModule = await import('speaker');
-      const SpeakerClass = SpeakerModule.default || SpeakerModule;
-      return new SpeakerClass(config) as Speaker;
-    } catch (error) {
-      const errorMessage = `Failed to import Speaker module: ${(error as Error).message}`;
-      logger.error(errorMessage);
-
-      // 本番環境でSpeakerがロードできない場合は致命的エラー
-      throw new Error(
-        'CRITICAL: Audio output module (speaker) is not available.\n' +
-        'This tool requires the speaker module to function properly.\n' +
-        'Please install it with: npm install speaker\n' +
-        'Note: Audio device drivers must be available on your system.\n' +
-        `Error details: ${errorMessage}`
-      );
+    // 停止フラグが立っていたら無音で埋める
+    if (this.shouldStop) {
+      outputBuffer.fill(0, bufferOffset);
     }
+  };
+
+  /**
+   * Uint8ArrayからInt16Arrayに変換（リトルエンディアン）
+   */
+  private convertToInt16Array(pcmData: Uint8Array): Int16Array {
+    const int16Data = new Int16Array(pcmData.length / 2);
+    for (let i = 0; i < int16Data.length; i++) {
+      const low = pcmData[i * 2];
+      const high = pcmData[i * 2 + 1];
+      // リトルエンディアンで16bit整数を構築
+      int16Data[i] = (high << 8) | low;
+      // 符号付き整数に変換（-32768 ~ 32767）
+      if (int16Data[i] >= 32768) {
+        int16Data[i] -= 65536;
+      }
+    }
+    return int16Data;
   }
 
 
 
   /**
-   * PCMデータを直接スピーカーに再生（改善版：Speakerインスタンス使い回し）
-   * synthesis/playbackレートが異なる場合は適切なSpeaker設定を使用
+   * PCMデータを音声出力キューに追加
    */
   private async playPCMData(
     pcmData: Uint8Array,
     bufferSize?: number,
     chunk?: Chunk
   ): Promise<void> {
-    // synthesisRateとplaybackRateが異なる場合は、実際の生成レートを使用
-    const actualSampleRate =
-      this.synthesisRate === this.playbackRate ? this.playbackRate : this.synthesisRate;
+    // AudioOutputを遅延作成
+    await this.ensureAudioOutput();
 
-    const finalBufferSize = bufferSize || BUFFER_SIZES.DEFAULT;
+    // クロスフェード処理を適用（設定に基づく）
+    let processedData = pcmData;
+    const crossfadeEnabled = this.audioConfig.crossfadeSettings?.enabled && chunk;
 
-    // Speakerインスタンスを新規作成（エラーは上位に伝播）
-    let speaker: Speaker;
-    try {
-      speaker = await this.createSpeaker(actualSampleRate, finalBufferSize);
-    } catch (error) {
-      // Speakerの作成に失敗した場合は、エラーを上位に伝播
-      logger.error(`Speaker creation failed: ${(error as Error).message}`);
-      throw error;
+    if (crossfadeEnabled) {
+      const skipFirst = this.audioConfig.crossfadeSettings?.skipFirstChunk && chunk?.isFirst;
+      if (!skipFirst) {
+        const overlapSamples = this.audioConfig.crossfadeSettings?.overlapSamples || 24;
+        processedData = this.applyCrossfade(pcmData, overlapSamples, chunk?.isFirst || false);
+      }
     }
 
-    return new Promise((resolve, reject) => {
-      // 一時的なイベントリスナーを設定（既存リスナーと競合しないようonce使用）
-      speaker.once('close', () => {
-        logger.debug('Speaker close event received');
-        resolve();
-      });
+    // PCMデータをInt16Arrayに変換
+    const int16Data = this.convertToInt16Array(processedData);
 
-      speaker.once('error', (error: Error) => {
-        logger.error(`Speaker再生エラー: ${error.message}`);
-        reject(error);
-      });
+    // チャンクをキューに追加
+    this.chunkQueue.push(int16Data);
+    logger.debug(`チャンクをキューに追加、現在のキューサイズ: ${this.chunkQueue.length}`);
 
-      // クロスフェード処理を適用（設定に基づく）
-      let processedData = pcmData;
-      const crossfadeEnabled = this.audioConfig.crossfadeSettings?.enabled && chunk;
-
-      if (crossfadeEnabled) {
-        const skipFirst = this.audioConfig.crossfadeSettings?.skipFirstChunk && chunk?.isFirst;
-        if (!skipFirst) {
-          const overlapSamples = this.audioConfig.crossfadeSettings?.overlapSamples || 24;
-          processedData = this.applyCrossfade(pcmData, overlapSamples, chunk?.isFirst || false);
-        }
-      }
-
-      // PCMデータをスピーカーに書き込み
-      speaker.end(Buffer.from(processedData));
-    });
+    // コールバックベースなので、ここでは追加のみ
+    // 実際の再生はaudioOutputHandlerで処理される
   }
 
   /**
@@ -770,6 +763,10 @@ export class AudioPlayer {
   async stopPlayback(): Promise<void> {
     logger.info('音声再生の停止要求を受信しました');
     this.shouldStop = true;
+
+    // キューをクリア
+    this.chunkQueue = [];
+    this.currentChunkOffset = 0;
   }
 
   /**
@@ -780,6 +777,14 @@ export class AudioPlayer {
     logger.debug('AudioPlayer cleanup開始');
 
     try {
+      // AudioOutputの破棄
+      if (this.audioOutput) {
+        await this.audioOutput.dispose();
+        this.audioOutput = null;
+        this.chunkQueue = [];
+        this.currentChunkOffset = 0;
+      }
+
       // Echogardenリソースの解放
       if (this.echogardenInitialized) {
         // Echogardenには明示的なクリーンアップメソッドがないため、フラグのみリセット

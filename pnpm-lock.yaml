@@ -74,6 +74,9 @@ importers:
       '@coeiro-operator/core':
         specifier: workspace:*
         version: link:../core
+      '@echogarden/audio-io':
+        specifier: ^0.4.2
+        version: 0.4.2
       dsp.js:
         specifier: ^1.0.1
         version: 1.0.1
