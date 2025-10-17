@@ -2,18 +2,13 @@
  * src/say/audio-player.test.ts: AudioPlayerクラステスト
  */
 
-import { AudioPlayer, forTests } from './audio-player.js';
+import { AudioPlayer } from './audio-player.js';
 import type { AudioResult, Chunk, Config } from './types.js';
-import type Speaker from 'speaker';
 import { readFile, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { EventEmitter } from 'events';
 
 // モックの設定
-vi.mock('speaker', () => ({
-  default: vi.fn(),
-}));
 vi.mock('fs/promises', () => ({
   readFile: vi.fn(),
   writeFile: vi.fn(),
@@ -29,18 +24,11 @@ vi.mock('dsp.js', () => ({
     LOWPASS: 1,
   },
 }));
-vi.mock('node-libsamplerate', () => {
-  const MockSampleRate = vi.fn().mockImplementation(() => ({
-    resample: vi.fn(),
-    end: vi.fn(),
-    pipe: vi.fn(destination => destination),
-    on: vi.fn(),
-    write: vi.fn(),
-    destroy: vi.fn(),
-  }));
-  MockSampleRate.SRC_SINC_MEDIUM_QUALITY = 2;
-  return { default: MockSampleRate };
-});
+vi.mock('@echogarden/audio-io', () => ({
+  createAudioOutput: vi.fn().mockImplementation(async (config, handler) => ({
+    dispose: vi.fn(),
+  })),
+}));
 
 const mockReadFile = readFile as unknown;
 const mockWriteFile = writeFile as unknown;
@@ -57,24 +45,14 @@ describe('AudioPlayer', () => {
     };
     audioPlayer = new AudioPlayer(defaultConfig);
     vi.clearAllMocks();
-    // テスト用モックをクリア
-    forTests.mockSpeakerInstance = null;
   });
-  
+
   afterEach(() => {
-    // テスト用モックをクリア
-    forTests.mockSpeakerInstance = null;
+    vi.clearAllMocks();
   });
 
   describe('初期化', () => {
     test('正常に初期化できること', async () => {
-      const result = await audioPlayer.initialize();
-      expect(result).toBe(true);
-      // NODE_ENV=testの時は内部でモックSpeakerが使われるため、MockSpeakerは呼ばれない
-    });
-
-    test('初期化が成功すること（環境変数によるモック）', async () => {
-      // NODE_ENV=testでは常に成功する
       const result = await audioPlayer.initialize();
       expect(result).toBe(true);
     });
@@ -167,78 +145,6 @@ describe('AudioPlayer', () => {
       );
     });
 
-    test('Speaker再生エラー発生時のエラーハンドリング', async () => {
-      // AudioPlayerを初期化
-      await audioPlayer.initialize();
-
-      // エラーを発生させるモックSpeakerを作成
-      const mockSpeaker = new EventEmitter() as any;
-      const errorHandlers: { [key: string]: Function } = {};
-
-      mockSpeaker.write = vi.fn().mockReturnValue(true);
-      mockSpeaker.end = vi.fn((chunk?: any, encoding?: any, callback?: any) => {
-        let cb;
-        if (typeof chunk === 'function') {
-          cb = chunk;
-        } else if (typeof encoding === 'function') {
-          cb = encoding;
-        } else {
-          cb = callback;
-        }
-
-        // エラーハンドラが登録されていればエラーを発火
-        setImmediate(() => {
-          if (errorHandlers.error) {
-            errorHandlers.error(new Error('Mock Speaker error'));
-          }
-        });
-
-        if (cb) cb();
-      });
-
-      // onceメソッドをモックしてハンドラを記録
-      mockSpeaker.once = vi.fn((event: string, handler: Function) => {
-        errorHandlers[event] = handler;
-        return mockSpeaker;
-      });
-
-      mockSpeaker.removeAllListeners = vi.fn(() => mockSpeaker);
-      mockSpeaker.pipe = vi.fn((destination: any) => destination);
-      mockSpeaker.unpipe = vi.fn(() => mockSpeaker);
-      mockSpeaker._writableState = { ended: false };
-      mockSpeaker.writable = true;
-      mockSpeaker.destroyed = false;
-      mockSpeaker.destroy = vi.fn();
-
-      // テスト用モックSpeakerを設定
-      forTests.mockSpeakerInstance = mockSpeaker;
-
-      // テスト用のAudioResultを作成
-      const buffer = new ArrayBuffer(44 + 1000);
-      const view = new DataView(buffer);
-
-      // RIFFヘッダー
-      view.setUint32(0, 0x52494646, false); // "RIFF"
-      view.setUint32(4, buffer.byteLength - 8, true);
-      view.setUint32(8, 0x57415645, false); // "WAVE"
-
-      // dataチャンク
-      view.setUint32(36, 0x64617461, false); // "data"
-      view.setUint32(40, 1000, true);
-
-      const audioResult: AudioResult = {
-        chunk: { text: 'test', index: 0, isFirst: true, isLast: true, overlap: 0 },
-        audioBuffer: buffer,
-        latency: 100,
-      };
-
-      // Speakerエラーが適切にハンドリングされることを確認
-      await expect(audioPlayer.playAudioStream(audioResult)).rejects.toThrow('Mock Speaker error');
-
-      // モックが適切に呼ばれたことを確認
-      expect(mockSpeaker.end).toHaveBeenCalled();
-      expect(mockSpeaker.once).toHaveBeenCalledWith('error', expect.any(Function));
-    });
   });
 
   describe('applyCrossfade', () => {

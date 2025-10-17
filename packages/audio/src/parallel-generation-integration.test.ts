@@ -12,8 +12,10 @@ import { join } from 'path';
 
 // モックの設定
 global.fetch = vi.fn();
-vi.mock('speaker', () => ({
-  default: vi.fn(),
+vi.mock('@echogarden/audio-io', () => ({
+  createAudioOutput: vi.fn().mockImplementation(async (config, handler) => ({
+    dispose: vi.fn(),
+  })),
 }));
 vi.mock('echogarden', () => ({
   default: {},
@@ -46,28 +48,6 @@ describe('並行チャンク生成システム統合テスト', () => {
 
   beforeEach(async () => {
     tempDir = join(tmpdir(), `parallel-generation-test-${Date.now()}`);
-
-    // Speakerモックを設定
-    const mockSpeakerInstance = {
-      write: vi.fn(),
-      end: vi.fn(),
-      on: vi.fn((event, callback) => {
-        if (event === 'close') {
-          setTimeout(callback, 10);
-        }
-      }),
-      once: vi.fn((event, callback) => {
-        if (event === 'close') {
-          setTimeout(callback, 10);
-        }
-      }),
-      removeListener: vi.fn(),
-      removeAllListeners: vi.fn(),
-      pipe: vi.fn(),
-    };
-    const SpeakerModule = await vi.importMock('speaker');
-    const MockSpeaker = SpeakerModule.default as unknown;
-    MockSpeaker.mockImplementation(() => mockSpeakerInstance as unknown);
 
     // 並行生成有効な設定
     const config: Config = {

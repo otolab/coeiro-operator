@@ -10,7 +10,6 @@ import { join } from 'path';
 import { writeFile, readFile, unlink } from 'fs/promises';
 import { OperatorManager } from '@coeiro-operator/core';
 import type { Character, Speaker as SpeakerType } from '@coeiro-operator/core';
-import { createMockSpeakerInstance } from './test-helpers.js';
 
 // Responseオブジェクトのモックヘルパー
 const createMockResponse = (options: {
@@ -87,8 +86,10 @@ vi.mock('@coeiro-operator/core', () => ({
     }),
   })),
 }));
-vi.mock('speaker', () => ({
-  default: vi.fn(),
+vi.mock('@echogarden/audio-io', () => ({
+  createAudioOutput: vi.fn().mockImplementation(async (config, handler) => ({
+    dispose: vi.fn(),
+  })),
 }));
 vi.mock('echogarden', () => ({
   default: {},
@@ -173,12 +174,6 @@ describe('Say Integration Tests', () => {
 
     // OperatorManagerのモックを設定
     vi.mocked(OperatorManager).mockImplementation(() => mockOperatorManager);
-
-    // Speakerモックを設定
-    const mockSpeakerInstance = createMockSpeakerInstance();
-    const SpeakerModule = await vi.importMock('speaker');
-    const MockSpeaker = SpeakerModule.default;
-    vi.mocked(MockSpeaker).mockImplementation(() => mockSpeakerInstance);
 
     // デフォルト設定を使用
     const configManager = createMockConfigManager();
