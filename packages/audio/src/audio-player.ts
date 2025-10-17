@@ -218,8 +218,14 @@ export class AudioPlayer {
   private async processAudioStreamPipeline(pcmData: Uint8Array): Promise<void> {
     logger.log('高品質音声処理パイプライン開始');
 
-    // Speakerインスタンスを新規作成
-    const streamSpeaker = await this.createSpeaker(this.playbackRate, BUFFER_SIZES.DEFAULT);
+    // Speakerインスタンスを新規作成（エラーは上位に伝播）
+    let streamSpeaker: Speaker;
+    try {
+      streamSpeaker = await this.createSpeaker(this.playbackRate, BUFFER_SIZES.DEFAULT);
+    } catch (error) {
+      logger.error(`Stream speaker creation failed: ${(error as Error).message}`);
+      throw error;
+    }
 
     return new Promise((resolve, reject) => {
       streamSpeaker.once('close', () => {
@@ -486,52 +492,17 @@ export class AudioPlayer {
       const SpeakerClass = SpeakerModule.default || SpeakerModule;
       return new SpeakerClass(config) as Speaker;
     } catch (error) {
-      logger.error(`Failed to import Speaker module: ${(error as Error).message}`);
-      // CI環境でSpeakerがロードできない場合はモックを返す
-      logger.debug('Falling back to mock Speaker due to import failure');
-      const mockSpeaker = new EventEmitter() as any;
-      
-      // Writable Streamの基本メソッド
-      mockSpeaker.write = (chunk: any, encoding?: any, callback?: any) => {
-        const cb = typeof encoding === 'function' ? encoding : callback;
-        if (cb) cb();
-        return true;
-      };
-      
-      mockSpeaker.end = (chunk?: any, encoding?: any, callback?: any) => {
-        let cb;
-        if (typeof chunk === 'function') {
-          cb = chunk;
-        } else if (typeof encoding === 'function') {
-          cb = encoding;
-        } else {
-          cb = callback;
-        }
-        
-        // endが呼ばれたら少し遅延してcloseイベントを発火
-        setImmediate(() => {
-          mockSpeaker.emit('close');
-        });
-        
-        if (cb) cb();
-      };
-      
-      mockSpeaker.removeAllListeners = () => mockSpeaker;
-      mockSpeaker.pipe = (destination: any) => destination;
-      mockSpeaker.unpipe = () => mockSpeaker;
-      mockSpeaker._writableState = { ended: false };
-      mockSpeaker.writable = true;
-      mockSpeaker.destroyed = false;
-      
-      mockSpeaker.destroy = (error?: Error) => {
-        mockSpeaker.destroyed = true;
-        if (error) {
-          mockSpeaker.emit('error', error);
-        }
-        mockSpeaker.emit('close');
-      };
-      
-      return mockSpeaker;
+      const errorMessage = `Failed to import Speaker module: ${(error as Error).message}`;
+      logger.error(errorMessage);
+
+      // 本番環境でSpeakerがロードできない場合は致命的エラー
+      throw new Error(
+        'CRITICAL: Audio output module (speaker) is not available.\n' +
+        'This tool requires the speaker module to function properly.\n' +
+        'Please install it with: npm install speaker\n' +
+        'Note: Audio device drivers must be available on your system.\n' +
+        `Error details: ${errorMessage}`
+      );
     }
   }
 
@@ -552,8 +523,15 @@ export class AudioPlayer {
 
     const finalBufferSize = bufferSize || BUFFER_SIZES.DEFAULT;
 
-    // Speakerインスタンスを新規作成
-    const speaker = await this.createSpeaker(actualSampleRate, finalBufferSize);
+    // Speakerインスタンスを新規作成（エラーは上位に伝播）
+    let speaker: Speaker;
+    try {
+      speaker = await this.createSpeaker(actualSampleRate, finalBufferSize);
+    } catch (error) {
+      // Speakerの作成に失敗した場合は、エラーを上位に伝播
+      logger.error(`Speaker creation failed: ${(error as Error).message}`);
+      throw error;
+    }
 
     return new Promise((resolve, reject) => {
       // 一時的なイベントリスナーを設定（既存リスナーと競合しないようonce使用）

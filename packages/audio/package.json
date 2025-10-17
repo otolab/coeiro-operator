@@ -25,8 +25,7 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.js",
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
-    "prepublishOnly": "pnpm build",
-    "postinstall": "node scripts/speaker-build.js || true"
+    "prepublishOnly": "pnpm build"
   },
   "dependencies": {
     "@coeiro-operator/common": "workspace:*",

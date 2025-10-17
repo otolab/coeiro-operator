@@ -275,8 +275,21 @@ config.jsonに以下を追加：
 # 基本要件: Node.js 18以上 + COEIROINK + pnpm + ビルドツール
 git clone https://github.com/otolab/coeiro-operator.git
 cd coeiro-operator
-pnpm install && pnpm build
+pnpm install
+
+# 重要: speakerモジュールのビルド許可が必要
+# pnpmのセキュリティ機能により、初回インストール時は手動許可が必要です
+pnpm approve-builds
+# → speakerを選択してビルドを許可
+
+# ビルド実行
+pnpm build
 ```
+
+**注意事項：**
+- **音声出力（speaker）モジュール**: pnpmのセキュリティ機能により、ネイティブモジュールのビルドには明示的な許可が必要です
+- **CI環境**: `NODE_ENV=test`でテストモード動作（モック使用）するため、speakerビルド不要
+- **本番環境**: speakerモジュールは必須。インストールできない場合は明確なエラーが表示されます
 
 詳細な事前要件・開発環境構築は **[docs/development/development-tips.md](docs/development/development-tips.md)** を参照。
 
