@@ -12,7 +12,6 @@ import type {
   VoiceConfig,
   SynthesizeOptions,
   SynthesizeResult,
-  AudioResult,
 } from './types.js';
 
 export class SynthesisProcessor {
@@ -22,66 +21,6 @@ export class SynthesisProcessor {
     private audioSynthesizer: AudioSynthesizer,
     private voiceResolver: VoiceResolver
   ) {}
-
-  /**
-   * 音声合成のみ（再生なし）
-   * @returns AsyncGeneratorまたは音声データ
-   */
-  async synthesizeOnly(
-    text: string,
-    options: SynthesizeOptions = {}
-  ): Promise<{
-    generator: AsyncGenerator<AudioResult>;
-    voiceConfig: VoiceConfig;
-    speed: number;
-    chunkMode: any;
-    bufferSize: number;
-  }> {
-    // オプション解析
-    const resolvedOptions = this.resolveOptions(options);
-
-    // サーバー接続確認
-    await this.validateServerConnection();
-
-    // 音声設定の解決
-    const voiceConfig = await this.voiceResolver.resolveVoiceConfig(
-      resolvedOptions.voice,
-      resolvedOptions.style || undefined,
-      resolvedOptions.allowFallback
-    );
-
-    const speed = this.audioSynthesizer.convertRateToSpeed(resolvedOptions.rate);
-
-    // ジェネレータを返す（再生はしない）
-    return {
-      generator: this.audioSynthesizer.synthesizeStream(
-        text,
-        voiceConfig,
-        speed,
-        resolvedOptions.chunkMode
-      ),
-      voiceConfig,
-      speed,
-      chunkMode: resolvedOptions.chunkMode,
-      bufferSize: resolvedOptions.bufferSize,
-    };
-  }
-
-  /**
-   * 音声再生のみ（合成済みデータを再生）
-   */
-  async playOnly(
-    generator: AsyncGenerator<AudioResult>,
-    bufferSize?: number
-  ): Promise<void> {
-    // AudioPlayerの初期化
-    if (!(await this.initializeAudioPlayer())) {
-      throw new Error('音声プレーヤーの初期化に失敗しました');
-    }
-
-    // 再生実行
-    await this.audioPlayer.playStreamingAudio(generator, bufferSize);
-  }
 
   /**
    * AudioPlayerの初期化と設定
@@ -262,14 +201,19 @@ export class SynthesisProcessor {
     // Step 1: 音声合成（データ生成のみ）
     logger.info('音声合成開始...');
     logger.debug(`合成パラメータ - chunkMode: ${chunkMode}, speed: ${speed}`);
-    const synthesisResult = {
-      generator: this.audioSynthesizer.synthesizeStream(text, voiceConfig, speed, chunkMode),
-      bufferSize
-    };
+    const generator = this.audioSynthesizer.synthesizeStream(text, voiceConfig, speed, chunkMode);
 
     // Step 2: 音声再生（再生のみ） - フラットな呼び出し
     logger.info('音声再生開始...');
-    await this.playOnly(synthesisResult.generator, synthesisResult.bufferSize);
+
+    // AudioPlayerの初期化
+    if (!(await this.initializeAudioPlayer())) {
+      logger.error('音声プレーヤーの初期化に失敗');
+      throw new Error('音声プレーヤーの初期化に失敗しました');
+    }
+
+    // 再生実行
+    await this.audioPlayer.playStreamingAudio(generator, bufferSize);
 
     logger.info('音声ストリーミング再生完了');
     return { success: true, mode: 'streaming' };
