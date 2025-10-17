@@ -117,8 +117,8 @@ export class AudioStreamController {
       logger.error(`${mode}生成エラー: ${(error as Error).message}`);
       throw error;
     } finally {
-      // クリーンアップ
-      this.generationManager.clear();
+      // クリーンアップ（残っているPromiseの完了を待つ）
+      await this.generationManager.clear();
     }
   }
 
@@ -165,7 +165,7 @@ export class AudioStreamController {
   /**
    * すべての生成タスクをクリア
    */
-  clear(): void {
-    this.generationManager.clear();
+  async clear(): Promise<void> {
+    await this.generationManager.clear();
   }
 }

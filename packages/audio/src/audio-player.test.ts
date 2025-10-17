@@ -2,11 +2,10 @@
  * src/say/audio-player.test.ts: AudioPlayerクラステスト
  */
 
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AudioPlayer } from './audio-player.js';
-import type { AudioResult, Chunk, Config } from './types.js';
-import { readFile, writeFile } from 'fs/promises';
-import { tmpdir } from 'os';
-import { join } from 'path';
+import type { AudioResult, Config } from './types.js';
+import { writeFile } from 'fs/promises';
 
 // モックの設定
 vi.mock('fs/promises', () => ({
@@ -25,12 +24,11 @@ vi.mock('dsp.js', () => ({
   },
 }));
 vi.mock('@echogarden/audio-io', () => ({
-  createAudioOutput: vi.fn().mockImplementation(async (config, handler) => ({
+  createAudioOutput: vi.fn().mockImplementation(async (_config, _handler) => ({
     dispose: vi.fn(),
   })),
 }));
 
-const mockReadFile = readFile as unknown;
 const mockWriteFile = writeFile as unknown;
 
 describe('AudioPlayer', () => {

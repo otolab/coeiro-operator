@@ -5,12 +5,13 @@
 
 import { writeFile } from 'fs/promises';
 import * as Echogarden from 'echogarden';
-// @ts-ignore - dsp.jsには型定義がない
+// @ts-expect-error - dsp.jsには型定義がない
 import DSP from 'dsp.js';
 import { Transform } from 'stream';
 import { createAudioOutput, type AudioOutput } from '@echogarden/audio-io';
 import type { AudioResult, Chunk, Config, AudioConfig } from './types.js';
 import { logger } from '@coeiro-operator/common';
+import { OpenPromise } from './open-promise.js';
 import {
   SAMPLE_RATES,
   AUDIO_FORMAT,
@@ -40,6 +41,7 @@ export class AudioPlayer {
   private audioOutput: AudioOutput | null = null;
   private chunkQueue: Int16Array[] = [];
   private currentChunkOffset: number = 0;
+  private completionPromise: OpenPromise<void> | null = null;
 
   /**
    * AudioPlayerの初期化
@@ -292,9 +294,7 @@ export class AudioPlayer {
     // 簡易的な線形補間によるリサンプリング実装
     const ratio = this.playbackRate / this.synthesisRate;
     logger.log(`リサンプリング: ${this.synthesisRate}Hz → ${this.playbackRate}Hz (比率: ${ratio})`);
-    
-    let carryOverSample: number | null = null;
-    
+
     return new Transform({
       transform: (chunk, encoding, callback) => {
         try {
@@ -395,6 +395,9 @@ export class AudioPlayer {
       // 再生開始時に停止フラグをリセット
       this.shouldStop = false;
 
+      // 新しい完了Promiseを作成
+      this.completionPromise = new OpenPromise<void>();
+
       for await (const audioResult of audioStream) {
         // チャンク境界で停止チェック
         if (this.shouldStop) {
@@ -419,14 +422,17 @@ export class AudioPlayer {
   private async waitForCompletion(): Promise<void> {
     if (!this.audioOutput) return;
 
-    return new Promise((resolve) => {
-      const checkInterval = setInterval(() => {
-        if (this.chunkQueue.length === 0 && this.currentChunkOffset === 0) {
-          clearInterval(checkInterval);
-          resolve();
-        }
-      }, 50); // 50msごとにチェック
-    });
+    // キューが既に空の場合は即座に完了
+    if (this.chunkQueue.length === 0 && this.currentChunkOffset === 0) {
+      return;
+    }
+
+    // OpenPromiseがまだない場合は作成
+    if (!this.completionPromise || !this.completionPromise.isPending) {
+      this.completionPromise = new OpenPromise<void>();
+    }
+
+    return this.completionPromise.promise;
   }
 
 
@@ -491,6 +497,11 @@ export class AudioPlayer {
       } else {
         // キューが空なら無音で埋める
         outputBuffer.fill(0, bufferOffset);
+
+        // キューが空になったら完了を通知
+        if (this.completionPromise && this.completionPromise.isPending) {
+          this.completionPromise.resolve();
+        }
         break;
       }
     }
@@ -498,6 +509,11 @@ export class AudioPlayer {
     // 停止フラグが立っていたら無音で埋める
     if (this.shouldStop) {
       outputBuffer.fill(0, bufferOffset);
+
+      // 停止時も完了を通知
+      if (this.completionPromise && this.completionPromise.isPending) {
+        this.completionPromise.resolve();
+      }
     }
   };
 

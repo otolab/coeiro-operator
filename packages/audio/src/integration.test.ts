@@ -87,9 +87,33 @@ vi.mock('@coeiro-operator/core', () => ({
   })),
 }));
 vi.mock('@echogarden/audio-io', () => ({
-  createAudioOutput: vi.fn().mockImplementation(async (config, handler) => ({
-    dispose: vi.fn(),
-  })),
+  createAudioOutput: vi.fn().mockImplementation(async (config: any, handler: (buffer: Int16Array) => void) => {
+    // handlerを定期的に呼んでキューを消費する
+    let intervalId: NodeJS.Timeout | null = null;
+    let isDisposed = false;
+
+    // 少し遅延を入れてから開始（初期化処理のため）
+    setTimeout(() => {
+      if (!isDisposed) {
+        intervalId = setInterval(() => {
+          if (!isDisposed) {
+            const buffer = new Int16Array(1024);
+            handler(buffer);
+          }
+        }, 10); // 10msごとに呼び出し
+      }
+    }, 10);
+
+    return {
+      dispose: vi.fn(async () => {
+        isDisposed = true;
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      })
+    };
+  }),
 }));
 vi.mock('echogarden', () => ({
   default: {},
@@ -645,7 +669,7 @@ describe('Say Integration Tests', () => {
       ];
 
       // 全タスククリア（再生も停止される）
-      const clearResult = sayCoeiroink.clearSpeechQueue();
+      const clearResult = await sayCoeiroink.clearSpeechQueue();
 
       expect(clearResult.removedCount).toBeGreaterThanOrEqual(0);
 
@@ -661,7 +685,7 @@ describe('Say Integration Tests', () => {
       const result3 = sayCoeiroink.synthesize('メッセージ3');
 
       // 特定のタスクのみクリア（再生は停止されない）
-      const clearResult = sayCoeiroink.clearSpeechQueue([result2.taskId]);
+      const clearResult = await sayCoeiroink.clearSpeechQueue([result2.taskId]);
 
       expect(clearResult.removedCount).toBeLessThanOrEqual(1);
     });

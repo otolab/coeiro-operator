@@ -107,7 +107,7 @@ export class SayCoeiroink {
     if (!this.speechQueue) {
       throw new Error('SpeechQueue is not initialized. Call initialize() first.');
     }
-    return this.speechQueue.enqueue(text, options);
+    return this.speechQueue.enqueueSpeech(text, options);
   }
 
   /**
@@ -157,7 +157,7 @@ export class SayCoeiroink {
    * @param taskIds 削除するタスクIDの配列（省略時は全タスク削除）
    * @returns 削除されたタスク数
    */
-  clearSpeechQueue(taskIds?: number[]): { removedCount: number } {
+  async clearSpeechQueue(taskIds?: number[]): Promise<{ removedCount: number }> {
     if (!this.speechQueue) {
       throw new Error('SpeechQueue is not initialized. Call initialize() first.');
     }
@@ -170,7 +170,15 @@ export class SayCoeiroink {
       }
     }
 
-    return this.speechQueue.clear(taskIds);
+    return await this.speechQueue.clear(taskIds);
+  }
+
+  /**
+   * clearQueue エイリアス（テスト用）
+   * clearSpeechQueue と同じ動作
+   */
+  async clearQueue(): Promise<{ removedCount: number }> {
+    return await this.clearSpeechQueue();
   }
 
   /**
@@ -242,7 +250,7 @@ export class SayCoeiroink {
 
     try {
       if (this.speechQueue) {
-        this.speechQueue.clear(); // 全タスククリア
+        await this.speechQueue.clear(); // 全タスククリア
       }
 
       if (this.audioPlayer) {

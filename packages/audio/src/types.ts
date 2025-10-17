@@ -45,18 +45,8 @@ export interface VoiceConfig {
   selectedStyleId: number; // 選択されたスタイルID
 }
 
-export type SpeechTaskType = 'speech';
-
-export interface SpeechTask {
-  id: number;
-  type: SpeechTaskType;
-  text: string;
-  options: SynthesizeOptions;
-  timestamp: number;
-  // 完了通知用（CLI同期実行時）
-  resolve?: () => void;
-  reject?: (error: Error) => void;
-}
+// SpeechTaskはqueue/speech-queue.tsに移動
+export type { SpeechTask } from './queue/speech-queue.js';
 
 export interface SynthesizeOptions {
   voice?: string | VoiceConfig | null;
@@ -71,6 +61,7 @@ export interface SynthesizeOptions {
 export interface SynthesizeResult {
   success: boolean;
   taskId?: number;
+  promise?: Promise<void>;  // タスク完了を待つためのPromise
   queueLength?: number;
   outputFile?: string;
   latency?: number;
