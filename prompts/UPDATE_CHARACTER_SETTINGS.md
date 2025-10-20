@@ -49,6 +49,7 @@ interface CharacterConfig {
     farewell: string;
     defaultStyle?: string;
     disabled?: boolean;
+    baseMorasPerSecond?: number;  // キャラクター固有の基準話速
 }
 
 const DEFAULT_CHARACTERS: CharacterConfig[] = [
@@ -59,7 +60,8 @@ const DEFAULT_CHARACTERS: CharacterConfig[] = [
         personality: '冷静で丁寧、知的で落ち着いた司会進行',
         speakingStyle: '安定感のある上品な声',
         greeting: 'こんにちは。つくよみちゃんです。',
-        farewell: 'お疲れ様でした。'
+        farewell: 'お疲れ様でした。',
+        baseMorasPerSecond: 7.23  // 実測値（モーラ/秒）
     },
     // ...
 ];
@@ -113,16 +115,52 @@ const DEFAULT_CHARACTERS: CharacterConfig[] = [
        personality: '性格設定',
        speakingStyle: '話し方の特徴',
        greeting: 'こんにちは。新キャラクターです。',
-       farewell: 'お疲れ様でした。'
+       farewell: 'お疲れ様でした。',
+       baseMorasPerSecond: 7.5  // 話速測定ツールで実測
    }
    ```
 
 2. **チェックリスト**：
    - [ ] DEFAULT_CHARACTERS配列に追加
    - [ ] speakerIdをCOEIROINKから確認
+   - [ ] baseMorasPerSecondを測定（後述の手順参照）
    - [ ] [docs/user-guide/CHARACTERS.md](../docs/user-guide/CHARACTERS.md)に詳細情報記載
    - [ ] 動作テスト実行
    - [ ] README.mdのキャラクター数更新
+
+### 3. 話速（モーラ/秒）の測定
+
+新キャラクター追加時は、基準話速を測定して設定します。
+
+1. **測定ツールの実行**：
+   ```bash
+   # COEIROINKサーバーが起動していることを確認
+
+   # 全キャラクターの話速を測定
+   npx tsx packages/cli/scripts/measure-speech-rate.ts
+
+   # 結果をファイルに保存
+   npx tsx packages/cli/scripts/measure-speech-rate.ts -o ./speech-rates.json
+   ```
+
+2. **測定結果の確認**：
+   ```json
+   {
+     "characters": {
+       "new_character": {
+         "baseMorasPerSecond": 7.52,
+         "styles": {
+           "ノーマル": 7.52,
+           "元気": 8.13
+         }
+       }
+     }
+   }
+   ```
+
+3. **設定への反映**：
+   - デフォルトスタイルの値を`baseMorasPerSecond`に設定
+   - config.jsonにも同じ値を追加可能（ユーザー設定で上書き可能）
 
 ## キャラクター情報の更新
 
@@ -148,11 +186,21 @@ const DEFAULT_CHARACTERS: CharacterConfig[] = [
    - 公式情報の変更確認
    - ユーザー利用状況の分析
    - 設定の最適化検討
+   - 話速測定値の再確認（COEIROINKアップデート後）
 
 2. **COEIROINK更新対応**：
    - 新キャラクター追加対応
    - 既存キャラクターの仕様変更対応
    - 音声名変更への対応
+   - 音声エンジン更新時の話速再測定
+
+3. **話速測定の定期実施**：
+   ```bash
+   # 四半期ごとに全キャラクターの話速を再測定
+   npx tsx packages/cli/scripts/measure-speech-rate.ts -o ./speech-rates-$(date +%Y%m%d).json
+
+   # 変化が大きい場合は設定を更新
+   ```
 
 ## 注意事項
 
@@ -179,6 +227,6 @@ const DEFAULT_CHARACTERS: CharacterConfig[] = [
 - **[packages/core/src/operator/character-info-service.ts](../packages/core/src/operator/character-info-service.ts)** - キャラクター設定実装
 
 ---
-**作成日**: 2025年8月5日  
-**最終更新**: v1.0対応（動的設定管理システム）  
+**作成日**: 2025年8月5日
+**最終更新**: 2025年1月21日（話速測定手順追加）
 **対象バージョン**: COEIRO Operator v1.0+
