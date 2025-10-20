@@ -63,6 +63,28 @@ jobs:
           # Apply changeset version
           npx changeset version
 
+          # Determine the highest version from all packages
+          HIGHEST_VERSION=""
+          for pkg in packages/*/package.json; do
+            if [ -f "$pkg" ]; then
+              PKG_VERSION=$(node -p "require('./$pkg').version")
+              if [ -z "$HIGHEST_VERSION" ] || [ "$(printf '%s\n' "$HIGHEST_VERSION" "$PKG_VERSION" | sort -V | tail -n1)" = "$PKG_VERSION" ]; then
+                HIGHEST_VERSION="$PKG_VERSION"
+              fi
+            fi
+          done
+
+          # Update root package.json with the highest version
+          if [ -n "$HIGHEST_VERSION" ]; then
+            node -e "
+              const fs = require('fs');
+              const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+              pkg.version = '$HIGHEST_VERSION';
+              fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+            "
+            echo "Updated root package.json to version $HIGHEST_VERSION"
+          fi
+
           # Commit if there are changes
           if [ -n "$(git status --porcelain)" ]; then
             git add -A
@@ -75,8 +97,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Extract version from the most significant package (core)
-          VERSION=$(node -p "require('./packages/core/package.json').version")
+          # Extract version from root package.json (which now has the highest version)
+          VERSION=$(node -p "require('./package.json').version")
           BRANCH_NAME="${GITHUB_REF#refs/heads/}"
 
           # Check if PR already exists
