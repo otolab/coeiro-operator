@@ -41,6 +41,8 @@ export class AudioSynthesizer {
 
     // AudioStreamControllerを初期化（設定ファイルベース）
     const parallelConfig = this.config.audio?.parallelGeneration || {};
+    const punctuationPauseConfig = this.config.audio?.punctuationPause || {};
+
     // arrow function を使って this のコンテキストを保持し、bind を避ける
     this.streamController = new AudioStreamController(
       (chunk, voiceConfig, speed) => this.synthesizeChunk(chunk, voiceConfig, speed),
@@ -49,6 +51,7 @@ export class AudioSynthesizer {
         delayBetweenRequests: parallelConfig.delayBetweenRequests || 50,
         bufferAheadCount: parallelConfig.bufferAheadCount || 1,
         pauseUntilFirstComplete: parallelConfig.pauseUntilFirstComplete || true,
+        punctuationPause: punctuationPauseConfig,
       }
     );
   }

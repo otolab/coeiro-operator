@@ -43,6 +43,28 @@ import type { Character, Speaker } from '@coeiro-operator/core';
 export interface VoiceConfig {
   speaker: Speaker; // COEIROINKのSpeaker情報
   selectedStyleId: number; // 選択されたスタイルID
+  baseMorasPerSecond?: number; // キャラクター固有の基準話速（モーラ/秒）
+}
+
+/**
+ * PunctuationPauseSettings: 句読点ポーズ設定
+ * 日本語発話に特化したモーラベースのポーズ制御
+ */
+export interface PunctuationPauseSettings {
+  enabled: boolean; // ポーズ機能の有効/無効
+
+  // ポーズの長さをモーラ数で指定
+  // 日本語は等間隔のモーラリズムなので、話速が変わっても自然な比率を保てる
+  pauseMoras?: {
+    period?: number;      // 。の後（モーラ数）
+    exclamation?: number; // ！の後（モーラ数）
+    question?: number;    // ？の後（モーラ数）
+    comma?: number;       // 、の後（モーラ数）
+  };
+
+  // デフォルトの基準話速（省略時は7.5モーラ/秒）
+  // 標準的な日本語話速: 7-8モーラ/秒
+  baseMorasPerSecond?: number;
 }
 
 /**

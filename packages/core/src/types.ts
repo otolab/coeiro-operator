@@ -42,6 +42,16 @@ export interface AudioConfig {
     bufferAheadCount?: number;
     pauseUntilFirstComplete?: boolean;
   };
+  punctuationPause?: {
+    enabled?: boolean;
+    pauseMoras?: {
+      period?: number;      // 。の後（モーラ数）
+      exclamation?: number; // ！の後（モーラ数）
+      question?: number;    // ？の後（モーラ数）
+      comma?: number;       // 、の後（モーラ数）
+    };
+    baseMorasPerSecond?: number; // デフォルトの基準話速（モーラ/秒）
+  };
 }
 
 // 接続設定の型定義
