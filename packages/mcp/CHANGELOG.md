@@ -1,5 +1,42 @@
 # @coeiro-operator/mcp
 
+## 1.2.0
+
+### Minor Changes
+
+- 5f7b33e: feat: Issue #135 Phase 3 - 音声再生停止機能を実装
+
+  ## 🎯 新機能
+  - AudioPlayerにチャンク境界停止機能を追加
+    - `stopPlayback()`メソッドで安全な音声停止を実現
+    - 現在のチャンクは完了させ、次のチャンクから停止
+  - SpeechQueueとAudioPlayerの停止連携を実装
+    - `clearSpeechQueue()`で全タスククリア時に再生も停止
+  - playback_stop MCPツールを追加
+    - 現在再生中の音声をチャンク境界で停止
+
+  ## 🧪 テスト改善
+  - Speakerエラーハンドリングテストを修正
+  - stdin処理のE2Eテスト（6ケース）を追加
+  - テスト出力制御機能（TEST_VERBOSE環境変数）を追加
+
+  ## 🐛 修正
+  - OperatorManagerのTypeScript any型警告を修正
+  - メモリリーク対策：イベントリスナーを`on`から`once`に変更
+  - 並行再生のデッドコード（playStreamingAudioParallel）を削除
+
+### Patch Changes
+
+- 8188dc2: デフォルトのオペレータ選択を真のランダムに変更
+  - MCPツールの説明文を改善し、引数なし実行（ランダム選択）をデフォルトとして強調
+  - 未割り当て時のガイダンスメッセージから特定キャラクターへの誘導を削除
+  - ランダム選択が通常の使い方であることを明示
+
+- Updated dependencies [3283bc7]
+- Updated dependencies [5f7b33e]
+  - @coeiro-operator/audio@1.1.0
+  - @coeiro-operator/core@1.1.1
+
 ## 1.1.0
 
 ### Minor Changes
