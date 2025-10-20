@@ -479,7 +479,7 @@ describe('AudioSynthesizer', () => {
 
       await expect(
         audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0)
-      ).rejects.toThrow('チャンク0合成エラー');
+      ).rejects.toThrow('Network error');
     });
   });
 

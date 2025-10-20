@@ -101,7 +101,15 @@ describe('テキスト分割モード統合テスト', () => {
   });
 
   afterEach(async () => {
-    // クリーンアップ
+    // SpeechQueueのクリーンアップ
+    try {
+      await sayCoeiroink.clearSpeechQueue();
+      await sayCoeiroink.waitCompletion();
+    } catch (error) {
+      // クリーンアップエラーは無視
+    }
+
+    // ファイルシステムのクリーンアップ
     try {
       const fs = await import('fs');
       await fs.promises.rm(tempDir, { recursive: true, force: true });

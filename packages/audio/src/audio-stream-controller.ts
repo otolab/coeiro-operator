@@ -4,7 +4,7 @@
  */
 
 import { logger } from '@coeiro-operator/common';
-import { ChunkGenerationManager, GenerationOptions } from './chunk-generation-manager.js';
+import { ChunkGenerationManager, GenerationOptions, toSpeakSettings } from './chunk-generation-manager.js';
 import type { Chunk, AudioResult, VoiceConfig } from './types.js';
 
 export interface StreamControllerOptions extends GenerationOptions {
@@ -56,18 +56,6 @@ export class AudioStreamController {
     voiceConfig: VoiceConfig,
     speed: number
   ): AsyncGenerator<AudioResult> {
-    // maxConcurrency=1なら逐次、2以上なら並行生成
-    yield* this.synthesizeStreamParallel(chunks, voiceConfig, speed);
-  }
-
-  /**
-   * 並行生成（maxConcurrency=1なら逐次、2以上なら並行）
-   */
-  private async *synthesizeStreamParallel(
-    chunks: Chunk[],
-    voiceConfig: VoiceConfig,
-    speed: number
-  ): AsyncGenerator<AudioResult> {
     const mode = this.options.maxConcurrency === 1 ? '逐次' : '並行';
     logger.debug(`${mode}生成モードで音声合成開始 (maxConcurrency=${this.options.maxConcurrency})`);
 
@@ -75,51 +63,22 @@ export class AudioStreamController {
       return;
     }
 
-    try {
-      // 最初のチャンクは即座に開始
-      await this.generationManager.startGeneration(chunks[0], voiceConfig, speed);
+    // SpeakSettings変換
+    const speakSettings = toSpeakSettings(voiceConfig, speed);
 
-      let currentIndex = 0;
-
-      while (currentIndex < chunks.length) {
-        // 先読み生成の開始（maxConcurrencyに基づく）
-        const nextIndex = currentIndex + 1;
-        if (
-          nextIndex < chunks.length &&
-          !this.generationManager.isInProgress(nextIndex) &&
-          !this.generationManager.isCompleted(nextIndex)
-        ) {
-          // バッファ先読み数に基づいて生成開始
-          const generateUpTo = Math.min(
-            currentIndex + this.options.bufferAheadCount + 1,
-            chunks.length
-          );
-
-          for (let i = nextIndex; i < generateUpTo; i++) {
-            if (!this.generationManager.isInProgress(i) && !this.generationManager.isCompleted(i)) {
-              await this.generationManager.startGeneration(chunks[i], voiceConfig, speed);
-            }
-          }
-        }
-
-        // 現在のチャンクの完了を待機してyield
-        logger.debug(`${mode}生成: チャンク${currentIndex}結果待機中`);
-        const result = await this.generationManager.getResult(currentIndex);
-
-        logger.debug(`${mode}生成: チャンク${currentIndex}結果取得、yield開始`);
-        yield result;
-
-        currentIndex++;
+    // 新しいgenerate()メソッドを使用（シンプル）
+    for await (const result of this.generationManager.generate(chunks, speakSettings)) {
+      if (result.success) {
+        logger.debug(`${mode}生成: チャンク${result.data.chunk.index}結果取得`);
+        yield result.data;
+      } else {
+        // エラー発生：ログ出力して再throw
+        logger.error(`${mode}生成エラー: チャンク${result.chunkIndex} - ${result.error.message}`);
+        throw result.error;
       }
-
-      logger.debug(`${mode}生成モード完了`);
-    } catch (error) {
-      logger.error(`${mode}生成エラー: ${(error as Error).message}`);
-      throw error;
-    } finally {
-      // クリーンアップ（残っているPromiseの完了を待つ）
-      await this.generationManager.clear();
     }
+
+    logger.debug(`${mode}生成モード完了`);
   }
 
   /**

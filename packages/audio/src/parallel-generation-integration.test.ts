@@ -133,6 +133,10 @@ describe('並行チャンク生成システム統合テスト', () => {
       try {
         // 残っているタスクを強制的にクリア
         await sayCoeiroink.clearQueue();
+        // バックグラウンドタスクの完了を待つ
+        await sayCoeiroink.waitCompletion().catch(() => {
+          // エラーは無視（テストでエラーが発生する場合があるため）
+        });
       } catch (error) {
         // クリーンアップエラーは無視
       }
@@ -329,26 +333,12 @@ describe('並行チャンク生成システム統合テスト', () => {
       await sayCoeiroink.initialize();
 
       // MIN_CHUNK_SIZE (10文字) より長いテキストを使用して確実に分割させる
-      const result = sayCoeiroink.synthesize('これは最初のテストメッセージです。これは二番目のテストメッセージです。これは三番目のテストメッセージです。', {
+      sayCoeiroink.synthesize('これは最初のテストメッセージです。これは二番目のテストメッセージです。これは三番目のテストメッセージです。', {
         voice: 'test-speaker-1',
       });
-      console.log(`[DEBUG] synthesize result:`, result);
 
-      // processQueueが開始されるまで少し待つ
-      await new Promise(resolve => setTimeout(resolve, 100));
-      console.log(`[DEBUG] 100ms待機完了`);
-
-      // waitCompletionでエラーが伝播されることを確認
-      try {
-        await sayCoeiroink.waitCompletion();
-        // ここに到達したらテスト失敗
-        throw new Error('エラーが投げられませんでした');
-      } catch (error) {
-        console.log(`[DEBUG] Caught error:`, error);
-        // HTTP 500エラーが含まれることを確認
-        expect(error).toBeInstanceOf(Error);
-        expect((error as Error).message).toContain('500');
-      }
+      // waitCompletionでエラーが伝播されることを確認（即座に呼び出してUnhandled Rejection防止）
+      await expect(sayCoeiroink.waitCompletion()).rejects.toThrow('500');
     });
 
     test('並行生成設定の境界値が適切に処理されること', async () => {

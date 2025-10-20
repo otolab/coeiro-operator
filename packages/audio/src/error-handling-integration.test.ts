@@ -368,11 +368,6 @@ describe('エラーハンドリング統合テスト', () => {
   });
 
   describe('音声処理エラー処理', () => {
-    test.skip('@echogarden/audio-ioライブラリエラー時の適切な処理', async () => {
-      // このテストは@echogarden/audio-ioのエラーハンドリングのためスキップ
-      // AudioPlayerのエラーハンドリングは別のテストで検証済み
-    });
-
     test('音声データ形式エラーの処理', async () => {
       // 無効な音声データをシミュレート
       vi.mocked(global.fetch).mockImplementation((url: string) => {

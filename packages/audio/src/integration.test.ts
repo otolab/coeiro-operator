@@ -284,9 +284,17 @@ describe('Say Integration Tests', () => {
   });
 
   afterEach(async () => {
+    // SpeechQueueのクリーンアップ
+    try {
+      await sayCoeiroink.clearSpeechQueue();
+      await sayCoeiroink.waitCompletion();
+    } catch (error) {
+      // クリーンアップエラーは無視
+    }
+
     // モックをリセット
     vi.restoreAllMocks();
-    
+
     // 一時ファイルのクリーンアップ
     try {
       const fs = await import('fs');

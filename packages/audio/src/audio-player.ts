@@ -206,7 +206,7 @@ export class AudioPlayer {
         return await this.processAudioStreamPipeline(pcmData);
       } else {
         // シンプルな直接再生
-        return this.playPCMData(pcmData, bufferSize);
+        return await this.playPCMData(pcmData, bufferSize);
       }
     } catch (error) {
       throw new Error(`音声再生エラー: ${(error as Error).message}`);
@@ -456,13 +456,17 @@ export class AudioPlayer {
           bufferDuration = 100; // 100ms
       }
 
-      this.audioOutput = await createAudioOutput({
-        sampleRate: this.playbackRate,
-        channelCount: this.channels,
-        bufferDuration,
-      }, this.audioOutputHandler);
+      try {
+        this.audioOutput = await createAudioOutput({
+          sampleRate: this.playbackRate,
+          channelCount: this.channels,
+          bufferDuration,
+        }, this.audioOutputHandler);
 
-      logger.info(`AudioOutput作成完了: ${this.playbackRate}Hz, ${this.channels}ch, buffer: ${bufferDuration}ms`);
+        logger.info(`AudioOutput作成完了: ${this.playbackRate}Hz, ${this.channels}ch, buffer: ${bufferDuration}ms`);
+      } catch (error) {
+        throw new Error(`AudioOutput作成エラー: ${(error as Error).message}`);
+      }
     }
   }
 

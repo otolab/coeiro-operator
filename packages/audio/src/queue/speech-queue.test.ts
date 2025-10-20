@@ -19,7 +19,7 @@ describe('SpeechQueue', () => {
   });
 
   test('音声タスクの基本的なエンキュー', async () => {
-    const result = speechQueue.enqueue('テストメッセージ', { rate: 200 });
+    const result = speechQueue.enqueueSpeech('テストメッセージ', { rate: 200 });
 
     expect(result.success).toBe(true);
     expect(result.taskId).toBeDefined();
@@ -35,7 +35,7 @@ describe('SpeechQueue', () => {
   });
 
   test('outputFileオプションが結果に含まれること', () => {
-    const result = speechQueue.enqueue('テスト', {
+    const result = speechQueue.enqueueSpeech('テスト', {
       outputFile: '/tmp/test.wav'
     });
 
@@ -50,7 +50,7 @@ describe('SpeechQueue', () => {
       await new Promise(resolve => setTimeout(resolve, 10));
     });
 
-    const result = localQueue.enqueue('', {});
+    const result = localQueue.enqueueSpeech('', {});
 
     expect(result.success).toBe(true);
 
@@ -67,7 +67,7 @@ describe('SpeechQueue', () => {
 
     // 大量のタスクを追加
     for (let i = 0; i < taskCount; i++) {
-      results.push(speechQueue.enqueue(`メッセージ${i}`, {}));
+      results.push(speechQueue.enqueueSpeech(`メッセージ${i}`, {}));
     }
 
     // 全タスクの完了を待つ
@@ -88,9 +88,9 @@ describe('SpeechQueue', () => {
       processedTasks.push(task);
     });
 
-    errorQueue.enqueue('正常1', {});
-    errorQueue.enqueue('エラー', {});
-    errorQueue.enqueue('正常2', {});
+    errorQueue.enqueueSpeech('正常1', {});
+    errorQueue.enqueueSpeech('エラー', {});
+    errorQueue.enqueueSpeech('正常2', {});
 
     const { errors } = await errorQueue.waitForAllTasks();
 

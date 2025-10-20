@@ -336,5 +336,48 @@ describe('AudioPlayer', () => {
       // 無効なパスでも処理が呼び出されることを確認（エラーハンドリングの検証）
       expect(mockWriteFile).toHaveBeenCalledWith(invalidPath, expect.anything(Buffer));
     });
+
+    test('@echogarden/audio-ioライブラリエラー時の適切な処理', async () => {
+      // createAudioOutputがエラーを投げるようにモック
+      const { createAudioOutput } = await import('@echogarden/audio-io');
+      vi.mocked(createAudioOutput).mockRejectedValueOnce(
+        new Error('Audio device not available')
+      );
+
+      // AudioPlayerを初期化
+      await audioPlayer.initialize();
+
+      // ノイズ除去とローパスフィルターを無効化（シンプルな直接再生パスを通す）
+      audioPlayer.setNoiseReduction(false);
+      audioPlayer.setLowpassFilter(false);
+
+      // サンプルレートを一致させて、リサンプリングをスキップ
+      audioPlayer.setSynthesisRate(48000);
+      audioPlayer.setPlaybackRate(48000);
+
+      // テスト用のAudioResultを作成
+      const buffer = new ArrayBuffer(44 + 1000);
+      const view = new DataView(buffer);
+
+      // RIFFヘッダー
+      view.setUint32(0, 0x52494646, false); // "RIFF"
+      view.setUint32(4, buffer.byteLength - 8, true);
+      view.setUint32(8, 0x57415645, false); // "WAVE"
+
+      // dataチャンク
+      view.setUint32(36, 0x64617461, false); // "data"
+      view.setUint32(40, 1000, true);
+
+      const audioResult: AudioResult = {
+        chunk: { text: 'test', index: 0, isFirst: true, isLast: true, overlap: 0 },
+        audioBuffer: buffer,
+        latency: 100,
+      };
+
+      // AudioOutput作成エラーが適切に処理されることを確認
+      await expect(audioPlayer.playAudioStream(audioResult)).rejects.toThrow(
+        /音声再生エラー:.*AudioOutput作成エラー:.*Audio device not available/
+      );
+    });
   });
 });

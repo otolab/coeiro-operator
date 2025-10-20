@@ -14,17 +14,23 @@ async function runTest() {
       host: 'localhost',
       port: '50031',
     },
+    operator: {
+      rate: 200,
+      timeout: 14400000,
+      assignmentStrategy: 'random',
+    },
     audio: {
+      latencyMode: 'balanced',
+      splitMode: 'punctuation',
+      bufferSize: 256,
       parallelGeneration: {
-        enabled: true,
         maxConcurrency: 2,
         delayBetweenRequests: 50,
         bufferAheadCount: 1,
         pauseUntilFirstComplete: true,
       },
-      splitMode: 'punctuation',
-      latencyMode: 'balanced',
     },
+    characters: {},
   };
 
   const configManager = createMockConfigManager(config);
