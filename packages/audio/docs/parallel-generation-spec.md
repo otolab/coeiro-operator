@@ -183,7 +183,7 @@ synthesizeFunction(chunk, speakSettings)
 interface GenerationOptions {
   maxConcurrency: number;           // 最大並行生成数（デフォルト: 2）
   bufferAheadCount: number;         // 先読みチャンク数（デフォルト: 1）
-  delayBetweenRequests: number;     // リクエスト間隔ms（デフォルト: 50）
+  delayBetweenRequests: number;     // リクエスト間隔ms（デフォルト: 100）
   pauseUntilFirstComplete: boolean; // 初回完了まで並行生成をポーズ（デフォルト: true）
 }
 ```
