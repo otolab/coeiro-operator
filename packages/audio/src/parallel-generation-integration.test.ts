@@ -12,31 +12,34 @@ import { join } from 'path';
 
 // モックの設定
 global.fetch = vi.fn();
-vi.mock('speaker', () => ({
-  default: vi.fn(),
-}));
-vi.mock('echogarden', () => ({
-  default: {},
-}));
-vi.mock('dsp.js', () => ({
-  default: {
-    IIRFilter: vi.fn().mockImplementation(() => ({
-      process: vi.fn(),
+
+// AudioPlayerのplayStreamingAudioをモック化して即座に完了させる
+vi.mock('./audio-player.js', async () => {
+  const actual = await vi.importActual<typeof import('./audio-player.js')>('./audio-player.js');
+  return {
+    ...actual,
+    AudioPlayer: vi.fn().mockImplementation(() => ({
+      initialize: vi.fn().mockResolvedValue(true),
+      setSynthesisRate: vi.fn(),
+      setPlaybackRate: vi.fn(),
+      setNoiseReduction: vi.fn(),
+      setLowpassFilter: vi.fn(),
+      // playStreamingAudioを即座に完了させる
+      playStreamingAudio: vi.fn().mockImplementation(async (audioStream) => {
+        // ジェネレータを消費し、エラーを適切に伝播
+        try {
+          for await (const _ of audioStream) {
+            // 何もしない（音声再生はしない）
+          }
+        } catch (error) {
+          // エラーを再スロー（SpeechQueueに伝播させる）
+          throw error;
+        }
+      }),
+      stopPlayback: vi.fn().mockResolvedValue(undefined),
+      cleanup: vi.fn().mockResolvedValue(undefined),
     })),
-    LOWPASS: 1,
-  },
-}));
-vi.mock('node-libsamplerate', () => {
-  const MockSampleRate = vi.fn().mockImplementation(() => ({
-    resample: vi.fn(),
-    end: vi.fn(),
-    pipe: vi.fn(destination => destination),
-    on: vi.fn(),
-    write: vi.fn(),
-    destroy: vi.fn(),
-  }));
-  MockSampleRate.SRC_SINC_MEDIUM_QUALITY = 2;
-  return { default: MockSampleRate };
+  };
 });
 
 
@@ -46,28 +49,6 @@ describe('並行チャンク生成システム統合テスト', () => {
 
   beforeEach(async () => {
     tempDir = join(tmpdir(), `parallel-generation-test-${Date.now()}`);
-
-    // Speakerモックを設定
-    const mockSpeakerInstance = {
-      write: vi.fn(),
-      end: vi.fn(),
-      on: vi.fn((event, callback) => {
-        if (event === 'close') {
-          setTimeout(callback, 10);
-        }
-      }),
-      once: vi.fn((event, callback) => {
-        if (event === 'close') {
-          setTimeout(callback, 10);
-        }
-      }),
-      removeListener: vi.fn(),
-      removeAllListeners: vi.fn(),
-      pipe: vi.fn(),
-    };
-    const SpeakerModule = await vi.importMock('speaker');
-    const MockSpeaker = SpeakerModule.default as unknown;
-    MockSpeaker.mockImplementation(() => mockSpeakerInstance as unknown);
 
     // 並行生成有効な設定
     const config: Config = {
@@ -147,7 +128,21 @@ describe('並行チャンク生成システム統合テスト', () => {
   });
 
   afterEach(async () => {
-    // クリーンアップ
+    // 並行生成タスクのクリーンアップ
+    if (sayCoeiroink) {
+      try {
+        // 残っているタスクを強制的にクリア
+        await sayCoeiroink.clearQueue();
+        // バックグラウンドタスクの完了を待つ
+        await sayCoeiroink.waitCompletion().catch(() => {
+          // エラーは無視（テストでエラーが発生する場合があるため）
+        });
+      } catch (error) {
+        // クリーンアップエラーは無視
+      }
+    }
+
+    // ディレクトリのクリーンアップ
     try {
       const fs = await import('fs');
       await fs.promises.rm(tempDir, { recursive: true, force: true });
@@ -214,6 +209,9 @@ describe('並行チャンク生成システム統合テスト', () => {
 
       expect(result.success).toBe(true);
       // 逐次生成でも正常に動作することを確認
+
+      // クリーンアップ
+      await sequentialSayCoeiroink.clearQueue();
     });
 
     test('bufferAheadCount設定が先読み制御に効果があること', async () => {
@@ -246,6 +244,9 @@ describe('並行チャンク生成システム統合テスト', () => {
 
       expect(result.success).toBe(true);
       expect(result.taskId).toBeDefined();
+
+      // クリーンアップ
+      await bufferSayCoeiroink.clearQueue();
     });
   });
 
@@ -277,6 +278,9 @@ describe('並行チャンク生成システム統合テスト', () => {
 
       expect(result.success).toBe(true);
       // 無効時でも正常に動作（逐次生成で処理）
+
+      // クリーンアップ
+      await disabledSayCoeiroink.clearQueue();
     });
   });
 
@@ -300,16 +304,21 @@ describe('並行チャンク生成システム統合テスト', () => {
 
         if (url.includes('/v1/synthesis')) {
           requestCount++;
+          console.log(`[DEBUG] synthesis API called: request #${requestCount}`);
+
+          // 2番目のリクエストでエラーを返す（複数チャンクの中の一部でエラー）
           if (requestCount === 2) {
-            // 2番目のリクエストで失敗
+            console.log(`[DEBUG] Returning 500 error for request #${requestCount}`);
             return Promise.resolve({
               ok: false,
               status: 500,
               statusText: 'Internal Server Error',
+              text: async () => 'Test error: Server returned 500',
             });
           }
 
           // 正常レスポンス
+          console.log(`[DEBUG] Returning success for request #${requestCount}`);
           const buffer = new ArrayBuffer(44 + 100);
           return Promise.resolve({
             ok: true,
@@ -323,12 +332,13 @@ describe('並行チャンク生成システム統合テスト', () => {
       // sayCoeiroinkを初期化
       await sayCoeiroink.initialize();
 
-      sayCoeiroink.synthesize('エラーテスト1。エラーテスト2。エラーテスト3。', {
+      // MIN_CHUNK_SIZE (10文字) より長いテキストを使用して確実に分割させる
+      sayCoeiroink.synthesize('これは最初のテストメッセージです。これは二番目のテストメッセージです。これは三番目のテストメッセージです。', {
         voice: 'test-speaker-1',
       });
 
-      // waitCompletionでエラーが伝播されることを確認
-      await expect(sayCoeiroink.waitCompletion()).rejects.toThrow();
+      // waitCompletionでエラーが伝播されることを確認（即座に呼び出してUnhandled Rejection防止）
+      await expect(sayCoeiroink.waitCompletion()).rejects.toThrow('500');
     });
 
     test('並行生成設定の境界値が適切に処理されること', async () => {
@@ -360,6 +370,9 @@ describe('並行チャンク生成システム統合テスト', () => {
       await edgeCaseSayCoeiroink.waitCompletion();
 
       expect(result.success).toBe(true);
+
+      // クリーンアップ
+      await edgeCaseSayCoeiroink.clearQueue();
     });
   });
 

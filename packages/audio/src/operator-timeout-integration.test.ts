@@ -101,6 +101,7 @@ describe('オペレータタイムアウト統合テスト', () => {
     // SpeechQueueのモック
     const mockSpeechQueue = {
       enqueue: vi.fn().mockReturnValue({ success: true, taskId: 1, queueLength: 1 }),
+      enqueueSpeech: vi.fn().mockReturnValue({ success: true, taskId: 1, queueLength: 1, promise: Promise.resolve() }),
       waitForAllTasks: vi.fn().mockResolvedValue({ errors: [] }),
       getStatus: vi.fn().mockReturnValue({ queueLength: 0, isProcessing: false }),
       clear: vi.fn(),
@@ -130,8 +131,8 @@ describe('オペレータタイムアウト統合テスト', () => {
     // waitCompletionを呼んで処理を待つ
     await sayCoeiroink.waitCompletion();
 
-    // SpeechQueueのenqueueが呼ばれることを確認
-    expect(mockSpeechQueue.enqueue).toHaveBeenCalled();
+    // SpeechQueueのenqueueSpeechが呼ばれることを確認
+    expect(mockSpeechQueue.enqueueSpeech).toHaveBeenCalled();
     // デフォルト音声が使用されることを確認
     expect(result.success).toBe(true);
   });
@@ -142,11 +143,32 @@ describe('オペレータタイムアウト統合テスト', () => {
       checkServerConnection: vi.fn().mockResolvedValue(true),
     };
 
+    // SpeechQueueのモック - エラーを返す
+    const operatorError = new Error('オペレータが割り当てられていません');
+    const rejectedPromise = Promise.reject(operatorError);
+    rejectedPromise.catch(() => {}); // Unhandled Rejection防止
+
+    const mockSpeechQueue = {
+      enqueue: vi.fn().mockReturnValue({ success: true, taskId: 1, queueLength: 1 }),
+      enqueueSpeech: vi.fn().mockReturnValue({
+        success: true,
+        taskId: 1,
+        queueLength: 1,
+        promise: rejectedPromise
+      }),
+      waitForAllTasks: vi.fn().mockResolvedValue({
+        errors: [{ taskId: 1, error: operatorError }]
+      }),
+      getStatus: vi.fn().mockReturnValue({ queueLength: 0, isProcessing: false }),
+      clear: vi.fn(),
+    };
+
     // initializeメソッドを呼んでSayCoeiroinkを完全に初期化
     await sayCoeiroink.initialize();
 
     // プライベートプロパティをモックで置き換え
     (sayCoeiroink as any).audioSynthesizer = mockAudioSynthesizer;
+    (sayCoeiroink as any).speechQueue = mockSpeechQueue;
     (sayCoeiroink as any).operatorManager = operatorManager;
 
     // オペレータがタイムアウトした状態をシミュレート
@@ -162,8 +184,7 @@ describe('オペレータタイムアウト統合テスト', () => {
     });
 
     // waitCompletionでエラーが発生することを確認
-    // サーバー接続エラーまたはオペレータエラーのどちらか
-    await expect(sayCoeiroink.waitCompletion()).rejects.toThrow();
+    await expect(sayCoeiroink.waitCompletion()).rejects.toThrow('オペレータが割り当てられていません');
   });
 
   test('オペレータが有効な場合は正常に音声合成される', async () => {
@@ -209,6 +230,7 @@ describe('オペレータタイムアウト統合テスト', () => {
     // SpeechQueueのモック
     const mockSpeechQueue = {
       enqueue: vi.fn().mockReturnValue({ success: true, taskId: 1, queueLength: 1 }),
+      enqueueSpeech: vi.fn().mockReturnValue({ success: true, taskId: 1, queueLength: 1, promise: Promise.resolve() }),
       waitForAllTasks: vi.fn().mockResolvedValue({ errors: [] }),
       getStatus: vi.fn().mockReturnValue({ queueLength: 0, isProcessing: false }),
       clear: vi.fn(),
@@ -268,6 +290,6 @@ describe('オペレータタイムアウト統合テスト', () => {
     await sayCoeiroink.waitCompletion();
 
     // synthesizeメソッドによってキューにタスクが登録されることを確認
-    expect(mockSpeechQueue.enqueue).toHaveBeenCalled();
+    expect(mockSpeechQueue.enqueueSpeech).toHaveBeenCalled();
   });
 });

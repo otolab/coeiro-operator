@@ -154,18 +154,20 @@ export class SynthesisProcessor {
   ): Promise<SynthesizeResult> {
     logger.info(`ファイル出力モード: ${outputFile}`);
 
-    // ストリーミング合成してファイルに保存
+    // Step 1: 音声合成（データ生成のみ）
+    logger.info('音声データ生成開始...');
+    logger.debug(`合成パラメータ - chunkMode: ${chunkMode}, speed: ${speed}`);
+    const generator = this.audioSynthesizer.synthesizeStream(text, voiceConfig, speed, chunkMode);
+
+    // Step 2: データ収集（フラットな処理）
+    logger.info('音声データ収集中...');
     const audioChunks: ArrayBuffer[] = [];
-    for await (const audioResult of this.audioSynthesizer.synthesizeStream(
-      text,
-      voiceConfig,
-      speed,
-      chunkMode
-    )) {
+    for await (const audioResult of generator) {
       audioChunks.push(audioResult.audioBuffer);
     }
 
-    // 全チャンクを結合
+    // Step 3: データ結合
+    logger.info('音声データ結合中...');
     const totalLength = audioChunks.reduce((sum, chunk) => sum + chunk.byteLength, 0);
     const combinedBuffer = new ArrayBuffer(totalLength);
     const view = new Uint8Array(combinedBuffer);
@@ -176,7 +178,11 @@ export class SynthesisProcessor {
       offset += chunk.byteLength;
     }
 
+    // Step 4: ファイル保存（フラットな呼び出し）
+    logger.info('ファイル保存中...');
     await this.audioPlayer.saveAudio(combinedBuffer, outputFile);
+
+    logger.info(`ファイル出力完了: ${outputFile}`);
     return { success: true, outputFile, mode: 'file' };
   }
 
@@ -192,20 +198,22 @@ export class SynthesisProcessor {
   ): Promise<SynthesizeResult> {
     logger.info('ストリーミング再生モード');
 
-    // 統一されたストリーミング再生
+    // Step 1: 音声合成（データ生成のみ）
+    logger.info('音声合成開始...');
+    logger.debug(`合成パラメータ - chunkMode: ${chunkMode}, speed: ${speed}`);
+    const generator = this.audioSynthesizer.synthesizeStream(text, voiceConfig, speed, chunkMode);
+
+    // Step 2: 音声再生（再生のみ） - フラットな呼び出し
+    logger.info('音声再生開始...');
+
+    // AudioPlayerの初期化
     if (!(await this.initializeAudioPlayer())) {
       logger.error('音声プレーヤーの初期化に失敗');
       throw new Error('音声プレーヤーの初期化に失敗しました');
     }
 
-    logger.info('音声ストリーミング再生開始...');
-    logger.debug(`About to call streamSynthesizeAndPlay with chunkMode: ${chunkMode}`);
-
-    // 真のストリーミング再生：ジェネレータを直接AudioPlayerに渡す
-    await this.audioPlayer.playStreamingAudio(
-      this.audioSynthesizer.synthesizeStream(text, voiceConfig, speed, chunkMode),
-      bufferSize
-    );
+    // 再生実行
+    await this.audioPlayer.playStreamingAudio(generator, bufferSize);
 
     logger.info('音声ストリーミング再生完了');
     return { success: true, mode: 'streaming' };

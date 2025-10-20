@@ -12,8 +12,10 @@ import { join } from 'path';
 import { writeFile, readFile, mkdir } from 'fs/promises';
 // モックの設定
 global.fetch = vi.fn();
-vi.mock('speaker', () => ({
-  default: vi.fn(),
+vi.mock('@echogarden/audio-io', () => ({
+  createAudioOutput: vi.fn().mockImplementation(async (config, handler) => ({
+    dispose: vi.fn(),
+  })),
 }));
 vi.mock('echogarden', () => ({
   default: {},
@@ -52,29 +54,6 @@ describe('設定システム統合テスト', () => {
 
     // テスト用設定ディレクトリを作成
     await mkdir(configDir, { recursive: true });
-
-    // Speakerモックを設定
-    const mockSpeakerInstance = {
-      write: vi.fn(),
-      end: vi.fn(),
-      on: vi.fn((event, callback) => {
-        if (event === 'close') {
-          setTimeout(callback, 10);
-        }
-      }),
-      once: vi.fn((event, callback) => {
-        if (event === 'close') {
-          setTimeout(callback, 10);
-        }
-      }),
-      removeListener: vi.fn(),
-      removeAllListeners: vi.fn(),
-      pipe: vi.fn(),
-    };
-    // Speakerモックを動的に取得
-    const SpeakerModule = await vi.importMock('speaker');
-    const MockSpeaker = SpeakerModule.default as unknown;
-    MockSpeaker.mockImplementation(() => mockSpeakerInstance as unknown);
 
     // COEIROINK サーバーのモック設定
     (global.fetch as unknown).mockImplementation((url: string) => {

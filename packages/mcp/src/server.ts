@@ -1075,7 +1075,7 @@ server.registerTool(
 
     try {
       const statusBefore = sayCoeiroink.getSpeechQueueStatus();
-      const result = sayCoeiroink.clearSpeechQueue(taskIds);
+      const result = await sayCoeiroink.clearSpeechQueue(taskIds);
 
       let resultText: string;
 

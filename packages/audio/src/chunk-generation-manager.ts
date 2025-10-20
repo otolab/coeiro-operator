@@ -4,7 +4,18 @@
  */
 
 import { logger } from '@coeiro-operator/common';
-import type { Chunk, AudioResult, VoiceConfig } from './types.js';
+import type { Chunk, AudioResult, VoiceConfig, SpeakSettings } from './types.js';
+
+/**
+ * VoiceConfigとspeedからSpeakSettingsへ変換
+ */
+export function toSpeakSettings(voiceConfig: VoiceConfig, speed: number): SpeakSettings {
+  return {
+    speaker: voiceConfig.speaker,
+    styleId: voiceConfig.selectedStyleId,
+    speed,
+  };
+}
 
 export interface GenerationTask {
   chunk: Chunk;
@@ -12,6 +23,14 @@ export interface GenerationTask {
   speed: number;
   startTime: number;
   promise: Promise<AudioResult>;
+}
+
+/** OpenPromiseパターン用のタスク */
+interface OpenPromiseTask {
+  promise: Promise<AudioResult>;
+  resolve: (result: AudioResult) => void;
+  reject: (error: Error) => void;
+  startTime: number;
 }
 
 export interface GenerationOptions {
@@ -26,6 +45,7 @@ export interface GenerationOptions {
 export class ChunkGenerationManager {
   private activeTasks: Map<number, GenerationTask> = new Map();
   private completedResults: Map<number, AudioResult> = new Map();
+  private failedTasks: Map<number, Error> = new Map(); // 失敗したタスクのエラーを保存
   private options: GenerationOptions;
   private synthesizeFunction: (
     chunk: Chunk,
@@ -33,6 +53,11 @@ export class ChunkGenerationManager {
     speed: number
   ) => Promise<AudioResult>;
   private firstChunkCompleted: boolean = false; // 初回チャンク完了フラグ
+
+  // 新しいgenerate()メソッド用のフィールド
+  private newActiveTasks: Map<number, OpenPromiseTask> = new Map();
+  private errorOccurred: boolean = false;
+  private firstError: Error | null = null;
 
   constructor(
     synthesizeFunction: (
@@ -67,27 +92,39 @@ export class ChunkGenerationManager {
     }
 
     // 新しい生成タスクを開始
+    // Promise コンストラクタで明示的にエラーをキャッチ
+    logger.debug(`[ChunkGen] チャンク${chunk.index}: synthesizeFunction呼び出し開始`);
+
+    const handledPromise = new Promise<AudioResult | undefined>((resolve, reject) => {
+      // synthesizeFunctionを呼び出し、その結果を処理
+      this.synthesizeFunction(chunk, voiceConfig, speed)
+        .then((result: AudioResult) => {
+          logger.debug(`[ChunkGen] チャンク${chunk.index}: 生成成功`);
+          this.onTaskCompleted(chunk.index, result);
+          resolve(result);
+        })
+        .catch((error: Error) => {
+          logger.debug(`[ChunkGen] チャンク${chunk.index}: エラーキャッチ - ${error.message}`);
+          this.onTaskFailed(chunk.index, error);
+          // エラーを失敗として処理し、undefinedを返す
+          resolve(undefined);
+        });
+    });
+
+    logger.debug(`[ChunkGen] チャンク${chunk.index}: Promiseハンドラー設定完了`);
+
     const task: GenerationTask = {
       chunk,
       voiceConfig,
       speed,
       startTime: Date.now(),
-      promise: this.synthesizeFunction(chunk, voiceConfig, speed),
+      promise: handledPromise as Promise<AudioResult>,
     };
 
     this.activeTasks.set(chunk.index, task);
     logger.debug(
       `チャンク${chunk.index}の生成開始 (並行数: ${this.activeTasks.size}, 初回完了: ${this.firstChunkCompleted})`
     );
-
-    // 生成完了時の処理を設定
-    task.promise
-      .then((result: AudioResult) => {
-        this.onTaskCompleted(chunk.index, result);
-      })
-      .catch((error: Error) => {
-        this.onTaskFailed(chunk.index, error);
-      });
 
     // リクエスト間隔の調整
     if (this.options.delayBetweenRequests > 0) {
@@ -99,6 +136,13 @@ export class ChunkGenerationManager {
    * 指定されたチャンクの生成結果を取得（完了まで待機）
    */
   async getResult(chunkIndex: number): Promise<AudioResult> {
+    // 既に失敗している場合はエラーを再スロー
+    if (this.failedTasks.has(chunkIndex)) {
+      const error = this.failedTasks.get(chunkIndex)!;
+      this.failedTasks.delete(chunkIndex); // 取得後はクリア
+      throw error;
+    }
+
     // 既に完了している場合
     if (this.completedResults.has(chunkIndex)) {
       const result = this.completedResults.get(chunkIndex)!;
@@ -109,7 +153,19 @@ export class ChunkGenerationManager {
     // 生成中の場合は完了を待機
     const activeTask = this.activeTasks.get(chunkIndex);
     if (activeTask) {
-      return await activeTask.promise;
+      const result = await activeTask.promise;
+
+      // undefinedの場合はエラーが発生している
+      if (result === undefined) {
+        if (this.failedTasks.has(chunkIndex)) {
+          const savedError = this.failedTasks.get(chunkIndex)!;
+          this.failedTasks.delete(chunkIndex);
+          throw savedError;
+        }
+        throw new Error(`チャンク${chunkIndex}の生成に失敗しました`);
+      }
+
+      return result;
     }
 
     throw new Error(`チャンク${chunkIndex}の生成タスクが見つかりません`);
@@ -147,16 +203,28 @@ export class ChunkGenerationManager {
    * すべてのタスクの完了を待機
    */
   async waitForAllTasks(): Promise<void> {
-    const promises = Array.from(this.activeTasks.values()).map(task => task.promise);
+    const promises = Array.from(this.activeTasks.values()).map(task =>
+      // エラーをキャッチして無視（onTaskFailedで処理済み）
+      task.promise.catch(() => {})
+    );
     await Promise.all(promises);
   }
 
   /**
    * すべてのタスクをクリア
    */
-  clear(): void {
+  async clear(): Promise<void> {
+    // 実行中のタスクがある場合は、すべて完了を待つ（エラーは無視）
+    if (this.activeTasks.size > 0) {
+      const promises = Array.from(this.activeTasks.values()).map(task =>
+        task.promise.catch(() => {}) // エラーを無視
+      );
+      await Promise.allSettled(promises); // すべて完了まで待つ
+    }
+
     this.activeTasks.clear();
     this.completedResults.clear();
+    this.failedTasks.clear(); // 失敗タスクもクリア
     this.firstChunkCompleted = false; // 初回完了フラグもリセット
   }
 
@@ -185,7 +253,10 @@ export class ChunkGenerationManager {
       return;
     }
 
-    const promises = Array.from(this.activeTasks.values()).map(task => task.promise);
+    const promises = Array.from(this.activeTasks.values()).map(task =>
+      // エラーをキャッチして無視（onTaskFailedで処理済み）
+      task.promise.catch(() => {})
+    );
     await Promise.race(promises);
   }
 
@@ -201,7 +272,11 @@ export class ChunkGenerationManager {
     // チャンク0のタスクが存在する場合は完了を待機
     const firstTask = this.activeTasks.get(0);
     if (firstTask) {
-      await firstTask.promise;
+      try {
+        await firstTask.promise;
+      } catch {
+        // エラーは既にonTaskFailedで処理されるので無視
+      }
     }
 
     // ポーリングによる確認（安全のため）
@@ -230,10 +305,207 @@ export class ChunkGenerationManager {
   private onTaskFailed(chunkIndex: number, error: Error): void {
     logger.error(`チャンク${chunkIndex}生成失敗: ${error.message}`);
     this.activeTasks.delete(chunkIndex);
-    // エラーの場合は結果をストアしない（getResultで例外が発生）
+    // エラーを保存して、getResultで再スローできるようにする
+    this.failedTasks.set(chunkIndex, error);
   }
 
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * 新しいインターフェース: チャンク配列を並列生成し、順序保証されたストリームを返す
+   *
+   * @param chunks - 生成対象のチャンク配列（既に分割済み）
+   * @param speakSettings - 音声設定（全チャンク共通）
+   * @returns 順序保証された音声結果のストリーム
+   */
+  async *generate(
+    chunks: Chunk[],
+    speakSettings: SpeakSettings
+  ): AsyncGenerator<import('./types.js').GenerationResult> {
+    if (chunks.length === 0) {
+      return;
+    }
+
+    // 初期化
+    this.newActiveTasks.clear();
+    this.errorOccurred = false;
+    this.firstError = null;
+    let newFirstChunkCompleted = false;
+
+    let currentIndex = 0;
+
+    while (currentIndex < chunks.length) {
+      // 現在のチャンクを開始（まだ開始されていない場合）
+      if (!this.newActiveTasks.has(currentIndex) && !this.errorOccurred) {
+        // pauseUntilFirstComplete: 初回完了まで待機（currentIndex > 0の場合）
+        if (this.options.pauseUntilFirstComplete && currentIndex > 0 && !newFirstChunkCompleted) {
+          // 初回完了を待つ（理論上はここには到達しないはず）
+          logger.warn(`チャンク${currentIndex}: 初回未完了で未開始状態（異常）`);
+        }
+
+        // 並行数制限チェック
+        while (this.newActiveTasks.size >= this.options.maxConcurrency) {
+          await this.waitForAnyNewTaskCompletion();
+        }
+
+        this.startNewGeneration(chunks[currentIndex], speakSettings);
+      }
+
+      // エラー発生時は新規生成を停止
+      if (!this.errorOccurred) {
+        // 先読み生成を開始
+        const nextIndex = currentIndex + 1;
+        if (nextIndex < chunks.length) {
+          const generateUpTo = Math.min(nextIndex + 1, chunks.length); // bufferAheadCount=1相当
+          for (let i = nextIndex; i < generateUpTo; i++) {
+            if (!this.newActiveTasks.has(i)) {
+              // pauseUntilFirstComplete: 初回完了まで待機
+              if (this.options.pauseUntilFirstComplete && i > 0 && !newFirstChunkCompleted) {
+                // 初回完了を待つ
+                break;
+              }
+
+              // 並行数制限チェック
+              while (this.newActiveTasks.size >= this.options.maxConcurrency) {
+                await this.waitForAnyNewTaskCompletion();
+              }
+
+              this.startNewGeneration(chunks[i], speakSettings);
+            }
+          }
+        }
+      }
+
+      // 現在のチャンクの完了を待機
+      const result = await this.waitForNewResult(currentIndex);
+
+      // エラーチェック
+      if (!result.success) {
+        logger.error(`チャンク${result.chunkIndex}生成失敗、ストリーム終了`);
+        yield result;
+        await this.cleanupNewTasks();
+        return;
+      }
+
+      // 初回完了フラグ
+      if (currentIndex === 0) {
+        newFirstChunkCompleted = true;
+      }
+
+      // 成功結果をyield
+      yield result;
+      currentIndex++;
+    }
+
+    await this.cleanupNewTasks();
+  }
+
+  /**
+   * OpenPromiseパターンで新しい生成タスクを開始
+   */
+  private startNewGeneration(chunk: Chunk, speakSettings: SpeakSettings): void {
+    logger.debug(`[ChunkGen] チャンク${chunk.index}: 生成開始（新方式）`);
+
+    // 1. OpenPromiseパターン: Promiseを先に作成
+    let resolveTask!: (result: AudioResult) => void;
+    let rejectTask!: (error: Error) => void;
+    const taskPromise = new Promise<AudioResult>((resolve, reject) => {
+      resolveTask = resolve;
+      rejectTask = reject;
+    });
+
+    // 2. 即座にcatchを設定（Unhandled Rejection防止）
+    taskPromise.catch(() => {
+      // エラーは waitForNewResult で処理される
+    });
+
+    // 3. タスクを登録
+    const task: OpenPromiseTask = {
+      promise: taskPromise,
+      resolve: resolveTask,
+      reject: rejectTask,
+      startTime: Date.now(),
+    };
+    this.newActiveTasks.set(chunk.index, task);
+
+    // 4. 後から処理を実行（仕様書通りのシンプルな実装）
+    this.synthesizeFunction(
+      chunk,
+      { speaker: speakSettings.speaker, selectedStyleId: speakSettings.styleId },
+      speakSettings.speed
+    )
+      .then((result) => {
+        logger.debug(`[ChunkGen] チャンク${chunk.index}: 生成成功（新方式）`);
+        resolveTask(result);
+      })
+      .catch((error: Error) => {
+        logger.debug(`[ChunkGen] チャンク${chunk.index}: エラー（新方式）- ${error.message}`);
+        rejectTask(error);
+      });
+  }
+
+  /**
+   * 指定されたチャンクの生成結果を待機
+   */
+  private async waitForNewResult(chunkIndex: number): Promise<import('./types.js').GenerationResult> {
+    const task = this.newActiveTasks.get(chunkIndex);
+    if (!task) {
+      return {
+        success: false,
+        error: new Error(`チャンク${chunkIndex}が見つかりません`),
+        chunkIndex,
+      };
+    }
+
+    try {
+      const audioResult = await task.promise;
+      this.newActiveTasks.delete(chunkIndex);
+      return { success: true, data: audioResult };
+    } catch (error) {
+      this.newActiveTasks.delete(chunkIndex);
+
+      // 最初のエラーを記録
+      if (!this.errorOccurred) {
+        this.errorOccurred = true;
+        this.firstError = error as Error;
+      } else {
+        // 2番目以降のエラーはログ出力のみ
+        logger.error(`チャンク${chunkIndex}生成失敗（複数エラー）: ${(error as Error).message}`);
+      }
+
+      return {
+        success: false,
+        error: error as Error,
+        chunkIndex,
+      };
+    }
+  }
+
+  /**
+   * いずれかのタスクの完了を待機
+   */
+  private async waitForAnyNewTaskCompletion(): Promise<void> {
+    if (this.newActiveTasks.size === 0) {
+      return;
+    }
+
+    const promises = Array.from(this.newActiveTasks.values()).map(task => task.promise.catch(() => {}));
+    await Promise.race(promises);
+  }
+
+  /**
+   * 残タスクの完了を待ってクリーンアップ
+   */
+  private async cleanupNewTasks(): Promise<void> {
+    if (this.newActiveTasks.size > 0) {
+      const promises = Array.from(this.newActiveTasks.values()).map(task => task.promise.catch(() => {}));
+      await Promise.allSettled(promises);
+    }
+
+    this.newActiveTasks.clear();
+    this.errorOccurred = false;
+    this.firstError = null;
   }
 }

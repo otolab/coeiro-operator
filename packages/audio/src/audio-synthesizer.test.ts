@@ -6,7 +6,7 @@ import { AudioSynthesizer } from './audio-synthesizer.js';
 import type { Config, Chunk, VoiceConfig, AudioResult } from './types.js';
 import type { Speaker } from '@coeiro-operator/core';
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 
 // Responseオブジェクトのモックヘルパー
 const createMockResponse = (options: {
@@ -479,7 +479,7 @@ describe('AudioSynthesizer', () => {
 
       await expect(
         audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0)
-      ).rejects.toThrow('チャンク0合成エラー');
+      ).rejects.toThrow('Network error');
     });
   });
 

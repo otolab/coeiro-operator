@@ -5,14 +5,12 @@
 
 import type {
   Config,
-  ConnectionConfig,
   StreamConfig,
   Chunk,
   AudioResult,
   AudioConfig,
   VoiceConfig,
 } from './types.js';
-import type { Style, Character } from '@coeiro-operator/core';
 import { logger } from '@coeiro-operator/common';
 import { SAMPLE_RATES, SPLIT_SETTINGS, PADDING_SETTINGS, SYNTHESIS_SETTINGS } from './constants.js';
 import { getSpeakerProvider } from '@coeiro-operator/core';
@@ -43,12 +41,16 @@ export class AudioSynthesizer {
 
     // AudioStreamControllerを初期化（設定ファイルベース）
     const parallelConfig = this.config.audio?.parallelGeneration || {};
-    this.streamController = new AudioStreamController(this.synthesizeChunk.bind(this), {
-      maxConcurrency: parallelConfig.maxConcurrency || 2,
-      delayBetweenRequests: parallelConfig.delayBetweenRequests || 50,
-      bufferAheadCount: parallelConfig.bufferAheadCount || 1,
-      pauseUntilFirstComplete: parallelConfig.pauseUntilFirstComplete || true,
-    });
+    // arrow function を使って this のコンテキストを保持し、bind を避ける
+    this.streamController = new AudioStreamController(
+      (chunk, voiceConfig, speed) => this.synthesizeChunk(chunk, voiceConfig, speed),
+      {
+        maxConcurrency: parallelConfig.maxConcurrency || 2,
+        delayBetweenRequests: parallelConfig.delayBetweenRequests || 50,
+        bufferAheadCount: parallelConfig.bufferAheadCount || 1,
+        pauseUntilFirstComplete: parallelConfig.pauseUntilFirstComplete || true,
+      }
+    );
   }
 
   /**
@@ -378,12 +380,14 @@ export class AudioSynthesizer {
 
   /**
    * 単一チャンクの音声合成
+   * 注意: エラーを throw せず、ChunkGenerationManager がエラーを処理する
    */
   async synthesizeChunk(
     chunk: Chunk,
     voiceConfig: VoiceConfig,
     speed: number
   ): Promise<AudioResult> {
+    logger.debug(`[AudioSynth] チャンク${chunk.index}: synthesizeChunk開始`);
     logger.log(
       `音声合成: チャンク${chunk.index} "${chunk.text.substring(0, 30)}${chunk.text.length > 30 ? '...' : ''}"`
     );
@@ -439,10 +443,12 @@ export class AudioSynthesizer {
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'レスポンス読み取り失敗');
-        logger.error(
-          `COEIROINK APIエラー: ${response.status} ${response.statusText}, body: ${errorText}`
-        );
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const errorMessage = `COEIROINK APIエラー: ${response.status} ${response.statusText}, body: ${errorText}`;
+        logger.error(errorMessage);
+
+        // エラーを throw
+        logger.debug(`[AudioSynth] チャンク${chunk.index}: エラーをthrowします`);
+        throw new Error(`チャンク${chunk.index}合成エラー: HTTP ${response.status}: ${response.statusText}`);
       }
 
       const audioBuffer = await response.arrayBuffer();
@@ -455,7 +461,8 @@ export class AudioSynthesizer {
       };
     } catch (error) {
       logger.error(`チャンク${chunk.index}合成エラー詳細:`, error);
-      throw new Error(`チャンク${chunk.index}合成エラー: ${(error as Error).message}`);
+      // エラーを再 throw
+      throw error;
     }
   }
 

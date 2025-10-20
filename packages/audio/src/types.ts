@@ -45,18 +45,30 @@ export interface VoiceConfig {
   selectedStyleId: number; // 選択されたスタイルID
 }
 
-export type SpeechTaskType = 'speech';
+/**
+ * SpeakSettings: 音声合成タスク全体の設定
+ * VoiceConfig + speed + 将来的な拡張パラメータを統合
+ */
+export interface SpeakSettings {
+  speaker: Speaker; // どの声で喋るか
+  styleId: number; // どのスタイルで喋るか（ノーマル、裏声など）
+  speed: number; // 話速（0.5 ~ 2.0）
 
-export interface SpeechTask {
-  id: number;
-  type: SpeechTaskType;
-  text: string;
-  options: SynthesizeOptions;
-  timestamp: number;
-  // 完了通知用（CLI同期実行時）
-  resolve?: () => void;
-  reject?: (error: Error) => void;
+  // 将来的に可変にする場合（現在は未使用、デフォルト値を使用）
+  volume?: number; // 音量（デフォルト: 1.0）
+  pitch?: number; // 音高（デフォルト: 0.0）
+  intonation?: number; // イントネーション（デフォルト: 1.0）
 }
+
+/**
+ * GenerationResult: チャンク生成結果（成功 or 失敗）
+ */
+export type GenerationResult =
+  | { success: true; data: AudioResult }
+  | { success: false; error: Error; chunkIndex: number };
+
+// SpeechTaskはqueue/speech-queue.tsに移動
+export type { SpeechTask } from './queue/speech-queue.js';
 
 export interface SynthesizeOptions {
   voice?: string | VoiceConfig | null;
@@ -71,6 +83,7 @@ export interface SynthesizeOptions {
 export interface SynthesizeResult {
   success: boolean;
   taskId?: number;
+  promise?: Promise<void>;  // タスク完了を待つためのPromise
   queueLength?: number;
   outputFile?: string;
   latency?: number;

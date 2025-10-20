@@ -10,7 +10,6 @@ import { join } from 'path';
 import { writeFile, readFile, unlink } from 'fs/promises';
 import { OperatorManager } from '@coeiro-operator/core';
 import type { Character, Speaker as SpeakerType } from '@coeiro-operator/core';
-import { createMockSpeakerInstance } from './test-helpers.js';
 
 // Responseオブジェクトのモックヘルパー
 const createMockResponse = (options: {
@@ -87,8 +86,34 @@ vi.mock('@coeiro-operator/core', () => ({
     }),
   })),
 }));
-vi.mock('speaker', () => ({
-  default: vi.fn(),
+vi.mock('@echogarden/audio-io', () => ({
+  createAudioOutput: vi.fn().mockImplementation(async (config: any, handler: (buffer: Int16Array) => void) => {
+    // handlerを定期的に呼んでキューを消費する
+    let intervalId: NodeJS.Timeout | null = null;
+    let isDisposed = false;
+
+    // 少し遅延を入れてから開始（初期化処理のため）
+    setTimeout(() => {
+      if (!isDisposed) {
+        intervalId = setInterval(() => {
+          if (!isDisposed) {
+            const buffer = new Int16Array(1024);
+            handler(buffer);
+          }
+        }, 10); // 10msごとに呼び出し
+      }
+    }, 10);
+
+    return {
+      dispose: vi.fn(async () => {
+        isDisposed = true;
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+      })
+    };
+  }),
 }));
 vi.mock('echogarden', () => ({
   default: {},
@@ -173,12 +198,6 @@ describe('Say Integration Tests', () => {
 
     // OperatorManagerのモックを設定
     vi.mocked(OperatorManager).mockImplementation(() => mockOperatorManager);
-
-    // Speakerモックを設定
-    const mockSpeakerInstance = createMockSpeakerInstance();
-    const SpeakerModule = await vi.importMock('speaker');
-    const MockSpeaker = SpeakerModule.default;
-    vi.mocked(MockSpeaker).mockImplementation(() => mockSpeakerInstance);
 
     // デフォルト設定を使用
     const configManager = createMockConfigManager();
@@ -265,9 +284,17 @@ describe('Say Integration Tests', () => {
   });
 
   afterEach(async () => {
+    // SpeechQueueのクリーンアップ
+    try {
+      await sayCoeiroink.clearSpeechQueue();
+      await sayCoeiroink.waitCompletion();
+    } catch (error) {
+      // クリーンアップエラーは無視
+    }
+
     // モックをリセット
     vi.restoreAllMocks();
-    
+
     // 一時ファイルのクリーンアップ
     try {
       const fs = await import('fs');
@@ -650,7 +677,7 @@ describe('Say Integration Tests', () => {
       ];
 
       // 全タスククリア（再生も停止される）
-      const clearResult = sayCoeiroink.clearSpeechQueue();
+      const clearResult = await sayCoeiroink.clearSpeechQueue();
 
       expect(clearResult.removedCount).toBeGreaterThanOrEqual(0);
 
@@ -666,7 +693,7 @@ describe('Say Integration Tests', () => {
       const result3 = sayCoeiroink.synthesize('メッセージ3');
 
       // 特定のタスクのみクリア（再生は停止されない）
-      const clearResult = sayCoeiroink.clearSpeechQueue([result2.taskId]);
+      const clearResult = await sayCoeiroink.clearSpeechQueue([result2.taskId]);
 
       expect(clearResult.removedCount).toBeLessThanOrEqual(1);
     });
