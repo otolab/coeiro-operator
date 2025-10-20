@@ -91,20 +91,12 @@ export class AudioStreamController {
       ...settings.pauseMoras,
     };
 
-    // 基準話速を取得（優先順位: スタイル別設定 > キャラクター設定 > 全体設定 > デフォルト）
+    // 基準話速を取得（スタイル別設定 > デフォルト）
     let baseMorasPerSecond = 7.5; // デフォルトは7.5モーラ/秒
 
     // スタイル別の話速が定義されていればそれを使用
     if (voiceConfig.styleMorasPerSecond && voiceConfig.styleId) {
-      baseMorasPerSecond = voiceConfig.styleMorasPerSecond[voiceConfig.styleId] ||
-                           voiceConfig.baseMorasPerSecond ||
-                           settings.baseMorasPerSecond ||
-                           7.5;
-    } else {
-      // 後方互換性のため、従来の優先順位も維持
-      baseMorasPerSecond = voiceConfig.baseMorasPerSecond ||
-                           settings.baseMorasPerSecond ||
-                           7.5;
+      baseMorasPerSecond = voiceConfig.styleMorasPerSecond[voiceConfig.styleId] || 7.5;
     }
 
     logger.debug(

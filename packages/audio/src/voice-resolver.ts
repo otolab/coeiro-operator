@@ -58,7 +58,6 @@ export class VoiceResolver {
           selectedStyleId: selectedStyle.styleId,
           speakerId: character.speaker.speakerId,
           styleId: selectedStyle.styleName,
-          baseMorasPerSecond: character.baseMorasPerSecond,
           styleMorasPerSecond: character.styleMorasPerSecond,
         };
       }
@@ -110,7 +109,6 @@ export class VoiceResolver {
         selectedStyleId: selectedStyle!.styleId,
         speakerId: characterConfig.speakerId,
         styleId: selectedStyle!.styleName,
-        baseMorasPerSecond: characterConfig.baseMorasPerSecond,
         styleMorasPerSecond: characterConfig.styleMorasPerSecond,
       };
     } catch (error) {

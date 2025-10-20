@@ -74,7 +74,10 @@ describe('句読点ポーズ機能', () => {
     it('句点（。）のポーズ時間を正しく計算する', () => {
       const voiceConfig: VoiceConfig = {
         speakerId: 'test',
-        baseMorasPerSecond: 8.0,
+        styleId: 'normal',
+        styleMorasPerSecond: {
+          'normal': 8.0,
+        },
         speaker: {
           speakerName: 'テストスピーカー',
           speakerUuid: 'test-uuid',
@@ -112,7 +115,10 @@ describe('句読点ポーズ機能', () => {
     it('読点（、）のポーズ時間を正しく計算する', () => {
       const voiceConfig: VoiceConfig = {
         speakerId: 'test',
-        baseMorasPerSecond: 7.5,
+        styleId: 'normal',
+        styleMorasPerSecond: {
+          'normal': 7.5,
+        },
         speaker: {
           speakerName: 'テストスピーカー',
           speakerUuid: 'test-uuid',
@@ -141,7 +147,10 @@ describe('句読点ポーズ機能', () => {
     it('疑問符（？）のポーズ時間を正しく計算する', () => {
       const voiceConfig: VoiceConfig = {
         speakerId: 'test',
-        baseMorasPerSecond: 6.0,
+        styleId: 'normal',
+        styleMorasPerSecond: {
+          'normal': 6.0,
+        },
         speaker: {
           speakerName: 'テストスピーカー',
           speakerUuid: 'test-uuid',
@@ -170,7 +179,10 @@ describe('句読点ポーズ機能', () => {
     it('感嘆符（！）のポーズ時間を正しく計算する', () => {
       const voiceConfig: VoiceConfig = {
         speakerId: 'test',
-        baseMorasPerSecond: 8.0,
+        styleId: 'normal',
+        styleMorasPerSecond: {
+          'normal': 8.0,
+        },
         speaker: {
           speakerName: 'テストスピーカー',
           speakerUuid: 'test-uuid',
@@ -199,7 +211,7 @@ describe('句読点ポーズ機能', () => {
     it('設定がない場合はデフォルト値を使用する', () => {
       const voiceConfig: VoiceConfig = {
         speakerId: 'test',
-        // baseMorasPerSecondが未定義
+        // styleMorasPerSecondが未定義
         speaker: {
           speakerName: 'テストスピーカー',
           speakerUuid: 'test-uuid',
@@ -213,7 +225,7 @@ describe('句読点ポーズ機能', () => {
         // pauseMorasが未定義
       };
 
-      // デフォルト値: baseMorasPerSecond=7.5, period=2.0
+      // デフォルト値: 話速=7.5モーラ/秒, period=2.0
       // 2.0モーラ ÷ 7.5モーラ/秒 = 0.267秒 = 267ms
       const duration = (controller as any).calculatePauseDuration(
         '。',
@@ -272,7 +284,6 @@ describe('句読点ポーズ機能', () => {
       const voiceConfig: VoiceConfig = {
         speakerId: 'test',
         styleId: 'ねむねむ',
-        baseMorasPerSecond: 8.0, // デフォルト値
         styleMorasPerSecond: {
           'のーまる': 8.0,
           'ねむねむ': 4.8, // ねむねむスタイルは遅い

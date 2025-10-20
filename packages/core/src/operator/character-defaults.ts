@@ -12,7 +12,6 @@ export interface BaseCharacterConfig {
   greeting: string; // 挨拶メッセージ
   farewell: string; // お別れメッセージ
   defaultStyle: string; // デフォルトスタイル名
-  baseMorasPerSecond?: number; // デフォルトの基準話速（モーラ/秒）、後方互換性のため残す
   styleMorasPerSecond?: Record<string, number>; // スタイル毎の基準話速（モーラ/秒）
 }
 
@@ -33,7 +32,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: '本日も作業をサポートさせていただきます。つくよみちゃんです。',
     farewell: '本日の作業、お疲れさまでした。',
     defaultStyle: 'れいせい', // 利用可能: れいせい, おしとやか, げんき
-    baseMorasPerSecond: 8.61, // デフォルト値（れいせい）
     styleMorasPerSecond: {
       'れいせい': 8.61,
       'おしとやか': 8.19,
@@ -48,7 +46,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'やっほー！今日もよろしくお願いします！',
     farewell: '今日もお疲れさまでした！',
     defaultStyle: 'のーまる', // 利用可能: のーまる, セクシー, ささやき
-    baseMorasPerSecond: 8.25, // デフォルト値（のーまる）
     styleMorasPerSecond: {
       'のーまる': 8.25,
       'セクシー': 6.14,
@@ -62,7 +59,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'こんにちは。今日もがんばりましょう。',
     farewell: '今日もお疲れさまでした。',
     defaultStyle: '表-v2', // 利用可能: 表-v2, 表-v1, 裏, 泣き声, 堕ちた悪魔
-    baseMorasPerSecond: 7.24, // デフォルト値（表-v2）
     styleMorasPerSecond: {
       '表-v2': 7.24,
       '裏': 7.08,
@@ -76,7 +72,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'こんにちは。本日もサポートいたします。',
     farewell: '本日の作業、お疲れさまでした。',
     defaultStyle: 'のーまるv2', // 利用可能: のーまるv2, のーまるv1
-    baseMorasPerSecond: 7.51, // デフォルト値（のーまるv2）
     styleMorasPerSecond: {
       'のーまるv2': 7.51,
     },
@@ -89,7 +84,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'こんにちは。効率的に作業を進めましょう。',
     farewell: '本日の作業、お疲れさまでした。',
     defaultStyle: 'のーまる', // 利用可能: のーまる, えんげき, ほうかご, ないしょばなし
-    baseMorasPerSecond: 8.03, // デフォルト値（のーまる）
     styleMorasPerSecond: {
       'のーまる': 8.03,
       'えんげき': 8.39,
@@ -104,7 +98,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'ごきげんよう。本日もよろしくお願いいたします。',
     farewell: 'お疲れさまでございました。',
     defaultStyle: 'のーまる', // 利用可能: のーまる, 愉悦 Aタイプ, 愉悦 Bタイプ, 喜び, ふわふわ, ぷんぷん
-    baseMorasPerSecond: 6.93, // デフォルト値（のーまる）
     styleMorasPerSecond: {
       'のーまる': 6.93,
       'ふわふわ': 5.49,
@@ -118,7 +111,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'MANAです。今日もゆっくり一緒に作業しましょうね。',
     farewell: '今日もお疲れ様でした。ゆっくり休んでくださいね。',
     defaultStyle: 'のーまる', // 利用可能: のーまる, いっしょうけんめい, ごきげん, どやがお, ふくれっつら, しょんぼり, ないしょばなし, ひっさつわざ, ねむねむ, ぱじゃまぱーてぃー
-    baseMorasPerSecond: 8.20, // デフォルト値（のーまる）
     styleMorasPerSecond: {
       'のーまる': 8.20,
       'ごきげん': 8.48,
@@ -134,7 +126,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'ディアです。今日も一緒に頑張りましょうね。',
     farewell: '今日も一日お疲れ様でした。ゆっくり休んでくださいね。',
     defaultStyle: 'のーまる', // 利用可能: のーまる, セクシー, ひそひそ
-    baseMorasPerSecond: 6.95, // デフォルト値（のーまる）
     styleMorasPerSecond: {
       'のーまる': 6.95,
       'セクシー': 6.19,
@@ -149,7 +140,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: '今日も元気いっぱい！リリンが担当します！',
     farewell: '今日も一日お疲れ様でした！また明日も頑張りましょう！',
     defaultStyle: 'のーまる', // 利用可能: のーまる, ささやき
-    baseMorasPerSecond: 7.64, // デフォルト値（のーまる）
     styleMorasPerSecond: {
       'のーまる': 7.64,
     },
@@ -171,7 +161,6 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: '騎士クロワです。本日もお供いたします。',
     farewell: '本日の任務、完了いたしました。',
     defaultStyle: '素顔の女騎士', // 利用可能: 素顔の女騎士, 気高き女騎士
-    baseMorasPerSecond: 7.86, // デフォルト値（素顔の女騎士）
     styleMorasPerSecond: {
       '素顔の女騎士': 7.86,
     },

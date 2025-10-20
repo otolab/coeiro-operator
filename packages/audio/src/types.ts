@@ -45,7 +45,6 @@ export interface VoiceConfig {
   selectedStyleId: number; // 選択されたスタイルID
   speakerId?: string; // SpeakerのID（キャラクター識別用）
   styleId?: string; // 選択されたスタイル名（例: 'のーまる', 'ねむねむ'）
-  baseMorasPerSecond?: number; // キャラクター固有の基準話速（モーラ/秒）、後方互換性のため残す
   styleMorasPerSecond?: Record<string, number>; // スタイル毎の基準話速（モーラ/秒）
 }
 
@@ -64,10 +63,6 @@ export interface PunctuationPauseSettings {
     question?: number;    // ？の後（モーラ数）
     comma?: number;       // 、の後（モーラ数）
   };
-
-  // デフォルトの基準話速（省略時は7.5モーラ/秒）
-  // 標準的な日本語話速: 7-8モーラ/秒
-  baseMorasPerSecond?: number;
 }
 
 /**
