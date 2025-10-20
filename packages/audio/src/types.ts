@@ -45,6 +45,7 @@ export interface VoiceConfig {
   selectedStyleId: number; // 選択されたスタイルID
   speakerId?: string; // SpeakerのID（キャラクター識別用）
   styleId?: string; // 選択されたスタイル名（例: 'のーまる', 'ねむねむ'）
+  // TODO: styleIdは実際にはスタイル名なので、styleNameに改名すべき
   styleMorasPerSecond?: Record<string, number>; // スタイル毎の基準話速（モーラ/秒）
 }
 
