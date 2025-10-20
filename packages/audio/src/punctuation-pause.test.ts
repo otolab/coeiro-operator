@@ -80,6 +80,7 @@ describe('句読点ポーズ機能', () => {
           speakerUuid: 'test-uuid',
           styles: [],
         },
+        selectedStyleId: 0,
       };
 
       const settings: PunctuationPauseSettings = {
@@ -117,6 +118,7 @@ describe('句読点ポーズ機能', () => {
           speakerUuid: 'test-uuid',
           styles: [],
         },
+        selectedStyleId: 0,
       };
 
       const settings: PunctuationPauseSettings = {
@@ -145,6 +147,7 @@ describe('句読点ポーズ機能', () => {
           speakerUuid: 'test-uuid',
           styles: [],
         },
+        selectedStyleId: 0,
       };
 
       const settings: PunctuationPauseSettings = {
@@ -173,6 +176,7 @@ describe('句読点ポーズ機能', () => {
           speakerUuid: 'test-uuid',
           styles: [],
         },
+        selectedStyleId: 0,
       };
 
       const settings: PunctuationPauseSettings = {
@@ -201,6 +205,7 @@ describe('句読点ポーズ機能', () => {
           speakerUuid: 'test-uuid',
           styles: [],
         },
+        selectedStyleId: 0,
       };
 
       const settings: PunctuationPauseSettings = {
@@ -227,6 +232,7 @@ describe('句読点ポーズ機能', () => {
           speakerUuid: 'test-uuid',
           styles: [],
         },
+        selectedStyleId: 0,
       };
 
       const settings: PunctuationPauseSettings = {
@@ -250,6 +256,7 @@ describe('句読点ポーズ機能', () => {
           speakerUuid: 'test-uuid',
           styles: [],
         },
+        selectedStyleId: 0,
       };
 
       const duration = (controller as any).calculatePauseDuration(
@@ -259,6 +266,40 @@ describe('句読点ポーズ機能', () => {
         undefined
       );
       expect(duration).toBe(0);
+    });
+
+    it('スタイル毎の話速設定を使用する', () => {
+      const voiceConfig: VoiceConfig = {
+        speakerId: 'test',
+        styleId: 'ねむねむ',
+        baseMorasPerSecond: 8.0, // デフォルト値
+        styleMorasPerSecond: {
+          'のーまる': 8.0,
+          'ねむねむ': 4.8, // ねむねむスタイルは遅い
+        },
+        speaker: {
+          speakerName: 'テストスピーカー',
+          speakerUuid: 'test-uuid',
+          styles: [],
+        },
+        selectedStyleId: 0,
+      };
+
+      const settings: PunctuationPauseSettings = {
+        enabled: true,
+        pauseMoras: {
+          period: 2.0,
+        },
+      };
+
+      // ねむねむスタイル: 2.0モーラ ÷ 4.8モーラ/秒 = 0.417秒 = 417ms
+      const duration = (controller as any).calculatePauseDuration(
+        '。',
+        1.0,
+        voiceConfig,
+        settings
+      );
+      expect(duration).toBe(417);
     });
   });
 
@@ -274,6 +315,7 @@ describe('句読点ポーズ機能', () => {
           speakerUuid: 'test-uuid',
           styles: [],
         },
+        selectedStyleId: 0,
       };
 
       const settings: PunctuationPauseSettings = {

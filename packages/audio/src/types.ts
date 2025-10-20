@@ -43,7 +43,10 @@ import type { Character, Speaker } from '@coeiro-operator/core';
 export interface VoiceConfig {
   speaker: Speaker; // COEIROINKのSpeaker情報
   selectedStyleId: number; // 選択されたスタイルID
-  baseMorasPerSecond?: number; // キャラクター固有の基準話速（モーラ/秒）
+  speakerId?: string; // SpeakerのID（キャラクター識別用）
+  styleId?: string; // 選択されたスタイル名（例: 'のーまる', 'ねむねむ'）
+  baseMorasPerSecond?: number; // キャラクター固有の基準話速（モーラ/秒）、後方互換性のため残す
+  styleMorasPerSecond?: Record<string, number>; // スタイル毎の基準話速（モーラ/秒）
 }
 
 /**

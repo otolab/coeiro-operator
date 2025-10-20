@@ -12,7 +12,8 @@ export interface BaseCharacterConfig {
   greeting: string; // 挨拶メッセージ
   farewell: string; // お別れメッセージ
   defaultStyle: string; // デフォルトスタイル名
-  baseMorasPerSecond?: number; // キャラクター固有の基準話速（モーラ/秒）
+  baseMorasPerSecond?: number; // デフォルトの基準話速（モーラ/秒）、後方互換性のため残す
+  styleMorasPerSecond?: Record<string, number>; // スタイル毎の基準話速（モーラ/秒）
 }
 
 // 実際に使用される完全な型（起動時に利用可能性を確認）
@@ -32,7 +33,12 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: '本日も作業をサポートさせていただきます。つくよみちゃんです。',
     farewell: '本日の作業、お疲れさまでした。',
     defaultStyle: 'れいせい', // 利用可能: れいせい, おしとやか, げんき
-    baseMorasPerSecond: 8.61,
+    baseMorasPerSecond: 8.61, // デフォルト値（れいせい）
+    styleMorasPerSecond: {
+      'れいせい': 8.61,
+      'おしとやか': 8.19,
+      'げんき': 8.50,
+    },
   },
   angie: {
     speakerId: 'cc213e6d-d847-45b5-a1df-415744c890f2',
@@ -42,7 +48,11 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'やっほー！今日もよろしくお願いします！',
     farewell: '今日もお疲れさまでした！',
     defaultStyle: 'のーまる', // 利用可能: のーまる, セクシー, ささやき
-    baseMorasPerSecond: 8.25,
+    baseMorasPerSecond: 8.25, // デフォルト値（のーまる）
+    styleMorasPerSecond: {
+      'のーまる': 8.25,
+      'セクシー': 6.14,
+    },
   },
   alma: {
     speakerId: 'c97966b1-d80c-04f5-aba5-d30a92843b59',
@@ -52,7 +62,11 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'こんにちは。今日もがんばりましょう。',
     farewell: '今日もお疲れさまでした。',
     defaultStyle: '表-v2', // 利用可能: 表-v2, 表-v1, 裏, 泣き声, 堕ちた悪魔
-    baseMorasPerSecond: 7.24,
+    baseMorasPerSecond: 7.24, // デフォルト値（表-v2）
+    styleMorasPerSecond: {
+      '表-v2': 7.24,
+      '裏': 7.08,
+    },
   },
   akane: {
     speakerId: 'd1143ac1-c486-4273-92ef-a30938d01b91',
@@ -62,7 +76,10 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'こんにちは。本日もサポートいたします。',
     farewell: '本日の作業、お疲れさまでした。',
     defaultStyle: 'のーまるv2', // 利用可能: のーまるv2, のーまるv1
-    baseMorasPerSecond: 7.51,
+    baseMorasPerSecond: 7.51, // デフォルト値（のーまるv2）
+    styleMorasPerSecond: {
+      'のーまるv2': 7.51,
+    },
   },
   kana: {
     speakerId: '297a5b91-f88a-6951-5841-f1e648b2e594',
@@ -72,7 +89,12 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'こんにちは。効率的に作業を進めましょう。',
     farewell: '本日の作業、お疲れさまでした。',
     defaultStyle: 'のーまる', // 利用可能: のーまる, えんげき, ほうかご, ないしょばなし
-    baseMorasPerSecond: 8.03,
+    baseMorasPerSecond: 8.03, // デフォルト値（のーまる）
+    styleMorasPerSecond: {
+      'のーまる': 8.03,
+      'えんげき': 8.39,
+      'ほうかご': 8.50,
+    },
   },
   kanae: {
     speakerId: 'd41bcbd9-f4a9-4e10-b000-7a431568dd01',
@@ -82,7 +104,11 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'ごきげんよう。本日もよろしくお願いいたします。',
     farewell: 'お疲れさまでございました。',
     defaultStyle: 'のーまる', // 利用可能: のーまる, 愉悦 Aタイプ, 愉悦 Bタイプ, 喜び, ふわふわ, ぷんぷん
-    baseMorasPerSecond: 6.93,
+    baseMorasPerSecond: 6.93, // デフォルト値（のーまる）
+    styleMorasPerSecond: {
+      'のーまる': 6.93,
+      'ふわふわ': 5.49,
+    },
   },
   mana: {
     speakerId: '292ea286-3d5f-f1cc-157c-66462a6a9d08',
@@ -92,7 +118,13 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'MANAです。今日もゆっくり一緒に作業しましょうね。',
     farewell: '今日もお疲れ様でした。ゆっくり休んでくださいね。',
     defaultStyle: 'のーまる', // 利用可能: のーまる, いっしょうけんめい, ごきげん, どやがお, ふくれっつら, しょんぼり, ないしょばなし, ひっさつわざ, ねむねむ, ぱじゃまぱーてぃー
-    baseMorasPerSecond: 8.20,
+    baseMorasPerSecond: 8.20, // デフォルト値（のーまる）
+    styleMorasPerSecond: {
+      'のーまる': 8.20,
+      'ごきげん': 8.48,
+      'しょんぼり': 6.74,
+      'ねむねむ': 4.81,
+    },
   },
   dia: {
     speakerId: 'b28bb401-bc43-c9c7-77e4-77a2bbb4b283',
@@ -102,7 +134,12 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: 'ディアです。今日も一緒に頑張りましょうね。',
     farewell: '今日も一日お疲れ様でした。ゆっくり休んでくださいね。',
     defaultStyle: 'のーまる', // 利用可能: のーまる, セクシー, ひそひそ
-    baseMorasPerSecond: 6.95,
+    baseMorasPerSecond: 6.95, // デフォルト値（のーまる）
+    styleMorasPerSecond: {
+      'のーまる': 6.95,
+      'セクシー': 6.19,
+      'ひそひそ': 6.71,
+    },
   },
   rilin: {
     speakerId: 'cb11bdbd-78fc-4f16-b528-a400bae1782d',
@@ -112,7 +149,10 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: '今日も元気いっぱい！リリンが担当します！',
     farewell: '今日も一日お疲れ様でした！また明日も頑張りましょう！',
     defaultStyle: 'のーまる', // 利用可能: のーまる, ささやき
-    baseMorasPerSecond: 7.64,
+    baseMorasPerSecond: 7.64, // デフォルト値（のーまる）
+    styleMorasPerSecond: {
+      'のーまる': 7.64,
+    },
   },
   ofutonp: {
     speakerId: 'a60ebf6c-626a-7ce6-5d69-c92bf2a1a1d0',
@@ -131,7 +171,10 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     greeting: '騎士クロワです。本日もお供いたします。',
     farewell: '本日の任務、完了いたしました。',
     defaultStyle: '素顔の女騎士', // 利用可能: 素顔の女騎士, 気高き女騎士
-    baseMorasPerSecond: 7.86,
+    baseMorasPerSecond: 7.86, // デフォルト値（素顔の女騎士）
+    styleMorasPerSecond: {
+      '素顔の女騎士': 7.86,
+    },
   },
   aoba: {
     speakerId: 'd219f5ab-a50b-4d99-a26a-a9fc213e9100',
