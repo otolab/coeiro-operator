@@ -42,6 +42,37 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":
   node dist/mcp-debug/cli.js dist/mcp/server.js
 ```
 
+## 🔄 Pull Request作成時の注意事項
+
+### Changesetの作成（必須）
+PRを作成する際は、必ず**changeset**を含めてください。これは変更内容とバージョン管理のために必要です。
+
+```bash
+# インタラクティブモードで作成（推奨）
+pnpm changeset
+
+# インタラクティブモードが使えない場合は手動作成
+# .changeset/your-change-name.md を作成
+```
+
+Changesetファイルの形式：
+```markdown
+---
+"@coeiro-operator/package-name": patch
+---
+
+変更内容の簡潔な説明
+
+### 詳細
+- 変更点1
+- 変更点2
+```
+
+バージョン種別：
+- `patch`: バグ修正、小さな改善
+- `minor`: 新機能追加（後方互換性あり）
+- `major`: 破壊的変更
+
 ## 📖 ドキュメントインデックス
 
 ### 📑 メインインデックス
