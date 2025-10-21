@@ -16,7 +16,6 @@ export function createMockConfigManager(overrides: Partial<Config> = {}): Config
       port: '50032',
     },
     operator: {
-      rate: 200,
       timeout: 14400000,
       assignmentStrategy: 'random',
     },
@@ -70,8 +69,7 @@ export function createMockConfigManager(overrides: Partial<Config> = {}): Config
       };
     },
     getAvailableCharacterIds: async () => ['test-speaker-1', 'tsukuyomi'],
-    getOperatorTimeout: async () => mergedConfig.operator.timeout,
-    getRate: async () => mergedConfig.operator.rate,
+    getOperatorConfig: async () => mergedConfig.operator,
     getAudioConfig: async () => mergedConfig.audio,
     getConnectionConfig: async () => mergedConfig.connection,
   } as unknown as ConfigManager;

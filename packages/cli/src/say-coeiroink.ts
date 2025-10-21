@@ -34,7 +34,7 @@ class SayCoeiroinkCLI {
   }
 
   async showUsage(): Promise<void> {
-    const defaultRate = this.config?.operator?.rate ? `${this.config.operator.rate} WPM` : '話者固有速度';
+    const defaultRate = this.config?.audio?.defaultRate ? `${this.config.audio.defaultRate} WPM` : '話者固有速度';
     console.log(`Usage: say-coeiroink [-v voice] [-r rate] [-o outfile] [-f file | text] [--style style] [--chunk-mode mode] [--buffer-size size]
 
 低レイテンシストリーミング音声合成・再生（macOS sayコマンド互換）
@@ -88,7 +88,7 @@ Examples:
   private async parseArguments(args: string[]): Promise<ParsedOptions> {
     const options: ParsedOptions = {
       voice: process.env.COEIROINK_VOICE || '',
-      rate: this.config?.operator?.rate,  // undefined = 話者固有速度
+      rate: this.config?.audio?.defaultRate,  // undefined = 話者固有速度
       inputFile: '',
       outputFile: '',
       text: '',

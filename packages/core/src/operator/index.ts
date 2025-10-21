@@ -103,7 +103,8 @@ export class OperatorManager {
     }
 
     // dataStoreを初期化（設定ディレクトリ内に保存）
-    const timeoutMs = await this.configManager.getOperatorTimeout();
+    const operatorConfig = await this.configManager.getOperatorConfig();
+    const timeoutMs = operatorConfig.timeout;
     const hostnameClean = hostname().replace(/[^a-zA-Z0-9]/g, '_');
 
     // オペレータ状態を永続的に保存するディレクトリを作成

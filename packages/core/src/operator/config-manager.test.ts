@@ -274,8 +274,8 @@ describe('ConfigManager', () => {
         getSpeakers: mockGetSpeakers,
       };
 
-      const timeout = await configManager.getOperatorTimeout();
-      expect(timeout).toBe(60000);
+      const operatorConfig = await configManager.getOperatorConfig();
+      expect(operatorConfig.timeout).toBe(60000);
     });
 
     test('デフォルト話速（defaultRate）を取得', async () => {
@@ -290,8 +290,8 @@ describe('ConfigManager', () => {
         'utf8'
       );
 
-      const rate = await configManager.getDefaultRate();
-      expect(rate).toBe(250);
+      const audioConfig = await configManager.getAudioConfig();
+      expect(audioConfig.defaultRate).toBe(250);
     });
 
     test('音声設定を取得', async () => {

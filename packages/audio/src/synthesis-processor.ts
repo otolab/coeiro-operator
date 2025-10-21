@@ -79,7 +79,7 @@ export class SynthesisProcessor {
 
     // 速度指定を変換（シンプルに両方渡す）
     const speedSpec = {
-      rate: resolvedOptions.rate,
+      rate: typeof resolvedOptions.rate === 'number' ? resolvedOptions.rate : undefined,
       factor: resolvedOptions.factor
     };
     validateSpeedParameters(speedSpec);

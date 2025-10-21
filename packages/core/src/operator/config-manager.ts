@@ -235,14 +235,6 @@ export class ConfigManager {
   }
 
   /**
-   * オペレータのタイムアウト時間を取得
-   */
-  async getOperatorTimeout(): Promise<number> {
-    const operatorConfig = await this.getOperatorConfig();
-    return operatorConfig.timeout;
-  }
-
-  /**
    * 設定ディレクトリの存在確認と作成
    */
   async ensureConfigDir(): Promise<void> {
@@ -251,15 +243,6 @@ export class ConfigManager {
     } catch (error) {
       console.error(`設定ディレクトリ作成エラー: ${(error as Error).message}`);
     }
-  }
-
-  /**
-   * デフォルト話速（rate）を取得
-   * 設定ファイルのaudio.defaultRateから読み込み
-   */
-  async getDefaultRate(): Promise<number | undefined> {
-    const audioConfig = await this.getAudioConfig();
-    return audioConfig.defaultRate;
   }
 
   /**
