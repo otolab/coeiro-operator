@@ -93,7 +93,8 @@ export type { SpeechTask } from './queue/speech-queue.js';
 
 export interface SynthesizeOptions {
   voice?: string | VoiceConfig | null;
-  rate?: number;
+  rate?: number | string; // 数値（WPM）または文字列（"150%"）形式
+  factor?: number; // 相対速度（倍率、1.0 = 等速）
   outputFile?: string | null;
   style?: string;
   chunkMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation'; // テキスト分割モード

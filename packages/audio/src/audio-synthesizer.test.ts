@@ -231,62 +231,6 @@ describe('AudioSynthesizer', () => {
     });
   });
 
-  describe('convertRateToSpeed', () => {
-    const mockVoiceConfig: VoiceConfig = {
-      speaker: {
-        speakerId: 'test-speaker',
-        speakerName: 'テストキャラクター',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      },
-      selectedStyleId: 0,
-      styleId: 'ノーマル',
-      styleMorasPerSecond: {
-        'ノーマル': 7.5, // デフォルト値
-      },
-    };
-
-    test('rate未指定の場合、話者固有速度（speed=1.0）を返すこと', () => {
-      const speed = audioSynthesizer.convertRateToSpeed(undefined, mockVoiceConfig);
-      expect(speed).toBe(1.0);
-    });
-
-    test('基本レート200が速度1.0に変換されること（7.5モーラ/秒の話者）', () => {
-      const speed = audioSynthesizer.convertRateToSpeed(200, mockVoiceConfig);
-      expect(speed).toBe(1.0);
-    });
-
-    test('高いレートが適切な速度に変換されること', () => {
-      const speed = audioSynthesizer.convertRateToSpeed(400, mockVoiceConfig);
-      expect(speed).toBe(2.0);
-    });
-
-    test('低いレートが適切な速度に変換されること', () => {
-      const speed = audioSynthesizer.convertRateToSpeed(100, mockVoiceConfig);
-      expect(speed).toBe(0.5);
-    });
-
-    test('速度が最小値0.5でクリップされること', () => {
-      const speed = audioSynthesizer.convertRateToSpeed(50, mockVoiceConfig);
-      expect(speed).toBe(0.5);
-    });
-
-    test('速度が最大値2.0でクリップされること', () => {
-      const speed = audioSynthesizer.convertRateToSpeed(800, mockVoiceConfig);
-      expect(speed).toBe(2.0);
-    });
-
-    test('話者の速度が異なる場合、適切に補正されること', () => {
-      const fastSpeakerConfig: VoiceConfig = {
-        ...mockVoiceConfig,
-        styleMorasPerSecond: {
-          'ノーマル': 10.0, // 速い話者
-        },
-      };
-      // rate=200で7.5モーラ/秒を目指す → 10.0モーラ/秒の話者はspeed=0.75
-      const speed = audioSynthesizer.convertRateToSpeed(200, fastSpeakerConfig);
-      expect(speed).toBe(0.75);
-    });
-  });
 
   describe('checkServerConnection', () => {
     test('サーバーが利用可能な場合trueを返すこと', async () => {

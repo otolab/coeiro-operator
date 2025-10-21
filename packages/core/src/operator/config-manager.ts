@@ -12,7 +12,7 @@ import {
   CharacterConfig,
 } from './character-defaults.js';
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
-import { AudioConfig, FullConfig as BaseFullConfig } from '../types.js';
+import { AudioConfig, FullConfig as BaseFullConfig, OperatorConfig } from '../types.js';
 import { deepMerge } from '@coeiro-operator/common';
 
 // FullConfig型の定義（BaseFullConfigを拡張）
@@ -42,7 +42,6 @@ interface Config {
   };
   audio: AudioConfig;
   operator: {
-    rate: number;
     timeout: number;
     assignmentStrategy: 'random';
   };
@@ -255,11 +254,12 @@ export class ConfigManager {
   }
 
   /**
-   * 話速（rate）を取得
+   * デフォルト話速（rate）を取得
+   * 設定ファイルのaudio.defaultRateから読み込み
    */
-  async getRate(): Promise<number | undefined> {
-    const operatorConfig = await this.getOperatorConfig();
-    return operatorConfig.rate;
+  async getDefaultRate(): Promise<number | undefined> {
+    const audioConfig = await this.getAudioConfig();
+    return audioConfig.defaultRate;
   }
 
   /**
@@ -289,7 +289,7 @@ export class ConfigManager {
   /**
    * オペレータ設定を取得
    */
-  async getOperatorConfig(): Promise<typeof DEFAULT_CONFIG.operator> {
+  async getOperatorConfig(): Promise<OperatorConfig> {
     const config = await this.loadConfig();
     return deepMerge(DEFAULT_CONFIG.operator, config.operator);
   }

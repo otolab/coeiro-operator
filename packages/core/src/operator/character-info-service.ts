@@ -46,6 +46,7 @@ export interface Character {
   farewell: string; // 解放時の挨拶
   personality: string; // キャラクターの性格
   speakingStyle: string; // キャラクターの話し方
+  styleMorasPerSecond?: Record<string, number>; // スタイル毎の基準話速（モーラ/秒）
 }
 
 // CharacterConfigからCharacterに変換するヘルパー関数

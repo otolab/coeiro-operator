@@ -7,6 +7,7 @@ import { AudioSynthesizer } from './audio-synthesizer.js';
 import { VoiceResolver } from './voice-resolver.js';
 import { logger } from '@coeiro-operator/common';
 import { BUFFER_SIZES, FILTER_SETTINGS } from './constants.js';
+import { convertToSpeed, validateSpeedParameters } from './speed-utils.js';
 import type {
   Config,
   VoiceConfig,
@@ -60,9 +61,11 @@ export class SynthesisProcessor {
     logger.info(
       `音声合成開始: テキスト="${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`
     );
+    logger.debug(`process - raw options: ${JSON.stringify(options)}`);
 
     // オプション解析
     const resolvedOptions = this.resolveOptions(options);
+    logger.debug(`process - resolved rate: ${resolvedOptions.rate} (type: ${typeof resolvedOptions.rate})`);
 
     // サーバー接続確認を最初に行う
     await this.validateServerConnection();
@@ -74,7 +77,14 @@ export class SynthesisProcessor {
       resolvedOptions.allowFallback
     );
 
-    const speed = this.audioSynthesizer.convertRateToSpeed(resolvedOptions.rate, voiceConfig);
+    // 速度指定を変換（シンプルに両方渡す）
+    const speedSpec = {
+      rate: resolvedOptions.rate,
+      factor: resolvedOptions.factor
+    };
+    validateSpeedParameters(speedSpec);
+    const speed = convertToSpeed(speedSpec, voiceConfig);
+    logger.debug(`process - converted speed: ${speed} (type: ${typeof speed})`);
 
     // 出力モードに応じた処理
     if (resolvedOptions.outputFile) {
@@ -101,7 +111,8 @@ export class SynthesisProcessor {
    */
   private resolveOptions(options: SynthesizeOptions): {
     voice: string | VoiceConfig | null;
-    rate: number;
+    rate: number | string | undefined;
+    factor: number | undefined;
     outputFile: string | null;
     style: string | null;
     chunkMode: any;
@@ -110,7 +121,8 @@ export class SynthesisProcessor {
   } {
     const resolved = {
       voice: options.voice || null,
-      rate: options.rate || this.config.operator.rate,
+      rate: options.rate ?? this.config.audio?.defaultRate,
+      factor: options.factor,
       outputFile: options.outputFile || null,
       style: options.style || null,
       chunkMode: options.chunkMode || this.config.audio?.splitMode || 'punctuation',

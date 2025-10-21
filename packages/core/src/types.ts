@@ -4,6 +4,7 @@
 
 // オーディオ設定の型定義
 export interface AudioConfig {
+  defaultRate?: number; // デフォルトの絶対速度（WPM） - 未指定時は話者固有速度
   latencyMode?: 'ultra-low' | 'balanced' | 'quality';
   splitMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
   bufferSize?: number;
@@ -60,14 +61,16 @@ export interface ConnectionConfig {
   port: string;
 }
 
+// オペレータ設定の型定義（速度設定を含まない）
+export interface OperatorConfig {
+  timeout: number;
+  assignmentStrategy: 'random';
+}
+
 // 完全な設定型
 export interface FullConfig {
   connection: ConnectionConfig;
   audio: AudioConfig;
-  operator: {
-    rate?: number; // 未指定の場合は話者固有速度
-    timeout: number;
-    assignmentStrategy: 'random';
-  };
+  operator: OperatorConfig;
   characters: Record<string, any>;
 }

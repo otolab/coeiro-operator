@@ -463,7 +463,8 @@ server.registerTool(
     inputSchema: {
       message: z.string().describe('発話させるメッセージ（日本語）'),
       voice: z.string().optional().describe('音声ID（省略時はオペレータ設定を使用）'),
-      rate: z.number().optional().describe('話速（WPM、デフォルト200）'),
+      rate: z.number().optional().describe('絶対速度（WPM、200 = 標準）'),
+      factor: z.number().optional().describe('相対速度（倍率、1.0 = 等速）'),
       style: z
         .string()
         .optional()
@@ -473,7 +474,7 @@ server.registerTool(
     },
   },
   async (args): Promise<ToolResponse> => {
-    const { message, voice, rate, style } = args;
+    const { message, voice, rate, factor, style } = args;
 
     try {
       logger.debug('=== SAY TOOL DEBUG START ===');
@@ -481,7 +482,13 @@ server.registerTool(
       logger.debug(`  message: "${message}"`);
       logger.debug(`  voice: ${voice || 'null (will use operator voice)'}`);
       logger.debug(`  rate: ${rate || 'undefined (will use config default)'}`);
+      logger.debug(`  factor: ${factor || 'undefined (will use speaker natural speed)'}`);
       logger.debug(`  style: ${style || 'undefined (will use operator default)'}`);
+
+      // rateとfactorの同時指定チェック
+      if (rate !== undefined && factor !== undefined) {
+        throw new Error('rateとfactorは同時に指定できません。どちらか一方を指定してください。');
+      }
 
       // Issue #58: オペレータ未アサイン時の再アサイン促進メッセージ
       const currentOperator = await operatorManager.showCurrentOperator();
@@ -585,6 +592,7 @@ server.registerTool(
       const result = sayCoeiroink.synthesize(message, {
         voice: voice || null,
         rate: rate || undefined,
+        factor: factor || undefined,
         style: style || undefined,
         allowFallback: false, // MCPツールではオペレータが必須
       });

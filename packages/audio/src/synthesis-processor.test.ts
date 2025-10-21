@@ -42,8 +42,9 @@ describe('SynthesisProcessor', () => {
     // Configのモック
     mockConfig = {
       connection: { host: 'localhost', port: '50032' },
-      operator: { rate: 200 },
+      operator: { timeout: 60000, assignmentStrategy: 'random' },
       audio: {
+        defaultRate: 200,
         splitMode: 'punctuation',
         bufferSize: BUFFER_SIZES.DEFAULT,
         processing: {
@@ -133,7 +134,7 @@ describe('SynthesisProcessor', () => {
         'ハッピー',
         false
       );
-      expect(mockAudioSynthesizer.convertRateToSpeed).toHaveBeenCalledWith(150, expect.any(Object));
+      // 速度変換は内部でspeed-utils.convertToSpeedを直接呼び出すようになった
     });
 
     it('サーバー接続エラーの場合は例外を投げる', async () => {
