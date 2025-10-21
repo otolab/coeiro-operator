@@ -158,7 +158,28 @@ class MCPDebugCLI {
     });
 
     let inputBuffer = '';
-    let currentRequestPromise: Promise<void> | null = null;
+    const requestQueue: JsonRpcMessage[] = [];
+    let isProcessing = false;
+
+    // キューから次のリクエストを処理
+    const processNext = async () => {
+      if (requestQueue.length === 0) {
+        isProcessing = false;
+        return;
+      }
+
+      isProcessing = true;
+      const message = requestQueue.shift()!;
+
+      try {
+        await this.handleNonInteractiveInput(message);
+      } catch (error) {
+        console.error('Error handling request:', error);
+      }
+
+      // 次のリクエストを処理
+      await processNext();
+    };
 
     readline.on('line', (line: string) => {
       inputBuffer += line + '\n';
@@ -168,20 +189,13 @@ class MCPDebugCLI {
         const message = JSON.parse(inputBuffer);
         inputBuffer = '';
 
-        // JSON-RPCリクエストを処理（Promiseを保持）
-        currentRequestPromise = this.handleNonInteractiveInput(message).then(() => {
-          // 非インタラクティブモードでは、レスポンス送信後に終了
-          if (!process.stdout.isTTY) {
-            // 少し待機してからシャットダウン（出力バッファのフラッシュを確実にする）
-            setTimeout(() => {
-              this.shutdown();
-            }, 10);
-          }
-        }).catch((error) => {
-          console.error('Error handling request:', error);
-        }).finally(() => {
-          currentRequestPromise = null;
-        });
+        // リクエストをキューに追加
+        requestQueue.push(message);
+
+        // 処理中でなければ次のリクエストを処理開始
+        if (!isProcessing) {
+          processNext();
+        }
       } catch (error) {
         // JSONが不完全な場合は次の行を待つ
         if (!(error instanceof SyntaxError)) {
@@ -192,15 +206,24 @@ class MCPDebugCLI {
     });
 
     readline.on('close', async () => {
-      // リクエスト処理中の場合は待機
-      if (currentRequestPromise) {
-        try {
-          await currentRequestPromise;
-        } catch (error) {
-          console.error('Error waiting for request completion:', error);
+      // キュー内の全リクエスト処理完了を待機
+      if (isProcessing) {
+        // processNext()が完了するまで待機するため、
+        // 簡易的なポーリングを使用
+        while (isProcessing || requestQueue.length > 0) {
+          await new Promise(resolve => setTimeout(resolve, 10));
         }
       }
-      this.shutdown();
+
+      // 非インタラクティブモードでは、全リクエスト完了後に終了
+      if (!process.stdout.isTTY) {
+        // 少し待機してからシャットダウン（出力バッファのフラッシュを確実にする）
+        setTimeout(() => {
+          this.shutdown();
+        }, 10);
+      } else {
+        this.shutdown();
+      }
     });
   }
 

@@ -18,16 +18,28 @@ mcp-debugは、MCPサーバーを子プロセスとして起動し、以下の�
 JSON-RPCリクエストを標準入力から受け取り、MCPサーバーに転送します：
 
 ```bash
-# JSON-RPCリクエストをパイプで送信
+# 単一リクエストの送信
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":1}' | \
-node dist/mcp-debug/cli.js dist/mcp/server.js
+  node dist/mcp-debug/cli.js dist/mcp/server.js
 
-# タイムアウト付き（推奨）
-echo '{...}' | node dist/mcp-debug/cli.js --timeout 5000 dist/mcp/server.js
+# 複数のリクエストを順次実行
+cat << 'EOF' | node dist/mcp-debug/cli.js dist/mcp/server.js
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":1}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト"}},"id":3}
+EOF
 ```
 
-**注意**: 非インタラクティブモードでは、起動メッセージは標準エラー出力に表示されます。
-JSON-RPCレスポンスは標準出力に返されます。
+**重要な仕様**:
+- **順次処理**: 複数のリクエストは、前のリクエストが完了してから次が実行されます
+- **エラー処理**: 各リクエストは独立して処理され、1つが失敗しても次のリクエストは実行されます
+- **出力先**: 起動メッセージは標準エラー出力、JSON-RPCレスポンスは標準出力に返されます
+
+```bash
+# レスポンスのみを取得（起動メッセージを抑制）
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{...},"id":1}' | \
+  node dist/mcp-debug/cli.js dist/mcp/server.js 2>/dev/null
+```
 
 ### インタラクティブモード
 
@@ -93,22 +105,44 @@ node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
 
 ### 複数のツールを順次テスト
 
+#### 方法1: 1つのパイプで複数リクエスト（推奨）
+
+```bash
+# 1回の起動で複数のツールをテスト
+cat << 'EOF' | node dist/mcp-debug/cli.js dist/mcp/server.js
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":1}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト"}},"id":3}
+EOF
+```
+
+**メリット**:
+- MCPサーバーの起動が1回だけなので高速
+- 順次実行が保証される
+- レスポンスの順序が保証される
+
+#### 方法2: 個別のパイプで実行
+
 ```bash
 # テスト用シェルスクリプト例
 cat << 'EOF' > test-mcp.sh
 #!/bin/bash
 # オペレータ状態確認
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":1}' | \
-  node dist/mcp-debug/cli.js --timeout 3000 dist/mcp/server.js
+  node dist/mcp-debug/cli.js dist/mcp/server.js
 
 # スタイル情報取得
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":2}' | \
-  node dist/mcp-debug/cli.js --timeout 3000 dist/mcp/server.js
+  node dist/mcp-debug/cli.js dist/mcp/server.js
 EOF
 
 chmod +x test-mcp.sh
 ./test-mcp.sh
 ```
+
+**デメリット**:
+- 各コマンドでMCPサーバーを再起動するため遅い
+- 状態が保持されない（オペレータ割り当てなど）
 
 ## トラブルシューティング
 
@@ -122,6 +156,23 @@ chmod +x test-mcp.sh
 # 標準エラー出力を抑制してレスポンスのみ取得
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{...},"id":1}' | \
   node dist/mcp-debug/cli.js dist/mcp/server.js 2>/dev/null
+```
+
+### 複数リクエストでエラーが発生する
+
+**以前の問題（修正済み）**:
+v1.0.0より前のバージョンでは、複数リクエストを同時に送信すると「Server not ready. Current state: processing」エラーが発生していました。
+
+**現在の動作（v1.0.0以降）**:
+複数のリクエストは自動的にキューイングされ、順番に処理されます：
+
+```bash
+# 正常に動作（3つのリクエストが順次実行される）
+cat << 'EOF' | node dist/mcp-debug/cli.js dist/mcp/server.js
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"request 1"}},"id":1}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"request 2"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"echo","arguments":{"message":"request 3"}},"id":3}
+EOF
 ```
 
 ### タイムアウトが効かない
