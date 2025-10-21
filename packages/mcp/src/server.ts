@@ -19,6 +19,7 @@ interface StyleInfo {
   name: string;
   personality: string;
   speakingStyle: string;
+  morasPerSecond?: number;
 }
 
 interface AssignResult {
@@ -184,12 +185,17 @@ async function assignOperator(
 }
 
 function extractStyleInfo(character: Character): StyleInfo[] {
-  return (character.speaker?.styles || []).map(style => ({
-    id: style.styleId.toString(),
-    name: style.styleName,
-    personality: character.personality,
-    speakingStyle: character.speakingStyle,
-  }));
+  return (character.speaker?.styles || []).map(style => {
+    // スタイル毎の設定があればそれを使用、なければキャラクターのデフォルトを使用
+    const styleConfig = character.styles?.[style.styleId];
+    return {
+      id: style.styleId.toString(),
+      name: style.styleName,
+      personality: styleConfig?.personality || character.personality,
+      speakingStyle: styleConfig?.speakingStyle || character.speakingStyle,
+      morasPerSecond: styleConfig?.morasPerSecond,
+    };
+  });
 }
 
 function formatAssignmentResult(assignResult: AssignResult, availableStyles: StyleInfo[]): string {
@@ -198,7 +204,13 @@ function formatAssignmentResult(assignResult: AssignResult, availableStyles: Sty
   if (assignResult.currentStyle) {
     resultText += `📍 現在のスタイル: ${assignResult.currentStyle.styleName}\n`;
     resultText += `   性格: ${assignResult.currentStyle.personality}\n`;
-    resultText += `   話し方: ${assignResult.currentStyle.speakingStyle}\n\n`;
+    resultText += `   話し方: ${assignResult.currentStyle.speakingStyle}\n`;
+    // 現在のスタイルの話速を取得
+    const currentStyleInfo = availableStyles.find(s => s.id === assignResult.currentStyle?.styleId);
+    if (currentStyleInfo?.morasPerSecond) {
+      resultText += `   基準話速: ${currentStyleInfo.morasPerSecond} モーラ/秒\n`;
+    }
+    resultText += '\n';
   }
 
   if (availableStyles.length > 1) {
@@ -209,6 +221,9 @@ function formatAssignmentResult(assignResult: AssignResult, availableStyles: Sty
       resultText += `${marker}${style.id}: ${style.name}\n`;
       resultText += `    性格: ${style.personality}\n`;
       resultText += `    話し方: ${style.speakingStyle}\n`;
+      if (style.morasPerSecond) {
+        resultText += `    基準話速: ${style.morasPerSecond} モーラ/秒\n`;
+      }
     });
   } else {
     resultText += `ℹ️  このキャラクターは1つのスタイルのみ利用可能です。\n`;
@@ -261,16 +276,23 @@ function formatStylesResult(character: Character, availableStyles: StyleInfo[]):
   resultText += `📋 基本情報:\n`;
   resultText += `   性格: ${character.personality}\n`;
   resultText += `   話し方: ${character.speakingStyle}\n`;
-  resultText += `   デフォルトスタイル: ${character.defaultStyle}\n\n`;
+
+  // defaultStyleIdからスタイル名を取得
+  const defaultStyleInfo = character.styles?.[character.defaultStyleId];
+  const defaultStyleName = defaultStyleInfo?.styleName || `ID:${character.defaultStyleId}`;
+  resultText += `   デフォルトスタイル: ${defaultStyleName}\n\n`;
 
   if (availableStyles.length > 0) {
     resultText += `🎨 利用可能なスタイル (${availableStyles.length}種類):\n`;
-    availableStyles.forEach((style, index) => {
-      const isDefault = style.id === character.defaultStyle;
-      const marker = isDefault ? '★ ' : `${index + 1}. `;
+    availableStyles.forEach(style => {
+      const isDefault = style.name === defaultStyleName;
+      const marker = isDefault ? '★ ' : '  ';
       resultText += `${marker}${style.id}: ${style.name}\n`;
       resultText += `   性格: ${style.personality}\n`;
       resultText += `   話し方: ${style.speakingStyle}\n`;
+      if (style.morasPerSecond) {
+        resultText += `   基準話速: ${style.morasPerSecond} モーラ/秒\n`;
+      }
       if (isDefault) {
         resultText += `   (デフォルトスタイル)\n`;
       }
@@ -463,7 +485,8 @@ server.registerTool(
     inputSchema: {
       message: z.string().describe('発話させるメッセージ（日本語）'),
       voice: z.string().optional().describe('音声ID（省略時はオペレータ設定を使用）'),
-      rate: z.number().optional().describe('話速（WPM、デフォルト200）'),
+      rate: z.number().optional().describe('絶対速度（WPM、200 = 標準）'),
+      factor: z.number().optional().describe('相対速度（倍率、1.0 = 等速）'),
       style: z
         .string()
         .optional()
@@ -473,7 +496,7 @@ server.registerTool(
     },
   },
   async (args): Promise<ToolResponse> => {
-    const { message, voice, rate, style } = args;
+    const { message, voice, rate, factor, style } = args;
 
     try {
       logger.debug('=== SAY TOOL DEBUG START ===');
@@ -481,7 +504,13 @@ server.registerTool(
       logger.debug(`  message: "${message}"`);
       logger.debug(`  voice: ${voice || 'null (will use operator voice)'}`);
       logger.debug(`  rate: ${rate || 'undefined (will use config default)'}`);
+      logger.debug(`  factor: ${factor || 'undefined (will use speaker natural speed)'}`);
       logger.debug(`  style: ${style || 'undefined (will use operator default)'}`);
+
+      // rateとfactorの同時指定チェック
+      if (rate !== undefined && factor !== undefined) {
+        throw new Error('rateとfactorは同時に指定できません。どちらか一方を指定してください。');
+      }
 
       // Issue #58: オペレータ未アサイン時の再アサイン促進メッセージ
       const currentOperator = await operatorManager.showCurrentOperator();
@@ -578,13 +607,22 @@ server.registerTool(
       logger.debug('Audio config is managed internally by SayCoeiroink');
       logger.debug('==============================');
 
+      // 速度設定オプションを構築（CLIと同じ形式）
+      const speedOptions: { rate?: number; factor?: number } = {};
+      if (rate !== undefined) {
+        speedOptions.rate = rate;
+      }
+      if (factor !== undefined) {
+        speedOptions.factor = factor;
+      }
+
       // MCP設計: 音声合成タスクをキューに投稿のみ（再生完了を待たない）
       // - synthesize() はキューに追加して即座にレスポンス
       // - 実際の音声合成・再生は背景のSpeechQueueで非同期処理
       // - CLIとは異なり、MCPではウォームアップ・完了待機は実行しない
       const result = sayCoeiroink.synthesize(message, {
         voice: voice || null,
-        rate: rate || undefined,
+        ...speedOptions,  // rateまたはfactorを展開
         style: style || undefined,
         allowFallback: false, // MCPツールではオペレータが必須
       });
@@ -1143,6 +1181,96 @@ server.registerTool(
       };
     } catch (error) {
       throw new Error(`再生停止エラー: ${(error as Error).message}`);
+    }
+  }
+);
+
+// タスク完了待機ツール
+server.registerTool(
+  'wait_for_task_completion',
+  {
+    description:
+      '音声タスクの完了を待機します。すべてのタスクが完了するまで待ちます。デバッグやテスト時に便利です。',
+    inputSchema: {
+      timeout: z
+        .number()
+        .min(1000)
+        .max(60000)
+        .optional()
+        .describe('タイムアウト時間（ミリ秒、1000-60000、デフォルト30000）'),
+    },
+  },
+  async (args): Promise<ToolResponse> => {
+    const { timeout = 30000 } = args || {};
+
+    try {
+      const startTime = Date.now();
+
+      // 初期状態を取得
+      const initialStatus = sayCoeiroink.getSpeechQueueStatus();
+
+      // 待機対象がない場合
+      if (initialStatus.queueLength === 0 && !initialStatus.isProcessing) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: '✅ 待機対象のタスクがありません（キューは空で、処理中のタスクもありません）',
+            },
+          ],
+        };
+      }
+
+      // タイムアウト付きで全タスクの完了を待機
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout')), timeout);
+      });
+
+      try {
+        // waitCompletionを使用してPromiseベースで待機
+        await Promise.race([
+          sayCoeiroink.waitCompletion(),
+          timeoutPromise
+        ]);
+
+        const waitedSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
+        const finalStatus = sayCoeiroink.getSpeechQueueStatus();
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text:
+                `✅ タスク完了を確認しました\n\n` +
+                `待機時間: ${waitedSeconds}秒\n` +
+                `最終ステータス:\n` +
+                `  - キュー長: ${finalStatus.queueLength} 個\n` +
+                `  - 処理状態: ${finalStatus.isProcessing ? '処理中' : '待機中'}\n\n` +
+                `💡 すべての音声処理が完了しました。`,
+            },
+          ],
+        };
+      } catch (error) {
+        if ((error as Error).message === 'Timeout') {
+          const currentStatus = sayCoeiroink.getSpeechQueueStatus();
+          return {
+            content: [
+              {
+                type: 'text',
+                text:
+                  `⏱️ タイムアウト（${timeout / 1000}秒）しました\n\n` +
+                  `現在のステータス:\n` +
+                  `  - キュー長: ${currentStatus.queueLength} 個\n` +
+                  `  - 処理状態: ${currentStatus.isProcessing ? '処理中' : '待機中'}\n\n` +
+                  `⚠️ タスクがまだ完了していません。`,
+              },
+            ],
+          };
+        }
+        throw error;
+      }
+    } catch (error) {
+      throw new Error(`タスク待機エラー: ${(error as Error).message}`);
     }
   }
 );

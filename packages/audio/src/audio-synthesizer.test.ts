@@ -231,32 +231,6 @@ describe('AudioSynthesizer', () => {
     });
   });
 
-  describe('convertRateToSpeed', () => {
-    test('基本レート200が速度1.0に変換されること', () => {
-      const speed = audioSynthesizer.convertRateToSpeed(200);
-      expect(speed).toBe(1.0);
-    });
-
-    test('高いレートが高い速度に変換されること', () => {
-      const speed = audioSynthesizer.convertRateToSpeed(400);
-      expect(speed).toBe(2.0);
-    });
-
-    test('低いレートが低い速度に変換されること', () => {
-      const speed = audioSynthesizer.convertRateToSpeed(100);
-      expect(speed).toBe(0.5);
-    });
-
-    test('速度が最小値0.5でクリップされること', () => {
-      const speed = audioSynthesizer.convertRateToSpeed(50);
-      expect(speed).toBe(0.5);
-    });
-
-    test('速度が最大値2.0でクリップされること', () => {
-      const speed = audioSynthesizer.convertRateToSpeed(800);
-      expect(speed).toBe(2.0);
-    });
-  });
 
   describe('checkServerConnection', () => {
     test('サーバーが利用可能な場合trueを返すこと', async () => {

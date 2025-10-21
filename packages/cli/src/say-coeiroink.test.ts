@@ -33,8 +33,9 @@ describe('SayCoeiroinkCLI', () => {
         // Configのモック
         mockConfig = {
             connection: { host: 'localhost', port: '50032' },
-            operator: { rate: 200 },
-            audio: { 
+            operator: { timeout: 14400000, assignmentStrategy: 'random' },
+            audio: {
+                defaultRate: 200,
                 latencyMode: 'balanced',
                 splitMode: 'punctuation',
                 bufferSize: 2048

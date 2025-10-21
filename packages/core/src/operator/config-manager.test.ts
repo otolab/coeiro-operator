@@ -274,24 +274,24 @@ describe('ConfigManager', () => {
         getSpeakers: mockGetSpeakers,
       };
 
-      const timeout = await configManager.getOperatorTimeout();
-      expect(timeout).toBe(60000);
+      const operatorConfig = await configManager.getOperatorConfig();
+      expect(operatorConfig.timeout).toBe(60000);
     });
 
-    test('話速（rate）を取得', async () => {
+    test('デフォルト話速（defaultRate）を取得', async () => {
       const configFile = join(tempDir, 'config.json');
       await writeFile(
         configFile,
         JSON.stringify({
-          operator: {
-            rate: 250,
+          audio: {
+            defaultRate: 250,
           },
         }),
         'utf8'
       );
 
-      const rate = await configManager.getRate();
-      expect(rate).toBe(250);
+      const audioConfig = await configManager.getAudioConfig();
+      expect(audioConfig.defaultRate).toBe(250);
     });
 
     test('音声設定を取得', async () => {
@@ -415,7 +415,7 @@ describe('ConfigManager', () => {
       
       const fullConfig = await configManager.getFullConfig();
       expect(fullConfig).toBeDefined();
-      expect(fullConfig.operator.rate).toBe(200); // デフォルト値
+      expect(fullConfig.operator.timeout).toBe(14400000); // デフォルト値（4時間）
     });
 
     test('設定のマージが正しく動作する', async () => {

@@ -42,8 +42,9 @@ describe('SynthesisProcessor', () => {
     // Configのモック
     mockConfig = {
       connection: { host: 'localhost', port: '50032' },
-      operator: { rate: 200 },
+      operator: { timeout: 60000, assignmentStrategy: 'random' },
       audio: {
+        defaultRate: 200,
         splitMode: 'punctuation',
         bufferSize: BUFFER_SIZES.DEFAULT,
         processing: {
@@ -70,7 +71,11 @@ describe('SynthesisProcessor', () => {
     // AudioSynthesizerのモック
     mockAudioSynthesizer = {
       checkServerConnection: vi.fn().mockResolvedValue(true),
-      convertRateToSpeed: vi.fn().mockReturnValue(1.0),
+      convertRateToSpeed: vi.fn((rate, voiceConfig) => {
+        // 新しい仕様に基づく実装
+        if (rate === undefined) return 1.0;
+        return rate / 200; // 簡略化した実装
+      }),
       synthesizeStream: vi.fn().mockImplementation(async function* () {
         yield mockAudioResult;
       }),
@@ -129,7 +134,7 @@ describe('SynthesisProcessor', () => {
         'ハッピー',
         false
       );
-      expect(mockAudioSynthesizer.convertRateToSpeed).toHaveBeenCalledWith(150);
+      // 速度変換は内部でspeed-utils.convertToSpeedを直接呼び出すようになった
     });
 
     it('サーバー接続エラーの場合は例外を投げる', async () => {

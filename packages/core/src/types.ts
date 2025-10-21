@@ -4,6 +4,7 @@
 
 // オーディオ設定の型定義
 export interface AudioConfig {
+  defaultRate?: number; // デフォルトの絶対速度（WPM） - 未指定時は話者固有速度
   latencyMode?: 'ultra-low' | 'balanced' | 'quality';
   splitMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
   bufferSize?: number;
@@ -42,6 +43,16 @@ export interface AudioConfig {
     bufferAheadCount?: number;
     pauseUntilFirstComplete?: boolean;
   };
+  punctuationPause?: {
+    enabled?: boolean;
+    pauseMoras?: {
+      period?: number;      // 。の後（モーラ数）
+      exclamation?: number; // ！の後（モーラ数）
+      question?: number;    // ？の後（モーラ数）
+      comma?: number;       // 、の後（モーラ数）
+    };
+    baseMorasPerSecond?: number; // デフォルトの基準話速（モーラ/秒）
+  };
 }
 
 // 接続設定の型定義
@@ -50,14 +61,16 @@ export interface ConnectionConfig {
   port: string;
 }
 
+// オペレータ設定の型定義（速度設定を含まない）
+export interface OperatorConfig {
+  timeout: number;
+  assignmentStrategy: 'random';
+}
+
 // 完全な設定型
 export interface FullConfig {
   connection: ConnectionConfig;
   audio: AudioConfig;
-  operator: {
-    rate: number;
-    timeout: number;
-    assignmentStrategy: 'random';
-  };
+  operator: OperatorConfig;
   characters: Record<string, any>;
 }

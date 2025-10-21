@@ -10,11 +10,13 @@ import type {
   AudioResult,
   AudioConfig,
   VoiceConfig,
+  PunctuationPauseSettings,
 } from './types.js';
 import { logger } from '@coeiro-operator/common';
 import { SAMPLE_RATES, SPLIT_SETTINGS, PADDING_SETTINGS, SYNTHESIS_SETTINGS } from './constants.js';
 import { getSpeakerProvider } from '@coeiro-operator/core';
 import { AudioStreamController, StreamControllerOptions } from './audio-stream-controller.js';
+import { convertToSpeed } from './speed-utils.js';
 
 // ストリーミング設定
 const STREAM_CONFIG: StreamConfig = {
@@ -40,16 +42,31 @@ export class AudioSynthesizer {
     });
 
     // AudioStreamControllerを初期化（設定ファイルベース）
-    const parallelConfig = this.config.audio?.parallelGeneration || {};
+    const parallelDefaults = {
+      maxConcurrency: 2,
+      delayBetweenRequests: 50,
+      bufferAheadCount: 1,
+      pauseUntilFirstComplete: true,
+    };
+    const parallelConfig = { ...parallelDefaults, ...this.config.audio?.parallelGeneration };
+    const punctuationPauseConfig = this.config.audio?.punctuationPause;
+
     // arrow function を使って this のコンテキストを保持し、bind を避ける
+    const options: StreamControllerOptions = {
+      maxConcurrency: parallelConfig.maxConcurrency,
+      delayBetweenRequests: parallelConfig.delayBetweenRequests,
+      bufferAheadCount: parallelConfig.bufferAheadCount,
+      pauseUntilFirstComplete: parallelConfig.pauseUntilFirstComplete,
+    };
+
+    // punctuationPauseが設定されている場合のみ追加
+    if (punctuationPauseConfig) {
+      options.punctuationPause = punctuationPauseConfig as PunctuationPauseSettings;
+    }
+
     this.streamController = new AudioStreamController(
       (chunk, voiceConfig, speed) => this.synthesizeChunk(chunk, voiceConfig, speed),
-      {
-        maxConcurrency: parallelConfig.maxConcurrency || 2,
-        delayBetweenRequests: parallelConfig.delayBetweenRequests || 50,
-        bufferAheadCount: parallelConfig.bufferAheadCount || 1,
-        pauseUntilFirstComplete: parallelConfig.pauseUntilFirstComplete || true,
-      }
+      options
     );
   }
 
@@ -93,7 +110,7 @@ export class AudioSynthesizer {
    * 設定から音声生成時のサンプルレートを取得
    */
   private getSynthesisRate(): number {
-    return this.config.audio.processing?.synthesisRate || SAMPLE_RATES.SYNTHESIS;
+    return this.config.audio?.processing?.synthesisRate || SAMPLE_RATES.SYNTHESIS;
   }
 
   /**
@@ -430,6 +447,9 @@ export class AudioSynthesizer {
       outputSamplingRate: this.getSynthesisRate(),
     };
 
+    logger.debug(`synthesizeChunk - speed: ${speed}, speedScale: ${synthesisParam.speedScale}`);
+    logger.info(`[DEBUG] synthesisParam: ${JSON.stringify(synthesisParam)}`);
+
     const startTime = Date.now();
 
     try {
@@ -466,19 +486,13 @@ export class AudioSynthesizer {
     }
   }
 
-  /**
-   * レート値をスピード値に変換
-   */
-  convertRateToSpeed(rate: number): number {
-    const baseRate = 200;
-    let speed = rate / baseRate;
-    if (speed < 0.5) speed = 0.5;
-    if (speed > 2.0) speed = 2.0;
-    return speed;
-  }
 
   /**
    * ストリーミング音声合成（リファクタリング版）
+   * @param text - 合成するテキスト
+   * @param voiceConfig - 音声設定
+   * @param speed - COEIROINKのspeedScale値（0.5〜2.0）
+   * @param chunkMode - チャンク分割モード
    */
   async *synthesizeStream(
     text: string,

@@ -15,7 +15,6 @@ async function runTest() {
       port: '50031',
     },
     operator: {
-      rate: 200,
       timeout: 14400000,
       assignmentStrategy: 'random',
     },

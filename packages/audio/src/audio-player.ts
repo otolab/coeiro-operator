@@ -756,6 +756,55 @@ export class AudioPlayer {
   }
 
   /**
+   * 無音WAVデータを生成（句読点ポーズ用）
+   * @param durationMs 無音の長さ（ミリ秒）
+   * @param sampleRate サンプルレート（デフォルト：24000Hz）
+   * @returns WAVフォーマットの無音データ
+   */
+  generateSilenceWAV(
+    durationMs: number,
+    sampleRate: number = SAMPLE_RATES.SYNTHESIS
+  ): ArrayBuffer {
+    const numSamples = Math.floor((sampleRate * durationMs) / 1000);
+    const numBytes = numSamples * 2; // 16bit = 2bytes per sample
+    const arrayBuffer = new ArrayBuffer(44 + numBytes); // WAVヘッダー(44bytes) + データ
+    const view = new DataView(arrayBuffer);
+
+    // WAVヘッダーを書き込み
+    // "RIFF"
+    view.setUint32(0, 0x52494646, false);
+    // ファイルサイズ - 8
+    view.setUint32(4, 36 + numBytes, true);
+    // "WAVE"
+    view.setUint32(8, 0x57415645, false);
+    // "fmt "
+    view.setUint32(12, 0x666d7420, false);
+    // fmt チャンクサイズ
+    view.setUint32(16, 16, true);
+    // フォーマットタイプ (1 = PCM)
+    view.setUint16(20, 1, true);
+    // チャンネル数 (1 = モノラル)
+    view.setUint16(22, 1, true);
+    // サンプルレート
+    view.setUint32(24, sampleRate, true);
+    // バイトレート
+    view.setUint32(28, sampleRate * 2, true);
+    // ブロックアライン
+    view.setUint16(32, 2, true);
+    // ビット深度
+    view.setUint16(34, 16, true);
+    // "data"
+    view.setUint32(36, 0x64617461, false);
+    // データチャンクサイズ
+    view.setUint32(40, numBytes, true);
+
+    // 無音データ（すべて0）
+    // ArrayBufferは初期化時に0で埋められるので追加の処理は不要
+
+    return arrayBuffer;
+  }
+
+  /**
    * ドライバーウォームアップ用の無音再生
    * 短い無音を再生してSpeakerドライバーを起動・安定化
    */

@@ -53,9 +53,19 @@ export class VoiceResolver {
           selectedStyle = this.operatorManager.selectStyle(character, null);
         }
 
+        // 新しいstyles構造からstyleMorasPerSecondを生成
+        const styleMorasPerSecond: Record<number, number> = {};
+        if (character.styles) {
+          Object.entries(character.styles).forEach(([styleId, config]) => {
+            styleMorasPerSecond[Number(styleId)] = config.morasPerSecond;
+          });
+        }
+
         return {
           speaker: character.speaker,
           selectedStyleId: selectedStyle.styleId,
+          speakerId: character.speaker.speakerId,
+          styleMorasPerSecond,
         };
       }
 
@@ -87,10 +97,26 @@ export class VoiceResolver {
         throw new Error(`Speaker '${characterConfig.speakerId}' not found for character '${characterId}'`);
       }
 
-      // スタイル選択（styleNameが指定されていればそれを使用、そうでなければdefaultStyle）
-      let selectedStyle = speaker.styles.find(s => s.styleName === (styleName || characterConfig.defaultStyle));
+      // スタイル選択
+      let selectedStyle;
+      if (styleName) {
+        // スタイル名が指定された場合、characterConfig.stylesから対応するstyleIdを探す
+        const styleEntry = Object.entries(characterConfig.styles).find(
+          ([_, config]) => config.styleName === styleName
+        );
+        if (styleEntry) {
+          const styleId = Number(styleEntry[0]);
+          selectedStyle = speaker.styles.find(s => s.styleId === styleId);
+        }
+      }
+
+      // デフォルトスタイルを使用
       if (!selectedStyle) {
-        // デフォルトスタイルが見つからない場合は最初のスタイルを使用
+        selectedStyle = speaker.styles.find(s => s.styleId === characterConfig.defaultStyleId);
+      }
+
+      // それでも見つからない場合は最初のスタイルを使用
+      if (!selectedStyle) {
         selectedStyle = speaker.styles[0];
       }
 
@@ -101,9 +127,19 @@ export class VoiceResolver {
         styles: speaker.styles,
       };
 
+      // 新しいstyles構造からstyleMorasPerSecondを生成
+      const styleMorasPerSecond: Record<number, number> = {};
+      if (characterConfig.styles) {
+        Object.entries(characterConfig.styles).forEach(([styleId, config]) => {
+          styleMorasPerSecond[Number(styleId)] = config.morasPerSecond;
+        });
+      }
+
       return {
         speaker: operatorSpeaker,
         selectedStyleId: selectedStyle!.styleId,
+        speakerId: characterConfig.speakerId,
+        styleMorasPerSecond,
       };
     } catch (error) {
       logger.error(`Character解決エラー: ${(error as Error).message}`);

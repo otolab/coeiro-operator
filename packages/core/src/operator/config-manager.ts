@@ -12,7 +12,7 @@ import {
   CharacterConfig,
 } from './character-defaults.js';
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
-import { AudioConfig, FullConfig as BaseFullConfig } from '../types.js';
+import { AudioConfig, FullConfig as BaseFullConfig, OperatorConfig } from '../types.js';
 import { deepMerge } from '@coeiro-operator/common';
 
 // FullConfig型の定義（BaseFullConfigを拡張）
@@ -42,7 +42,6 @@ interface Config {
   };
   audio: AudioConfig;
   operator: {
-    rate: number;
     timeout: number;
     assignmentStrategy: 'random';
   };
@@ -65,7 +64,7 @@ const DEFAULT_CONFIG = {
     port: '50032',
   },
   operator: {
-    rate: 200,
+    // rate未指定 = 話者固有速度を使用
     timeout: 14400000, // 4時間
     assignmentStrategy: 'random' as const,
   },
@@ -236,14 +235,6 @@ export class ConfigManager {
   }
 
   /**
-   * オペレータのタイムアウト時間を取得
-   */
-  async getOperatorTimeout(): Promise<number> {
-    const operatorConfig = await this.getOperatorConfig();
-    return operatorConfig.timeout;
-  }
-
-  /**
    * 設定ディレクトリの存在確認と作成
    */
   async ensureConfigDir(): Promise<void> {
@@ -252,14 +243,6 @@ export class ConfigManager {
     } catch (error) {
       console.error(`設定ディレクトリ作成エラー: ${(error as Error).message}`);
     }
-  }
-
-  /**
-   * 話速（rate）を取得
-   */
-  async getRate(): Promise<number> {
-    const operatorConfig = await this.getOperatorConfig();
-    return operatorConfig.rate;
   }
 
   /**
@@ -289,7 +272,7 @@ export class ConfigManager {
   /**
    * オペレータ設定を取得
    */
-  async getOperatorConfig(): Promise<typeof DEFAULT_CONFIG.operator> {
+  async getOperatorConfig(): Promise<OperatorConfig> {
     const config = await this.loadConfig();
     return deepMerge(DEFAULT_CONFIG.operator, config.operator);
   }
