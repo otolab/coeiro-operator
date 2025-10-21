@@ -22,7 +22,6 @@ export default defineConfig({
         isolate: true,
       },
     },
-    setupFiles: [path.resolve(__dirname, './test-setup.ts')],
     reporters: process.env.CI ? ['default', 'github-actions'] : ['default'],
     logHeapUsage: true,
   },
