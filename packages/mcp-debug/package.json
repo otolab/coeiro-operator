@@ -3,8 +3,17 @@
   "version": "1.0.0",
   "description": "MCP debug tools for COEIRO Operator",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./cli": {
+      "import": "./dist/cli.js"
+    }
+  },
   "files": [
     "dist"
   ],
@@ -18,9 +27,7 @@
     "arm64",
     "ia32"
   ],
-  "bin": {
-    "mcp-debug": "./dist/cli.js"
-  },
+  "bin": "./dist/cli.js",
   "scripts": {
     "build": "tsc --build",
     "test": "vitest --silent",
