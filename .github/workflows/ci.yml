@@ -46,38 +46,14 @@ jobs:
       - name: Lint
         run: pnpm lint
 
-      - name: Run tests - Common package
-        run: pnpm test:common
-        env:
-          NODE_ENV: test
-          CI: true
-      
-      - name: Run tests - Core package
-        run: pnpm test:core
+      - name: Run unit tests
+        run: pnpm test
         env:
           NODE_ENV: test
           CI: true
 
-      - name: Run tests - Audio package
-        run: pnpm test:audio
-        env:
-          NODE_ENV: test
-          CI: true
-
-      - name: Run tests - CLI package
-        run: pnpm test:cli
-        env:
-          NODE_ENV: test
-          CI: true
-
-      - name: Run tests - MCP package
-        run: pnpm test:mcp
-        env:
-          NODE_ENV: test
-          CI: true
-
-      - name: Run tests - MCP Debug package
-        run: pnpm test:mcp-debug
+      - name: Run integration tests
+        run: pnpm test:integration
         env:
           NODE_ENV: test
           CI: true
