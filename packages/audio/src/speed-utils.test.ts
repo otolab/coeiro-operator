@@ -11,7 +11,7 @@ import {
 import type { VoiceConfig } from './types.js';
 
 // モックのVoiceConfig
-const createMockVoiceConfig = (styleMorasPerSecond?: Record<string, number>): VoiceConfig => ({
+const createMockVoiceConfig = (styleMorasPerSecond?: Record<number, number>): VoiceConfig => ({
   speaker: {
     speakerId: 'test-speaker',
     speakerName: 'Test Speaker',
@@ -21,7 +21,6 @@ const createMockVoiceConfig = (styleMorasPerSecond?: Record<string, number>): Vo
     ],
   },
   selectedStyleId: 0,
-  styleId: 'normal',
   styleMorasPerSecond,
 });
 
@@ -61,7 +60,7 @@ describe('convertToSpeed', () => {
   describe('絶対速度（rate）指定', () => {
     it('標準話速200WPMでspeed=1.0を返す', () => {
       const spec: SpeedSpecification = { rate: 200 };
-      const voiceConfig = createMockVoiceConfig({ normal: 7.5 });
+      const voiceConfig = createMockVoiceConfig({ 0: 7.5 });
       const speed = convertToSpeed(spec, voiceConfig);
       expect(speed).toBe(1.0);
     });
@@ -69,15 +68,15 @@ describe('convertToSpeed', () => {
     it('話者固有速度を考慮して変換する', () => {
       const spec: SpeedSpecification = { rate: 200 };
       // 話者の実測速度が15mora/s（標準の2倍速い）
-      const voiceConfig = createMockVoiceConfig({ normal: 15 });
+      const voiceConfig = createMockVoiceConfig({ 0: 15 });
       const speed = convertToSpeed(spec, voiceConfig);
       expect(speed).toBe(0.5); // 半分の速度で標準速度を実現
     });
 
     it('スタイル別の話速を考慮する', () => {
       const spec: SpeedSpecification = { rate: 200 };
-      const voiceConfig = createMockVoiceConfig({ normal: 10, happy: 5 });
-      voiceConfig.styleId = 'happy';
+      const voiceConfig = createMockVoiceConfig({ 0: 10, 1: 5 });
+      voiceConfig.selectedStyleId = 1; // happy style
       const speed = convertToSpeed(spec, voiceConfig);
       expect(speed).toBe(1.5); // 5mora/s → 7.5mora/sにするには1.5倍速
     });

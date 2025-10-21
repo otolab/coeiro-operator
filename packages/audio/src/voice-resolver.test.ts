@@ -59,14 +59,21 @@ describe('VoiceResolver', () => {
           return Promise.resolve({
             characterId: 'test-character',
             speakerId: 'test-speaker-uuid',
-            defaultStyle: 'ノーマル',
+            defaultStyleId: 0,
+            styles: {
+              0: { styleName: 'ノーマル', morasPerSecond: 7.5 },
+              1: { styleName: 'ハッピー', morasPerSecond: 8.0 },
+            },
           });
         }
         if (characterId === 'tsukuyomi') {
           return Promise.resolve({
             characterId: 'tsukuyomi',
             speakerId: 'tsukuyomi-uuid',
-            defaultStyle: 'れいせい',
+            defaultStyleId: 0,
+            styles: {
+              0: { styleName: 'れいせい', morasPerSecond: 7.5 },
+            },
           });
         }
         return Promise.resolve(null);
