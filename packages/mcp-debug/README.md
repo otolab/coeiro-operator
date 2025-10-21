@@ -9,6 +9,9 @@ mcp-debugは、MCPサーバーを子プロセスとして起動し、JSON-RPCリ
 ## インストール
 
 ```bash
+# npx経由で直接実行（推奨）
+npx @coeiro-operator/mcp-debug [options] <target-server>
+
 # プロジェクト内で使用（ビルド済みの場合）
 node dist/mcp-debug/cli.js [options] <target-server>
 
@@ -75,6 +78,45 @@ cat << 'EOF' | node dist/mcp-debug/cli.js dist/echo-server.js
 EOF
 ```
 
+### E2Eテストでの使用
+
+mcp-debugはE2Eテストのために、JavaScriptライブラリとしても使用できます：
+
+```javascript
+import { MCPDebugClient } from '@coeiro-operator/mcp-debug';
+
+describe('MCP Server E2E Tests', () => {
+  let client;
+
+  beforeAll(async () => {
+    // MCPサーバーを起動
+    client = new MCPDebugClient({
+      serverPath: 'dist/mcp/server.js',
+      timeout: 30000,
+    });
+    await client.start();
+  });
+
+  afterAll(async () => {
+    await client.stop();
+  });
+
+  test('should execute tool', async () => {
+    const response = await client.request({
+      method: 'tools/call',
+      params: {
+        name: 'echo',
+        arguments: { message: 'test' }
+      }
+    });
+
+    expect(response.content).toContain('test');
+  });
+});
+```
+
+詳細は[ライブラリAPIドキュメント](../../docs/mcp-debug/library-api.md)を参照してください。
+
 ### 子プロセスへの引数渡し
 
 ```bash
@@ -105,34 +147,19 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{...},"id":1}' | \
 
 ## 開発時の注意
 
-### Claude CodeのMCPキャッシュ問題
+### Claude CodeのMCPサーバープロセス
 
-Claude Codeは起動時にMCPサーバーをキャッシュするため、コード変更が反映されません：
+Claude Codeは起動時にMCPサーバーをプロセスとして起動し、サーバーのコードが更新されても古いコードのプロセスのまま維持されます：
 
 ```bash
 # ❌ Claude Code内でMCPツールを実行
-# → 古いコード（キャッシュ）が実行される
+# → 既に起動している古いプロセスが使用される
 
 # ✅ mcp-debugを使用
 # → 毎回新しいプロセスで最新コードが実行される
 ```
 
 開発中は必ずmcp-debugを使用してテストしてください。
-
-## トラブルシューティング
-
-### "Server not ready" エラー
-
-v1.0.0以降では自動的にキューイングされるため、このエラーは発生しません。
-古いバージョンを使用している場合は更新してください。
-
-### タイムアウトエラー
-
-リクエストタイムアウトを調整：
-
-```bash
-node dist/mcp-debug/cli.js --request-timeout 60000 dist/mcp/server.js
-```
 
 ## 詳細ドキュメント
 

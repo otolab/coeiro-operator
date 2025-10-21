@@ -2,9 +2,11 @@
 "@coeiro-operator/mcp-debug": patch
 ---
 
-docs: mcp-debugパッケージにREADMEを追加
+docs: mcp-debugパッケージにREADMEとライブラリAPIドキュメントを追加
 
 ### 変更内容
 - packages/mcp-debug/README.md: 使い方とAPIリファレンスを追加
-- 基本的な使用方法、オプション、トラブルシューティングを記載
-- Claude Code開発時の注意事項を明記
+  - npx経由での実行方法を追加
+  - E2Eテストでのライブラリ使用例を追加
+  - MCPサーバープロセスの説明を正確に修正
+- docs/mcp-debug/library-api.md: ライブラリAPIの詳細ドキュメントを追加
