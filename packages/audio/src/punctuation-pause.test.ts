@@ -61,13 +61,22 @@ vi.mock('./audio-synthesizer.js', () => ({
 
 describe('句読点ポーズ機能', () => {
   let controller: AudioStreamController;
-  let player: AudioPlayer;
-  let synthesizer: AudioSynthesizer;
+  let synthesizeFunction: any;
 
   beforeEach(() => {
-    player = new AudioPlayer();
-    synthesizer = new AudioSynthesizer({} as any);
-    controller = new AudioStreamController(player, synthesizer);
+    // synthesizeFunction のモック
+    synthesizeFunction = vi.fn().mockResolvedValue({
+      chunk: { text: 'test', index: 0, isFirst: true, isLast: true, overlap: 0 },
+      audioBuffer: new ArrayBuffer(1000),
+      latency: 10,
+    });
+
+    controller = new AudioStreamController(synthesizeFunction, {
+      maxConcurrency: 2,
+      delayBetweenRequests: 50,
+      bufferAheadCount: 1,
+      pauseUntilFirstComplete: true,
+    });
   });
 
   describe('calculatePauseDuration', () => {
@@ -93,20 +102,18 @@ describe('句読点ポーズ機能', () => {
         },
       };
 
-      // speedScale=1.0の場合: 2.0モーラ ÷ 8.0モーラ/秒 = 0.25秒 = 250ms
+      // 8.0モーラ/秒の場合: 2.0モーラ ÷ 8.0モーラ/秒 = 0.25秒 = 250ms
       const duration = (controller as any).calculatePauseDuration(
         '。',
-        1.0,
-        voiceConfig,
+        8.0, // actualMorasPerSecond
         settings
       );
       expect(duration).toBe(250);
 
-      // speedScale=2.0の場合: 2.0モーラ ÷ (8.0 × 2.0)モーラ/秒 = 0.125秒 = 125ms
+      // 16.0モーラ/秒の場合: 2.0モーラ ÷ 16.0モーラ/秒 = 0.125秒 = 125ms
       const durationFast = (controller as any).calculatePauseDuration(
         '。',
-        2.0,
-        voiceConfig,
+        16.0, // actualMorasPerSecond
         settings
       );
       expect(durationFast).toBe(125);
@@ -134,11 +141,10 @@ describe('句読点ポーズ機能', () => {
         },
       };
 
-      // speedScale=1.0の場合: 1.0モーラ ÷ 7.5モーラ/秒 = 0.133...秒 = 133ms
+      // 7.5モーラ/秒の場合: 1.0モーラ ÷ 7.5モーラ/秒 = 0.133...秒 = 133ms
       const duration = (controller as any).calculatePauseDuration(
         '、',
-        1.0,
-        voiceConfig,
+        7.5, // actualMorasPerSecond
         settings
       );
       expect(duration).toBe(133);
@@ -166,11 +172,10 @@ describe('句読点ポーズ機能', () => {
         },
       };
 
-      // speedScale=1.5の場合: 2.5モーラ ÷ (6.0 × 1.5)モーラ/秒 = 0.278秒 = 278ms
+      // 9.0モーラ/秒の場合: 2.5モーラ ÷ 9.0モーラ/秒 = 0.278秒 = 278ms
       const duration = (controller as any).calculatePauseDuration(
         '？',
-        1.5,
-        voiceConfig,
+        9.0, // actualMorasPerSecond
         settings
       );
       expect(duration).toBe(278);
@@ -198,11 +203,10 @@ describe('句読点ポーズ機能', () => {
         },
       };
 
-      // speedScale=0.5の場合: 2.0モーラ ÷ (8.0 × 0.5)モーラ/秒 = 0.5秒 = 500ms
+      // 4.0モーラ/秒の場合: 2.0モーラ ÷ 4.0モーラ/秒 = 0.5秒 = 500ms
       const duration = (controller as any).calculatePauseDuration(
         '！',
-        0.5,
-        voiceConfig,
+        4.0, // actualMorasPerSecond
         settings
       );
       expect(duration).toBe(500);
@@ -229,8 +233,7 @@ describe('句読点ポーズ機能', () => {
       // 2.0モーラ ÷ 7.5モーラ/秒 = 0.267秒 = 267ms
       const duration = (controller as any).calculatePauseDuration(
         '。',
-        1.0,
-        voiceConfig,
+        7.5, // actualMorasPerSecond (デフォルト)
         settings
       );
       expect(duration).toBe(267);
@@ -253,8 +256,7 @@ describe('句読点ポーズ機能', () => {
 
       const duration = (controller as any).calculatePauseDuration(
         '。',
-        1.0,
-        voiceConfig,
+        7.5, // actualMorasPerSecond
         settings
       );
       expect(duration).toBe(0);
@@ -273,29 +275,13 @@ describe('句読点ポーズ機能', () => {
 
       const duration = (controller as any).calculatePauseDuration(
         '。',
-        1.0,
-        voiceConfig,
+        7.5, // actualMorasPerSecond
         undefined
       );
       expect(duration).toBe(0);
     });
 
     it('スタイル毎の話速設定を使用する', () => {
-      const voiceConfig: VoiceConfig = {
-        speakerId: 'test',
-        styleId: 'ねむねむ',
-        styleMorasPerSecond: {
-          'のーまる': 8.0,
-          'ねむねむ': 4.8, // ねむねむスタイルは遅い
-        },
-        speaker: {
-          speakerName: 'テストスピーカー',
-          speakerUuid: 'test-uuid',
-          styles: [],
-        },
-        selectedStyleId: 0,
-      };
-
       const settings: PunctuationPauseSettings = {
         enabled: true,
         pauseMoras: {
@@ -303,11 +289,10 @@ describe('句読点ポーズ機能', () => {
         },
       };
 
-      // ねむねむスタイル: 2.0モーラ ÷ 4.8モーラ/秒 = 0.417秒 = 417ms
+      // ねむねむスタイル（遅い）: 2.0モーラ ÷ 4.8モーラ/秒 = 0.417秒 = 417ms
       const duration = (controller as any).calculatePauseDuration(
         '。',
-        1.0,
-        voiceConfig,
+        4.8, // actualMorasPerSecond (ねむねむスタイルの速度)
         settings
       );
       expect(duration).toBe(417);

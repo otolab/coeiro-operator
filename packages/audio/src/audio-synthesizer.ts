@@ -471,17 +471,58 @@ export class AudioSynthesizer {
 
   /**
    * レート値をスピード値に変換
+   * @param rate - 話速（WPM）。未指定の場合は話者固有速度を使用
+   * @param voiceConfig - 音声設定（スタイル別の話速情報を含む）
+   * @returns COEIROINKのspeed値（0.5〜2.0）
    */
-  convertRateToSpeed(rate: number): number {
+  convertRateToSpeed(rate: number | undefined, voiceConfig: VoiceConfig): number {
+    // rate未指定の場合は話者固有速度（speed=1.0）
+    if (rate === undefined) {
+      return 1.0;
+    }
+
+    // スタイル別の話速が定義されていない場合はフォールバック
+    if (!voiceConfig.styleMorasPerSecond || !voiceConfig.styleId) {
+      // 従来の処理（後方互換性）
+      const baseRate = 200;
+      let speed = rate / baseRate;
+      if (speed < 0.5) speed = 0.5;
+      if (speed > 2.0) speed = 2.0;
+      return speed;
+    }
+
+    // 話者の固有速度を取得
+    const styleMorasPerSecond = voiceConfig.styleMorasPerSecond[voiceConfig.styleId];
+    if (!styleMorasPerSecond) {
+      // スタイルの速度が見つからない場合はデフォルト処理
+      const baseRate = 200;
+      let speed = rate / baseRate;
+      if (speed < 0.5) speed = 0.5;
+      if (speed > 2.0) speed = 2.0;
+      return speed;
+    }
+
+    // 絶対速度モード：目標速度を計算
     const baseRate = 200;
-    let speed = rate / baseRate;
+    const baseMorasPerSecond = 7.5;
+    const targetMorasPerSecond = baseMorasPerSecond * (rate / baseRate);
+
+    // 必要なspeed値を計算
+    let speed = targetMorasPerSecond / styleMorasPerSecond;
+
+    // COEIROINKの制限範囲内に収める
     if (speed < 0.5) speed = 0.5;
     if (speed > 2.0) speed = 2.0;
+
     return speed;
   }
 
   /**
    * ストリーミング音声合成（リファクタリング版）
+   * @param text - 合成するテキスト
+   * @param voiceConfig - 音声設定
+   * @param speed - COEIROINKのspeedScale値（0.5〜2.0）
+   * @param chunkMode - チャンク分割モード
    */
   async *synthesizeStream(
     text: string,

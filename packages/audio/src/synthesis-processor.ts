@@ -74,7 +74,7 @@ export class SynthesisProcessor {
       resolvedOptions.allowFallback
     );
 
-    const speed = this.audioSynthesizer.convertRateToSpeed(resolvedOptions.rate);
+    const speed = this.audioSynthesizer.convertRateToSpeed(resolvedOptions.rate, voiceConfig);
 
     // 出力モードに応じた処理
     if (resolvedOptions.outputFile) {

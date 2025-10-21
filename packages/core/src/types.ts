@@ -65,7 +65,7 @@ export interface FullConfig {
   connection: ConnectionConfig;
   audio: AudioConfig;
   operator: {
-    rate: number;
+    rate?: number; // 未指定の場合は話者固有速度
     timeout: number;
     assignmentStrategy: 'random';
   };

@@ -65,7 +65,7 @@ const DEFAULT_CONFIG = {
     port: '50032',
   },
   operator: {
-    rate: 200,
+    // rate未指定 = 話者固有速度を使用
     timeout: 14400000, // 4時間
     assignmentStrategy: 'random' as const,
   },
@@ -257,7 +257,7 @@ export class ConfigManager {
   /**
    * 話速（rate）を取得
    */
-  async getRate(): Promise<number> {
+  async getRate(): Promise<number | undefined> {
     const operatorConfig = await this.getOperatorConfig();
     return operatorConfig.rate;
   }

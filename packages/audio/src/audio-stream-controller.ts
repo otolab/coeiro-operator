@@ -66,11 +66,13 @@ export class AudioStreamController {
 
   /**
    * 句読点ポーズ時間を計算（モーラベース）
+   * @param punctuation - 句読点文字
+   * @param actualMorasPerSecond - 実際のモーラ/秒
+   * @param settings - ポーズ設定
    */
   private calculatePauseDuration(
     punctuation: string,
-    speedScale: number,
-    voiceConfig: VoiceConfig,
+    actualMorasPerSecond: number,
     settings?: PunctuationPauseSettings
   ): number {
     if (!settings?.enabled) return 0;
@@ -91,24 +93,9 @@ export class AudioStreamController {
       ...settings.pauseMoras,
     };
 
-    // 基準話速を取得（スタイル別設定 > デフォルト）
-    let baseMorasPerSecond = 7.5; // デフォルトは7.5モーラ/秒
-
-    // スタイル別の話速が定義されていればそれを使用
-    if (voiceConfig.styleMorasPerSecond && voiceConfig.styleId) {
-      baseMorasPerSecond = voiceConfig.styleMorasPerSecond[voiceConfig.styleId] || 7.5;
-    }
-
-    logger.debug(
-      `${voiceConfig.speaker.speakerName}(${voiceConfig.styleId || 'default'})の基準話速: ${baseMorasPerSecond}モーラ/秒`
-    );
-
-    // speedScale = rate / 200 (sayコマンド互換)
-    const morasPerSecond = baseMorasPerSecond * speedScale;
-
     // ポーズ時間を計算（モーラ数 → ミリ秒）
     const pauseInMoras = pauseMoras[type];
-    const pauseDuration = (pauseInMoras / morasPerSecond) * 1000;
+    const pauseDuration = (pauseInMoras / actualMorasPerSecond) * 1000;
 
     logger.debug(
       `句読点「${punctuation}」のポーズ: ${pauseInMoras}モーラ → ${Math.round(pauseDuration)}ms`
@@ -179,6 +166,9 @@ export class AudioStreamController {
 
   /**
    * 並行生成対応の音声合成ジェネレータ（句読点ポーズ対応）
+   * @param chunks - テキストチャンク
+   * @param voiceConfig - 音声設定
+   * @param speed - COEIROINKのspeedScale値（0.5〜2.0）
    */
   async *synthesizeStream(
     chunks: Chunk[],
@@ -190,6 +180,14 @@ export class AudioStreamController {
 
     if (chunks.length === 0) {
       return;
+    }
+
+    // 実際のモーラ/秒を計算（句読点ポーズ用）
+    let actualMorasPerSecond = 7.5; // デフォルト値
+    if (voiceConfig.styleMorasPerSecond && voiceConfig.styleId) {
+      const baseMorasPerSecond = voiceConfig.styleMorasPerSecond[voiceConfig.styleId] || 7.5;
+      actualMorasPerSecond = baseMorasPerSecond * speed;
+      logger.debug(`実際の話速: ${actualMorasPerSecond}モーラ/秒 (基準: ${baseMorasPerSecond} × speed: ${speed})`);
     }
 
     // SpeakSettings変換
@@ -209,8 +207,7 @@ export class AudioStreamController {
           if (lastPunctuation) {
             const pauseDuration = this.calculatePauseDuration(
               lastPunctuation,
-              speed,
-              voiceConfig,
+              actualMorasPerSecond,
               this.options.punctuationPause
             );
 

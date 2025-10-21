@@ -70,7 +70,11 @@ describe('SynthesisProcessor', () => {
     // AudioSynthesizerのモック
     mockAudioSynthesizer = {
       checkServerConnection: vi.fn().mockResolvedValue(true),
-      convertRateToSpeed: vi.fn().mockReturnValue(1.0),
+      convertRateToSpeed: vi.fn((rate, voiceConfig) => {
+        // 新しい仕様に基づく実装
+        if (rate === undefined) return 1.0;
+        return rate / 200; // 簡略化した実装
+      }),
       synthesizeStream: vi.fn().mockImplementation(async function* () {
         yield mockAudioResult;
       }),
@@ -129,7 +133,7 @@ describe('SynthesisProcessor', () => {
         'ハッピー',
         false
       );
-      expect(mockAudioSynthesizer.convertRateToSpeed).toHaveBeenCalledWith(150);
+      expect(mockAudioSynthesizer.convertRateToSpeed).toHaveBeenCalledWith(150, expect.any(Object));
     });
 
     it('サーバー接続エラーの場合は例外を投げる', async () => {
