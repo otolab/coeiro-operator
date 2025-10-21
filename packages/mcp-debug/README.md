@@ -9,15 +9,16 @@ mcp-debugは、MCPサーバーを子プロセスとして起動し、JSON-RPCリ
 ## インストール
 
 ```bash
-# npx経由で直接実行（推奨）
+# npx経由で直接実行（インストール不要）
 npx @coeiro-operator/mcp-debug [options] <target-server>
 
-# プロジェクト内で使用（ビルド済みの場合）
-node dist/mcp-debug/cli.js [options] <target-server>
+# プロジェクトにインストール
+npm install -D @coeiro-operator/mcp-debug
+# または
+pnpm add -D @coeiro-operator/mcp-debug
 
-# 開発中の場合
-pnpm build
-node dist/mcp-debug/cli.js [options] <target-server>
+# インストール後の実行
+npx mcp-debug [options] <target-server>
 ```
 
 ## 基本的な使い方

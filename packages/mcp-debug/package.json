@@ -27,7 +27,9 @@
     "arm64",
     "ia32"
   ],
-  "bin": "./dist/cli.js",
+  "bin": {
+    "mcp-debug": "./dist/cli.js"
+  },
   "scripts": {
     "build": "tsc --build",
     "test": "vitest --silent",
