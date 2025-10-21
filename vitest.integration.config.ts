@@ -7,6 +7,7 @@ export default defineConfig({
     include: ['packages/**/*integration*.test.ts'],
     exclude: [
       'node_modules/**',
+      '**/node_modules/**',
       'dist/**',
       'build/**',
       '.git/**',
