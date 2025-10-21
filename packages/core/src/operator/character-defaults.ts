@@ -3,16 +3,24 @@
  * COEIROINKキャラクターのデフォルト設定を定義
  */
 
+// スタイル設定
+export interface StyleConfig {
+  styleName: string; // スタイル名（例: "のーまる", "ねむねむ"）
+  morasPerSecond: number; // 基準話速（モーラ/秒）
+  personality?: string; // スタイル固有の性格（指定時はキャラクターのデフォルトを上書き）
+  speakingStyle?: string; // スタイル固有の話し方（指定時はキャラクターのデフォルトを上書き）
+}
+
 // 内蔵設定用の基本型
 export interface BaseCharacterConfig {
   speakerId: string; // COEIROINKのspeakerUuid（音声を特定）
   name: string; // 表示名（COEIROINKから取得、上書き可能）
-  personality: string; // 性格設定
-  speakingStyle: string; // 話し方の特徴
+  personality: string; // デフォルトの性格設定
+  speakingStyle: string; // デフォルトの話し方の特徴
   greeting: string; // 挨拶メッセージ
   farewell: string; // お別れメッセージ
-  defaultStyle: string; // デフォルトスタイル名
-  styleMorasPerSecond?: Record<string, number>; // スタイル毎の基準話速（モーラ/秒）
+  defaultStyleId: number; // デフォルトスタイルID（数値）
+  styles: Record<number, StyleConfig>; // スタイル設定（数値styleIdをキーに）
 }
 
 // 実際に使用される完全な型（起動時に利用可能性を確認）
@@ -31,11 +39,11 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: '敬語、落ち着いた口調',
     greeting: '本日も作業をサポートさせていただきます。つくよみちゃんです。',
     farewell: '本日の作業、お疲れさまでした。',
-    defaultStyle: 'れいせい', // 利用可能: れいせい, おしとやか, げんき
-    styleMorasPerSecond: {
-      'れいせい': 8.61,
-      'おしとやか': 8.19,
-      'げんき': 8.50,
+    defaultStyleId: 0, // れいせい
+    styles: {
+      0: { styleName: 'れいせい', morasPerSecond: 8.61 },
+      5: { styleName: 'おしとやか', morasPerSecond: 8.19 },
+      6: { styleName: 'げんき', morasPerSecond: 8.50 },
     },
   },
   angie: {
@@ -45,10 +53,15 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: 'カジュアルで親しみやすい口調',
     greeting: 'やっほー！今日もよろしくお願いします！',
     farewell: '今日もお疲れさまでした！',
-    defaultStyle: 'のーまる', // 利用可能: のーまる, セクシー, ささやき
-    styleMorasPerSecond: {
-      'のーまる': 8.25,
-      'セクシー': 6.14,
+    defaultStyleId: 120, // のーまる
+    styles: {
+      120: { styleName: 'のーまる', morasPerSecond: 8.25 },
+      121: {
+        styleName: 'セクシー',
+        morasPerSecond: 6.14,
+        personality: '魅惑的で大人っぽい',
+        speakingStyle: 'ゆっくりとした色っぽい口調'
+      },
     },
   },
   alma: {
@@ -58,10 +71,10 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: '丁寧で優しい口調',
     greeting: 'こんにちは。今日もがんばりましょう。',
     farewell: '今日もお疲れさまでした。',
-    defaultStyle: '表-v2', // 利用可能: 表-v2, 表-v1, 裏, 泣き声, 堕ちた悪魔
-    styleMorasPerSecond: {
-      '表-v2': 7.24,
-      '裏': 7.08,
+    defaultStyleId: 10, // 表-v2
+    styles: {
+      10: { styleName: '表-v2', morasPerSecond: 7.24 },
+      11: { styleName: '裏', morasPerSecond: 7.08 },
     },
   },
   akane: {
@@ -71,9 +84,9 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: '明瞭で聞き取りやすい標準的な口調',
     greeting: 'こんにちは。本日もサポートいたします。',
     farewell: '本日の作業、お疲れさまでした。',
-    defaultStyle: 'のーまるv2', // 利用可能: のーまるv2, のーまるv1
-    styleMorasPerSecond: {
-      'のーまるv2': 7.51,
+    defaultStyleId: 50,
+    styles: {
+      50: { styleName: 'のーまるv2', morasPerSecond: 7.51 },
     },
   },
   kana: {
@@ -83,11 +96,11 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: '理知的で冷静な口調',
     greeting: 'こんにちは。効率的に作業を進めましょう。',
     farewell: '本日の作業、お疲れさまでした。',
-    defaultStyle: 'のーまる', // 利用可能: のーまる, えんげき, ほうかご, ないしょばなし
-    styleMorasPerSecond: {
-      'のーまる': 8.03,
-      'えんげき': 8.39,
-      'ほうかご': 8.50,
+    defaultStyleId: 30,
+    styles: {
+      30: { styleName: 'のーまる', morasPerSecond: 8.03 },
+      31: { styleName: 'えんげき', morasPerSecond: 8.39 },
+      32: { styleName: 'ほうかご', morasPerSecond: 8.50 },
     },
   },
   kanae: {
@@ -97,10 +110,10 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: '丁寧で上品な口調',
     greeting: 'ごきげんよう。本日もよろしくお願いいたします。',
     farewell: 'お疲れさまでございました。',
-    defaultStyle: 'のーまる', // 利用可能: のーまる, 愉悦 Aタイプ, 愉悦 Bタイプ, 喜び, ふわふわ, ぷんぷん
-    styleMorasPerSecond: {
-      'のーまる': 6.93,
-      'ふわふわ': 5.49,
+    defaultStyleId: 100,
+    styles: {
+      100: { styleName: 'のーまる', morasPerSecond: 6.93 },
+      104: { styleName: 'ふわふわ', morasPerSecond: 5.49 },
     },
   },
   mana: {
@@ -110,12 +123,27 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: 'ゆったりとした口調、癒し系の表現、のんびりとした話し方',
     greeting: 'MANAです。今日もゆっくり一緒に作業しましょうね。',
     farewell: '今日もお疲れ様でした。ゆっくり休んでくださいね。',
-    defaultStyle: 'のーまる', // 利用可能: のーまる, いっしょうけんめい, ごきげん, どやがお, ふくれっつら, しょんぼり, ないしょばなし, ひっさつわざ, ねむねむ, ぱじゃまぱーてぃー
-    styleMorasPerSecond: {
-      'のーまる': 8.20,
-      'ごきげん': 8.48,
-      'しょんぼり': 6.74,
-      'ねむねむ': 4.81,
+    defaultStyleId: 1, // のーまる
+    styles: {
+      1: { styleName: 'のーまる', morasPerSecond: 8.20 },
+      40: {
+        styleName: 'ごきげん',
+        morasPerSecond: 8.48,
+        personality: '楽しそうで明るい',
+        speakingStyle: '弾んだ声で楽しそうに'
+      },
+      42: {
+        styleName: 'しょんぼり',
+        morasPerSecond: 6.74,
+        personality: '落ち込んでいる',
+        speakingStyle: 'ゆっくりと力なく'
+      },
+      46: {
+        styleName: 'ねむねむ',
+        morasPerSecond: 4.81,
+        personality: 'とても眠たそう',
+        speakingStyle: 'とてもゆっくりと眠そうに'
+      },
     },
   },
   dia: {
@@ -125,11 +153,16 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: '丁寧で温かみのある口調、優しく柔らかな表現を好む',
     greeting: 'ディアです。今日も一緒に頑張りましょうね。',
     farewell: '今日も一日お疲れ様でした。ゆっくり休んでくださいね。',
-    defaultStyle: 'のーまる', // 利用可能: のーまる, セクシー, ひそひそ
-    styleMorasPerSecond: {
-      'のーまる': 6.95,
-      'セクシー': 6.19,
-      'ひそひそ': 6.71,
+    defaultStyleId: 3,
+    styles: {
+      3: { styleName: 'のーまる', morasPerSecond: 6.95 },
+      130: {
+        styleName: 'セクシー',
+        morasPerSecond: 6.19,
+        personality: '魅惑的で大人っぽい',
+        speakingStyle: 'ゆっくりとした色っぽい口調'
+      },
+      131: { styleName: 'ひそひそ', morasPerSecond: 6.71 },
     },
   },
   rilin: {
@@ -139,9 +172,9 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: '明るく元気な口調、励ましの言葉が得意、時に少し生意気な発言も',
     greeting: '今日も元気いっぱい！リリンが担当します！',
     farewell: '今日も一日お疲れ様でした！また明日も頑張りましょう！',
-    defaultStyle: 'のーまる', // 利用可能: のーまる, ささやき
-    styleMorasPerSecond: {
-      'のーまる': 7.64,
+    defaultStyleId: 90,
+    styles: {
+      90: { styleName: 'のーまる', morasPerSecond: 7.64 },
     },
   },
   ofutonp: {
@@ -151,7 +184,13 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: '穏やかな基調、状況に応じて多彩な表現',
     greeting: 'おふとんPです。今日もよろしくお願いします。',
     farewell: 'お疲れ様でした。また明日もよろしくお願いします。',
-    defaultStyle: 'ナレーション', // 利用可能: ナレーション他、22種類のスタイル
+    defaultStyleId: 8,
+    styles: {
+      2: { styleName: 'のーまるv2', morasPerSecond: 7.50 },
+      8: { styleName: 'ナレーション', morasPerSecond: 7.50 },
+      21: { styleName: 'よろこび', morasPerSecond: 7.50 },
+      22: { styleName: 'ささやき', morasPerSecond: 7.50 },
+    },
   },
   kurowa: {
     speakerId: 'cc1153b4-d20c-46dd-a308-73ca38c0e85a',
@@ -160,9 +199,9 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: '騎士らしい堂々とした口調、状況により変化',
     greeting: '騎士クロワです。本日もお供いたします。',
     farewell: '本日の任務、完了いたしました。',
-    defaultStyle: '素顔の女騎士', // 利用可能: 素顔の女騎士, 気高き女騎士
-    styleMorasPerSecond: {
-      '素顔の女騎士': 7.86,
+    defaultStyleId: 110,
+    styles: {
+      110: { styleName: '素顔の女騎士', morasPerSecond: 7.86 },
     },
   },
   aoba: {
@@ -172,7 +211,11 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: 'AI声優らしいクリアな発音、感情的な表現も可能',
     greeting: 'AI声優の青葉です。今日もよろしくお願いします。',
     farewell: 'お疲れ様でした。また次回もよろしくお願いします。',
-    defaultStyle: 'のーまる', // 利用可能: のーまる, 感情的
+    defaultStyleId: 60,
+    styles: {
+      60: { styleName: 'のーまる', morasPerSecond: 7.50 },
+      61: { styleName: '感情的', morasPerSecond: 7.50 },
+    },
   },
   ginga: {
     speakerId: 'd312d0fb-d38d-434e-825d-cbcbfd105ad0',
@@ -181,7 +224,14 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
     speakingStyle: 'クリアな発音、多様な感情表現が可能',
     greeting: 'AI声優の銀芽です。本日もよろしくお願いいたします。',
     farewell: '本日の収録、お疲れ様でした。',
-    defaultStyle: 'のーまるv2', // 利用可能: のーまるv2, のーまるv1, 感情的, 呆れ, 叫びβ, 囁きβ
+    defaultStyleId: 70,
+    styles: {
+      70: { styleName: 'のーまるv2', morasPerSecond: 7.50 },
+      71: { styleName: '感情的', morasPerSecond: 7.50 },
+      72: { styleName: '呆れ', morasPerSecond: 7.50 },
+      74: { styleName: '叫びβ', morasPerSecond: 7.50 },
+      75: { styleName: '囁きβ', morasPerSecond: 7.50 },
+    },
   },
 } as const;
 

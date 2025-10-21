@@ -354,14 +354,17 @@ export class OperatorManager {
       if (currentCharacterId === specifiedCharacter) {
         const selectedStyle = this.characterInfoService.selectStyle(character, style);
 
+        // スタイル毎の設定を取得
+        const styleConfig = character.styles?.[selectedStyle.styleId];
+
         return {
           characterId: specifiedCharacter,
           characterName: character.speaker?.speakerName || character.characterId,
           currentStyle: {
             styleId: selectedStyle.styleId.toString(),
             styleName: selectedStyle.styleName,
-            personality: character.personality,
-            speakingStyle: character.speakingStyle,
+            personality: styleConfig?.personality || character.personality,
+            speakingStyle: styleConfig?.speakingStyle || character.speakingStyle,
           },
           speakerConfig: {
             speakerId: character.speaker?.speakerId || '',
@@ -386,14 +389,17 @@ export class OperatorManager {
     // キャラクターを予約（スタイル情報も含めて）
     await this.reserveOperator(specifiedCharacter, selectedStyle.styleId, selectedStyle.styleName);
 
+    // スタイル毎の設定を取得
+    const styleConfig = character.styles?.[selectedStyle.styleId];
+
     return {
       characterId: specifiedCharacter,
       characterName: character.speaker?.speakerName || character.characterId,
       currentStyle: {
         styleId: selectedStyle.styleId.toString(),
         styleName: selectedStyle.styleName,
-        personality: character.personality,
-        speakingStyle: character.speakingStyle,
+        personality: styleConfig?.personality || character.personality,
+        speakingStyle: styleConfig?.speakingStyle || character.speakingStyle,
       },
       speakerConfig: {
         speakerId: character.speaker?.speakerId || '',
@@ -449,14 +455,17 @@ export class OperatorManager {
       selectedStyle = this.characterInfoService.selectStyle(character);
     }
 
+    // スタイル毎の設定を取得
+    const styleConfig = character.styles?.[selectedStyle.styleId];
+
     return {
       characterId,
       characterName: character.speaker?.speakerName || character.characterId,
       currentStyle: {
         styleId: selectedStyle.styleId.toString(),
         styleName: selectedStyle.styleName,
-        personality: character.personality,
-        speakingStyle: character.speakingStyle,
+        personality: styleConfig?.personality || character.personality,
+        speakingStyle: styleConfig?.speakingStyle || character.speakingStyle,
       },
       message: `現在のオペレータ: ${character.speaker?.speakerName || character.characterId} (${characterId}) - ${selectedStyle.styleName}`,
     };

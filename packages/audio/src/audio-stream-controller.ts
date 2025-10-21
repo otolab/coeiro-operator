@@ -184,8 +184,8 @@ export class AudioStreamController {
 
     // 実際のモーラ/秒を計算（句読点ポーズ用）
     let actualMorasPerSecond = 7.5; // デフォルト値
-    if (voiceConfig.styleMorasPerSecond && voiceConfig.styleId) {
-      const baseMorasPerSecond = voiceConfig.styleMorasPerSecond[voiceConfig.styleId] || 7.5;
+    if (voiceConfig.styleMorasPerSecond && voiceConfig.selectedStyleId !== undefined) {
+      const baseMorasPerSecond = voiceConfig.styleMorasPerSecond[voiceConfig.selectedStyleId] || 7.5;
       actualMorasPerSecond = baseMorasPerSecond * speed;
       logger.debug(`実際の話速: ${actualMorasPerSecond}モーラ/秒 (基準: ${baseMorasPerSecond} × speed: ${speed})`);
     }

@@ -41,12 +41,12 @@ export interface Speaker {
 export interface Character {
   characterId: string; // キャラクターID（'tsukuyomi' など）
   speaker: Speaker | null; // COEIROINKのSpeaker情報（APIから取得）
-  defaultStyle: string; // デフォルトスタイル名
+  defaultStyleId: number; // デフォルトスタイルID（数値）
   greeting: string; // アサイン時の挨拶
   farewell: string; // 解放時の挨拶
   personality: string; // キャラクターの性格
   speakingStyle: string; // キャラクターの話し方
-  styleMorasPerSecond?: Record<string, number>; // スタイル毎の基準話速（モーラ/秒）
+  styles: Record<number, import('./character-defaults.js').StyleConfig>; // スタイル設定
 }
 
 // CharacterConfigからCharacterに変換するヘルパー関数
@@ -94,11 +94,12 @@ async function convertCharacterConfigToCharacter(
   return {
     characterId,
     speaker,
-    defaultStyle: config.defaultStyle,
+    defaultStyleId: config.defaultStyleId,
     greeting: config.greeting || '',
     farewell: config.farewell || '',
     personality: config.personality,
     speakingStyle: config.speakingStyle,
+    styles: config.styles,
   };
 }
 
@@ -159,7 +160,7 @@ export class CharacterInfoService {
     }
 
     // デフォルトスタイルを検索
-    const defaultStyle = styles.find(style => style.styleName === character.defaultStyle);
+    const defaultStyle = styles.find(style => style.styleId === character.defaultStyleId);
     if (defaultStyle) {
       return defaultStyle;
     }
