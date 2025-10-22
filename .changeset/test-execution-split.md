@@ -1,5 +1,4 @@
 ---
-"@coeiro-operator/root": patch
 ---
 
 fix: テスト実行の分割と重複実行の改善 (#143)

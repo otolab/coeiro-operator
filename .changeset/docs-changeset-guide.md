@@ -1,5 +1,4 @@
 ---
-"@coeiro-operator/root": patch
 ---
 
 docs: AGENTS.mdにChangeset作成手順を追加
