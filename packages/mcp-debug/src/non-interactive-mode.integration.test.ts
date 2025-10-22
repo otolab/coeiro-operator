@@ -12,10 +12,10 @@ const __dirname = getDirname(import.meta.url);
 
 describe('MCP Debug Non-Interactive Mode', () => {
   // 既存のecho-serverを使用
-  const echoServerPath = path.join(__dirname, '../../dist/echo-server.js');
+  const echoServerPath = path.join(__dirname, '../dist/echo-server.js');
 
   it('should wait for response before shutting down', async () => {
-    const cliPath = path.join(__dirname, '../../dist/cli.js');
+    const cliPath = path.join(__dirname, '../dist/cli.js');
 
     // echoツールを呼び出す
     const jsonRequest = JSON.stringify({

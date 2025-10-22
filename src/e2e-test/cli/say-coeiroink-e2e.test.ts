@@ -25,7 +25,7 @@ describe('say-coeiroink E2E Tests', () => {
     await mkdir(tmpDir, { recursive: true });
 
     // CLIスクリプトのパスを特定（ビルド済みを前提）
-    sayCoeiroinkPath = join(__dirname, '..', '..', 'dist', 'say-coeiroink.js');
+    sayCoeiroinkPath = join(__dirname, '..', '..', '..', 'packages', 'cli', 'dist', 'say-coeiroink.js');
 
     // ビルドされていない場合はスキップ
     if (!existsSync(sayCoeiroinkPath)) {

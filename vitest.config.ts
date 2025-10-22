@@ -40,7 +40,8 @@ export default defineConfig({
       'coverage/**',
       'packages/*/node_modules/**',
       'packages/**/*integration*.test.ts',  // 統合テストを除外
-      'packages/**/test/**'  // E2Eテストディレクトリを除外
+      'packages/**/test/**',  // E2Eテストディレクトリを除外
+      'src/e2e-test/**'  // E2Eテストディレクトリを除外
     ],
 
     // カバレッジはデフォルトで無効（CI環境でのみ有効化）
