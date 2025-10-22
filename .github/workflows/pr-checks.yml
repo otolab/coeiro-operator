@@ -145,7 +145,7 @@ jobs:
       - name: Build all packages
         run: pnpm build:all
 
-      - name: Run unit tests only
+      - name: Run unit tests only (excluding integration tests)
         run: |
           # ユニットテストのみを実行（E2Eを除外）
           pnpm test -- --exclude="**/e2e/**" || pnpm test

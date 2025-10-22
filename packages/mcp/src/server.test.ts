@@ -2,6 +2,7 @@
  * src/index.test.ts: MCPサーバーテスト（allowFallback動作確認）
  */
 
+import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SayCoeiroink } from '@coeiro-operator/audio';
 import type { SynthesizeResult } from '@coeiro-operator/audio';
 

@@ -8,8 +8,8 @@ import { readFile } from 'fs/promises';
 
 // モックの設定
 vi.mock('fs/promises');
-vi.mock('../core/say/index.js');
-vi.mock('../core/operator/config-manager.js');
+vi.mock('@coeiro-operator/audio');
+vi.mock('@coeiro-operator/core');
 
 const mockReadFile = vi.mocked(readFile);
 
