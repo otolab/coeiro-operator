@@ -180,7 +180,7 @@ Examples:
         default:
           if (arg.startsWith('-')) {
             throw new Error(`Unknown option ${arg}`);
-          } else {
+          } else if (arg) {  // 空文字列は無視
             options.text = options.text ? `${options.text} ${arg}` : arg;
           }
           break;
@@ -208,7 +208,7 @@ Examples:
           throw new Error(`File '${options.inputFile}' not found`);
         }
       }
-    } else if (!text) {
+    } else if (!text || text === '') {
       const chunks: Buffer[] = [];
       for await (const chunk of process.stdin) {
         chunks.push(chunk as Buffer);

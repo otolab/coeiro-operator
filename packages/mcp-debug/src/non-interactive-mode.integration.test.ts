@@ -86,7 +86,7 @@ describe('MCP Debug Non-Interactive Mode', () => {
   }, 10000); // 10秒のタイムアウト
 
   it('should handle echo tool correctly', async () => {
-    const cliPath = path.join(__dirname, '../../dist/cli.js');
+    const cliPath = path.join(__dirname, '../dist/cli.js');
 
     // echoツールを呼び出す（別のメッセージ）
     const jsonRequest = JSON.stringify({
@@ -154,7 +154,7 @@ describe('MCP Debug Non-Interactive Mode', () => {
   }, 10000);
 
   it('should handle multiple requests sequentially without errors', async () => {
-    const cliPath = path.join(__dirname, '../../dist/cli.js');
+    const cliPath = path.join(__dirname, '../dist/cli.js');
 
     // 3つのリクエストを送信
     const request1 = JSON.stringify({
