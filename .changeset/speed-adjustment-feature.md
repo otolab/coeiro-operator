@@ -3,7 +3,6 @@
 "@coeiro-operator/cli": minor
 "@coeiro-operator/core": minor
 "@coeiro-operator/mcp": minor
-"coeiro-operator": minor
 ---
 
 発話速度調整機能の実装とリファクタリング
