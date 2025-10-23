@@ -185,9 +185,10 @@ class OperatorManagerCLI {
 }
 
 // メイン実行
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const cli = new OperatorManagerCLI();
-  await cli.run(process.argv.slice(2));
-}
+// import.meta.urlはコンパイル済みのJSファイルのURL
+// process.argv[1]は実行されたファイルのパス（シンボリックリンク経由の場合もある）
+// 直接実行された場合のみ実行する
+const cli = new OperatorManagerCLI();
+await cli.run(process.argv.slice(2));
 
 export default OperatorManagerCLI;
