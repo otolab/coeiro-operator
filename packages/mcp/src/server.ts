@@ -3,6 +3,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 import * as path from 'path';
+import { Command } from 'commander';
 import { SayCoeiroink } from '@coeiro-operator/audio';
 import {
   ConfigManager,
@@ -42,29 +43,23 @@ interface ToolResponse {
   [key: string]: unknown; // MCP SDK\u304c\u8ffd\u52a0\u30d5\u30a3\u30fc\u30eb\u30c9\u3092\u8a31\u53ef\u3059\u308b\u305f\u3081\u5fc5\u8981
 }
 
-// コマンドライン引数の解析
-const parseArguments = () => {
-  const args = process.argv.slice(2);
-  let isDebugMode = false;
-  let configPath: string | undefined;
+interface CLIOptions {
+  debug?: boolean;
+  config?: string;
+}
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
+// Commanderの設定と引数解析
+const program = new Command();
+program
+  .name('coeiro-operator-mcp')
+  .description('COEIRO Operator MCP Server')
+  .version('1.0.0')
+  .option('-d, --debug', 'Enable debug logging')
+  .option('-c, --config <path>', 'Path to config file')
+  .parse(process.argv);
 
-    if (arg === '--debug' || arg === '-d') {
-      isDebugMode = true;
-    } else if (arg === '--config' || arg === '-c') {
-      configPath = args[i + 1];
-      i++; // 次の引数をスキップ
-    } else if (arg.startsWith('--config=')) {
-      configPath = arg.split('=')[1];
-    }
-  }
-
-  return { isDebugMode, configPath };
-};
-
-const { isDebugMode, configPath } = parseArguments();
+const options = program.opts<CLIOptions>();
+const { debug: isDebugMode, config: configPath } = options;
 
 // デバッグモードの場合は詳細ログ、そうでなければMCPサーバーモード
 if (isDebugMode) {
