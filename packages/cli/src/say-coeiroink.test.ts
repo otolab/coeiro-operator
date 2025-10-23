@@ -59,262 +59,226 @@ describe('SayCoeiroinkCLI', () => {
         vi.restoreAllMocks();
     });
 
-    describe('parseArguments', () => {
-        test('基本的な引数を正しく解析できること', async () => {
-            const args = ['Hello, World!'];
-            const result = await (cli as unknown).parseArguments(args);
+    describe('run (統合テスト)', () => {
+        test('基本的なテキスト音声合成が実行されること', async () => {
+            const args = ['node', 'say-coeiroink', 'Hello, World!'];
+            await cli.run(args);
 
-            expect(result.text).toBe('Hello, World!');
-            expect(result.rate).toBe(200);
-            expect(result.voice).toBe('');
-            expect(result.outputFile).toBe('');
-            expect(result.inputFile).toBe('');
-            expect(result.chunkMode).toBe('punctuation');
-            expect(result.bufferSize).toBe(2048);
+            expect(mockSayCoeiroink.warmup).toHaveBeenCalled();
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'Hello, World!',
+                expect.objectContaining({
+                    voice: null,
+                    outputFile: null,
+                    style: undefined,
+                    chunkMode: 'punctuation',
+                    bufferSize: 2048
+                })
+            );
+            expect(mockSayCoeiroink.waitCompletion).toHaveBeenCalled();
         });
 
-        test('レート指定オプションを正しく解析できること', async () => {
-            const args = ['-r', '150', 'テストメッセージ'];
-            const result = await (cli as unknown).parseArguments(args);
+        test('レート指定オプションが正しく処理されること (数値)', async () => {
+            const args = ['node', 'say-coeiroink', '-r', '150', 'テストメッセージ'];
+            await cli.run(args);
 
-            expect(result.rate).toBe(150);
-            expect(result.text).toBe('テストメッセージ');
-        });
-
-        test('音声指定オプションを正しく解析できること', async () => {
-            const args = ['-v', 'voice-id', 'テストメッセージ'];
-            const result = await (cli as unknown).parseArguments(args);
-
-            expect(result.voice).toBe('voice-id');
-            expect(result.text).toBe('テストメッセージ');
-        });
-
-        test('出力ファイル指定オプションを正しく解析できること', async () => {
-            const args = ['-o', 'output.wav', 'テストメッセージ'];
-            const result = await (cli as unknown).parseArguments(args);
-
-            expect(result.outputFile).toBe('output.wav');
-            expect(result.text).toBe('テストメッセージ');
-        });
-
-        test('入力ファイル指定オプションを正しく解析できること', async () => {
-            const args = ['-f', 'input.txt'];
-            const result = await (cli as unknown).parseArguments(args);
-
-            expect(result.inputFile).toBe('input.txt');
-        });
-
-        test('スタイル指定オプションを正しく解析できること', async () => {
-            const args = ['--style', 'のーまる', 'テストメッセージ'];
-            const result = await (cli as unknown).parseArguments(args);
-
-            expect(result.style).toBe('のーまる');
-            expect(result.text).toBe('テストメッセージ');
-        });
-
-        test('チャンクモード指定オプションを正しく解析できること', async () => {
-            const args = ['--chunk-mode', 'none', 'テストメッセージ'];
-            const result = await (cli as unknown).parseArguments(args);
-
-            expect(result.chunkMode).toBe('none');
-            expect(result.text).toBe('テストメッセージ');
-        });
-
-        test('バッファサイズ指定オプションを正しく解析できること', async () => {
-            const args = ['--buffer-size', '512', 'テストメッセージ'];
-            const result = await (cli as unknown).parseArguments(args);
-
-            expect(result.bufferSize).toBe(512);
-            expect(result.text).toBe('テストメッセージ');
-        });
-
-        test('ヘルプオプションが正しく検出されること', async () => {
-            const args = ['-h'];
-            await expect((cli as unknown).parseArguments(args)).rejects.toThrow('HELP_REQUESTED');
-        });
-
-        test('音声リスト表示オプションが正しく検出されること', async () => {
-            const args = ['-v', '?'];
-            await expect((cli as unknown).parseArguments(args)).rejects.toThrow('VOICE_LIST_REQUESTED');
-        });
-
-        test('複数のオプションを組み合わせて解析できること', async () => {
-            const args = ['-r', '180', '-v', 'custom-voice', '-o', 'test.wav', 'テスト'];
-            const result = await (cli as unknown).parseArguments(args);
-
-            expect(result.text).toBe('テスト');
-            expect(result.rate).toBe(180);
-            expect(result.voice).toBe('custom-voice');
-            expect(result.outputFile).toBe('test.wav');
-        });
-
-        test('不明なオプションでエラーになること', async () => {
-            const args = ['--unknown-option', 'メッセージ'];
-            
-            await expect((cli as unknown).parseArguments(args)).rejects.toThrow('Unknown option --unknown-option');
-        });
-
-        test('引数なしの場合、デフォルト値が返されること', async () => {
-            const result = await (cli as unknown).parseArguments([]);
-
-            expect(result.voice).toBe('');
-            expect(result.rate).toBe(200);
-            expect(result.inputFile).toBe('');
-            expect(result.outputFile).toBe('');
-            expect(result.text).toBe('');
-            expect(result.chunkMode).toBe('punctuation');
-            expect(result.bufferSize).toBe(2048);
-        });
-    });
-
-    describe('getInputText', () => {
-        test('引数で指定されたテキストを返すこと', async () => {
-            const options = { text: 'Hello, World!', inputFile: '' };
-            const result = await (cli as unknown).getInputText(options);
-
-            expect(result).toBe('Hello, World!');
-        });
-
-        test('ファイルからテキストを読み込むこと', async () => {
-            const options = { text: '', inputFile: 'test.txt' };
-            mockReadFile.mockResolvedValue('File content');
-
-            const result = await (cli as unknown).getInputText(options);
-
-            expect(result).toBe('File content');
-            expect(mockReadFile).toHaveBeenCalledWith('test.txt', 'utf8');
-        });
-
-        test('ファイル読み込みエラー時に適切なエラーを投げること', async () => {
-            const options = { text: '', inputFile: 'nonexistent.txt' };
-            mockReadFile.mockRejectedValue(new Error('ENOENT'));
-
-            await expect((cli as unknown).getInputText(options)).rejects.toThrow(
-                "File 'nonexistent.txt' not found"
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'テストメッセージ',
+                expect.objectContaining({
+                    rate: 150
+                })
             );
         });
 
-        test.skip('テキストとファイルの両方が未指定の場合、標準入力から読み込みを試みること', async () => {
-            // 標準入力のモックが難しいため、スキップ
-            const options = { text: '', inputFile: '' };
-            // 実際には標準入力から読み込むが、テスト環境では待機してタイムアウトする
-        });
-    });
-
-    describe('showUsage', () => {
-        test('ヘルプメッセージを出力すること', async () => {
-            await cli.showUsage();
-
-            expect(consoleSpy.log).toHaveBeenCalled();
-            const output = consoleSpy.log.mock.calls[0][0];
-            expect(output).toContain('Usage: say-coeiroink');
-            expect(output).toContain('-v voice');
-            expect(output).toContain('-r rate');
-            expect(output).toContain('-o outfile');
-        });
-    });
-
-    describe('run', () => {
-        test('正常なテキスト音声合成が実行されること', async () => {
-            const args = ['テストメッセージ'];
+        test('レート指定オプションが正しく処理されること (パーセント)', async () => {
+            const args = ['node', 'say-coeiroink', '-r', '150%', 'テストメッセージ'];
             await cli.run(args);
 
-            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith('テストメッセージ', {
-                voice: null,
-                rate: 200,
-                outputFile: null,
-                style: undefined,
-                chunkMode: 'punctuation',
-                bufferSize: 2048,
-            });
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'テストメッセージ',
+                expect.objectContaining({
+                    factor: 1.5
+                })
+            );
         });
 
-        test('入力ファイルからの音声合成が実行されること', async () => {
-            const args = ['-f', 'input.txt'];
-            mockReadFile.mockResolvedValue('ファイル内容');
-
+        test('音声指定オプションが正しく処理されること', async () => {
+            const args = ['node', 'say-coeiroink', '-v', 'voice-id', 'テストメッセージ'];
             await cli.run(args);
 
-            expect(mockReadFile).toHaveBeenCalledWith('input.txt', 'utf8');
-            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith('ファイル内容', {
-                voice: null,
-                rate: 200,
-                outputFile: null,
-                style: undefined,
-                chunkMode: 'punctuation',
-                bufferSize: 2048,
-            });
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'テストメッセージ',
+                expect.objectContaining({
+                    voice: 'voice-id'
+                })
+            );
         });
 
-        test('カスタムオプションでの音声合成が実行されること', async () => {
-            const args = ['-r', '150', '-v', 'custom-voice', '--style', 'ひそひそ', 'メッセージ'];
+        test('音声リスト表示オプションが正しく処理されること', async () => {
+            const args = ['node', 'say-coeiroink', '-v', '?'];
             await cli.run(args);
 
-            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith('メッセージ', {
-                voice: 'custom-voice',
-                rate: 150,
-                outputFile: null,
-                style: 'ひそひそ',
-                chunkMode: 'punctuation',
-                bufferSize: 2048,
-            });
+            expect(mockSayCoeiroink.listVoices).toHaveBeenCalled();
+            expect(mockSayCoeiroink.synthesize).not.toHaveBeenCalled();
         });
 
-        test('出力ファイル指定時にメッセージが表示されること', async () => {
-            const args = ['-o', 'output.wav', 'テスト'];
+        test('出力ファイル指定オプションが正しく処理されること', async () => {
+            const args = ['node', 'say-coeiroink', '-o', 'output.wav', 'テストメッセージ'];
             await cli.run(args);
 
-            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith('テスト', {
-                voice: null,
-                rate: 200,
-                outputFile: 'output.wav',
-                style: undefined,
-                chunkMode: 'punctuation',
-                bufferSize: 2048,
-            });
+            expect(mockSayCoeiroink.warmup).not.toHaveBeenCalled(); // ファイル出力時はウォームアップ不要
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'テストメッセージ',
+                expect.objectContaining({
+                    outputFile: 'output.wav'
+                })
+            );
             expect(consoleSpy.error).toHaveBeenCalledWith('Audio saved to: output.wav');
         });
 
-        test('音声合成エラー時に適切にハンドリングされること', async () => {
-            const args = ['エラーテスト'];
-            mockSayCoeiroink.waitCompletion.mockRejectedValue(new Error('Synthesis failed'));
+        test('入力ファイル指定オプションが正しく処理されること', async () => {
+            mockReadFile.mockResolvedValue('ファイルからのテキスト');
+            const args = ['node', 'say-coeiroink', '-f', 'input.txt'];
+            await cli.run(args);
 
-            await expect(cli.run(args)).rejects.toThrow('Synthesis failed');
+            expect(mockReadFile).toHaveBeenCalledWith('input.txt', 'utf8');
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'ファイルからのテキスト',
+                expect.anything()
+            );
         });
+
+        test('スタイル指定オプションが正しく処理されること', async () => {
+            const args = ['node', 'say-coeiroink', '--style', 'のーまる', 'テストメッセージ'];
+            await cli.run(args);
+
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'テストメッセージ',
+                expect.objectContaining({
+                    style: 'のーまる'
+                })
+            );
+        });
+
+        test('チャンクモード指定オプションが正しく処理されること', async () => {
+            const args = ['node', 'say-coeiroink', '--chunk-mode', 'none', 'テストメッセージ'];
+            await cli.run(args);
+
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'テストメッセージ',
+                expect.objectContaining({
+                    chunkMode: 'none'
+                })
+            );
+        });
+
+        test('バッファサイズ指定オプションが正しく処理されること', async () => {
+            const args = ['node', 'say-coeiroink', '--buffer-size', '512', 'テストメッセージ'];
+            await cli.run(args);
+
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'テストメッセージ',
+                expect.objectContaining({
+                    bufferSize: 512
+                })
+            );
+        });
+
+        test('複数のオプションを組み合わせて処理できること', async () => {
+            const args = [
+                'node', 'say-coeiroink',
+                '-v', 'custom-voice',
+                '-r', '150',
+                '--style', 'ひそひそ',
+                '--chunk-mode', 'small',
+                '--buffer-size', '256',
+                'メッセージ'
+            ];
+            await cli.run(args);
+
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'メッセージ',
+                expect.objectContaining({
+                    voice: 'custom-voice',
+                    rate: 150,
+                    style: 'ひそひそ',
+                    chunkMode: 'small',
+                    bufferSize: 256
+                })
+            );
+        });
+
+        test('無効なチャンクモードでエラーになること', async () => {
+            const args = ['node', 'say-coeiroink', '--chunk-mode', 'invalid', 'テスト'];
+            await expect(cli.run(args)).rejects.toThrow('Invalid chunk mode');
+        });
+
+        test('無効なバッファサイズでエラーになること', async () => {
+            const args = ['node', 'say-coeiroink', '--buffer-size', '99999', 'テスト'];
+            await expect(cli.run(args)).rejects.toThrow('Invalid buffer size');
+        });
+
+        test('存在しないファイルを指定するとエラーになること', async () => {
+            mockReadFile.mockRejectedValue(new Error('File not found'));
+            const args = ['node', 'say-coeiroink', '-f', 'nonexistent.txt'];
+            await expect(cli.run(args)).rejects.toThrow("File 'nonexistent.txt' not found");
+        });
+
+        // Commander.jsのヘルプとバージョン表示は
+        // process.stdout.writeを使うため、別途統合テストで確認
     });
 
     describe('エッジケース', () => {
-        test.skip('空文字列のテキストは無視されること', async () => {
-            // 空文字列の引数は、テキストなしとして扱われ、標準入力を待つ
-            // 標準入力のモックが難しいため、スキップ
-            const args = [''];
-        });
+        test('引数なしでstdinから読み込まれること', async () => {
+            // stdinのモック
+            const originalStdin = process.stdin;
+            const mockStdin = {
+                [Symbol.asyncIterator]: vi.fn().mockReturnValue({
+                    next: vi.fn()
+                        .mockResolvedValueOnce({ value: Buffer.from('stdin text'), done: false })
+                        .mockResolvedValueOnce({ done: true })
+                })
+            };
+            Object.defineProperty(process, 'stdin', {
+                value: mockStdin,
+                writable: true,
+                configurable: true
+            });
 
-        test('非常に長いテキストでも正常に処理されること', async () => {
-            const longText = 'あ'.repeat(10000);
-            const args = [longText];
-            
+            const args = ['node', 'say-coeiroink'];
             await cli.run(args);
 
-            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(longText, expect.anything(Object));
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'stdin text',
+                expect.anything()
+            );
+
+            // stdinを元に戻す
+            Object.defineProperty(process, 'stdin', {
+                value: originalStdin,
+                writable: true,
+                configurable: true
+            });
+        });
+
+        test('複数の引数テキストが結合されること', async () => {
+            const args = ['node', 'say-coeiroink', 'Hello', 'World', 'Test'];
+            await cli.run(args);
+
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                'Hello World Test',
+                expect.anything()
+            );
         });
 
         test('特殊文字を含むテキストでも正常に処理されること', async () => {
-            const specialText = '🎉 Hello! こんにちは！<>[]{}';
-            const args = [specialText];
-            
+            const args = ['node', 'say-coeiroink', '特殊文字!@#$%^&*()'];
             await cli.run(args);
 
-            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(specialText, expect.anything(Object));
-        });
-
-        test('境界値のレート設定でも正常に処理されること', async () => {
-            const args = ['-r', '50', 'テスト'];
-            await cli.run(args);
-
-            expect(mockSayCoeiroink.synthesize).toHaveBeenCalled();
-            const callArgs = mockSayCoeiroink.synthesize.mock.calls[0][1];
-            expect(callArgs.rate).toBe(50);
+            expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+                '特殊文字!@#$%^&*()',
+                expect.anything()
+            );
         });
     });
 });

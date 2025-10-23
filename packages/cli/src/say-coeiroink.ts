@@ -7,6 +7,7 @@
 
 import { readFile, access } from 'fs/promises';
 import { constants } from 'fs';
+import { Command } from 'commander';
 import { SayCoeiroink } from '@coeiro-operator/audio';
 import { ConfigManager, getConfigDir } from '@coeiro-operator/core';
 import { LoggerPresets } from '@coeiro-operator/common';
@@ -14,49 +15,59 @@ import type { Config } from '@coeiro-operator/audio';
 import { BUFFER_SIZES } from '@coeiro-operator/audio';
 
 interface ParsedOptions {
-  voice: string;
-  rate: number | string | undefined;  // 数値（WPM）、文字列（"150%"）、または未指定
-  inputFile: string;
-  outputFile: string;
-  text: string;
+  voice?: string;
+  rate?: string;  // 数値（WPM）または文字列（"150%"）
+  inputFile?: string;
+  outputFile?: string;
   style?: string;
-  chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
-  bufferSize: number;
+  chunkMode: string;
+  bufferSize: string;
+  debug?: boolean;
 }
 
 class SayCoeiroinkCLI {
   private sayCoeiroink: SayCoeiroink;
   private config: Config;
+  private program: Command;
 
   constructor(sayCoeiroink: SayCoeiroink, config: Config) {
     this.sayCoeiroink = sayCoeiroink;
     this.config = config;
+    this.program = new Command();
+    this.setupCommander();
   }
 
-  async showUsage(): Promise<void> {
+  private setupCommander(): void {
     const defaultRate = this.config?.audio?.defaultRate ? `${this.config.audio.defaultRate} WPM` : '話者固有速度';
-    console.log(`Usage: say-coeiroink [-v voice] [-r rate] [-o outfile] [-f file | text] [--style style] [--chunk-mode mode] [--buffer-size size]
 
-低レイテンシストリーミング音声合成・再生（macOS sayコマンド互換）
-
-Options:
-    -v voice           Specify voice (voice ID or name, use '?' to list available voices)
-    -r rate            Speech rate: number (WPM) or percentage (e.g., 150%) (default: ${defaultRate})
-                       - 数値: 絶対速度（200 = 標準話速）
-                       - %付き: 話者速度の相対倍率（150% = 1.5倍速）
-                       - 未指定: 話者固有の自然な速度
-    -o outfile         Write audio to file instead of playing (WAV format)
-    -f file            Read text from file (use '-' for stdin)
-    --style style      Specify voice style (e.g., 'のーまる', 'セクシー')
-    --chunk-mode mode  Text splitting mode: punctuation|none|small|medium|large (default: punctuation)
-    --buffer-size size Audio buffer size in bytes: ${BUFFER_SIZES.MIN}-${BUFFER_SIZES.MAX} (default: ${BUFFER_SIZES.DEFAULT})
-    -h                 Show this help
-
+    this.program
+      .name('say-coeiroink')
+      .description('低レイテンシストリーミング音声合成・再生（macOS sayコマンド互換）')
+      .version('1.0.0', '-V, --version')
+      .argument('[text...]', 'Text to speak')
+      .option('-v, --voice <voice>', 'Specify voice (voice ID or name, use "?" to list available voices)',
+        process.env.COEIROINK_VOICE || '')
+      .option('-r, --rate <rate>',
+        `Speech rate: number (WPM) or percentage (e.g., 150%) (default: ${defaultRate})\n` +
+        '                       - 数値: 絶対速度（200 = 標準話速）\n' +
+        '                       - %付き: 話者速度の相対倍率（150% = 1.5倍速）\n' +
+        '                       - 未指定: 話者固有の自然な速度')
+      .option('-o, --output-file <file>', 'Write audio to file instead of playing (WAV format)')
+      .option('-f, --input-file <file>', 'Read text from file (use "-" for stdin)')
+      .option('--style <style>', 'Specify voice style (e.g., "のーまる", "セクシー")')
+      .option('--chunk-mode <mode>',
+        'Text splitting mode: punctuation|none|small|medium|large',
+        'punctuation')
+      .option('--buffer-size <size>',
+        `Audio buffer size in bytes: ${BUFFER_SIZES.MIN}-${BUFFER_SIZES.MAX}`,
+        BUFFER_SIZES.DEFAULT.toString())
+      .option('--debug', 'Enable debug logging')
+      .addHelpText('after', `
 Chunk Modes:
-    none    No text splitting (best for long text, natural speech)
-    small   30 chars (low latency, interactive use)
-    medium  50 chars (balanced)
-    large   100 chars (stability focused)
+    none         No text splitting (best for long text, natural speech)
+    small        30 chars (low latency, interactive use)
+    medium       50 chars (balanced)
+    large        100 chars (stability focused)
     punctuation  Sentence-based splitting (default, natural Japanese)
 
 Buffer Sizes:
@@ -82,125 +93,93 @@ Examples:
     say-coeiroink --chunk-mode none "長文を分割せずにスムーズに読み上げ"
     say-coeiroink --chunk-mode small --buffer-size 256 "低レイテンシ再生"
     say-coeiroink --buffer-size 2048 "高品質・安定再生"
-    echo "テキスト" | say-coeiroink -f -`);
+    echo "テキスト" | say-coeiroink -f -`)
+      .action(async (textArgs, options) => {
+        await this.handleCommand(textArgs, options);
+      });
   }
 
-  private async parseArguments(args: string[]): Promise<ParsedOptions> {
-    const options: ParsedOptions = {
-      voice: process.env.COEIROINK_VOICE || '',
-      rate: this.config?.audio?.defaultRate,  // undefined = 話者固有速度
-      inputFile: '',
-      outputFile: '',
-      text: '',
-      chunkMode: 'punctuation',
-      bufferSize: BUFFER_SIZES.DEFAULT,
-    };
-
-    // args が undefined や null の場合はデフォルト値を返す
-    if (!args || !Array.isArray(args)) {
-      return options;
+  private async handleCommand(textArgs: string[], options: ParsedOptions): Promise<void> {
+    // 音声リスト表示の特別処理
+    if (options.voice === '?') {
+      await this.sayCoeiroink.listVoices();
+      return;
     }
 
-    for (let i = 0; i < args.length; i++) {
-      const arg = args[i];
+    // テキストの取得
+    const text = await this.getInputText(textArgs, options);
 
-      switch (arg) {
-        case '-h':
-        case '--help':
-          await this.showUsage();
-          throw new Error('HELP_REQUESTED');
+    // バッファサイズのバリデーション
+    const bufferSize = parseInt(options.bufferSize);
+    if (isNaN(bufferSize) || bufferSize < BUFFER_SIZES.MIN || bufferSize > BUFFER_SIZES.MAX) {
+      throw new Error(
+        `Invalid buffer size: ${options.bufferSize}. Must be a number between ${BUFFER_SIZES.MIN} and ${BUFFER_SIZES.MAX}`
+      );
+    }
 
-        case '-v':
-          if (args[i + 1] === '?') {
-            await this.sayCoeiroink.listVoices();
-            throw new Error('VOICE_LIST_REQUESTED');
-          }
-          options.voice = args[i + 1];
-          i++;
-          break;
+    // チャンクモードのバリデーション
+    const validChunkModes = ['none', 'small', 'medium', 'large', 'punctuation'];
+    if (!validChunkModes.includes(options.chunkMode)) {
+      throw new Error(
+        `Invalid chunk mode: ${options.chunkMode}. Must be one of: ${validChunkModes.join(', ')}`
+      );
+    }
 
-        case '-r':
-        case '--rate': {
-          const rateValue = args[i + 1];
-          // %で終わる場合は文字列として保持、そうでなければ数値に変換
-          if (rateValue.endsWith('%')) {
-            options.rate = rateValue;  // "150%" のような文字列
-          } else {
-            const parsed = parseInt(rateValue);
-            if (isNaN(parsed)) {
-              throw new Error(`Invalid rate value: ${rateValue}. Must be a number (WPM) or percentage (e.g., 150%)`);
-            }
-            options.rate = parsed;
-          }
-          i++;
-          break;
+    // ファイル出力の場合はウォームアップ不要
+    if (!options.outputFile) {
+      // オーディオドライバーのウォームアップ
+      await this.sayCoeiroink.warmup();
+    }
+
+    // rate文字列をパースして適切な形式に変換
+    let speedOptions: { rate?: number; factor?: number } = {};
+    if (options.rate !== undefined && options.rate !== '') {
+      if (options.rate.endsWith('%')) {
+        // パーセント指定 → factor
+        const percent = parseFloat(options.rate.slice(0, -1));
+        if (!isNaN(percent)) {
+          speedOptions.factor = percent / 100;
         }
-
-        case '-o':
-        case '--output-file':
-          options.outputFile = args[i + 1];
-          i++;
-          break;
-
-        case '-f':
-        case '--input-file':
-          options.inputFile = args[i + 1];
-          i++;
-          break;
-
-        case '--style':
-          options.style = args[i + 1];
-          i++;
-          break;
-
-        case '--chunk-mode': {
-          const chunkMode = args[i + 1];
-          if (!['none', 'small', 'medium', 'large', 'punctuation'].includes(chunkMode)) {
-            throw new Error(
-              `Invalid chunk mode: ${chunkMode}. Must be one of: none, small, medium, large, punctuation`
-            );
-          }
-          options.chunkMode = chunkMode as 'none' | 'small' | 'medium' | 'large' | 'punctuation';
-          i++;
-          break;
+      } else {
+        // 数値指定 → rate（WPM）
+        const rateNum = parseFloat(options.rate);
+        if (!isNaN(rateNum)) {
+          speedOptions.rate = rateNum;
         }
-
-        case '--buffer-size': {
-          const bufferSize = parseInt(args[i + 1]);
-          if (isNaN(bufferSize) || bufferSize < BUFFER_SIZES.MIN || bufferSize > BUFFER_SIZES.MAX) {
-            throw new Error(
-              `Invalid buffer size: ${args[i + 1]}. Must be a number between ${BUFFER_SIZES.MIN} and ${BUFFER_SIZES.MAX}`
-            );
-          }
-          options.bufferSize = bufferSize;
-          i++;
-          break;
-        }
-
-        default:
-          if (arg.startsWith('-')) {
-            throw new Error(`Unknown option ${arg}`);
-          } else if (arg) {  // 空文字列は無視
-            options.text = options.text ? `${options.text} ${arg}` : arg;
-          }
-          break;
       }
     }
 
-    return options;
+    // 音声合成タスクをキューに追加
+    this.sayCoeiroink.synthesize(text, {
+      voice: options.voice || null,
+      ...speedOptions,  // rateまたはfactorを展開
+      outputFile: options.outputFile || null,
+      style: options.style || undefined,
+      chunkMode: options.chunkMode as 'none' | 'small' | 'medium' | 'large' | 'punctuation',
+      bufferSize,
+    });
+
+    if (options.outputFile) {
+      console.error(`Audio saved to: ${options.outputFile}`);
+    }
+
+    // すべてのタスクの完了を待つ
+    await this.sayCoeiroink.waitCompletion();
   }
 
-  private async getInputText(options: ParsedOptions): Promise<string> {
-    let text = options.text;
+  private async getInputText(textArgs: string[], options: ParsedOptions): Promise<string> {
+    let text = '';
 
     if (options.inputFile) {
       if (options.inputFile === '-') {
+        // stdinから読み込み
         const chunks: Buffer[] = [];
         for await (const chunk of process.stdin) {
           chunks.push(chunk as Buffer);
         }
         text = Buffer.concat(chunks).toString('utf8').trim();
       } else {
+        // ファイルから読み込み
         try {
           await access(options.inputFile, constants.F_OK);
           text = (await readFile(options.inputFile, 'utf8')).trim();
@@ -208,7 +187,11 @@ Examples:
           throw new Error(`File '${options.inputFile}' not found`);
         }
       }
-    } else if (!text || text === '') {
+    } else if (textArgs && textArgs.length > 0) {
+      // コマンドライン引数からテキストを結合
+      text = textArgs.join(' ');
+    } else {
+      // 引数がない場合はstdinから読み込み
       const chunks: Buffer[] = [];
       for await (const chunk of process.stdin) {
         chunks.push(chunk as Buffer);
@@ -224,49 +207,7 @@ Examples:
   }
 
   async run(args: string[]): Promise<void> {
-    const options = await this.parseArguments(args);
-    const text = await this.getInputText(options);
-
-    // ファイル出力の場合はウォームアップ不要
-    if (!options.outputFile) {
-      // オーディオドライバーのウォームアップ
-      await this.sayCoeiroink.warmup();
-    }
-
-    // rate文字列をパースして適切な形式に変換
-    let speedOptions: { rate?: number; factor?: number } = {};
-    if (options.rate !== undefined) {
-      if (typeof options.rate === 'string' && options.rate.endsWith('%')) {
-        // パーセント指定 → factor
-        const percent = parseFloat(options.rate.slice(0, -1));
-        if (!isNaN(percent)) {
-          speedOptions.factor = percent / 100;
-        }
-      } else {
-        // 数値指定 → rate（WPM）
-        const rateNum = typeof options.rate === 'number' ? options.rate : parseFloat(options.rate);
-        if (!isNaN(rateNum)) {
-          speedOptions.rate = rateNum;
-        }
-      }
-    }
-
-    // 音声合成タスクをキューに追加
-    this.sayCoeiroink.synthesize(text, {
-      voice: options.voice || null,
-      ...speedOptions,  // rateまたはfactorを展開
-      outputFile: options.outputFile || null,
-      style: options.style || undefined,
-      chunkMode: options.chunkMode,
-      bufferSize: options.bufferSize,
-    });
-
-    if (options.outputFile) {
-      console.error(`Audio saved to: ${options.outputFile}`);
-    }
-
-    // すべてのタスクの完了を待つ
-    await this.sayCoeiroink.waitCompletion();
+    await this.program.parseAsync(args, { from: 'node' });
   }
 }
 
@@ -285,7 +226,7 @@ if (process.env.NODE_ENV !== 'test') {
 
 // メイン実行関数
 async function main(): Promise<void> {
-  // デバッグモード判定
+  // デバッグモード判定（commander解析前に簡易チェック）
   const isDebugMode = process.argv.includes('--debug');
 
   // CLIモードでは通常ログレベル（info）を使用、デバッグモードではdebugレベル
@@ -298,14 +239,14 @@ async function main(): Promise<void> {
   const configDir = await getConfigDir();
   const configManager = new ConfigManager(configDir);
   await configManager.buildDynamicConfig();
-  
+
   const sayCoeiroink = new SayCoeiroink(configManager);
   await sayCoeiroink.initialize();
   await sayCoeiroink.buildDynamicConfig();
 
   const config = await configManager.getFullConfig();
   const cli = new SayCoeiroinkCLI(sayCoeiroink, config);
-  await cli.run(process.argv.slice(2));
+  await cli.run(process.argv);
 }
 
 // メイン実行（テスト環境では実行しない）
@@ -315,16 +256,8 @@ if (process.env.NODE_ENV !== 'test') {
       process.exit(0);
     })
     .catch(error => {
-      // 特別なエラーメッセージは正常終了扱い
-      if (
-        (error as Error).message === 'HELP_REQUESTED' ||
-        (error as Error).message === 'VOICE_LIST_REQUESTED'
-      ) {
-        process.exit(0);
-      } else {
-        console.error(`Error: ${(error as Error).message}`);
-        process.exit(1);
-      }
+      console.error(`Error: ${(error as Error).message}`);
+      process.exit(1);
     });
 }
 
