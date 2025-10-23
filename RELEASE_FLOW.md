@@ -3,7 +3,18 @@
 ## 重要な仕様
 - **mainへのマージではnpm公開されません**
 - **release/*ブランチのマージ時のみnpm公開されます**
+- **ブランチ名のバージョンがルートパッケージのバージョンになります**
 - これにより意図しない公開を防ぎます
+
+## バージョン決定の仕組み
+リリース時のバージョンは以下のように決定されます：
+
+1. **個別パッケージ**: changesetによって自動計算
+2. **ルートパッケージ**: `release/x.x.x`のブランチ名から取得
+
+例：
+- `release/1.3.1`ブランチ → ルートは`1.3.1`
+- 個別パッケージは changeset に従って更新（例: CLI `1.2.0` → `1.2.1`）
 
 ## 必須手順
 
@@ -37,11 +48,13 @@ gh pr create --base main
 git checkout main && git pull
 
 # リリースブランチ作成＆プッシュ
+# ⚠️ 重要: ブランチ名のバージョンがルートパッケージのバージョンになります
 git checkout -b release/1.0.1
 git push -u origin release/1.0.1
 
 # 🤖 以下は自動実行されます:
 # - changeset versionの適用
+# - ルートpackage.jsonをブランチ名のバージョン(1.0.1)に更新
 # - Version Packagesコミット
 # - PRの自動作成
 ```
@@ -53,6 +66,7 @@ git push -u origin release/1.0.1
 git checkout main && git pull
 
 # リリースブランチ作成
+# ⚠️ 重要: ブランチ名のバージョンがルートパッケージのバージョンになります
 git checkout -b release/1.0.1
 
 # Changesetの確認
@@ -60,6 +74,14 @@ npx changeset status
 
 # バージョン更新とCHANGELOG生成
 npx changeset version
+
+# ルートpackage.jsonのバージョンをブランチ名に合わせて更新
+node -e "
+  const fs = require('fs');
+  const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  pkg.version = '1.0.1';  // ブランチ名のバージョンと一致させる
+  fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
+"
 
 # 更新をコミット
 git add -A && git commit -m "Version Packages"
