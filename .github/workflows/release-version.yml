@@ -63,26 +63,21 @@ jobs:
           # Apply changeset version
           npx changeset version
 
-          # Determine the highest version from all packages
-          HIGHEST_VERSION=""
-          for pkg in packages/*/package.json; do
-            if [ -f "$pkg" ]; then
-              PKG_VERSION=$(node -p "require('./$pkg').version")
-              if [ -z "$HIGHEST_VERSION" ] || [ "$(printf '%s\n' "$HIGHEST_VERSION" "$PKG_VERSION" | sort -V | tail -n1)" = "$PKG_VERSION" ]; then
-                HIGHEST_VERSION="$PKG_VERSION"
-              fi
-            fi
-          done
+          # Extract version from branch name (release/x.x.x)
+          BRANCH_NAME="${GITHUB_REF#refs/heads/}"
+          if [[ "$BRANCH_NAME" =~ ^release/([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            VERSION="${BASH_REMATCH[1]}"
 
-          # Update root package.json with the highest version
-          if [ -n "$HIGHEST_VERSION" ]; then
+            # Update root package.json with the version from branch name
             node -e "
               const fs = require('fs');
               const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-              pkg.version = '$HIGHEST_VERSION';
+              pkg.version = '$VERSION';
               fs.writeFileSync('package.json', JSON.stringify(pkg, null, 2) + '\n');
             "
-            echo "Updated root package.json to version $HIGHEST_VERSION"
+            echo "Updated root package.json to version $VERSION (from branch name)"
+          else
+            echo "Warning: Could not extract version from branch name: $BRANCH_NAME"
           fi
 
           # Commit if there are changes
