@@ -293,6 +293,22 @@ pnpm build
 
 詳細な事前要件・開発環境構築は **[docs/development/development-tips.md](docs/development/development-tips.md)** を参照。
 
+### モノレポのバージョン管理
+
+このプロジェクトはモノレポ構造で、各パッケージが独立したバージョンを持ちます：
+
+| パッケージ | npm公開 | バージョン管理 |
+|-----------|---------|---------------|
+| coeiro-operator（ルート） | ❌ 非公開 | リリースタグのみ（例: v1.3.3） |
+| @coeiro-operator/core | ✅ 公開 | Changesetで独立管理（例: 1.2.1） |
+| @coeiro-operator/cli | ✅ 公開 | Changesetで独立管理（例: 1.4.2） |
+| @coeiro-operator/mcp | ✅ 公開 | Changesetで独立管理（例: 1.4.1） |
+| その他パッケージ | ✅ 公開 | Changesetで独立管理 |
+
+**重要**: ルートパッケージのバージョン（Gitタグ）と各npmパッケージのバージョンは必ずしも一致しません。これは正常な動作で、各パッケージが独自の更新サイクルを持つためです。
+
+リリースプロセスの詳細は **[RELEASE_FLOW.md](RELEASE_FLOW.md)** を参照。
+
 ## ドキュメント構造
 
 本プロジェクトのドキュメントは、対象読者別に整理されています：
