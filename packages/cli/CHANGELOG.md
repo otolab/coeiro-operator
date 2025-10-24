@@ -1,5 +1,13 @@
 # @coeiro-operator/cli
 
+## 1.3.1
+
+### Patch Changes
+
+- Updated dependencies [ce450dc]
+  - @coeiro-operator/core@1.2.1
+  - @coeiro-operator/audio@1.2.1
+
 ## 1.3.0
 
 ### Minor Changes
