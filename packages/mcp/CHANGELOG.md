@@ -1,5 +1,13 @@
 # @coeiro-operator/mcp
 
+## 1.4.1
+
+### Patch Changes
+
+- Updated dependencies [ce450dc]
+  - @coeiro-operator/core@1.2.1
+  - @coeiro-operator/audio@1.2.1
+
 ## 1.4.0
 
 ### Minor Changes
