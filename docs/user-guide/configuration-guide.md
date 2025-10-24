@@ -47,10 +47,10 @@ COEIRO Operatorの詳細な設定方法とカスタマイズオプションに�
 | | `assignmentStrategy` | String | `"random"` | 割り当て戦略（現在は`"random"`のみ） |
 | **terminal.background** | | | | ターミナル背景設定（iTerm2限定） |
 | | `enabled` | Boolean | `false` | 背景画像機能の有効化 |
-| | `backgroundImages[id]` | String | - | キャラクターIDごとの背景画像パス |
-| | `operatorImage.display` | String | `"api"` | オペレータ画像取得方法: `"api"`, `"file"`, `"none"` |
-| | `operatorImage.opacity` | Number | `0.3` | 透明度（0.0-1.0） |
-| | `operatorImage.filePath` | String | - | 画像ファイルパス（`display: "file"`の場合） |
+| | `imagePaths[id]` | String/null/false | - | キャラクター別画像設定（文字列=パス、null/false=無効、未定義=API） |
+| | `display.opacity` | Number | `0.3` | 透明度（0.0-1.0） |
+| | `display.position` | String | `"bottom-right"` | 表示位置: `"bottom-right"`, `"top-right"` |
+| | `display.scale` | Number | `0.15` | 表示サイズ（0.0-1.0） |
 | **characters[id]** | | | | キャラクター個別設定 |
 | | `name` | String | 内蔵設定 | 表示名 |
 | | `personality` | String | 内蔵設定 | 性格設定 |
@@ -193,19 +193,75 @@ MCPツールの`say`でスタイルを一時的に指定可能：
 - Python 3.12以上
 - [uv](https://github.com/astral-sh/uv)（Pythonパッケージマネージャー）
 
+### 設定構造
+
+```typescript
+interface TerminalBackgroundConfig {
+  enabled: boolean;  // 機能の有効/無効
+
+  // キャラクター別の画像設定（オプショナル）
+  imagePaths?: Record<string, string | null | false>;
+
+  // 表示設定（オプショナル）
+  display?: {
+    opacity?: number;      // デフォルト: 0.3
+    position?: 'bottom-right' | 'top-right';  // デフォルト: 'bottom-right'
+    scale?: number;        // デフォルト: 0.15
+  };
+}
+```
+
+### 設定値の意味
+
+| imagePaths の値 | 意味 | 動作 |
+|---|------|------|
+| `"path/to/image.png"` | ファイルパス | 指定ファイルを表示 |
+| `null` または `false` | 明示的に無効 | 画像なし（APIも使わない） |
+| 未定義（キーなし） | デフォルト | APIから自動取得 |
+
 ### 設定例
 
+#### 基本設定（すべてAPI自動取得）
+```json
+{
+  "terminal": {
+    "background": {
+      "enabled": true
+    }
+  }
+}
+```
+
+#### 特定キャラクターのみファイル指定
 ```json
 {
   "terminal": {
     "background": {
       "enabled": true,
-      "backgroundImages": {
-        "tsukuyomi": "/path/to/tsukuyomi-bg.png"
+      "imagePaths": {
+        "tsukuyomi": "/path/to/tsukuyomi.png",
+        "rilin": null,  // りりんちゃんは画像なし
+        "angie": "/path/to/angie.png"
+        // その他のキャラクターはAPIから自動取得
+      }
+    }
+  }
+}
+```
+
+#### カスタム表示設定
+```json
+{
+  "terminal": {
+    "background": {
+      "enabled": true,
+      "imagePaths": {
+        "tsukuyomi": "/path/to/tsukuyomi.png"
       },
-      "operatorImage": {
-        "display": "api",
-        "opacity": 0.3
+      "display": {
+        "opacity": 0.5,
+        "position": "top-right",
+        "scale": 0.2
       }
     }
   }
@@ -214,9 +270,8 @@ MCPツールの`say`でスタイルを一時的に指定可能：
 
 ### 動作仕様
 - オペレータ切り替え時に自動で背景画像を更新
-- オペレータ画像は右下に15%のサイズで表示（現在固定値）
+- ファイル指定 > API取得 > 画像なし の優先順位で動作
 - セッションIDを使用して特定のターミナルウィンドウに背景を設定
-- backgroundImagesで指定した画像が優先、なければoperatorImageを使用
 
 ## 設定の動作確認
 

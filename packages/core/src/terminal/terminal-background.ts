@@ -69,6 +69,7 @@ export class TerminalBackground {
       isITerm2: this.termBg.isITerm2()
     });
 
+    // 1. 機能が無効ならスキップ
     if (!config.enabled || !this.termBg.isITerm2()) {
       logger.error('⏭️ 背景画像設定をスキップ:', {
         reason: !config.enabled ? '設定が無効' : 'iTerm2ではない',
@@ -81,33 +82,42 @@ export class TerminalBackground {
     this.currentCharacterId = characterId;
 
     try {
-      // 背景画像を設定
-      if (config.backgroundImages?.[characterId]) {
-        logger.error(`📷 キャラクター専用背景画像を設定中: ${characterId}`);
-        await this.setBackgroundImage(config.backgroundImages[characterId]);
-      }
+      // 2. 画像パスを決定
+      let imagePath: string | null = null;
 
-      // オペレータ画像を表示（APIから取得して背景に設定）
-      if (config.operatorImage?.display === 'api') {
+      if (config.imagePaths && characterId in config.imagePaths) {
+        // 明示的な設定がある場合
+        const pathValue = config.imagePaths[characterId];
+        if (pathValue === null || pathValue === false) {
+          // null/false = このキャラクターは画像なし
+          logger.error(`🚫 ${characterId} は画像無効設定`);
+          await this.clearBackground();
+          return;
+        }
+        // string = ファイルパス
+        imagePath = pathValue;
+        logger.error(`📷 キャラクター専用画像を使用: ${characterId}`);
+      } else {
+        // 設定がない場合はAPIから取得
         logger.error('🌐 APIからオペレータ画像を取得中...');
-        const imagePath = await this.fetchOperatorImageFromAPI(characterId);
-        if (imagePath) {
-          logger.error(`🖼️ APIから取得した画像を背景に設定中: ${imagePath}`);
-          await this.setBackgroundImage(imagePath, config.operatorImage.opacity);
-        } else {
+        imagePath = await this.fetchOperatorImageFromAPI(characterId);
+        if (!imagePath) {
           logger.error('⚠️ APIからオペレータ画像を取得できませんでした');
         }
-      } else if (config.operatorImage?.display === 'file' && config.operatorImage.filePath) {
-        const imagePath = config.operatorImage.filePath.startsWith('/')
-          ? config.operatorImage.filePath
-          : join(process.cwd(), config.operatorImage.filePath);
-        logger.error(`📁 ファイルからオペレータ画像を設定中: ${imagePath}`);
-        await this.setBackgroundImage(imagePath, config.operatorImage.opacity);
-      } else {
-        logger.error('ℹ️ オペレータ画像の設定なし:', {
-          display: config.operatorImage?.display,
-          hasFilePath: !!config.operatorImage?.filePath
+      }
+
+      // 3. 画像を設定（パスがある場合のみ）
+      if (imagePath) {
+        const display = config.display || {};
+        logger.error(`🖼️ 背景画像を設定中: ${imagePath}`);
+        await this.setBackgroundImage(imagePath, {
+          opacity: display.opacity || 0.3,
+          position: display.position || 'bottom-right',
+          scale: display.scale || 0.15
         });
+      } else {
+        // 画像が取得できない場合はクリア
+        await this.clearBackground();
       }
     } catch (error) {
       logger.error(`背景画像の設定に失敗しました: ${error}`);
@@ -117,24 +127,33 @@ export class TerminalBackground {
   /**
    * 背景画像を設定
    */
-  private async setBackgroundImage(imagePath: string, opacity?: number): Promise<void> {
+  private async setBackgroundImage(
+    imagePath: string,
+    options?: {
+      opacity?: number;
+      position?: 'bottom-right' | 'top-right';
+      scale?: number;
+    }
+  ): Promise<void> {
     try {
       // 絶対パスに変換
       const absolutePath = imagePath.startsWith('/') ? imagePath : join(process.cwd(), imagePath);
 
+      const { opacity = 0.3, position = 'bottom-right', scale = 0.15 } = options || {};
+
       logger.error('🔄 背景画像設定を試行中:', {
         imagePath: absolutePath,
         sessionId: this.sessionId,
-        opacity: opacity ?? 0.3,
-        position: 'bottom-right',
-        scale: 0.15
+        opacity,
+        position,
+        scale
       });
 
       await this.termBg.setBackground({
         imagePath: absolutePath,
-        opacity: opacity ?? 0.3,  // デフォルト30%の不透明度
-        position: 'bottom-right',  // 右下に配置
-        scale: 0.15,  // 15%のサイズに縮小
+        opacity,
+        position,
+        scale,
         mode: 'fit',  // アスペクト比を保持
         sessionId: this.sessionId  // SessionIDを指定
       });

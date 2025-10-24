@@ -23,14 +23,27 @@ export interface FullConfig extends Omit<BaseFullConfig, 'characters'> {
 // ターミナル背景設定の型定義
 export interface TerminalBackgroundConfig {
   enabled: boolean;
-  backgroundImages?: {
-    [characterId: string]: string; // キャラクターIDごとの背景画像パス
+
+  // キャラクター別の画像設定
+  // string: ファイルパス
+  // null/false: 画像なし（APIも使わない）
+  // 未定義: APIから自動取得
+  imagePaths?: Record<string, string | null | false>;
+
+  // 表示設定
+  display?: {
+    opacity?: number;      // 透明度 (0.0 - 1.0)、デフォルト: 0.3
+    position?: 'top-right' | 'bottom-right';  // 表示位置、デフォルト: 'bottom-right'
+    scale?: number;        // 表示サイズ (0.0 - 1.0)、デフォルト: 0.15
   };
+
+  // 旧設定（後方互換性のため一時的に保持）
+  backgroundImages?: Record<string, string>;
   operatorImage?: {
-    display: 'api' | 'file' | 'none'; // API取得/ファイル指定/表示なし
-    position: 'top-right' | 'bottom-right'; // 表示位置
-    opacity: number; // 透明度 (0.0 - 1.0)
-    filePath?: string; // display: 'file'の場合のパス
+    display: 'api' | 'file' | 'none';
+    position?: 'top-right' | 'bottom-right';
+    opacity?: number;
+    filePath?: string;
   };
 }
 
@@ -71,10 +84,12 @@ const DEFAULT_CONFIG = {
   terminal: {
     background: {
       enabled: true,
-      operatorImage: {
-        display: 'api' as const,
-        position: 'bottom-right' as const,
+      // デフォルトは空（すべてAPIから取得）
+      imagePaths: {},
+      display: {
         opacity: 0.3,
+        position: 'bottom-right' as const,
+        scale: 0.15,
       },
     },
   },
@@ -246,11 +261,66 @@ export class ConfigManager {
   }
 
   /**
-   * ターミナル背景設定を取得
+   * ターミナル背景設定を取得（旧設定の移行処理付き）
    */
   async getTerminalBackgroundConfig(): Promise<TerminalBackgroundConfig> {
     const config = await this.loadConfig();
-    return deepMerge(DEFAULT_CONFIG.terminal.background, config.terminal?.background);
+    const rawConfig = deepMerge(DEFAULT_CONFIG.terminal.background, config.terminal?.background);
+
+    // 旧設定から新設定への移行
+    return this.migrateBackgroundConfig(rawConfig);
+  }
+
+  /**
+   * 旧設定から新設定への移行
+   */
+  private migrateBackgroundConfig(oldConfig: any): TerminalBackgroundConfig {
+    const newConfig: TerminalBackgroundConfig = {
+      enabled: oldConfig.enabled || false,
+      imagePaths: oldConfig.imagePaths || {},
+      display: oldConfig.display || {
+        opacity: 0.3,
+        position: 'bottom-right',
+        scale: 0.15,
+      },
+    };
+
+    // backgroundImagesの移行
+    if (oldConfig.backgroundImages && Object.keys(oldConfig.backgroundImages).length > 0) {
+      console.warn('config.terminal.background.backgroundImages は非推奨です。imagePaths を使用してください。');
+      // 既存のimagePathsとマージ（imagePathsが優先）
+      newConfig.imagePaths = {
+        ...oldConfig.backgroundImages,
+        ...newConfig.imagePaths,
+      };
+    }
+
+    // operatorImageの移行
+    if (oldConfig.operatorImage) {
+      const { display, filePath, opacity, position } = oldConfig.operatorImage;
+
+      // display: 'none' の場合
+      if (display === 'none') {
+        console.warn('config.terminal.background.operatorImage.display: "none" は非推奨です。enabled: false を使用してください。');
+        newConfig.enabled = false;
+      }
+
+      // display: 'file' とfilePathの場合（全キャラクター共通として警告）
+      if (display === 'file' && filePath) {
+        console.warn('config.terminal.background.operatorImage.filePath は非推奨です。imagePaths でキャラクターごとに設定してください。');
+      }
+
+      // display設定の移行
+      if (opacity !== undefined || position !== undefined) {
+        newConfig.display = {
+          ...newConfig.display,
+          ...(opacity !== undefined && { opacity }),
+          ...(position !== undefined && { position }),
+        };
+      }
+    }
+
+    return newConfig;
   }
 
   /**
