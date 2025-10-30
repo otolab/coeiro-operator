@@ -200,7 +200,7 @@ export class MCPDebugClient {
   /**
    * MCPツールを呼び出し
    */
-  async callTool(name: string, args?: unknown): Promise<unknown> {
+  async callTool<T = unknown>(name: string, args?: unknown): Promise<T> {
     if (!this.isInitialized) {
       throw new Error('Client is not initialized. Call start() first.');
     }
@@ -213,7 +213,7 @@ export class MCPDebugClient {
       console.error('[MCP Debug] Calling tool:', name, args);
     }
 
-    const result = await this.protocolHandler.sendRequest('tools/call', {
+    const result = await this.protocolHandler.sendRequest<T>('tools/call', {
       name,
       arguments: args,
     });
@@ -228,12 +228,12 @@ export class MCPDebugClient {
   /**
    * 任意のMCPリクエストを送信
    */
-  async sendRequest(method: string, params?: unknown): Promise<unknown> {
+  async sendRequest<T = unknown>(method: string, params?: unknown): Promise<T> {
     if (!this.isInitialized) {
       throw new Error('Client is not initialized. Call start() first.');
     }
 
-    return this.protocolHandler.sendRequest(method, params);
+    return this.protocolHandler.sendRequest<T>(method, params);
   }
 
   /**
