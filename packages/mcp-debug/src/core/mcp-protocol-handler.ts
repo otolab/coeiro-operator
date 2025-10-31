@@ -27,7 +27,7 @@ export interface MCPCapabilities {
 
 export interface IMCPProtocolHandler {
   initialize(capabilities: MCPCapabilities): Promise<unknown>;
-  sendRequest(method: string, params?: unknown, timeout?: number): Promise<unknown>;
+  sendRequest<T = unknown>(method: string, params?: unknown, timeout?: number): Promise<T>;
   sendNotification(method: string, params?: unknown): void;
   handleMessage(message: MCPMessage): void;
 }
@@ -87,7 +87,7 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
   /**
    * リクエストを送信
    */
-  async sendRequest(method: string, params?: unknown, timeout?: number): Promise<unknown> {
+  async sendRequest<T = unknown>(method: string, params?: unknown, timeout?: number): Promise<T> {
     // 連番IDを使用（整数のみ、デバッグしやすい）
     const id = this.nextRequestId++;
 
@@ -104,7 +104,7 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
     };
 
     // リクエストを追跡開始
-    const responsePromise = this.requestTracker.track(id, method, params, timeout);
+    const responsePromise = this.requestTracker.track<T>(id, method, params, timeout);
 
     // メッセージを送信
     this.sendMessage(message);

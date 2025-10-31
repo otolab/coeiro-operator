@@ -13,7 +13,7 @@ export interface PendingRequest {
 }
 
 export interface IRequestTracker {
-  track(id: string | number, method: string, params?: unknown, timeout?: number): Promise<unknown>;
+  track<T = unknown>(id: string | number, method: string, params?: unknown, timeout?: number): Promise<T>;
   resolve(id: string | number, result: unknown): void;
   reject(id: string | number, error: unknown): void;
   hasRequest(id: string | number): boolean;
@@ -37,7 +37,7 @@ export class RequestTracker implements IRequestTracker {
   /**
    * リクエストを追跡開始
    */
-  track(id: string | number, method: string, params?: unknown, timeout?: number): Promise<unknown> {
+  track<T = unknown>(id: string | number, method: string, params?: unknown, timeout?: number): Promise<T> {
     // 既存のIDが使用されている場合はエラー
     if (this.pendingRequests.has(id)) {
       throw new Error(`Request ID ${id} is already being tracked`);
@@ -45,7 +45,7 @@ export class RequestTracker implements IRequestTracker {
 
     const requestTimeout = timeout ?? this.defaultTimeout;
 
-    return new Promise((resolve, reject) => {
+    return new Promise<T>((resolve, reject) => {
       const timeoutHandle = setTimeout(() => {
         this.pendingRequests.delete(id);
         reject(new Error(`Request ${id} (${method}) timed out after ${requestTimeout}ms`));
@@ -54,7 +54,7 @@ export class RequestTracker implements IRequestTracker {
       this.pendingRequests.set(id, {
         method,
         params,
-        resolve,
+        resolve: resolve as (value: unknown) => void,
         reject,
         timeout: timeoutHandle,
         timestamp: new Date(),

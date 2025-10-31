@@ -6,9 +6,9 @@
 import { MCPDebugClient, MCPDebugClientOptions } from '../core/mcp-debug-client.js';
 import { MCPServerState } from '../core/state-manager.js';
 
-export interface ToolCallResult {
+export interface ToolCallResult<T = unknown> {
   success: boolean;
-  result?: unknown;
+  result?: T;
   error?: Error;
   duration?: number;
 }
@@ -67,7 +67,7 @@ export class MCPServiceE2ETester {
   /**
    * ツールを呼び出し
    */
-  async callTool(name: string, args?: unknown): Promise<ToolCallResult> {
+  async callTool<T = unknown>(name: string, args?: unknown): Promise<ToolCallResult<T>> {
     if (!this.isStarted) {
       throw new Error('Tester is not started. Call start() first.');
     }
@@ -75,7 +75,7 @@ export class MCPServiceE2ETester {
     const startTime = Date.now();
 
     try {
-      const result = await this.client.callTool(name, args);
+      const result = await this.client.callTool<T>(name, args);
       return {
         success: true,
         result,
@@ -95,8 +95,8 @@ export class MCPServiceE2ETester {
    */
   async callToolsSequentially(
     calls: Array<{ name: string; args?: unknown }>
-  ): Promise<ToolCallResult[]> {
-    const results: ToolCallResult[] = [];
+  ): Promise<Array<ToolCallResult<unknown>>> {
+    const results: Array<ToolCallResult<unknown>> = [];
 
     for (const call of calls) {
       const result = await this.callTool(call.name, call.args);
@@ -111,7 +111,7 @@ export class MCPServiceE2ETester {
    */
   async callToolsConcurrently(
     calls: Array<{ name: string; args?: unknown }>
-  ): Promise<ToolCallResult[]> {
+  ): Promise<Array<ToolCallResult<unknown>>> {
     const promises = calls.map(call => this.callTool(call.name, call.args));
     return Promise.all(promises);
   }
@@ -119,12 +119,12 @@ export class MCPServiceE2ETester {
   /**
    * カスタムJSON-RPCリクエストを送信
    */
-  async sendRequest(method: string, params?: unknown): Promise<unknown> {
+  async sendRequest<T = unknown>(method: string, params?: unknown): Promise<T> {
     if (!this.isStarted) {
       throw new Error('Tester is not started. Call start() first.');
     }
 
-    return this.client.sendRequest(method, params);
+    return this.client.sendRequest<T>(method, params);
   }
 
   /**

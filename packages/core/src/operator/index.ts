@@ -12,6 +12,7 @@ import { hostname } from 'os';
 import CharacterInfoService, { Character, Style } from './character-info-service.js';
 import { getConfigDir } from '../common/config-paths.js';
 import { mkdir } from 'fs/promises';
+import { logger } from '@coeiro-operator/common';
 
 // セッション情報（キャラクターとスタイルの組み合わせ）
 interface CharacterSession {
@@ -350,9 +351,18 @@ export class OperatorManager {
     // 既存のオペレータがいる場合は自動的にリリース（交代処理）
     const currentCharacterId = await this.getCurrentOperatorId();
     if (currentCharacterId) {
-      // 同じキャラクターが指定された場合は何もしない
+      // 同じキャラクターが指定された場合
       if (currentCharacterId === specifiedCharacter) {
         const selectedStyle = this.characterInfoService.selectStyle(character, style);
+
+        // 現在のセッション情報を取得
+        const currentSession = await this.getCurrentOperatorSession();
+
+        // スタイルが変更されている場合はセッションを更新
+        if (currentSession && currentSession.styleId !== selectedStyle.styleId) {
+          await this.reserveOperator(specifiedCharacter, selectedStyle.styleId, selectedStyle.styleName);
+          logger.info(`🔄 [ASSIGN] スタイル変更: ${currentSession.styleName} → ${selectedStyle.styleName} (ID:${selectedStyle.styleId})`);
+        }
 
         // スタイル毎の設定を取得
         const styleConfig = character.styles?.[selectedStyle.styleId];
@@ -386,8 +396,12 @@ export class OperatorManager {
     // スタイルを選択
     const selectedStyle = this.characterInfoService.selectStyle(character, style);
 
+    logger.info(`🔍 [ASSIGN] スタイル選択 - input: "${style}", selected: ${selectedStyle.styleName} (ID:${selectedStyle.styleId})`);
+
     // キャラクターを予約（スタイル情報も含めて）
     await this.reserveOperator(specifiedCharacter, selectedStyle.styleId, selectedStyle.styleName);
+
+    logger.info('🔍 [ASSIGN] reserveOperator完了');
 
     // スタイル毎の設定を取得
     const styleConfig = character.styles?.[selectedStyle.styleId];
