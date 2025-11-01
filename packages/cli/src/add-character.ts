@@ -169,12 +169,18 @@ async function addCharacter(speakerId: string) {
   }
 
   // 3. characterIdを生成
-  const characterId = speaker.speakerName
+  let characterId = speaker.speakerName
     .toLowerCase()
     .replace(/[^a-z]/g, '')
     .substring(0, 20);
 
-  console.log(`\n  生成されたcharacterId: ${characterId}`);
+  // 日本語名などで空になった場合はspeakerIdの最初の8文字を使用
+  if (!characterId) {
+    characterId = speakerId.substring(0, 8);
+    console.log(`\n  日本語名のためspeakerIdから生成: ${characterId}`);
+  } else {
+    console.log(`\n  生成されたcharacterId: ${characterId}`);
+  }
 
   // 4. config.jsonに追加
   console.log('\n3. config.jsonに追加中...');
