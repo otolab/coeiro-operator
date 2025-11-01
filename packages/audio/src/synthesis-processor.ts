@@ -71,11 +71,22 @@ export class SynthesisProcessor {
     await this.validateServerConnection();
 
     // 音声設定の解決
+    logger.debug('SynthesisProcessor.process() - 音声設定解決開始', {
+      'resolvedOptions.voice': resolvedOptions.voice,
+      'resolvedOptions.style': resolvedOptions.style,
+      'resolvedOptions.allowFallback': resolvedOptions.allowFallback,
+    });
+
     const voiceConfig = await this.voiceResolver.resolveVoiceConfig(
       resolvedOptions.voice,
       resolvedOptions.style || undefined,
       resolvedOptions.allowFallback
     );
+
+    logger.debug('SynthesisProcessor.process() - VoiceConfig解決完了', {
+      speaker: voiceConfig.speaker.speakerName,
+      selectedStyleId: voiceConfig.selectedStyleId,
+    });
 
     // 速度指定を変換（シンプルに両方渡す）
     const speedSpec = {

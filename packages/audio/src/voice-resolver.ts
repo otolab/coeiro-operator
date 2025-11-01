@@ -33,11 +33,21 @@ export class VoiceResolver {
         const session = await this.operatorManager.getCurrentOperatorSession();
         let selectedStyle: any;
 
+        // デバッグ: セッション情報を確認
+        logger.debug('VoiceResolver.getCurrentVoiceConfig()', {
+          styleName,
+          session,
+          'session?.styleId': session?.styleId,
+          'session?.styleId !== undefined': session?.styleId !== undefined,
+        });
+
         if (styleName) {
           // 明示的にスタイルが指定された場合はそれを使用
+          logger.debug('分岐: 明示的スタイル指定');
           selectedStyle = this.operatorManager.selectStyle(character, styleName);
         } else if (session?.styleId !== undefined) {
           // セッションに保存されたスタイルIDがある場合はそれを使用
+          logger.debug('分岐: セッションからスタイル取得');
           const savedStyle = character.speaker.styles.find(s => s.styleId === session.styleId);
           if (savedStyle) {
             selectedStyle = savedStyle;
@@ -46,10 +56,12 @@ export class VoiceResolver {
             );
           } else {
             // 保存されたスタイルが見つからない場合はデフォルトを使用
+            logger.debug('保存されたスタイルが見つからない、デフォルト使用');
             selectedStyle = this.operatorManager.selectStyle(character, null);
           }
         } else {
           // セッション情報がない場合はデフォルトスタイルを使用
+          logger.debug('分岐: セッション情報なし、デフォルト使用');
           selectedStyle = this.operatorManager.selectStyle(character, null);
         }
 
