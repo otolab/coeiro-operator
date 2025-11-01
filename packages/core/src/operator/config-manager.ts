@@ -178,6 +178,7 @@ export class ConfigManager {
       // speakersがundefinedまたは配列でない場合は空の配列として扱う
       const availableSpeakers = Array.isArray(speakers) ? speakers : [];
 
+      // ビルトインキャラクターの処理
       for (const [characterId, builtinConfig] of Object.entries(BUILTIN_CHARACTER_CONFIGS)) {
         // speakerIdでCOEIROINKのSpeakerとマッチング
         const speaker = availableSpeakers.find(s => s.speakerUuid === builtinConfig.speakerId);
@@ -196,6 +197,47 @@ export class ConfigManager {
           availableStyles,
           ...userCharacterConfig,
         };
+      }
+
+      // ユーザー定義キャラクターの処理
+      if (config.characters) {
+        for (const [characterId, userConfig] of Object.entries(config.characters)) {
+          // ビルトインにすでに含まれている場合はスキップ（上書きは既に処理済み）
+          if (dynamicCharacters[characterId]) continue;
+
+          // disabledフラグがtrueの場合はスキップ
+          if (userConfig.disabled) continue;
+
+          // speakerIdが必須
+          if (!userConfig.speakerId) {
+            console.warn(`キャラクター '${characterId}' にはspeakerIdが必要です。スキップします。`);
+            continue;
+          }
+
+          // COEIROINKのSpeakerと照合
+          const speaker = availableSpeakers.find(s => s.speakerUuid === userConfig.speakerId);
+          if (!speaker) {
+            console.warn(`キャラクター '${characterId}' のspeaker (${userConfig.speakerId}) がCOEIROINKで見つかりません。`);
+            continue;
+          }
+
+          // 利用可能なスタイル一覧を追加
+          const availableStyles = speaker.styles?.map(s => s.styleName) || [];
+
+          // CharacterConfigとして構築（必須フィールドのデフォルト値を提供）
+          dynamicCharacters[characterId] = {
+            speakerId: userConfig.speakerId,
+            name: userConfig.name || speaker.speakerName,
+            personality: userConfig.personality || '',
+            speakingStyle: userConfig.speakingStyle || '',
+            greeting: userConfig.greeting || '',
+            farewell: userConfig.farewell || '',
+            defaultStyleId: userConfig.defaultStyleId || (speaker.styles?.[0]?.styleId ?? 0),
+            styles: userConfig.styles || {},
+            availableStyles,
+            ...userConfig,
+          } as CharacterConfig;
+        }
       }
 
       const operatorConfig = await this.getOperatorConfig();
