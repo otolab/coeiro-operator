@@ -1,5 +1,43 @@
 # @coeiro-operator/mcp-debug
 
+## 1.1.0
+
+### Minor Changes
+
+- ba44e15: MCP初期化プロトコルの改善とベストプラクティスガイド追加
+
+  ### 新機能
+  - tools/listリクエストのサポート追加
+    - MCPProtocolHandler.listTools()メソッド追加
+    - MCPDebugClient.getTools()メソッド追加
+  - 通知ハンドラー機能の追加
+    - notifications/tools/list_changed対応
+
+  ### Breaking Changes
+  - MCPServiceE2ETester.getAvailableTools()を非同期メソッドに変更
+    - 旧: getAvailableTools(): string[]
+    - 新: async getAvailableTools(): Promise<string[]>
+
+  ### 改善
+  - capabilities と tools/list の違いを正しく実装
+  - listChanged が機能宣言であることを明確化
+  - 型安全性の向上（MCPToolsListResponse使用）
+
+  ### ドキュメント
+  - MCP Protocol Best Practices Guide 新規作成
+  - 初期化プロトコルの正しい理解を解説
+  - よくある誤解と解決方法を網羅
+
+### Patch Changes
+
+- aad04a8: 型安全性を大幅に改善
+  - sendRequest/callToolメソッドをジェネリクス対応に変更
+  - MCPプロトコルの標準型定義を追加・エクスポート
+  - ToolCallResultをジェネリクス対応に変更
+  - 型安全な使用例ドキュメントを追加
+
+  これにより、テストコードでany型を使う必要がなくなり、型安全にMCPサーバーのテストが記述できるようになりました。
+
 ## 1.0.1
 
 ### Patch Changes
