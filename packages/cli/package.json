@@ -21,7 +21,8 @@
   "bin": {
     "operator-manager": "./dist/operator-manager.js",
     "say-coeiroink": "./dist/say-coeiroink.js",
-    "dictionary-register": "./dist/dictionary-register.js"
+    "dictionary-register": "./dist/dictionary-register.js",
+    "add-character": "./dist/add-character.js"
   },
   "scripts": {
     "build": "tsc --build",

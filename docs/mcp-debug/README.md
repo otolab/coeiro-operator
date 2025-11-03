@@ -12,6 +12,14 @@ MCPプロトコルの詳細仕様と実装ガイド：
 - エラーハンドリング
 - 実装チェックリスト
 
+### [MCP プロトコル ベストプラクティス](./mcp-protocol-best-practices.md)
+MCPプロトコルの基本概念とよくある誤解：
+- 初期化プロトコルの正しい理解
+- Capabilitiesとツールリストの違い
+- `listChanged`の意味と使い方
+- 通知(Notifications)の処理
+- よくある誤解と解決方法
+
 ### [テスト機能](./testing-features.md)
 mcp-debugが提供する包括的なテスト機能：
 - プロトコル準拠性テスト

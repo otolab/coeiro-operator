@@ -24,3 +24,24 @@ export {
   type ToolCallResult,
   type ServerStatus,
 } from './e2e/index.js';
+
+// MCPプロトコル型定義エクスポート
+export type {
+  MCPTool,
+  MCPToolsListResponse,
+  MCPContent,
+  MCPTextContent,
+  MCPImageContent,
+  MCPResourceContent,
+  MCPToolCallResponse,
+  MCPResource,
+  MCPResourcesListResponse,
+  MCPResourceReadResponse,
+  MCPPrompt,
+  MCPPromptsListResponse,
+  MCPPromptGetResponse,
+  MCPLogLevel,
+  MCPLoggingSetLevelParams,
+  MCPCompletionCompleteParams,
+  MCPCompletionCompleteResponse,
+} from './types/mcp-protocol.js';

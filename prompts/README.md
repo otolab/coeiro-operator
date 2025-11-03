@@ -9,7 +9,8 @@ AI Agent（Claude Code等）向けのシステムプロンプトとガイドフ�
   - COEIRO Operator MCPツール一覧と使用例
   - 外部MCPツール（code-bugs）の活用方法
 - **[OPERATOR_SYSTEM.md](OPERATOR_SYSTEM.md)** - オペレータシステム仕様
-- **[UPDATE_CHARACTER_SETTINGS.md](UPDATE_CHARACTER_SETTINGS.md)** - キャラクター設定更新ガイド
+- **[UPDATE_CHARACTER_SETTINGS.md](UPDATE_CHARACTER_SETTINGS.md)** - キャラクター設定更新ガイド（開発者向け）
+- **[ADD_CUSTOM_CHARACTER.md](ADD_CUSTOM_CHARACTER.md)** - カスタムキャラクター追加ガイド（ユーザー向け）
 
 ### 📝 ドキュメント作成・管理
 - **[docs-code-sync.md](docs-code-sync.md)** - ドキュメントとコードの同期管理原則
@@ -22,6 +23,10 @@ AI Agent（Claude Code等）向けのシステムプロンプトとガイドフ�
 - **[PR_CREATION_GUIDE.md](PR_CREATION_GUIDE.md)** - PR作成ガイド・チェックリスト
 
 ## 🎯 シーン別利用ガイド
+
+### カスタムキャラクター追加時
+1. `ADD_CUSTOM_CHARACTER.md` - ユーザー向けカスタムキャラクター追加手順
+2. `UPDATE_CHARACTER_SETTINGS.md` - 開発者向けビルトインキャラクター更新手順
 
 ### 機能実装時
 1. `MCP_TOOLS_USAGE_GUIDE.md` - MCPツールの使い方を確認

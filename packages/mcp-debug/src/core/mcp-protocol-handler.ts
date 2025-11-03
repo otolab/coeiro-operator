@@ -27,13 +27,15 @@ export interface MCPCapabilities {
 
 export interface IMCPProtocolHandler {
   initialize(capabilities: MCPCapabilities): Promise<unknown>;
-  sendRequest(method: string, params?: unknown, timeout?: number): Promise<unknown>;
+  listTools(): Promise<unknown>;
+  sendRequest<T = unknown>(method: string, params?: unknown, timeout?: number): Promise<T>;
   sendNotification(method: string, params?: unknown): void;
   handleMessage(message: MCPMessage): void;
 }
 
 export class MCPProtocolHandler implements IMCPProtocolHandler {
   private outputHandler?: (data: string) => void;
+  private notificationHandler?: (method: string, params?: unknown) => void;
   private serverCapabilities?: unknown;
   private nextRequestId = 1; // 連番ID管理用
 
@@ -47,6 +49,13 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
    */
   setOutputHandler(handler: (data: string) => void): void {
     this.outputHandler = handler;
+  }
+
+  /**
+   * 通知ハンドラーを設定
+   */
+  setNotificationHandler(handler: (method: string, params?: unknown) => void): void {
+    this.notificationHandler = handler;
   }
 
   /**
@@ -85,9 +94,16 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
   }
 
   /**
+   * 利用可能なツールのリストを取得
+   */
+  async listTools(): Promise<unknown> {
+    return this.sendRequest('tools/list', {});
+  }
+
+  /**
    * リクエストを送信
    */
-  async sendRequest(method: string, params?: unknown, timeout?: number): Promise<unknown> {
+  async sendRequest<T = unknown>(method: string, params?: unknown, timeout?: number): Promise<T> {
     // 連番IDを使用（整数のみ、デバッグしやすい）
     const id = this.nextRequestId++;
 
@@ -104,7 +120,7 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
     };
 
     // リクエストを追跡開始
-    const responsePromise = this.requestTracker.track(id, method, params, timeout);
+    const responsePromise = this.requestTracker.track<T>(id, method, params, timeout);
 
     // メッセージを送信
     this.sendMessage(message);
@@ -174,9 +190,23 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
    * 通知を処理
    */
   private handleNotification(message: MCPMessage): void {
-    // 通知の処理（必要に応じて実装）
-    // 例: progress通知、log通知など
-    console.error(`[MCP Notification] ${message.method}:`, message.params);
+    const method = message.method;
+    if (!method) return;
+
+    // カスタムハンドラーがあれば呼び出す
+    if (this.notificationHandler) {
+      this.notificationHandler(method, message.params);
+    }
+
+    // 特定の通知の処理
+    if (method === 'notifications/tools/list_changed') {
+      console.error('[MCP] Tools list has changed. Re-fetch tools list with listTools()');
+    }
+
+    // デバッグ用のログ出力
+    if (method !== 'notifications/tools/list_changed') {
+      console.error(`[MCP Notification] ${method}:`, message.params);
+    }
   }
 
   /**

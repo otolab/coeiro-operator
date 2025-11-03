@@ -167,3 +167,4 @@ Claude Codeは起動時にMCPサーバーをプロセスとして起動し、サ
 - [使用ガイド](../../docs/mcp-debug/mcp-debug-guide.md)
 - [アーキテクチャ](../../docs/mcp-debug/architecture.md)
 - [MCPプロトコル仕様](../../docs/mcp-debug/mcp-protocol-specification.md)
+- [MCPプロトコル ベストプラクティス](../../docs/mcp-debug/mcp-protocol-best-practices.md) - 基本概念とよくある誤解
