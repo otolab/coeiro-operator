@@ -5,6 +5,7 @@
 
 import { MCPDebugClient, MCPDebugClientOptions } from '../core/mcp-debug-client.js';
 import { MCPServerState } from '../core/state-manager.js';
+import { MCPToolsListResponse } from '../types/mcp-protocol.js';
 
 export interface ToolCallResult<T = unknown> {
   success: boolean;
@@ -153,12 +154,18 @@ export class MCPServiceE2ETester {
   /**
    * 利用可能なツール一覧を取得
    */
-  getAvailableTools(): string[] {
-    const capabilities = this.client.getServerCapabilities();
-    if (capabilities && typeof capabilities === 'object' && 'tools' in capabilities && capabilities.tools) {
-      return Object.keys(capabilities.tools as Record<string, unknown>);
+  async getAvailableTools(): Promise<string[]> {
+    if (!this.isStarted) {
+      throw new Error('Tester is not started. Call start() first.');
     }
-    return [];
+
+    try {
+      const response: MCPToolsListResponse = await this.client.getTools();
+      return response.tools.map(tool => tool.name);
+    } catch (error) {
+      console.error('Failed to get tools list:', error);
+      return [];
+    }
   }
 
   /**

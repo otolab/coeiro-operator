@@ -7,6 +7,7 @@ import { MCPStateManager, MCPServerState } from './state-manager.js';
 import { ProcessManager } from './process-manager.js';
 import { MCPProtocolHandler, MCPCapabilities, MCPMessage } from './mcp-protocol-handler.js';
 import { RequestTracker } from './request-tracker.js';
+import { MCPToolsListResponse } from '../types/mcp-protocol.js';
 
 export interface MCPDebugClientOptions {
   serverPath: string;
@@ -266,6 +267,31 @@ export class MCPDebugClient {
    */
   getServerCapabilities(): unknown {
     return this.protocolHandler.getServerCapabilities();
+  }
+
+  /**
+   * 利用可能なツールのリストを取得
+   */
+  async getTools(): Promise<MCPToolsListResponse> {
+    if (!this.isInitialized) {
+      throw new Error('Client is not initialized. Call start() first.');
+    }
+
+    if (!this.stateManager.canAcceptRequest()) {
+      throw new Error(`Server not ready. Current state: ${this.stateManager.currentState}`);
+    }
+
+    if (this.options.debug) {
+      console.error('[MCP Debug] Requesting tools list...');
+    }
+
+    const result = await this.protocolHandler.listTools();
+
+    if (this.options.debug) {
+      console.error('[MCP Debug] Tools list:', result);
+    }
+
+    return result as MCPToolsListResponse;
   }
 
   /**
