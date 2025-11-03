@@ -1,11 +1,8 @@
 ---
-"coeiro-operator": patch
 "@coeiro-operator/mcp-debug": minor
 ---
 
 MCP初期化プロトコルの改善とベストプラクティスガイド追加
-
-## @coeiro-operator/mcp-debug
 
 ### 新機能
 - tools/listリクエストのサポート追加
@@ -28,8 +25,3 @@ MCP初期化プロトコルの改善とベストプラクティスガイド追�
 - MCP Protocol Best Practices Guide 新規作成
 - 初期化プロトコルの正しい理解を解説
 - よくある誤解と解決方法を網羅
-
-## coeiro-operator (root)
-
-### ドキュメント
-- mcp-debugの改善に伴うドキュメント整備
