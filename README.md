@@ -54,7 +54,15 @@ npm install -g @coeiro-operator/mcp
 claude mcp add coeiro-operator
 
 # または、npxで直接実行する場合は手動設定
-# claude_desktop_config.jsonに追加
+# claude_desktop_config.jsonに以下を追加：
+# {
+#   "mcpServers": {
+#     "coeiro-operator": {
+#       "command": "npx",
+#       "args": ["-y", "--package", "@coeiro-operator/mcp", "coeiro-operator"]
+#     }
+#   }
+# }
 
 # AI Agent用の設定（Claude Code利用時）
 # 音声対話が必要な場合、prompts/recipes/operator-mode.mdを

@@ -25,13 +25,13 @@ claude mcp add coeiro-operator
   "mcpServers": {
     "coeiro-operator": {
       "command": "npx",
-      "args": ["-y", "@coeiro-operator/mcp"]
+      "args": ["-y", "--package", "@coeiro-operator/mcp", "coeiro-operator"]
     }
   }
 }
 ```
 
-※ `npx @coeiro-operator/mcp`は内部的に`coeiro-operator`コマンドを実行します
+※ `npx -y --package "@coeiro-operator/mcp" coeiro-operator`でパッケージを自動インストールして`coeiro-operator`コマンドを実行します
 
 ## 提供される機能
 
