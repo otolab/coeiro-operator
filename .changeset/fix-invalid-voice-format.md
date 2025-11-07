@@ -23,6 +23,12 @@ Issue #179, #180の修正: `alma:裏`のような不正なvoice形式でMCPサ�
    - 現在のオペレータではなく、指定されたキャラクターのstyleをチェック
    - 例: `operator_assign=tsukuyomi`の状態で`voice="alma"` + `style="のーまる"`が使用可能に
 
+4. **クラッシュ防止の強化（Issue #179の本質的な要件）**
+   - `voice-resolver.ts`で`selectedStyle`がundefinedになるケースを明示的に処理
+   - 非null assertion (`!`) を削除し、ガード節でエラーをthrow
+   - `speaker.styles`が空配列の場合のクラッシュを防止
+   - `server.ts`で`Character`型に存在しない`name`フィールドの参照を修正
+
 **使用例:**
 ```typescript
 // 正常な形式
