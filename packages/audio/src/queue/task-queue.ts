@@ -335,18 +335,26 @@ export class TaskQueue<T extends BaseTask> extends EventEmitter {
     return new Promise((resolve) => {
       const checkAndResolve = () => {
         const status = this.getStatus();
-        logger.debug(`[TaskQueue] キュー状態チェック: queue=${status.queueLength}, isProcessing=${status.isProcessing}, target=${targetLength}`);
+        logger.debug(`[TaskQueue] キュー状態チェック: queue=${status.queueLength}, isProcessing=${status.isProcessing}, currentTask=${status.currentTaskId}, nextTask=${status.nextTaskId}, target=${targetLength}`);
 
-        if (status.queueLength <= targetLength && !status.isProcessing) {
-          logger.debug(`[TaskQueue] 目標キュー長に到達: queue=${status.queueLength}, target=${targetLength}`);
-          // イベントリスナーを削除
-          this.off('taskCompleted', checkAndResolve);
-          this.off('queueEmpty', checkAndResolve);
+        // キューが目標長以下の場合
+        if (status.queueLength <= targetLength) {
+          // targetLength=0の場合: 完全に空で処理中でない
+          // targetLength>0の場合: キューが目標長で、処理中のタスクがキューにカウントされていないため即座に解除
+          const shouldResolve = (targetLength === 0 && !status.isProcessing) ||
+                                (targetLength > 0);
 
-          // エラーリストを返してクリア
-          const errors = [...this.errors];
-          this.errors = [];
-          resolve({ errors });
+          if (shouldResolve) {
+            logger.debug(`[TaskQueue] 目標キュー長に到達: queue=${status.queueLength}, target=${targetLength}`);
+            // イベントリスナーを削除
+            this.off('taskCompleted', checkAndResolve);
+            this.off('queueEmpty', checkAndResolve);
+
+            // エラーリストを返してクリア
+            const errors = [...this.errors];
+            this.errors = [];
+            resolve({ errors });
+          }
         }
       };
 
