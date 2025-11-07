@@ -96,10 +96,7 @@ describe('句読点ポーズ機能', () => {
       };
 
       const settings: PunctuationPauseSettings = {
-        enabled: true,
-        pauseMoras: {
-          period: 2.0, // 2モーラ分のポーズ
-        },
+        period: 2.0, // 2モーラ分のポーズ
       };
 
       // 8.0モーラ/秒の場合: 2.0モーラ ÷ 8.0モーラ/秒 = 0.25秒 = 250ms
@@ -135,10 +132,7 @@ describe('句読点ポーズ機能', () => {
       };
 
       const settings: PunctuationPauseSettings = {
-        enabled: true,
-        pauseMoras: {
-          comma: 1.0, // 1モーラ分のポーズ
-        },
+        comma: 1.0, // 1モーラ分のポーズ
       };
 
       // 7.5モーラ/秒の場合: 1.0モーラ ÷ 7.5モーラ/秒 = 0.133...秒 = 133ms
@@ -166,10 +160,7 @@ describe('句読点ポーズ機能', () => {
       };
 
       const settings: PunctuationPauseSettings = {
-        enabled: true,
-        pauseMoras: {
-          question: 2.5, // 2.5モーラ分のポーズ
-        },
+        question: 2.5, // 2.5モーラ分のポーズ
       };
 
       // 9.0モーラ/秒の場合: 2.5モーラ ÷ 9.0モーラ/秒 = 0.278秒 = 278ms
@@ -197,10 +188,7 @@ describe('句読点ポーズ機能', () => {
       };
 
       const settings: PunctuationPauseSettings = {
-        enabled: true,
-        pauseMoras: {
-          exclamation: 2.0, // 2モーラ分のポーズ
-        },
+        exclamation: 2.0, // 2モーラ分のポーズ
       };
 
       // 4.0モーラ/秒の場合: 2.0モーラ ÷ 4.0モーラ/秒 = 0.5秒 = 500ms
@@ -225,11 +213,10 @@ describe('句読点ポーズ機能', () => {
       };
 
       const settings: PunctuationPauseSettings = {
-        enabled: true,
-        // pauseMorasが未定義
+        // 全フィールド未定義
       };
 
-      // デフォルト値: 話速=7.5モーラ/秒, period=2.0
+      // デフォルト値: 話速=7.5モーラ/秒, period=2.0（DEFAULT_PUNCTUATION_MORAS）
       // 2.0モーラ ÷ 7.5モーラ/秒 = 0.267秒 = 267ms
       const duration = (controller as any).calculatePauseDuration(
         '。',
@@ -239,7 +226,7 @@ describe('句読点ポーズ機能', () => {
       expect(duration).toBe(267);
     });
 
-    it('設定が無効な場合は0を返す', () => {
+    it('ポーズ値が0の場合は0を返す', () => {
       const voiceConfig: VoiceConfig = {
         speakerId: 'test',
         speaker: {
@@ -251,7 +238,7 @@ describe('句読点ポーズ機能', () => {
       };
 
       const settings: PunctuationPauseSettings = {
-        enabled: false, // 無効化
+        period: 0, // 無効化
       };
 
       const duration = (controller as any).calculatePauseDuration(
@@ -283,10 +270,7 @@ describe('句読点ポーズ機能', () => {
 
     it('スタイル毎の話速設定を使用する', () => {
       const settings: PunctuationPauseSettings = {
-        enabled: true,
-        pauseMoras: {
-          period: 2.0,
-        },
+        period: 2.0,
       };
 
       // ねむねむスタイル（遅い）: 2.0モーラ ÷ 4.8モーラ/秒 = 0.417秒 = 417ms
@@ -315,10 +299,7 @@ describe('句読点ポーズ機能', () => {
       };
 
       const settings: PunctuationPauseSettings = {
-        enabled: true,
-        pauseMoras: {
-          period: 2.0,
-        },
+        period: 2.0,
       };
 
       const chunks = await (controller as any).processSpeechWithPunctuation(
@@ -345,13 +326,10 @@ describe('句読点ポーズ機能', () => {
       };
 
       const settings: PunctuationPauseSettings = {
-        enabled: true,
-        pauseMoras: {
-          period: 2.0,
-          exclamation: 2.0,
-          question: 2.5,
-          comma: 1.0,
-        },
+        period: 2.0,
+        exclamation: 2.0,
+        question: 2.5,
+        comma: 1.0,
       };
 
       const chunks = await (controller as any).processSpeechWithPunctuation(
@@ -400,7 +378,10 @@ describe('句読点ポーズ機能', () => {
       };
 
       const settings: PunctuationPauseSettings = {
-        enabled: false,
+        period: 0,
+        exclamation: 0,
+        question: 0,
+        comma: 0,
       };
 
       const chunks = await (controller as any).processSpeechWithPunctuation(

@@ -75,7 +75,7 @@ export class AudioStreamController {
     actualMorasPerSecond: number,
     settings?: PunctuationPauseSettings
   ): number {
-    if (!settings?.enabled) return 0;
+    if (!settings) return 0;
 
     const punctuationMap: Record<string, keyof typeof DEFAULT_PUNCTUATION_MORAS> = {
       '。': 'period',
@@ -90,11 +90,15 @@ export class AudioStreamController {
     // デフォルト値と設定値をマージ
     const pauseMoras = {
       ...DEFAULT_PUNCTUATION_MORAS,
-      ...settings.pauseMoras,
+      ...settings,
     };
 
     // ポーズ時間を計算（モーラ数 → ミリ秒）
     const pauseInMoras = pauseMoras[type];
+
+    // ポーズ値が0以下なら無効
+    if (pauseInMoras <= 0) return 0;
+
     const pauseDuration = (pauseInMoras / actualMorasPerSecond) * 1000;
 
     logger.debug(
@@ -201,8 +205,7 @@ export class AudioStreamController {
         yield result.data;
 
         // 句読点ポーズの挿入（最後のチャンク以外）
-        if (this.options.punctuationPause?.enabled &&
-            chunkIndex < chunks.length - 1) {
+        if (this.options.punctuationPause && chunkIndex < chunks.length - 1) {
           const lastPunctuation = this.getLastPunctuation(result.data.chunk.text);
           if (lastPunctuation) {
             const pauseDuration = this.calculatePauseDuration(
