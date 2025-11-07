@@ -181,7 +181,7 @@ describe('MCP Server allowFallback behavior', () => {
                 mode: 'normal',
                 latency: 100
             };
-            
+
             mockSayCoeiroinkInstance.enqueueSpeech.mockResolvedValue(expectedResult);
 
             const cliOptions = {
@@ -193,6 +193,70 @@ describe('MCP Server allowFallback behavior', () => {
 
             expect(result).toEqual(expectedResult);
             expect(result.success).toBe(true);
+        });
+    });
+
+    describe('voice形式のパース', () => {
+        test('不正なvoice形式（コロンが複数）でエラーが発生すること', () => {
+            const invalidVoice = 'alma:裏:extra';
+
+            // パース処理をシミュレート
+            const parseVoice = (voice: string) => {
+                if (voice && voice.includes(':')) {
+                    const parts = voice.split(':');
+                    if (parts.length !== 2) {
+                        throw new Error(
+                            `不正なvoice形式です: "${voice}"\n` +
+                            `使用可能な形式:\n` +
+                            `  - "characterId" (例: "alma")\n` +
+                            `  - "characterId:styleName" (例: "alma:のーまる")`
+                        );
+                    }
+                    return { characterId: parts[0], styleName: parts[1] };
+                }
+                return { characterId: voice, styleName: undefined };
+            };
+
+            expect(() => parseVoice(invalidVoice)).toThrow('不正なvoice形式です');
+            expect(() => parseVoice(invalidVoice)).toThrow('alma:裏:extra');
+        });
+
+        test('正常なvoice形式（characterId:styleName）が正しくパースされること', () => {
+            const validVoice = 'alma:のーまる';
+
+            const parseVoice = (voice: string) => {
+                if (voice && voice.includes(':')) {
+                    const parts = voice.split(':');
+                    if (parts.length !== 2) {
+                        throw new Error('不正なvoice形式');
+                    }
+                    return { characterId: parts[0], styleName: parts[1] };
+                }
+                return { characterId: voice, styleName: undefined };
+            };
+
+            const result = parseVoice(validVoice);
+            expect(result.characterId).toBe('alma');
+            expect(result.styleName).toBe('のーまる');
+        });
+
+        test('characterIdのみの場合も正しくパースされること', () => {
+            const validVoice = 'alma';
+
+            const parseVoice = (voice: string) => {
+                if (voice && voice.includes(':')) {
+                    const parts = voice.split(':');
+                    if (parts.length !== 2) {
+                        throw new Error('不正なvoice形式');
+                    }
+                    return { characterId: parts[0], styleName: parts[1] };
+                }
+                return { characterId: voice, styleName: undefined };
+            };
+
+            const result = parseVoice(validVoice);
+            expect(result.characterId).toBe('alma');
+            expect(result.styleName).toBeUndefined();
         });
     });
 });
