@@ -3,14 +3,23 @@
  * 非同期タスクのキューイングと順次処理を担当
  */
 
+import { EventEmitter } from 'events';
 import type { BaseTask, EnqueueResult, QueueStatus, ClearResult } from './types.js';
 import { logger } from '@coeiro-operator/common';
+
+/**
+ * TaskQueueイベント
+ */
+export interface TaskQueueEvents {
+  taskCompleted: (taskId: number, queueLength: number) => void;
+  queueEmpty: () => void;
+}
 
 /**
  * ジェネリックタスクキュー
  * @template T タスクの型（BaseTaskを拡張）
  */
-export class TaskQueue<T extends BaseTask> {
+export class TaskQueue<T extends BaseTask> extends EventEmitter {
   private taskQueue: T[] = [];
   private currentProcessPromise: Promise<void> | null = null;
   private currentTask: T | null = null;
@@ -19,7 +28,9 @@ export class TaskQueue<T extends BaseTask> {
 
   constructor(
     private processCallback: (task: T) => Promise<void>
-  ) {}
+  ) {
+    super();
+  }
 
   /**
    * タスクを作成してキューに追加
@@ -161,6 +172,9 @@ export class TaskQueue<T extends BaseTask> {
           if (task.resolve) {
             task.resolve();
           }
+
+          // タスク完了イベントを発行
+          this.emit('taskCompleted', task.id, this.taskQueue.length);
         } catch (error) {
           logger.error(`[TaskQueue] タスクエラー: ${task.id} (${task.type}), ${(error as Error).message}`);
           logger.error(`[TaskQueue] エラースタック:`, (error as Error).stack);
@@ -186,6 +200,11 @@ export class TaskQueue<T extends BaseTask> {
     // 処理を待つ
     await this.currentProcessPromise;
     this.currentProcessPromise = null;
+
+    // キューが空になったらイベントを発行
+    if (this.taskQueue.length === 0) {
+      this.emit('queueEmpty');
+    }
   }
 
   /**
@@ -293,5 +312,50 @@ export class TaskQueue<T extends BaseTask> {
     }
 
     return { removedCount, aborted };
+  }
+
+  /**
+   * キューが指定された長さになるまで待機（イベントベース）
+   * @param targetLength 待機解除するキュー長（デフォルト0 = 完全に空になるまで待機）
+   * @returns エラーが発生した場合はエラーリストを含む結果を返す
+   */
+  async waitForQueueLength(targetLength: number = 0): Promise<{ errors: Array<{taskId: number; error: Error}> }> {
+    logger.debug(`[TaskQueue] waitForQueueLength開始, target: ${targetLength}, 現在のqueue長: ${this.taskQueue.length}`);
+
+    // 既に条件を満たしている場合は即座に解決
+    const currentStatus = this.getStatus();
+    if (currentStatus.queueLength <= targetLength && !currentStatus.isProcessing) {
+      logger.debug(`[TaskQueue] 既に目標キュー長以下（queue: ${currentStatus.queueLength}, target: ${targetLength}）`);
+      const errors = [...this.errors];
+      this.errors = [];
+      return { errors };
+    }
+
+    // イベントベースで待機
+    return new Promise((resolve) => {
+      const checkAndResolve = () => {
+        const status = this.getStatus();
+        logger.debug(`[TaskQueue] キュー状態チェック: queue=${status.queueLength}, isProcessing=${status.isProcessing}, target=${targetLength}`);
+
+        if (status.queueLength <= targetLength && !status.isProcessing) {
+          logger.debug(`[TaskQueue] 目標キュー長に到達: queue=${status.queueLength}, target=${targetLength}`);
+          // イベントリスナーを削除
+          this.off('taskCompleted', checkAndResolve);
+          this.off('queueEmpty', checkAndResolve);
+
+          // エラーリストを返してクリア
+          const errors = [...this.errors];
+          this.errors = [];
+          resolve({ errors });
+        }
+      };
+
+      // タスク完了とキュー空イベントの両方をリッスン
+      this.on('taskCompleted', checkAndResolve);
+      this.on('queueEmpty', checkAndResolve);
+
+      // 即座にチェック（イベント発火前に条件を満たしている可能性）
+      checkAndResolve();
+    });
   }
 }

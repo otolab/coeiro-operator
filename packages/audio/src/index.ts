@@ -128,6 +128,25 @@ export class SayCoeiroink {
     }
   }
 
+  /**
+   * キューが指定された長さになるまで待機（イベントベース）
+   * @param targetLength 待機解除するキュー長（デフォルト0 = 完全に空になるまで待機）
+   * エラーが発生した場合は最初のエラーを投げる
+   */
+  async waitForQueueLength(targetLength: number = 0): Promise<void> {
+    if (!this.speechQueue) {
+      throw new Error('SpeechQueue is not initialized. Call initialize() first.');
+    }
+    const result = await this.speechQueue.waitForQueueLength(targetLength);
+
+    // エラーがある場合は最初のエラーを投げる
+    if (result.errors.length > 0) {
+      const firstError = result.errors[0];
+      logger.warn(`音声処理中に${result.errors.length}件のエラーが発生しました`);
+      throw firstError.error;
+    }
+  }
+
   // ========================================================================
   // ユーティリティメソッド
   // ========================================================================

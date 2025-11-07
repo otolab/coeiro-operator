@@ -1185,7 +1185,7 @@ server.registerTool(
   'wait_for_task_completion',
   {
     description:
-      '音声タスクの完了を待機します。すべてのタスクが完了するまで待ちます。デバッグやテスト時に便利です。',
+      '音声タスクの完了を待機します。デフォルトではすべてのタスクが完了するまで待ちますが、remainingQueueLengthを指定すると、キューが指定数になったときに解除されます。デバッグやテスト時に便利です。',
     inputSchema: {
       timeout: z
         .number()
@@ -1193,10 +1193,15 @@ server.registerTool(
         .max(60000)
         .optional()
         .describe('タイムアウト時間（ミリ秒、1000-60000、デフォルト30000）'),
+      remainingQueueLength: z
+        .number()
+        .min(0)
+        .optional()
+        .describe('この数までキューが減ったら待ちを解除（デフォルト0=全タスク完了まで待機）'),
     },
   },
   async (args): Promise<ToolResponse> => {
-    const { timeout = 30000 } = args || {};
+    const { timeout = 30000, remainingQueueLength = 0 } = args || {};
 
     try {
       const startTime = Date.now();
@@ -1204,50 +1209,60 @@ server.registerTool(
       // 初期状態を取得
       const initialStatus = sayCoeiroink.getSpeechQueueStatus();
 
-      // 待機対象がない場合
-      if (initialStatus.queueLength === 0 && !initialStatus.isProcessing) {
+      // 待機対象がない場合（remainingQueueLengthを考慮）
+      if (initialStatus.queueLength <= remainingQueueLength && !initialStatus.isProcessing) {
         return {
           content: [
             {
               type: 'text',
-              text: '✅ 待機対象のタスクがありません（キューは空で、処理中のタスクもありません）',
+              text: remainingQueueLength === 0
+                ? '✅ 待機対象のタスクがありません（キューは空で、処理中のタスクもありません）'
+                : `✅ キューは既に目標数（${remainingQueueLength}個）以下です（現在: ${initialStatus.queueLength}個）`,
             },
           ],
         };
       }
 
-      // タイムアウト付きで全タスクの完了を待機
+      // タイムアウト付きで待機
       const timeoutPromise = new Promise<never>((_, reject) => {
         setTimeout(() => reject(new Error('Timeout')), timeout);
       });
 
       try {
-        // waitCompletionを使用してPromiseベースで待機
+        // waitForQueueLength()を使用してイベントベースで待機
         await Promise.race([
-          sayCoeiroink.waitCompletion(),
+          sayCoeiroink.waitForQueueLength(remainingQueueLength),
           timeoutPromise
         ]);
 
         const waitedSeconds = ((Date.now() - startTime) / 1000).toFixed(1);
         const finalStatus = sayCoeiroink.getSpeechQueueStatus();
 
+        const completionMessage = remainingQueueLength === 0
+          ? '💡 すべての音声処理が完了しました。'
+          : `💡 キューが目標数（${remainingQueueLength}個）になりました。`;
+
         return {
           content: [
             {
               type: 'text',
               text:
-                `✅ タスク完了を確認しました\n\n` +
+                `✅ 待機完了\n\n` +
                 `待機時間: ${waitedSeconds}秒\n` +
                 `最終ステータス:\n` +
                 `  - キュー長: ${finalStatus.queueLength} 個\n` +
                 `  - 処理状態: ${finalStatus.isProcessing ? '処理中' : '待機中'}\n\n` +
-                `💡 すべての音声処理が完了しました。`,
+                completionMessage,
             },
           ],
         };
       } catch (error) {
         if ((error as Error).message === 'Timeout') {
           const currentStatus = sayCoeiroink.getSpeechQueueStatus();
+          const timeoutMessage = remainingQueueLength === 0
+            ? `⚠️ タスクがまだ完了していません。`
+            : `⚠️ キューが目標数（${remainingQueueLength}個）まで減っていません。`;
+
           return {
             content: [
               {
@@ -1257,7 +1272,7 @@ server.registerTool(
                   `現在のステータス:\n` +
                   `  - キュー長: ${currentStatus.queueLength} 個\n` +
                   `  - 処理状態: ${currentStatus.isProcessing ? '処理中' : '待機中'}\n\n` +
-                  `⚠️ タスクがまだ完了していません。`,
+                  timeoutMessage,
               },
             ],
           };
