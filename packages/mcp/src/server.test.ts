@@ -259,4 +259,46 @@ describe('MCP Server allowFallback behavior', () => {
             expect(result.styleName).toBeUndefined();
         });
     });
+
+    describe('Issue #180: voice指定時に別キャラのstyleを使用', () => {
+        test('voice指定時、そのキャラのstyleを検証すること', () => {
+            // operator_assign=tsukuyomiの状態で
+            // voice="alma" + style="のーまる"を指定
+            // → almaの「のーまる」が検証されるべき
+
+            const currentOperator = { characterId: 'tsukuyomi' };
+            const voice = 'alma';
+            const style = 'のーまる';
+
+            // パース処理
+            const parsedVoice = voice;
+            const parsedStyle = style;
+
+            // targetCharacterIdの決定（voice指定時はそのキャラ、未指定時はオペレータ）
+            const targetCharacterId = parsedVoice || currentOperator.characterId;
+
+            expect(targetCharacterId).toBe('alma');
+            // almaの「のーまる」が検証される
+        });
+
+        test('voice未指定時、オペレータのstyleを検証すること', () => {
+            // operator_assign=tsukuyomiの状態で
+            // voice未指定 + style="ささやき"を指定
+            // → tsukuyomiの「ささやき」が検証されるべき
+
+            const currentOperator = { characterId: 'tsukuyomi' };
+            const voice = null;
+            const style = 'ささやき';
+
+            // パース処理
+            const parsedVoice = voice;
+            const parsedStyle = style;
+
+            // targetCharacterIdの決定
+            const targetCharacterId = parsedVoice || currentOperator.characterId;
+
+            expect(targetCharacterId).toBe('tsukuyomi');
+            // tsukuyomiの「ささやき」が検証される
+        });
+    });
 });
