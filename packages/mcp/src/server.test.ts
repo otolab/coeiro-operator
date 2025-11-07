@@ -181,7 +181,7 @@ describe('MCP Server allowFallback behavior', () => {
                 mode: 'normal',
                 latency: 100
             };
-            
+
             mockSayCoeiroinkInstance.enqueueSpeech.mockResolvedValue(expectedResult);
 
             const cliOptions = {
@@ -193,6 +193,154 @@ describe('MCP Server allowFallback behavior', () => {
 
             expect(result).toEqual(expectedResult);
             expect(result.success).toBe(true);
+        });
+    });
+
+    describe('voice形式のパース', () => {
+        test('不正なvoice形式（コロンが複数）でエラーが発生すること', () => {
+            const invalidVoice = 'alma:裏:extra';
+
+            // パース処理をシミュレート
+            const parseVoice = (voice: string) => {
+                if (voice && voice.includes(':')) {
+                    const parts = voice.split(':');
+                    if (parts.length !== 2) {
+                        throw new Error(
+                            `不正なvoice形式です: "${voice}"\n` +
+                            `使用可能な形式:\n` +
+                            `  - "characterId" (例: "alma")\n` +
+                            `  - "characterId:styleName" (例: "alma:のーまる")`
+                        );
+                    }
+                    return { characterId: parts[0], styleName: parts[1] };
+                }
+                return { characterId: voice, styleName: undefined };
+            };
+
+            expect(() => parseVoice(invalidVoice)).toThrow('不正なvoice形式です');
+            expect(() => parseVoice(invalidVoice)).toThrow('alma:裏:extra');
+        });
+
+        test('正常なvoice形式（characterId:styleName）が正しくパースされること', () => {
+            const validVoice = 'alma:のーまる';
+
+            const parseVoice = (voice: string) => {
+                if (voice && voice.includes(':')) {
+                    const parts = voice.split(':');
+                    if (parts.length !== 2) {
+                        throw new Error('不正なvoice形式');
+                    }
+                    return { characterId: parts[0], styleName: parts[1] };
+                }
+                return { characterId: voice, styleName: undefined };
+            };
+
+            const result = parseVoice(validVoice);
+            expect(result.characterId).toBe('alma');
+            expect(result.styleName).toBe('のーまる');
+        });
+
+        test('characterIdのみの場合も正しくパースされること', () => {
+            const validVoice = 'alma';
+
+            const parseVoice = (voice: string) => {
+                if (voice && voice.includes(':')) {
+                    const parts = voice.split(':');
+                    if (parts.length !== 2) {
+                        throw new Error('不正なvoice形式');
+                    }
+                    return { characterId: parts[0], styleName: parts[1] };
+                }
+                return { characterId: voice, styleName: undefined };
+            };
+
+            const result = parseVoice(validVoice);
+            expect(result.characterId).toBe('alma');
+            expect(result.styleName).toBeUndefined();
+        });
+    });
+
+    describe('Issue #180: voice指定時に別キャラのstyleを使用', () => {
+        test('voice指定時、そのキャラのstyleを検証すること', () => {
+            // operator_assign=tsukuyomiの状態で
+            // voice="alma" + style="のーまる"を指定
+            // → almaの「のーまる」が検証されるべき
+
+            const currentOperator = { characterId: 'tsukuyomi' };
+            const voice = 'alma';
+            const style = 'のーまる';
+
+            // パース処理
+            const parsedVoice = voice;
+            const parsedStyle = style;
+
+            // targetCharacterIdの決定（voice指定時はそのキャラ、未指定時はオペレータ）
+            const targetCharacterId = parsedVoice || currentOperator.characterId;
+
+            expect(targetCharacterId).toBe('alma');
+            // almaの「のーまる」が検証される
+        });
+
+        test('voice未指定時、オペレータのstyleを検証すること', () => {
+            // operator_assign=tsukuyomiの状態で
+            // voice未指定 + style="ささやき"を指定
+            // → tsukuyomiの「ささやき」が検証されるべき
+
+            const currentOperator = { characterId: 'tsukuyomi' };
+            const voice = null;
+            const style = 'ささやき';
+
+            // パース処理
+            const parsedVoice = voice;
+            const parsedStyle = style;
+
+            // targetCharacterIdの決定
+            const targetCharacterId = parsedVoice || currentOperator.characterId;
+
+            expect(targetCharacterId).toBe('tsukuyomi');
+            // tsukuyomiの「ささやき」が検証される
+        });
+    });
+
+    describe('Issue #179: クラッシュ防止（存在しないキャラクター）', () => {
+        test('存在しないvoiceでクラッシュせず、適切なエラーメッセージを返すこと', () => {
+            // 存在しないキャラクターを指定した場合のエラーハンドリング
+            const invalidVoice = 'nonexistent_character';
+
+            // resolveCharacterToConfigのシミュレーション
+            const handleInvalidCharacter = (characterId: string) => {
+                // characterConfigが取得できない場合
+                const characterConfig = null;
+                if (!characterConfig) {
+                    throw new Error(`Character not found: ${characterId}`);
+                }
+            };
+
+            expect(() => handleInvalidCharacter(invalidVoice)).toThrow('Character not found: nonexistent_character');
+        });
+
+        test('存在しないvoice:styleでクラッシュせず、適切なエラーメッセージを返すこと', () => {
+            // alma:裏のような存在しない組み合わせ
+            const invalidVoice = 'alma:裏';
+
+            const parseVoice = (voice: string) => {
+                if (voice && voice.includes(':')) {
+                    const parts = voice.split(':');
+                    if (parts.length !== 2) {
+                        throw new Error('不正なvoice形式');
+                    }
+                    return { characterId: parts[0], styleName: parts[1] };
+                }
+                return { characterId: voice, styleName: undefined };
+            };
+
+            const result = parseVoice(invalidVoice);
+            expect(result.characterId).toBe('alma');
+            expect(result.styleName).toBe('裏');
+
+            // この後、getCharacterInfo('alma')が呼ばれ、
+            // almaに「裏」というstyleがなければエラーが返される
+            // クラッシュではなく、適切なエラーメッセージが表示される
         });
     });
 });

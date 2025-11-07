@@ -507,6 +507,31 @@ server.registerTool(
         throw new Error('rateとfactorは同時に指定できません。どちらか一方を指定してください。');
       }
 
+      // voice文字列をパース（"characterId:styleName"形式に対応）
+      let parsedVoice: string | null = voice || null;
+      let parsedStyle: string | undefined = style;
+
+      if (voice && voice.includes(':')) {
+        const parts = voice.split(':');
+        if (parts.length === 2) {
+          parsedVoice = parts[0];
+          // styleパラメータが明示されていない場合のみ、voice文字列から抽出したstyleを使用
+          if (!style) {
+            parsedStyle = parts[1];
+            logger.debug(`  voice文字列からパース: characterId="${parsedVoice}", style="${parsedStyle}"`);
+          } else {
+            logger.warn(`voice文字列にstyleが含まれていますが、styleパラメータが優先されます`);
+          }
+        } else {
+          throw new Error(
+            `不正なvoice形式です: "${voice}"\n` +
+            `使用可能な形式:\n` +
+            `  - "characterId" (例: "alma")\n` +
+            `  - "characterId:styleName" (例: "alma:のーまる")`
+          );
+        }
+      }
+
       // Issue #58: オペレータ未アサイン時の再アサイン促進メッセージ
       const currentOperator = await operatorManager.showCurrentOperator();
       if (!currentOperator.characterId) {
@@ -571,23 +596,32 @@ server.registerTool(
         });
 
       // スタイル検証（事前チェック）
-      if (style && currentOperator.characterId) {
+      // parsedStyleとparsedVoiceを使用
+      if (parsedStyle) {
         try {
-          const character = await operatorManager.getCharacterInfo(currentOperator.characterId);
-          if (!character) {
+          // voiceが指定されている場合はそのキャラクターのスタイル、なければ現在のオペレータのスタイルを検証
+          const targetCharacterId = parsedVoice || currentOperator.characterId;
+
+          if (!targetCharacterId) {
             throw new Error(`キャラクター情報が取得できません`);
+          }
+
+          const character = await operatorManager.getCharacterInfo(targetCharacterId);
+          if (!character) {
+            throw new Error(`キャラクター '${targetCharacterId}' が見つかりません`);
           }
 
           // 利用可能なスタイルを取得
           const availableStyles = character.speaker?.styles || [];
 
           // 指定されたスタイルが存在するか確認
-          const styleExists = availableStyles.some(s => s.styleName === style);
+          const styleExists = availableStyles.some(s => s.styleName === parsedStyle);
 
           if (!styleExists) {
             const styleNames = availableStyles.map(s => s.styleName);
             throw new Error(
-              `指定されたスタイル '${style}' が見つかりません。利用可能なスタイル: ${styleNames.join(', ')}`
+              `指定されたスタイル '${parsedStyle}' が ${character.speaker?.speakerName || targetCharacterId} には存在しません。\n` +
+              `利用可能なスタイル: ${styleNames.join(', ')}`
             );
           }
         } catch (error) {
@@ -616,9 +650,9 @@ server.registerTool(
       // - 実際の音声合成・再生は背景のSpeechQueueで非同期処理
       // - CLIとは異なり、MCPではウォームアップ・完了待機は実行しない
       const result = sayCoeiroink.synthesize(message, {
-        voice: voice || null,
+        voice: parsedVoice,
         ...speedOptions,  // rateまたはfactorを展開
-        style: style || undefined,
+        style: parsedStyle,
         allowFallback: false, // MCPツールではオペレータが必須
       });
 
