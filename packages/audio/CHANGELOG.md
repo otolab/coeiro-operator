@@ -1,5 +1,71 @@
 # @coeiro-operator/audio
 
+## 1.2.3
+
+### Patch Changes
+
+- ef7153f: wait_for_task_completionにremainingQueueLengthオプションを追加（イベントベース実装）
+
+  `wait_for_task_completion`ツールに、キューが指定数になったときに待ちを解除する`remainingQueueLength`オプションを追加しました。
+
+  **使用例:**
+
+  ```typescript
+  // キューが1個になったら解除
+  wait_for_task_completion({ remainingQueueLength: 1 });
+
+  // すべてのタスクが完了するまで待機（既存の動作）
+  wait_for_task_completion({ remainingQueueLength: 0 });
+  wait_for_task_completion();
+  ```
+
+  **実装内容:**
+  - `remainingQueueLength`パラメータを追加（デフォルト: 0）
+  - 0の場合は既存の動作（全タスク完了まで待機）
+  - **イベントベース実装**: ポーリングを避け、TaskQueueのイベント(`taskCompleted`, `queueEmpty`)を使用
+  - TaskQueueにEventEmitterを継承させ、`waitForQueueLength()`メソッドを追加
+  - SayCoeiroinkに`waitForQueueLength()`を公開
+  - タイムアウト・エラーメッセージも残数に応じて適切に表示
+
+  **技術詳細:**
+  - TaskQueueに`taskCompleted`イベント（タスク完了時）と`queueEmpty`イベント（キュー空時）を追加
+  - `waitForQueueLength(targetLength)`メソッドでイベントリスナーを登録し、条件達成で解決
+  - ポーリング不要で効率的な待機を実現
+
+  refs #182
+
+- 9175d6e: 句読点ポーズ設定を簡素化し一貫性を向上
+  - `PunctuationPauseSettings`から`enabled`フラグを削除（各値を0にすることで無効化可能）
+  - `PunctuationPauseSettings`から`baseMorasPerSecond`を削除（VoiceConfigから取得するため不要）
+  - `pauseMoras`ネストを削除し、フラットな構造に変更
+  - 型定義、実装コード、テスト、ドキュメントを一貫した仕様に統一
+
+  **変更前:**
+
+  ```typescript
+  punctuationPause: {
+    enabled: true,
+    pauseMoras: { period: 2.0 },
+    baseMorasPerSecond: 7.5
+  }
+  ```
+
+  **変更後:**
+
+  ```typescript
+  punctuationPause: {
+    period: 2.0,
+    exclamation: 1.5,
+    question: 1.8,
+    comma: 0.8
+  }
+  ```
+
+  この変更により、よりシンプルで直感的な設定が可能になりました。
+
+- Updated dependencies [9175d6e]
+  - @coeiro-operator/core@1.2.3
+
 ## 1.2.2
 
 ### Patch Changes
