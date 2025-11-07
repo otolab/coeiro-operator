@@ -620,7 +620,7 @@ server.registerTool(
           if (!styleExists) {
             const styleNames = availableStyles.map(s => s.styleName);
             throw new Error(
-              `指定されたスタイル '${parsedStyle}' が ${character.name || targetCharacterId} には存在しません。\n` +
+              `指定されたスタイル '${parsedStyle}' が ${character.speaker?.speakerName || targetCharacterId} には存在しません。\n` +
               `利用可能なスタイル: ${styleNames.join(', ')}`
             );
           }

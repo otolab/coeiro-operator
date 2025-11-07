@@ -132,6 +132,13 @@ export class VoiceResolver {
         selectedStyle = speaker.styles[0];
       }
 
+      // スタイルが見つからない場合はエラー
+      if (!selectedStyle) {
+        throw new Error(
+          `No valid style found for character '${characterId}'${styleName ? ` with style '${styleName}'` : ''}`
+        );
+      }
+
       // speaker-provider.Speakerからoperator.Speakerへ変換
       const operatorSpeaker: Speaker = {
         speakerId: speaker.speakerUuid,
@@ -149,7 +156,7 @@ export class VoiceResolver {
 
       return {
         speaker: operatorSpeaker,
-        selectedStyleId: selectedStyle!.styleId,
+        selectedStyleId: selectedStyle.styleId,
         speakerId: characterConfig.speakerId,
         styleMorasPerSecond,
       };
