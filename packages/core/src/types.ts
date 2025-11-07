@@ -44,14 +44,10 @@ export interface AudioConfig {
     pauseUntilFirstComplete?: boolean;
   };
   punctuationPause?: {
-    enabled?: boolean;
-    pauseMoras?: {
-      period?: number;      // 。の後（モーラ数）
-      exclamation?: number; // ！の後（モーラ数）
-      question?: number;    // ？の後（モーラ数）
-      comma?: number;       // 、の後（モーラ数）
-    };
-    baseMorasPerSecond?: number; // デフォルトの基準話速（モーラ/秒）
+    period?: number;      // 。の後（モーラ数、0で無効）
+    exclamation?: number; // ！の後（モーラ数、0で無効）
+    question?: number;    // ？の後（モーラ数、0で無効）
+    comma?: number;       // 、の後（モーラ数、0で無効）
   };
 }
 

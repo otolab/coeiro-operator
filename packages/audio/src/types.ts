@@ -50,18 +50,18 @@ export interface VoiceConfig {
 /**
  * PunctuationPauseSettings: 句読点ポーズ設定
  * 日本語発話に特化したモーラベースのポーズ制御
+ *
+ * ポーズの長さをモーラ数で指定します。
+ * 日本語は等間隔のモーラリズムなので、話速が変わっても自然な比率を保てます。
+ * 各値を0に設定することでそのポーズを無効化できます。
+ *
+ * 実際のポーズ時間は VoiceConfig.styleMorasPerSecond から計算された話速に基づいて決定されます。
  */
 export interface PunctuationPauseSettings {
-  enabled: boolean; // ポーズ機能の有効/無効
-
-  // ポーズの長さをモーラ数で指定
-  // 日本語は等間隔のモーラリズムなので、話速が変わっても自然な比率を保てる
-  pauseMoras?: {
-    period?: number;      // 。の後（モーラ数）
-    exclamation?: number; // ！の後（モーラ数）
-    question?: number;    // ？の後（モーラ数）
-    comma?: number;       // 、の後（モーラ数）
-  };
+  period?: number;      // 。の後（モーラ数、0で無効）
+  exclamation?: number; // ！の後（モーラ数、0で無効）
+  question?: number;    // ？の後（モーラ数、0で無効）
+  comma?: number;       // 、の後（モーラ数、0で無効）
 }
 
 /**

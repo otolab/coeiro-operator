@@ -41,44 +41,40 @@ const DEFAULT_PUNCTUATION_MORAS = {
   comma: 0.8,       // 、の後（0.8モーラ分＝「っ」より短い）
 };
 
+/**
+ * PunctuationPauseSettings: 句読点ポーズ設定
+ *
+ * ポーズの長さをモーラ数で指定します。
+ * 日本語は等間隔のモーラリズムなので、話速が変わっても自然な比率を保てます。
+ * 各値を0に設定することでそのポーズを無効化できます。
+ *
+ * 実際のポーズ時間は VoiceConfig.styleMorasPerSecond から計算された話速に基づいて決定されます。
+ */
 interface PunctuationPauseSettings {
-  enabled: boolean;
-
-  // ポーズの長さをモーラ数で指定
-  // 日本語は等間隔のモーラリズムなので、話速が変わっても自然な比率を保てる
-  pauseMoras?: {
-    period?: number;      // 。の後（モーラ数）
-    exclamation?: number; // ！の後（モーラ数）
-    question?: number;    // ？の後（モーラ数）
-    comma?: number;       // 、の後（モーラ数）
-  };
-
-  // デフォルトの基準話速（省略時は7.5モーラ/秒）
-  // 標準的な日本語話速: 7-8モーラ/秒
-  // 速い: 10モーラ/秒以上
-  // 遅い: 5モーラ/秒以下
-  baseMorasPerSecond?: number;
+  period?: number;      // 。の後（モーラ数、0で無効）
+  exclamation?: number; // ！の後（モーラ数、0で無効）
+  question?: number;    // ？の後（モーラ数、0で無効）
+  comma?: number;       // 、の後（モーラ数、0で無効）
 }
 
-// VoiceConfigに話速情報を追加（実装案）
+// VoiceConfigに話速情報を追加（実装済み）
 interface VoiceConfig {
   speaker: Speaker;
   selectedStyleId: number;
-  // キャラクター固有の基準話速（実測値）
-  baseMorasPerSecond?: number;
+  // スタイル毎の基準話速（実測値）
+  styleMorasPerSecond?: Record<number, number>;
 }
 ```
 
 実装方法：
 ```typescript
-// audio-player.ts に追加
+// audio-stream-controller.ts に実装済み
 private calculatePauseDuration(
   punctuation: string,
-  speedScale: number,  // 話速の倍率（1.0 = 標準話速）
-  voiceConfig: VoiceConfig,  // 現在の音声設定
-  settings: PunctuationPauseSettings
+  actualMorasPerSecond: number,  // VoiceConfigから計算された実際の話速
+  settings?: PunctuationPauseSettings
 ): number {
-  if (!settings.enabled) return 0;
+  if (!settings) return 0;
 
   const punctuationMap = {
     '。': 'period',
@@ -93,49 +89,50 @@ private calculatePauseDuration(
   // デフォルト値と設定値をマージ
   const pauseMoras = {
     ...DEFAULT_PUNCTUATION_MORAS,
-    ...settings.pauseMoras,
+    ...settings,
   };
-
-  // 基準話速を取得（優先順位: VoiceConfig > 設定 > デフォルト）
-  const baseMorasPerSecond =
-    voiceConfig.baseMorasPerSecond ||
-    settings.baseMorasPerSecond ||
-    7.5;
-
-  logger.debug(
-    `${voiceConfig.speaker.speakerName}の基準話速: ${baseMorasPerSecond}モーラ/秒`
-  );
-
-  // speedScale = rate / 200 (sayコマンド互換)
-  // rate=200のとき speedScale=1.0（各キャラクターの基準速度）
-  // rate=100のとき speedScale=0.5（半分の速度）
-  // rate=400のとき speedScale=2.0（2倍の速度）
-  const morasPerSecond = baseMorasPerSecond * speedScale;
 
   // ポーズ時間を計算（モーラ数 → ミリ秒）
   const pauseInMoras = pauseMoras[type];
-  const pauseDuration = (pauseInMoras / morasPerSecond) * 1000;
+
+  // ポーズ値が0以下なら無効
+  if (pauseInMoras <= 0) return 0;
+
+  const pauseDuration = (pauseInMoras / actualMorasPerSecond) * 1000;
+
+  logger.debug(
+    `句読点「${punctuation}」のポーズ: ${pauseInMoras}モーラ → ${Math.round(pauseDuration)}ms`
+  );
 
   return Math.round(pauseDuration);
 }
 
-private async insertPauseBetweenChunks(
-  chunk: Chunk,
-  nextChunk: Chunk | null,
-  speedScale: number,
-  settings: PunctuationPauseSettings
-): Promise<ArrayBuffer | null> {
-  if (!settings.enabled || !nextChunk) return null;
+// synthesizeStream内で句読点ポーズを挿入（実装済み）
+// 句読点ポーズの挿入（最後のチャンク以外）
+if (this.options.punctuationPause && chunkIndex < chunks.length - 1) {
+  const lastPunctuation = this.getLastPunctuation(result.data.chunk.text);
+  if (lastPunctuation) {
+    const pauseDuration = this.calculatePauseDuration(
+      lastPunctuation,
+      actualMorasPerSecond,
+      this.options.punctuationPause
+    );
 
-  const lastChar = chunk.text[chunk.text.length - 1];
-  const pauseDuration = this.calculatePauseDuration(lastChar, speedScale, settings);
+    if (pauseDuration > 0) {
+      // 無音WAVデータを生成
+      const silenceWAV = this.generateSilenceWAV(pauseDuration);
 
-  if (pauseDuration > 0) {
-    logger.debug(`句読点「${lastChar}」の後に${pauseDuration}msのポーズを挿入`);
-    return this.generateSilence(pauseDuration);
+      // ポーズ用のAudioResultを作成
+      const pauseResult: AudioResult = {
+        chunk: { text: '', index: result.data.chunk.index + 0.5, isFirst: false, isLast: false, overlap: 0 },
+        audioBuffer: silenceWAV,
+        latency: 0,
+      };
+
+      logger.debug(`句読点「${lastPunctuation}」の後に${pauseDuration}msのポーズを挿入`);
+      yield pauseResult;
+    }
   }
-
-  return null;
 }
 ```
 
@@ -160,67 +157,71 @@ COEIROINKのAPIに`pauseLength`や`pauseScale`のようなパラメータが存�
 ## 設定例
 
 ```typescript
-// デフォルト設定（pauseMorasを省略すると自動でデフォルト値を使用）
+// デフォルト設定（全フィールド省略で自動的にデフォルト値を使用）
 const audioConfig = {
-  punctuationPause: {
-    enabled: true,
-    // pauseMoras省略 = デフォルト値を使用
-  }
+  punctuationPause: {}
 };
 
 // 部分的にカスタマイズ（指定しない項目はデフォルト値）
 const audioConfig = {
   punctuationPause: {
-    enabled: true,
-    pauseMoras: {
-      period: 3.0,      // 句点だけ長めに（3モーラ分）
-      // exclamation, question, commaはデフォルト値
-    }
+    period: 3.0,  // 句点だけ長めに（3モーラ分）
+    // exclamation, question, commaはデフォルト値
   }
 };
 
 // より長めのポーズが欲しい場合（ゆったりした会話）
 const audioConfig = {
   punctuationPause: {
-    enabled: true,
-    pauseMoras: {
-      period: 3.5,      // 3.5モーラ分
-      exclamation: 2.5, // 2.5モーラ分
-      question: 3.0,    // 3.0モーラ分
-      comma: 1.2,       // 1.2モーラ分
-    }
+    period: 3.5,      // 3.5モーラ分
+    exclamation: 2.5, // 2.5モーラ分
+    question: 3.0,    // 3.0モーラ分
+    comma: 1.2,       // 1.2モーラ分
   }
 };
 
 // 短めでテンポ良く（きびきびした会話）
 const audioConfig = {
   punctuationPause: {
-    enabled: true,
-    pauseMoras: {
-      period: 1.2,      // 1.2モーラ分
-      exclamation: 0.8, // 0.8モーラ分
-      question: 1.0,    // 1.0モーラ分
-      comma: 0.4,       // 0.4モーラ分
-    }
+    period: 1.2,      // 1.2モーラ分
+    exclamation: 0.8, // 0.8モーラ分
+    question: 1.0,    // 1.0モーラ分
+    comma: 0.4,       // 0.4モーラ分
   }
 };
 
-// VoiceConfigに実測値を設定する例
+// 完全に無効化（全ての句読点ポーズをオフ）
+const audioConfig = {
+  punctuationPause: {
+    period: 0,
+    exclamation: 0,
+    question: 0,
+    comma: 0,
+  }
+};
+
+// VoiceConfigに実測値を設定する例（スタイル毎の話速）
 const voiceConfigs: Record<string, VoiceConfig> = {
   tsukuyomi: {
     speaker: tsukuyomiSpeaker,
     selectedStyleId: 0,
-    baseMorasPerSecond: 7.2,  // 実測値
+    styleMorasPerSecond: {
+      0: 7.2,  // ノーマルスタイルの実測値
+    },
   },
   dia: {
     speaker: diaSpeaker,
     selectedStyleId: 3,
-    baseMorasPerSecond: 7.8,  // 実測値
+    styleMorasPerSecond: {
+      3: 7.8,  // のーまるスタイルの実測値
+    },
   },
   himehime: {
     speaker: himehimeSpeaker,
     selectedStyleId: 21,
-    baseMorasPerSecond: 8.1,  // 実測値
+    styleMorasPerSecond: {
+      21: 8.1,  // ノーマルスタイルの実測値
+    },
   },
 };
 
@@ -288,23 +289,9 @@ async function measureAndUpdateVoiceConfig(
 // - rate=100 → speedScale=0.5 → 3.6モーラ/秒
 // - rate=300 → speedScale=1.5 → 10.8モーラ/秒
 
-// BaseCharacterConfigの拡張（実装案）
-export interface BaseCharacterConfig {
-  // ... 既存フィールド ...
-  baseMorasPerSecond?: number;  // キャラクター固有の基準話速
-}
-
-// 起動時にconfig.jsonから読み込み、VoiceConfigに反映
-function createVoiceConfig(
-  speaker: Speaker,
-  characterConfig: CharacterConfig
-): VoiceConfig {
-  return {
-    speaker,
-    selectedStyleId: speaker.styles[0].styleId,
-    baseMorasPerSecond: characterConfig.baseMorasPerSecond
-  };
-}
+// VoiceConfigへの反映（実装済み）
+// styleMorasPerSecondはconfig.jsonから読み込まれ、
+// VoiceResolverによって自動的にVoiceConfigに設定されます
 ```
 
 ## 期待される効果
