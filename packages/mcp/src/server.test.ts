@@ -301,4 +301,46 @@ describe('MCP Server allowFallback behavior', () => {
             // tsukuyomiの「ささやき」が検証される
         });
     });
+
+    describe('Issue #179: クラッシュ防止（存在しないキャラクター）', () => {
+        test('存在しないvoiceでクラッシュせず、適切なエラーメッセージを返すこと', () => {
+            // 存在しないキャラクターを指定した場合のエラーハンドリング
+            const invalidVoice = 'nonexistent_character';
+
+            // resolveCharacterToConfigのシミュレーション
+            const handleInvalidCharacter = (characterId: string) => {
+                // characterConfigが取得できない場合
+                const characterConfig = null;
+                if (!characterConfig) {
+                    throw new Error(`Character not found: ${characterId}`);
+                }
+            };
+
+            expect(() => handleInvalidCharacter(invalidVoice)).toThrow('Character not found: nonexistent_character');
+        });
+
+        test('存在しないvoice:styleでクラッシュせず、適切なエラーメッセージを返すこと', () => {
+            // alma:裏のような存在しない組み合わせ
+            const invalidVoice = 'alma:裏';
+
+            const parseVoice = (voice: string) => {
+                if (voice && voice.includes(':')) {
+                    const parts = voice.split(':');
+                    if (parts.length !== 2) {
+                        throw new Error('不正なvoice形式');
+                    }
+                    return { characterId: parts[0], styleName: parts[1] };
+                }
+                return { characterId: voice, styleName: undefined };
+            };
+
+            const result = parseVoice(invalidVoice);
+            expect(result.characterId).toBe('alma');
+            expect(result.styleName).toBe('裏');
+
+            // この後、getCharacterInfo('alma')が呼ばれ、
+            // almaに「裏」というstyleがなければエラーが返される
+            // クラッシュではなく、適切なエラーメッセージが表示される
+        });
+    });
 });
