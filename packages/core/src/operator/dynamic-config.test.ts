@@ -73,8 +73,9 @@ describe('DynamicConfigManagement', () => {
       expect(config?.characters).toBeDefined();
       expect(config?.characters['tsukuyomi']).toBeDefined();
       expect(config?.characters['tsukuyomi'].name).toBe('つくよみちゃん');
-      expect(config?.characters['tsukuyomi'].availableStyles).toContain('れいせい');
-      
+      const tsukuyomiStyles = Object.values(config?.characters['tsukuyomi'].styles || {});
+      expect(tsukuyomiStyles.map(s => s.styleName)).toContain('れいせい');
+
       expect(config?.characters['dia']).toBeDefined();
       expect(config?.characters['dia'].name).toBe('ディアちゃん');
     });
@@ -276,13 +277,14 @@ describe('DynamicConfigManagement', () => {
       // 1回目
       await configManager.buildDynamicConfig();
       let character = await configManager.getCharacterConfig('tsukuyomi');
-      expect(character?.availableStyles).toHaveLength(1);
+      expect(Object.keys(character?.styles || {})).toHaveLength(1);
 
       // 2回目（強制リフレッシュ）
       await configManager.buildDynamicConfig();
       character = await configManager.getCharacterConfig('tsukuyomi');
-      expect(character?.availableStyles).toHaveLength(2);
-      expect(character?.availableStyles).toContain('新スタイル');
+      expect(Object.keys(character?.styles || {})).toHaveLength(2);
+      const styleNames = Object.values(character?.styles || {}).map(s => s.styleName);
+      expect(styleNames).toContain('新スタイル');
     });
   });
 

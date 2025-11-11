@@ -10,17 +10,22 @@
  */
 
 import ConfigManager from './config-manager.js';
-import { CharacterConfig } from './character-defaults.js';
+import { CharacterConfig, StyleConfig } from './character-defaults.js';
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
 
 /**
- * Style: Speakerの声のバリエーション
+ * Style: Speakerの声のバリエーション（API形式）
  * COEIROINKでは一つのSpeakerが複数のStyleを持つことができる
  * 例: つくよみちゃんの「れいせい」「おしとやか」「げんき」
+ *
+ * COEIROINK APIから取得される形式（配列要素として使用）
  */
 export interface Style {
   styleId: number; // COEIROINK APIのスタイルID（数値）
   styleName: string; // スタイル名（「れいせい」「おしとやか」など）
+  morasPerSecond?: number; // 基準話速（モーラ/秒）- オプショナル
+  personality?: string; // スタイル固有の性格
+  speakingStyle?: string; // スタイル固有の話し方
 }
 
 /**
@@ -35,65 +40,30 @@ export interface Speaker {
 }
 
 /**
- * Character: Speakerに性格や口調の情報を付与したもの
+ * Character: Speakerに性格や口調の情報を付与したもの（実行時型）
  * Speaker（APIから） + Character設定（ファイルから） = Character
  */
 export interface Character {
   characterId: string; // キャラクターID（'tsukuyomi' など）
-  speaker: Speaker | null; // COEIROINKのSpeaker情報（APIから取得）
+  speakerId: string; // COEIROINK speakerUuid
+  speakerName: string; // COEIROINK speakerName（表示名）
   defaultStyleId: number; // デフォルトスタイルID（数値）
   greeting: string; // アサイン時の挨拶
   farewell: string; // 解放時の挨拶
   personality: string; // キャラクターの性格
   speakingStyle: string; // キャラクターの話し方
-  styles: Record<number, import('./character-defaults.js').StyleConfig>; // スタイル設定
+  styles: Record<number, StyleConfig>; // スタイル設定（キー: styleId）
 }
 
 // CharacterConfigからCharacterに変換するヘルパー関数
-// Speaker情報はAPIから取得されるため、非同期処理が必要
 async function convertCharacterConfigToCharacter(
   characterId: string,
   config: CharacterConfig
 ): Promise<Character> {
-  let speaker: Speaker | null = null;
-
-  if (config.speakerId) {
-    // SpeakerProviderからスタイル情報を取得
-    const speakerProvider = getSpeakerProvider();
-    try {
-      const speakers = await speakerProvider.getSpeakers();
-      const apiSpeaker = speakers.find(s => s.speakerUuid === config.speakerId);
-
-      if (apiSpeaker) {
-        speaker = {
-          speakerId: config.speakerId,
-          speakerName: apiSpeaker.speakerName,
-          styles: apiSpeaker.styles.map(style => ({
-            styleId: style.styleId,
-            styleName: style.styleName,
-          })),
-        };
-      } else {
-        // APIから見つからない場合、基本情報のみ設定
-        speaker = {
-          speakerId: config.speakerId,
-          speakerName: config.name,
-          styles: [],
-        };
-      }
-    } catch {
-      // APIエラーの場合、基本情報のみ設定
-      speaker = {
-        speakerId: config.speakerId,
-        speakerName: config.name,
-        styles: [],
-      };
-    }
-  }
-
   return {
     characterId,
-    speaker,
+    speakerId: config.speakerId,
+    speakerName: config.name,
     defaultStyleId: config.defaultStyleId,
     greeting: config.greeting || '',
     farewell: config.farewell || '',
@@ -139,34 +109,53 @@ export class CharacterInfoService {
    * @param specifiedStyle 指定されたスタイル名
    */
   selectStyle(character: Character, specifiedStyle: string | null = null): Style {
-    if (!character.speaker || !character.speaker.styles || character.speaker.styles.length === 0) {
+    if (!character.styles || Object.keys(character.styles).length === 0) {
       throw new Error(`キャラクター '${character.characterId}' に利用可能なスタイルがありません`);
     }
 
-    const styles = character.speaker.styles;
+    // disabledでないスタイルのみを抽出してStyle型に変換
+    const enabledStyles: Style[] = Object.entries(character.styles)
+      .filter(([_, styleConfig]) => !styleConfig.disabled)
+      .map(([styleId, styleConfig]) => ({
+        styleId: Number(styleId),
+        styleName: styleConfig.styleName,
+        morasPerSecond: styleConfig.morasPerSecond,
+        personality: styleConfig.personality,
+        speakingStyle: styleConfig.speakingStyle,
+      }));
+
+    if (enabledStyles.length === 0) {
+      throw new Error(`キャラクター '${character.characterId}' に利用可能なスタイルがありません`);
+    }
 
     // 明示的にスタイルが指定された場合
     if (specifiedStyle && specifiedStyle !== '') {
-      const requestedStyle = styles.find(style => style.styleName === specifiedStyle);
+      const requestedStyle = enabledStyles.find(style => style.styleName === specifiedStyle);
 
       if (requestedStyle) {
         return requestedStyle;
       }
 
       // 指定されたスタイルが見つからない場合はエラー
-      const availableStyleNames = styles.map(style => style.styleName);
+      const availableStyleNames = enabledStyles.map(style => style.styleName);
       const errorMessage = `指定されたスタイル '${specifiedStyle}' が見つかりません。利用可能なスタイル: ${availableStyleNames.join(', ')}`;
       throw new Error(errorMessage);
     }
 
-    // デフォルトスタイルを検索
-    const defaultStyle = styles.find(style => style.styleId === character.defaultStyleId);
-    if (defaultStyle) {
-      return defaultStyle;
+    // デフォルトスタイルを検索（disabledでない場合のみ）
+    const defaultStyleConfig = character.styles[character.defaultStyleId];
+    if (defaultStyleConfig && !defaultStyleConfig.disabled) {
+      return {
+        styleId: character.defaultStyleId,
+        styleName: defaultStyleConfig.styleName,
+        morasPerSecond: defaultStyleConfig.morasPerSecond,
+        personality: defaultStyleConfig.personality,
+        speakingStyle: defaultStyleConfig.speakingStyle,
+      };
     }
 
-    // デフォルトが見つからない場合は最初のスタイルを使用
-    return styles[0];
+    // デフォルトが見つからないか無効な場合は最初の有効なスタイルを使用
+    return enabledStyles[0];
   }
 
   // 削除: extractGreetingPatternsメソッド

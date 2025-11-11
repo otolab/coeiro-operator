@@ -237,7 +237,7 @@ export class OperatorManager {
 
     return {
       characterId,
-      characterName: character?.speaker?.speakerName || characterId,
+      characterName: character?.speakerName || characterId,
       farewell: character?.farewell || '',
       wasAssigned: true,
     };
@@ -369,7 +369,7 @@ export class OperatorManager {
 
         return {
           characterId: specifiedCharacter,
-          characterName: character.speaker?.speakerName || character.characterId,
+          characterName: character.speakerName || character.characterId,
           currentStyle: {
             styleId: selectedStyle.styleId.toString(),
             styleName: selectedStyle.styleName,
@@ -377,10 +377,10 @@ export class OperatorManager {
             speakingStyle: styleConfig?.speakingStyle || character.speakingStyle,
           },
           speakerConfig: {
-            speakerId: character.speaker?.speakerId || '',
+            speakerId: character.speakerId || '',
             styleId: selectedStyle.styleId,
           },
-          message: `現在のオペレータ: ${character.speaker?.speakerName || character.characterId} (${specifiedCharacter})`,
+          message: `現在のオペレータ: ${character.speakerName || character.characterId} (${specifiedCharacter})`,
         };
       }
 
@@ -408,7 +408,7 @@ export class OperatorManager {
 
     return {
       characterId: specifiedCharacter,
-      characterName: character.speaker?.speakerName || character.characterId,
+      characterName: character.speakerName || character.characterId,
       currentStyle: {
         styleId: selectedStyle.styleId.toString(),
         styleName: selectedStyle.styleName,
@@ -416,7 +416,7 @@ export class OperatorManager {
         speakingStyle: styleConfig?.speakingStyle || character.speakingStyle,
       },
       speakerConfig: {
-        speakerId: character.speaker?.speakerId || '',
+        speakerId: character.speakerId || '',
         styleId: selectedStyle.styleId,
       },
       greeting: character.greeting || '',
@@ -462,9 +462,18 @@ export class OperatorManager {
     let selectedStyle: Style;
     if (styleId !== undefined && styleName) {
       // 保存されたスタイルを検索
-      const styles = character.speaker?.styles || [];
-      selectedStyle =
-        styles.find(s => s.styleId === styleId) || this.characterInfoService.selectStyle(character);
+      const styleConfig = character.styles?.[styleId];
+      if (styleConfig && !styleConfig.disabled) {
+        selectedStyle = {
+          styleId: styleId,
+          styleName: styleConfig.styleName,
+          morasPerSecond: styleConfig.morasPerSecond,
+          personality: styleConfig.personality,
+          speakingStyle: styleConfig.speakingStyle,
+        };
+      } else {
+        selectedStyle = this.characterInfoService.selectStyle(character);
+      }
     } else {
       selectedStyle = this.characterInfoService.selectStyle(character);
     }
@@ -474,14 +483,14 @@ export class OperatorManager {
 
     return {
       characterId,
-      characterName: character.speaker?.speakerName || character.characterId,
+      characterName: character.speakerName || character.characterId,
       currentStyle: {
         styleId: selectedStyle.styleId.toString(),
         styleName: selectedStyle.styleName,
         personality: styleConfig?.personality || character.personality,
         speakingStyle: styleConfig?.speakingStyle || character.speakingStyle,
       },
-      message: `現在のオペレータ: ${character.speaker?.speakerName || character.characterId} (${characterId}) - ${selectedStyle.styleName}`,
+      message: `現在のオペレータ: ${character.speakerName || character.characterId} (${characterId}) - ${selectedStyle.styleName}`,
     };
   }
 

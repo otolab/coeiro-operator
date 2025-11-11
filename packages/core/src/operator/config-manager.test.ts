@@ -104,8 +104,9 @@ describe('ConfigManager', () => {
       expect(config).toBeDefined();
       expect(config?.characters).toBeDefined();
       expect(config?.characters['tsukuyomi']).toBeDefined();
-      expect(config?.characters['tsukuyomi'].availableStyles).toContain('れいせい');
-      expect(config?.characters['tsukuyomi'].availableStyles).toContain('おしとやか');
+      const tsukuyomiStyles = Object.values(config?.characters['tsukuyomi'].styles || {});
+      expect(tsukuyomiStyles.map(s => s.styleName)).toContain('れいせい');
+      expect(tsukuyomiStyles.map(s => s.styleName)).toContain('おしとやか');
     });
 
     test('サーバーエラー時は空の設定でフォールバック', async () => {
@@ -513,6 +514,164 @@ describe('ConfigManager', () => {
       expect(config?.characters['tsukuyomi']).toBeDefined();
 
       consoleSpy.mockRestore();
+    });
+  });
+
+  describe('registerCharacter', () => {
+    test('有効なキャラクター設定を登録できる', async () => {
+      // モックSpeakerを設定
+      const mockSpeakers = [
+        {
+          speakerUuid: 'test-speaker-uuid',
+          speakerName: 'テストスピーカー',
+          styles: [
+            { styleId: 0, styleName: 'ノーマル' },
+            { styleId: 1, styleName: 'ハッピー' },
+          ],
+        },
+      ];
+
+      const mockGetSpeakers = vi.fn().mockResolvedValue(mockSpeakers);
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      // キャラクター登録
+      await configManager.registerCharacter('custom-char', {
+        speakerId: 'test-speaker-uuid',
+        name: 'カスタムキャラクター',
+        personality: 'テスト性格',
+        speakingStyle: 'テスト話し方',
+        greeting: 'こんにちは',
+        farewell: 'さようなら',
+        defaultStyleId: 0,
+        styles: {
+          0: { styleName: 'ノーマル' },
+        },
+      });
+
+      // 設定ファイルが更新されているか確認
+      const configFile = join(tempDir, 'config.json');
+      const content = await readFile(configFile, 'utf8');
+      const config = JSON.parse(content);
+
+      expect(config.characters['custom-char']).toBeDefined();
+      expect(config.characters['custom-char'].speakerId).toBe('test-speaker-uuid');
+      expect(config.characters['custom-char'].name).toBe('カスタムキャラクター');
+    });
+
+    test('speakerIdがない場合エラー', async () => {
+      await expect(
+        configManager.registerCharacter('custom-char', {
+          name: 'テスト',
+        } as any)
+      ).rejects.toThrow('speakerId is required');
+    });
+
+    test('characterIdが空の場合エラー', async () => {
+      await expect(
+        configManager.registerCharacter('', {
+          speakerId: 'test',
+        })
+      ).rejects.toThrow('characterId is required');
+    });
+
+    test('存在しないspeakerIdの場合エラー', async () => {
+      const mockGetSpeakers = vi.fn().mockResolvedValue([]);
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      await expect(
+        configManager.registerCharacter('custom-char', {
+          speakerId: 'non-existent-speaker',
+        })
+      ).rejects.toThrow("Speaker 'non-existent-speaker' not found in COEIROINK server");
+    });
+
+    test('無効なdefaultStyleIdの場合エラー', async () => {
+      const mockSpeakers = [
+        {
+          speakerUuid: 'test-speaker-uuid',
+          speakerName: 'テストスピーカー',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ];
+
+      const mockGetSpeakers = vi.fn().mockResolvedValue(mockSpeakers);
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      await expect(
+        configManager.registerCharacter('custom-char', {
+          speakerId: 'test-speaker-uuid',
+          defaultStyleId: 99, // 存在しないstyleId
+        })
+      ).rejects.toThrow("defaultStyleId 99 not found in speaker 'test-speaker-uuid'");
+    });
+
+    test('無効なstyles設定の場合エラー', async () => {
+      const mockSpeakers = [
+        {
+          speakerUuid: 'test-speaker-uuid',
+          speakerName: 'テストスピーカー',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ];
+
+      const mockGetSpeakers = vi.fn().mockResolvedValue(mockSpeakers);
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      await expect(
+        configManager.registerCharacter('custom-char', {
+          speakerId: 'test-speaker-uuid',
+          styles: {
+            99: { styleName: 'Invalid' }, // 存在しないstyleId
+          },
+        })
+      ).rejects.toThrow("Style ID 99 not found in speaker 'test-speaker-uuid'");
+    });
+
+    test('既存キャラクターを上書きできる', async () => {
+      const mockSpeakers = [
+        {
+          speakerUuid: 'test-speaker-uuid',
+          speakerName: 'テストスピーカー',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ];
+
+      const mockGetSpeakers = vi.fn().mockResolvedValue(mockSpeakers);
+      (configManager as any).speakerProvider = {
+        updateConnection: vi.fn(),
+        getSpeakers: mockGetSpeakers,
+      };
+
+      // 1回目の登録
+      await configManager.registerCharacter('custom-char', {
+        speakerId: 'test-speaker-uuid',
+        name: '最初の名前',
+      });
+
+      // 2回目の登録（上書き）
+      await configManager.registerCharacter('custom-char', {
+        speakerId: 'test-speaker-uuid',
+        name: '更新された名前',
+      });
+
+      // 設定ファイルを確認
+      const configFile = join(tempDir, 'config.json');
+      const content = await readFile(configFile, 'utf8');
+      const config = JSON.parse(content);
+
+      expect(config.characters['custom-char'].name).toBe('更新された名前');
     });
   });
 });

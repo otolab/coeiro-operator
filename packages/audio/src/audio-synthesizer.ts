@@ -412,7 +412,10 @@ export class AudioSynthesizer {
     const url = `http://${this.config.connection.host}:${this.config.connection.port}/v1/synthesis`;
 
     // VoiceConfigから音声IDとスタイルIDを取得
-    const voiceId = voiceConfig.speaker.speakerId;
+    const voiceId = voiceConfig.speakerId || voiceConfig.speaker?.speakerId;
+    if (!voiceId) {
+      throw new Error('Voice ID not found in VoiceConfig');
+    }
     const styleId = voiceConfig.selectedStyleId;
 
     // 音切れ防止: 前後に無音パディングを追加（設定に基づく）

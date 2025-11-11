@@ -160,25 +160,23 @@ describe('Say Integration Tests', () => {
         ) {
           const testCharacter: Character = {
             characterId: characterId,
-            speaker: {
-              speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-uuid',
-              speakerName: characterId === 'tsukuyomi' ? 'つくよみちゃん' : 'テストスピーカー1',
-              styles: characterId === 'tsukuyomi' 
-                ? [
-                    { styleId: 0, styleName: 'れいせい' },
-                    { styleId: 1, styleName: 'おしとやか' },
-                    { styleId: 2, styleName: 'げんき' },
-                  ]
-                : [
-                    { styleId: 0, styleName: 'ノーマル' },
-                    { styleId: 1, styleName: 'ハッピー' },
-                  ],
-            },
-            defaultStyle: characterId === 'tsukuyomi' ? 'れいせい' : 'ノーマル',
+            speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-uuid',
+            speakerName: characterId === 'tsukuyomi' ? 'つくよみちゃん' : 'テストスピーカー1',
+            defaultStyleId: 0,
             greeting: 'こんにちは',
             farewell: 'さようなら',
             personality: 'テスト性格',
             speakingStyle: 'テスト話し方',
+            styles: characterId === 'tsukuyomi'
+              ? {
+                  0: { styleId: 0, styleName: 'れいせい' },
+                  1: { styleId: 1, styleName: 'おしとやか' },
+                  2: { styleId: 2, styleName: 'げんき' },
+                }
+              : {
+                  0: { styleId: 0, styleName: 'ノーマル' },
+                  1: { styleId: 1, styleName: 'ハッピー' },
+                },
           };
           return Promise.resolve(testCharacter);
         }
@@ -186,7 +184,7 @@ describe('Say Integration Tests', () => {
       }),
       selectStyle: vi.fn().mockImplementation((character: Character, specifiedStyle?: string) => {
         // デフォルトスタイルを返す
-        return character.speaker?.styles[0] || { styleId: 0, styleName: 'ノーマル' };
+        return Object.values(character.styles)[0] || { styleId: 0, styleName: 'ノーマル' };
       }),
       showCurrentOperator: vi.fn().mockImplementation(() => {
         // 現在のオペレータが存在しない場合のモック

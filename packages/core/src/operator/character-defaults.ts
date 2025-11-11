@@ -3,16 +3,17 @@
  * COEIROINKキャラクターのデフォルト設定を定義
  */
 
-// スタイル設定
+// スタイル設定（config.jsonに保存されるデータ）
 export interface StyleConfig {
   styleName: string; // スタイル名（例: "のーまる", "ねむねむ"）
-  morasPerSecond: number; // 基準話速（モーラ/秒）
+  morasPerSecond?: number; // 基準話速（モーラ/秒）- オプショナル
   personality?: string; // スタイル固有の性格（指定時はキャラクターのデフォルトを上書き）
   speakingStyle?: string; // スタイル固有の話し方（指定時はキャラクターのデフォルトを上書き）
+  disabled?: boolean; // スタイル無効化フラグ
 }
 
-// 内蔵設定用の基本型
-export interface BaseCharacterConfig {
+// キャラクター設定（config.jsonに保存・実行時に使用）
+export interface CharacterConfig {
   speakerId: string; // COEIROINKのspeakerUuid（音声を特定）
   name: string; // 表示名（COEIROINKから取得、上書き可能）
   personality: string; // デフォルトの性格設定
@@ -21,17 +22,12 @@ export interface BaseCharacterConfig {
   farewell: string; // お別れメッセージ
   defaultStyleId: number; // デフォルトスタイルID（数値）
   styles: Record<number, StyleConfig>; // スタイル設定（数値styleIdをキーに）
-}
-
-// 実際に使用される完全な型（起動時に利用可能性を確認）
-export interface CharacterConfig extends BaseCharacterConfig {
-  availableStyles?: string[]; // 利用可能なスタイル一覧（起動時に取得）
   disabled?: boolean; // キャラクター無効化フラグ
 }
 
 // characterキー（tsukuyomi等）をキーとした内蔵キャラクター設定
 // speakerIdでCOEIROINKのSpeakerと紐付け
-export const BUILTIN_CHARACTER_CONFIGS: Record<string, BaseCharacterConfig> = {
+export const BUILTIN_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
   tsukuyomi: {
     speakerId: '3c37646f-3881-5374-2a83-149267990abc',
     name: 'つくよみちゃん',

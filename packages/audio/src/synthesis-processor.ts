@@ -84,7 +84,7 @@ export class SynthesisProcessor {
     );
 
     logger.debug('SynthesisProcessor.process() - VoiceConfig解決完了', {
-      speaker: voiceConfig.speaker.speakerName,
+      speaker: voiceConfig.speaker?.speakerName || voiceConfig.speakerId || 'unknown',
       selectedStyleId: voiceConfig.selectedStyleId,
     });
 
