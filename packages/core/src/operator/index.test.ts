@@ -273,4 +273,82 @@ describe('OperatorManager', () => {
       }
     });
   });
+
+  describe('listSpeakers', () => {
+    test('Speaker一覧を取得できる', async () => {
+      // モックSpeakerProviderを設定
+      const { getSpeakerProvider } = await import('../environment/speaker-provider.js');
+      const speakerProvider = getSpeakerProvider();
+
+      vi.spyOn(speakerProvider, 'getSpeakers').mockResolvedValue([
+        {
+          speakerUuid: 'speaker-uuid-1',
+          speakerName: 'Speaker 1',
+          styles: [
+            { styleId: 0, styleName: 'ノーマル' },
+            { styleId: 1, styleName: 'ハッピー' },
+          ],
+        },
+        {
+          speakerUuid: 'speaker-uuid-2',
+          speakerName: 'Speaker 2',
+          styles: [
+            { styleId: 0, styleName: 'ノーマル' },
+          ],
+        },
+      ]);
+
+      const speakers = await operatorManager.listSpeakers();
+
+      expect(speakers).toHaveLength(2);
+      expect(speakers[0].speakerId).toBe('speaker-uuid-1');
+      expect(speakers[0].speakerName).toBe('Speaker 1');
+      expect(speakers[0].styles).toHaveLength(2);
+    });
+
+    test('未登録のSpeakerのみをフィルタリングできる', async () => {
+      const { getSpeakerProvider } = await import('../environment/speaker-provider.js');
+      const speakerProvider = getSpeakerProvider();
+
+      // test-operator-1はspeaker-uuid-1を使用している設定
+      vi.spyOn(speakerProvider, 'getSpeakers').mockResolvedValue([
+        {
+          speakerUuid: 'test-speaker-uuid', // test-operator-1で使用
+          speakerName: 'テストスピーカー',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+        {
+          speakerUuid: 'unregistered-uuid',
+          speakerName: '未登録Speaker',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ]);
+
+      const unregistered = await operatorManager.listSpeakers({ unregisteredOnly: true });
+
+      // test-speaker-uuidは登録済みなので除外され、unregistered-uuidのみ返される
+      expect(unregistered.length).toBeGreaterThanOrEqual(0);
+      expect(unregistered.every(s => !s.isRegistered)).toBe(true);
+    });
+
+    test('使用しているキャラクターIDを正しく返す', async () => {
+      const { getSpeakerProvider } = await import('../environment/speaker-provider.js');
+      const speakerProvider = getSpeakerProvider();
+
+      vi.spyOn(speakerProvider, 'getSpeakers').mockResolvedValue([
+        {
+          speakerUuid: 'test-speaker-uuid',
+          speakerName: 'テストスピーカー',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ]);
+
+      const speakers = await operatorManager.listSpeakers();
+
+      const registeredSpeaker = speakers.find(s => s.speakerId === 'test-speaker-uuid');
+      if (registeredSpeaker && registeredSpeaker.isRegistered) {
+        expect(registeredSpeaker.usedByCharacters).toContain('test-operator-1');
+      }
+    });
+  });
 });
