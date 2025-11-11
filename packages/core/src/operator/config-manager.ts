@@ -192,10 +192,15 @@ export class ConfigManager {
         // 利用可能なスタイル一覧を追加
         const availableStyles = speaker.styles?.map(s => s.styleName) || [];
 
+        // stylesフィールドは個別にマージ
         dynamicCharacters[characterId] = {
           ...builtinConfig,
-          availableStyles,
           ...userCharacterConfig,
+          availableStyles,
+          styles: {
+            ...builtinConfig.styles,
+            ...userCharacterConfig.styles,
+          },
         };
       }
 
