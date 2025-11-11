@@ -533,8 +533,9 @@ server.registerTool(
       }
 
       // Issue #58: オペレータ未アサイン時の再アサイン促進メッセージ
+      // voiceパラメータが指定されている場合はオペレータ不要
       const currentOperator = await operatorManager.showCurrentOperator();
-      if (!currentOperator.characterId) {
+      if (!currentOperator.characterId && !parsedVoice) {
         // オペレータ未割り当て時に背景画像をクリア
         if (terminalBackground) {
           if (await terminalBackground.isEnabled()) {
@@ -566,6 +567,8 @@ server.registerTool(
             '❌ 現在利用可能なオペレータがありません。しばらく待ってから再試行してください。';
         }
 
+        guidanceMessage += '\n\n💡 または、voice パラメータで直接キャラクターを指定することもできます。';
+
         return {
           content: [
             {
@@ -578,22 +581,25 @@ server.registerTool(
 
       // Issue #58: 動的タイムアウト延長 - sayコマンド実行時にオペレータ予約を延長
       // ベストエフォート非同期処理（エラーは無視、音声生成をブロックしない）
-      operatorManager
-        .refreshOperatorReservation()
-        .then(refreshSuccess => {
-          if (refreshSuccess) {
-            logger.info(`Operator reservation refreshed for: ${currentOperator.characterId}`);
-          } else {
-            logger.warn(
-              `Could not refresh operator reservation for: ${currentOperator.characterId} - operator may have already expired`
+      // オペレータがアサインされている場合のみ予約を延長
+      if (currentOperator.characterId) {
+        operatorManager
+          .refreshOperatorReservation()
+          .then(refreshSuccess => {
+            if (refreshSuccess) {
+              logger.info(`Operator reservation refreshed for: ${currentOperator.characterId}`);
+            } else {
+              logger.warn(
+                `Could not refresh operator reservation for: ${currentOperator.characterId} - operator may have already expired`
+              );
+            }
+          })
+          .catch(error => {
+            logger.error(
+              `Operator reservation refresh failed: ${(error as Error).message} - operator timeout extension failed`
             );
-          }
-        })
-        .catch(error => {
-          logger.error(
-            `Operator reservation refresh failed: ${(error as Error).message} - operator timeout extension failed`
-          );
-        });
+          });
+      }
 
       // スタイル検証（事前チェック）
       // parsedStyleとparsedVoiceを使用
@@ -658,14 +664,20 @@ server.registerTool(
 
       // 結果をログ出力
       logger.debug(`Result: ${JSON.stringify(result)}`);
-      const modeInfo = `発声キューに追加 - オペレータ: ${currentOperator.characterId}, タスクID: ${result.taskId}`;
+
+      // オペレータまたはvoice指定の情報を取得
+      const voiceInfo = currentOperator.characterId
+        ? `オペレータ: ${currentOperator.characterId}`
+        : `voice指定: ${parsedVoice}${parsedStyle ? `:${parsedStyle}` : ''}`;
+
+      const modeInfo = `発声キューに追加 - ${voiceInfo}, タスクID: ${result.taskId}`;
       logger.info(modeInfo);
 
       logger.debug('=== SAY TOOL DEBUG END ===');
 
       // 即座にレスポンスを返す（音声合成の完了を待たない）
       // タスクIDとキュー長の情報も含める
-      const responseText = `音声合成を開始しました - オペレータ: ${currentOperator.characterId}\n` +
+      const responseText = `音声合成を開始しました - ${voiceInfo}\n` +
                          `タスクID: ${result.taskId}\n` +
                          `キュー長: ${result.queueLength} 個`;
 
