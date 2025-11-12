@@ -41,51 +41,72 @@ const createMockResponse = (options: {
 
 // モックの設定
 global.fetch = vi.fn();
-vi.mock('@coeiro-operator/core', () => ({
-  OperatorManager: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn(),
-    getCharacterInfo: vi.fn(),
-  })),
-  getSpeakerProvider: vi.fn(() => ({
-    getSpeakers: vi.fn().mockResolvedValue([
-      {
-        speakerUuid: 'test-speaker-1',
-        speakerName: 'テストスピーカー1',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      },
-      {
-        speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
-        speakerName: 'つくよみちゃん',
-        styles: [
-          { styleId: 0, styleName: 'れいせい' },
-          { styleId: 1, styleName: 'おしとやか' },
-          { styleId: 2, styleName: 'げんき' },
-        ],
-      },
-    ]),
-    updateConnection: vi.fn(),
-    checkConnection: vi.fn().mockResolvedValue(true),
-    logAvailableVoices: vi.fn(),
-  })),
-  ConfigManager: vi.fn().mockImplementation(() => ({
-    getFullConfig: vi.fn().mockResolvedValue({
-      connection: { host: 'localhost', port: '50032' },
-      voice: { rate: 200 },
-      audio: { latencyMode: 'balanced' },
-      operator: { rate: 200 },
-    }),
-    getCharacterConfig: vi.fn().mockImplementation((characterId: string) => {
-      if (characterId === 'test-speaker-1' || characterId === 'tsukuyomi') {
-        return Promise.resolve({
-          characterId,
-          speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-1',
-          defaultStyle: characterId === 'tsukuyomi' ? 'れいせい' : 'ノーマル',
-        });
-      }
+vi.mock('@coeiro-operator/core', () => {
+  // CharacterInfoServiceのモック実装
+  class MockCharacterInfoService {
+    configManager: any;
+    initialize(configManager: any) {
+      this.configManager = configManager;
+    }
+    async getCharacterInfo() {
       return null;
-    }),
-  })),
-}));
+    }
+    selectStyle() {
+      return null;
+    }
+    async listSpeakers() {
+      return [];
+    }
+  }
+
+  return {
+    OperatorManager: vi.fn().mockImplementation(() => ({
+      initialize: vi.fn(),
+      getCharacterInfo: vi.fn(),
+    })),
+    CharacterInfoService: MockCharacterInfoService,
+    getSpeakerProvider: vi.fn(() => ({
+      getSpeakers: vi.fn().mockResolvedValue([
+        {
+          speakerUuid: 'test-speaker-1',
+          speakerName: 'テストスピーカー1',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+        {
+          speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
+          speakerName: 'つくよみちゃん',
+          styles: [
+            { styleId: 0, styleName: 'れいせい' },
+            { styleId: 1, styleName: 'おしとやか' },
+            { styleId: 2, styleName: 'げんき' },
+          ],
+        },
+      ]),
+      updateConnection: vi.fn(),
+      checkConnection: vi.fn().mockResolvedValue(true),
+      logAvailableVoices: vi.fn(),
+    })),
+    ConfigManager: vi.fn().mockImplementation(() => ({
+      getFullConfig: vi.fn().mockResolvedValue({
+        connection: { host: 'localhost', port: '50032' },
+        voice: { rate: 200 },
+        audio: { latencyMode: 'balanced' },
+        operator: { rate: 200 },
+      }),
+      getCharacterConfig: vi.fn().mockImplementation((characterId: string) => {
+        if (characterId === 'test-speaker-1' || characterId === 'tsukuyomi') {
+          return Promise.resolve({
+            characterId,
+            speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-1',
+            defaultStyle: characterId === 'tsukuyomi' ? 'れいせい' : 'ノーマル',
+          });
+        }
+        return null;
+      }),
+      getStateDir: vi.fn().mockReturnValue('/tmp/test-state'),
+    })),
+  };
+});
 vi.mock('@echogarden/audio-io', () => ({
   createAudioOutput: vi.fn().mockImplementation(async (config: any, handler: (buffer: Int16Array) => void) => {
     // handlerを定期的に呼んでキューを消費する

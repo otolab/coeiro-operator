@@ -43,6 +43,13 @@ describe('オペレータタイムアウト統合テスト', () => {
         }
         return Promise.resolve(null);
       }),
+      getOperatorConfig: vi.fn().mockResolvedValue({ rate: 200 }),
+      getAudioConfig: vi.fn().mockResolvedValue({
+        latencyMode: 'balanced',
+        splitMode: 'punctuation',
+        bufferSize: 2048,
+      }),
+      getConnectionConfig: vi.fn().mockResolvedValue({ host: 'localhost', port: '50032' }),
       getConfigDir: vi.fn().mockReturnValue(testConfigDir),
       getStateDir: vi.fn().mockReturnValue(join(testConfigDir, 'state')),
       getCoeiroinkConfigPath: vi.fn().mockReturnValue(join(testConfigDir, 'coeiroink-config.json')),
@@ -269,7 +276,7 @@ describe('オペレータタイムアウト統合テスト', () => {
       styleName: 'のーまる',
     });
 
-    vi.spyOn(operatorManager, 'getCharacterInfo').mockResolvedValue({
+    vi.spyOn(characterInfoService, 'getCharacterInfo').mockResolvedValue({
       characterId: 'dia',
       speaker: {
         speakerId: 'dia-speaker-id',
@@ -283,7 +290,7 @@ describe('オペレータタイムアウト統合テスト', () => {
       speakingStyle: '丁寧で温かみのある口調',
     } as any);
 
-    vi.spyOn(operatorManager, 'selectStyle').mockReturnValue({
+    vi.spyOn(characterInfoService, 'selectStyle').mockReturnValue({
       styleId: 3,
       styleName: 'のーまる',
     });
