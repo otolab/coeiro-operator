@@ -1,5 +1,29 @@
 # @coeiro-operator/cli
 
+## 1.4.0
+
+### Minor Changes
+
+- f979ff0: キャラクター登録・測定機能をCLIに追加
+
+  operator-managerコマンドに3つの新しいコマンドを追加しました:
+  - `list-unmeasured [--json]`: 未計測のSpeaker/Styleを表示
+  - `add-character <characterId> <speakerName>`: キャラクターを新規登録
+  - `measure <characterId> [--style=スタイル名] [--dry-run]`: 話速を測定して設定を更新
+
+  主な変更:
+  - ConfigManager.updateCharacterConfig(): スタイルマージ機能を追加
+  - OperatorManager.detectUnregisteredSpeakers(): 未登録Speaker検出機能
+  - OperatorManager.measureCharacterSpeechRate(): 話速測定機能（登録済みキャラクター用）
+  - SpeechRateMeasurer: 話速測定ロジックを独立したクラスに分離
+
+### Patch Changes
+
+- Updated dependencies [f979ff0]
+- Updated dependencies [f5e8483]
+  - @coeiro-operator/core@1.3.0
+  - @coeiro-operator/audio@1.2.5
+
 ## 1.3.4
 
 ### Patch Changes

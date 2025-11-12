@@ -1,5 +1,40 @@
 # @coeiro-operator/core
 
+## 1.3.0
+
+### Minor Changes
+
+- f979ff0: キャラクター登録・測定機能をCLIに追加
+
+  operator-managerコマンドに3つの新しいコマンドを追加しました:
+  - `list-unmeasured [--json]`: 未計測のSpeaker/Styleを表示
+  - `add-character <characterId> <speakerName>`: キャラクターを新規登録
+  - `measure <characterId> [--style=スタイル名] [--dry-run]`: 話速を測定して設定を更新
+
+  主な変更:
+  - ConfigManager.updateCharacterConfig(): スタイルマージ機能を追加
+  - OperatorManager.detectUnregisteredSpeakers(): 未登録Speaker検出機能
+  - OperatorManager.measureCharacterSpeechRate(): 話速測定機能（登録済みキャラクター用）
+  - SpeechRateMeasurer: 話速測定ロジックを独立したクラスに分離
+
+### Patch Changes
+
+- f5e8483: OperatorManagerのリファクタリング（Phase 1-6）
+
+  OperatorManagerの責務を分離し、コードの保守性を向上させました。
+
+  主な変更:
+  - DI パターンの導入（ConfigManager、CharacterInfoServiceを注入）
+  - setup()関数による統一された初期化パターン
+  - 委譲メソッドの削除（getCharacterInfo、selectStyle）
+  - Speaker管理をCharacterInfoServiceに移動
+  - ディレクトリ構成の整理（character/、config/サブディレクトリ）
+
+  効果:
+  - OperatorManagerが596行から472行に削減（21%減）
+  - 3層アーキテクチャ（Speaker、Character、Operator）の明確化
+  - 責務の分離とコードの見通しの向上
+
 ## 1.2.3
 
 ### Patch Changes
