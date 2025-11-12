@@ -5,6 +5,8 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OperatorManager } from './index.js';
+import ConfigManager from './config-manager.js';
+import CharacterInfoService from './character-info-service.js';
 import { FileOperationManager } from './file-operation-manager.js';
 import * as fs from 'fs/promises';
 import { tmpdir } from 'os';
@@ -13,14 +15,52 @@ import { join } from 'path';
 describe('オペレータタイムアウト時の動作', () => {
   let operatorManager: OperatorManager;
   let testFilePath: string;
+  let tempDir: string;
   const testSessionId = 'test-session-123';
 
   beforeEach(async () => {
     // テスト用の一時ファイルパス
     testFilePath = join(tmpdir(), `test-operators-${Date.now()}.json`);
 
-    // OperatorManagerインスタンスを作成
-    operatorManager = new OperatorManager();
+    // 一時ディレクトリを作成
+    tempDir = join(tmpdir(), `coeiro-test-timeout-${Date.now()}-${Math.random().toString(36).substring(7)}`);
+    await fs.mkdir(tempDir, { recursive: true });
+
+    // .coeiro-operatorサブディレクトリを作成
+    const configSubDir = join(tempDir, '.coeiro-operator');
+    await fs.mkdir(configSubDir, { recursive: true });
+
+    // 統一設定ファイルのモックを作成
+    const config = {
+      connection: { host: 'localhost', port: '50032' },
+      operator: { timeout: 14400000, assignmentStrategy: 'random' },
+      characters: {
+        'tsukuyomi': {
+          name: 'つくよみちゃん',
+          personality: 'テスト用',
+          speakingStyle: 'テスト',
+          greeting: 'こんにちは',
+          farewell: 'さようなら',
+          defaultStyleId: 0,
+          speakerId: 'test-speaker-id',
+          styles: {
+            0: { styleName: 'れいせい' }
+          }
+        }
+      },
+    };
+    await fs.writeFile(join(configSubDir, 'config.json'), JSON.stringify(config), 'utf8');
+
+    // ConfigManagerを初期化
+    const configManager = new ConfigManager(configSubDir);
+    await configManager.buildDynamicConfig();
+
+    // CharacterInfoServiceを初期化
+    const characterInfoService = new CharacterInfoService();
+    characterInfoService.initialize(configManager);
+
+    // OperatorManagerを生成（DI）
+    operatorManager = new OperatorManager(configManager, characterInfoService);
     await operatorManager.initialize();
   });
 
@@ -30,6 +70,13 @@ describe('オペレータタイムアウト時の動作', () => {
       await fs.unlink(testFilePath);
     } catch {
       // ファイルが存在しない場合は無視
+    }
+
+    // 一時ディレクトリをクリーンアップ
+    try {
+      await fs.rm(tempDir, { recursive: true, force: true });
+    } catch {
+      // エラーは無視
     }
   });
 

@@ -75,18 +75,16 @@ async function convertCharacterConfigToCharacter(
 
 export class CharacterInfoService {
   private configManager: ConfigManager | null = null;
-  private coeiroinkConfigFile: string | null = null;
 
   constructor() {
     // キャラクター情報の読み込み専用サービス
   }
 
   /**
-   * 初期化：ConfigManagerと設定ファイルパスを設定
+   * 初期化：ConfigManagerを設定
    */
-  initialize(configManager: ConfigManager, coeiroinkConfigFile: string): void {
+  initialize(configManager: ConfigManager): void {
     this.configManager = configManager;
-    this.coeiroinkConfigFile = coeiroinkConfigFile;
   }
 
   /**

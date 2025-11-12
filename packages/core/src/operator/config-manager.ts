@@ -151,6 +151,27 @@ export class ConfigManager {
   }
 
   /**
+   * 設定ディレクトリのパスを取得
+   */
+  getConfigDir(): string {
+    return this.configDir;
+  }
+
+  /**
+   * 状態保存用ディレクトリのパスを取得
+   */
+  getStateDir(): string {
+    return join(this.configDir, 'state');
+  }
+
+  /**
+   * COEIROINK設定ファイルのパスを取得
+   */
+  getCoeiroinkConfigPath(): string {
+    return join(this.configDir, 'coeiroink-config.json');
+  }
+
+  /**
    * JSONファイルを安全に読み込み
    */
   async readJsonFile<T>(filePath: string, defaultValue: T): Promise<T> {

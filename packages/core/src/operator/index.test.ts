@@ -5,6 +5,8 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import OperatorManager from './index.js';
+import ConfigManager from './config-manager.js';
+import CharacterInfoService from './character-info-service.js';
 import { writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -69,11 +71,19 @@ describe('OperatorManager', () => {
     // fetchモックを設定
     (global.fetch as unknown).mockRejectedValue(new Error('Network error'));
 
-    operatorManager = new OperatorManager();
-
     // 環境変数を設定して一時ディレクトリを使用
     process.env.HOME = tempDir;
 
+    // ConfigManagerを初期化
+    const configManager = new ConfigManager(configSubDir);
+    await configManager.buildDynamicConfig();
+
+    // CharacterInfoServiceを初期化
+    const characterInfoService = new CharacterInfoService();
+    characterInfoService.initialize(configManager);
+
+    // OperatorManagerを生成（DI）
+    operatorManager = new OperatorManager(configManager, characterInfoService);
     await operatorManager.initialize();
   });
 
@@ -99,14 +109,6 @@ describe('OperatorManager', () => {
   });
 
   describe('初期化と基本機能', () => {
-    test('OperatorManagerが正常に初期化される', async () => {
-      // 設定の事前構築が正常に動作することを確認
-      await operatorManager.buildDynamicConfig();
-
-      // エラーが発生しないことを確認
-      expect(true).toBe(true);
-    });
-
     test('初期化が正常に完了する', async () => {
       // 初期化が正常に完了することを確認（beforeEachで実行済み）
       expect(true).toBe(true);

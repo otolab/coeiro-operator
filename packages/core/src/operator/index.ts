@@ -10,7 +10,6 @@ import ConfigManager from './config-manager.js';
 import FileOperationManager from './file-operation-manager.js';
 import { hostname } from 'os';
 import CharacterInfoService, { Character, Style } from './character-info-service.js';
-import { getConfigDir } from '../common/config-paths.js';
 import { mkdir } from 'fs/promises';
 import { logger } from '@coeiro-operator/common';
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
@@ -88,41 +87,23 @@ function getSessionId(): string {
 
 export class OperatorManager {
   private sessionId: string;
-  private configDir: string | null = null;
-  private coeiroinkConfigFile: string | null = null;
-  private configManager: ConfigManager | null = null;
   private dataStore: FileOperationManager<CharacterSession> | null = null;
-  private characterInfoService: CharacterInfoService;
 
-  constructor() {
+  constructor(
+    private configManager: ConfigManager,
+    private characterInfoService: CharacterInfoService
+  ) {
     this.sessionId = getSessionId();
-
-    // 初期化時はnullを設定（initializeで正式に設定）
-    this.dataStore = null;
-    this.characterInfoService = new CharacterInfoService();
   }
 
   async initialize(): Promise<void> {
-    this.configDir = await getConfigDir();
-    this.coeiroinkConfigFile = join(this.configDir, 'coeiroink-config.json');
-
-    // 設定管理システムを初期化
-    this.configManager = new ConfigManager(this.configDir);
-
-    // ConfigManagerの動的設定を事前にビルドして初期化を完了
-    try {
-      await this.configManager.buildDynamicConfig();
-    } catch (error) {
-      console.warn(`OperatorManager dynamic config build failed:`, (error as Error).message);
-    }
-
     // dataStoreを初期化（設定ディレクトリ内に保存）
     const operatorConfig = await this.configManager.getOperatorConfig();
     const timeoutMs = operatorConfig.timeout;
     const hostnameClean = hostname().replace(/[^a-zA-Z0-9]/g, '_');
 
     // オペレータ状態を永続的に保存するディレクトリを作成
-    const operatorStateDir = join(this.configDir, 'state');
+    const operatorStateDir = this.configManager.getStateDir();
     await mkdir(operatorStateDir, { recursive: true });
 
     // ファイルパスを設定ディレクトリ内に変更
@@ -135,19 +116,13 @@ export class OperatorManager {
     );
 
     console.log(`[OperatorManager] State file path: ${filePath}`);
-
-    // CharacterInfoServiceを初期化
-    this.characterInfoService.initialize(this.configManager, this.coeiroinkConfigFile);
   }
 
   /**
    * 設定の事前構築（外部からの呼び出し用）
+   * @deprecated Phase 2以降でsetup関数に移行予定
    */
   async buildDynamicConfig(): Promise<void> {
-    if (!this.configManager) {
-      throw new Error('ConfigManager is not initialized');
-    }
-
     try {
       await this.configManager.buildDynamicConfig();
     } catch (error) {
@@ -177,7 +152,7 @@ export class OperatorManager {
    * 利用可能なオペレータを取得（仕事中のオペレータ情報も含む）
    */
   async getAvailableOperators(): Promise<{ available: string[]; busy: string[] }> {
-    if (!this.configManager || !this.dataStore) {
+    if (!this.dataStore) {
       throw new Error('State manager is not initialized');
     }
 
@@ -351,10 +326,6 @@ export class OperatorManager {
       throw new Error('キャラクターIDを指定してください');
     }
 
-    if (!this.configManager) {
-      throw new Error('Manager is not initialized');
-    }
-
     // キャラクター情報を取得
     const character = await this.characterInfoService.getOperatorCharacterInfo(specifiedCharacter);
     if (!character) {
@@ -441,10 +412,6 @@ export class OperatorManager {
    * 仕様書準拠: getCurrentOperatorId()の自動時間切れ処理に依存し、統一された検証ロジックを実装
    */
   async showCurrentOperator(): Promise<StatusResult> {
-    if (!this.configManager) {
-      throw new Error('Manager is not initialized');
-    }
-
     // 仕様書準拠: getCurrentOperatorSession()が時間切れチェックと自動解放を実行
     const operatorSession = await this.getCurrentOperatorSession();
     if (!operatorSession) {
@@ -534,10 +501,6 @@ export class OperatorManager {
    * @param options.unregisteredOnly - trueの場合、キャラクター登録されていないSpeakerのみ返す
    */
   async listSpeakers(options?: { unregisteredOnly?: boolean }): Promise<SpeakerInfo[]> {
-    if (!this.configManager) {
-      throw new Error('OperatorManager is not initialized');
-    }
-
     // 1. COEIROINK APIから全Speaker取得
     const speakerProvider = getSpeakerProvider();
     const apiSpeakers = await speakerProvider.getSpeakers();
