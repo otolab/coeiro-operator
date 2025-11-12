@@ -63,7 +63,7 @@ class OperatorManagerCLI {
 
   private async executeAssignment(characterId: string | null, style: string | null): Promise<void> {
     if (characterId) {
-      const result: AssignResult = await this.manager.assignSpecificOperator(characterId, style);
+      const result: AssignResult = await this.manager!.assignSpecificOperator(characterId, style);
       console.log(`オペレータ決定: ${result.characterName} (${result.characterId})`);
       if (result.currentStyle) {
         console.log(
@@ -75,11 +75,11 @@ class OperatorManagerCLI {
         await this.terminalBackground.switchCharacter(result.characterId);
       }
     } else {
-      const currentStatus: StatusResult = await this.manager.showCurrentOperator();
+      const currentStatus: StatusResult = await this.manager!.showCurrentOperator();
       if (currentStatus.characterId) {
         console.log(currentStatus.message);
       } else {
-        const result: AssignResult = await this.manager.assignRandomOperator(style);
+        const result: AssignResult = await this.manager!.assignRandomOperator(style);
         console.log(`オペレータ決定: ${result.characterName} (${result.characterId})`);
         if (result.currentStyle) {
           console.log(
@@ -159,7 +159,7 @@ class OperatorManagerCLI {
   }
 
   async handleRelease(): Promise<void> {
-    const result: ReleaseResult = await this.manager.releaseOperator();
+    const result: ReleaseResult = await this.manager!.releaseOperator();
 
     if (result.wasAssigned) {
       console.log(`オペレータ返却: ${result.characterName}`);
@@ -174,12 +174,12 @@ class OperatorManagerCLI {
   }
 
   async handleStatus(): Promise<void> {
-    const result: StatusResult = await this.manager.showCurrentOperator();
+    const result: StatusResult = await this.manager!.showCurrentOperator();
     console.log(result.message);
   }
 
   async handleAvailable(): Promise<void> {
-    const result = await this.manager.getAvailableOperators();
+    const result = await this.manager!.getAvailableOperators();
     console.log(`利用可能なオペレータ: ${result.available.join(', ')}`);
     if (result.busy.length > 0) {
       console.log(`仕事中のオペレータ: ${result.busy.join(', ')}`);
@@ -187,7 +187,7 @@ class OperatorManagerCLI {
   }
 
   async handleClear(): Promise<void> {
-    await this.manager.clearAllOperators();
+    await this.manager!.clearAllOperators();
     console.log('全てのオペレータ利用状況をクリアしました');
   }
 }

@@ -53,7 +53,7 @@ export class VoiceResolver {
           if (savedStyle) {
             selectedStyle = savedStyle;
             logger.debug(
-              `保存されたスタイルを使用: ${savedStyle.styleName} (ID:${savedStyle.styleId})`
+              `保存されたスタイルを使用: ${savedStyle.styleName} (ID:${session.styleId})`
             );
           } else {
             // 保存されたスタイルが見つからない場合はデフォルトを使用
