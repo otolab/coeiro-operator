@@ -55,6 +55,21 @@ export interface Character {
   styles: Record<number, StyleConfig>; // スタイル設定（キー: styleId）
 }
 
+/**
+ * SpeakerInfo: SpeakerとCharacterの対応関係情報
+ * listSpeakers()の戻り値型
+ */
+export interface SpeakerInfo {
+  speakerId: string; // COEIROINKのspeakerUuid
+  speakerName: string; // Speaker名
+  isRegistered: boolean; // どれかのCharacterで使用されているか
+  usedByCharacters: string[]; // 使用しているcharacterIdのリスト
+  styles: Array<{
+    styleId: number;
+    styleName: string;
+  }>;
+}
+
 // CharacterConfigからCharacterに変換するヘルパー関数
 async function convertCharacterConfigToCharacter(
   characterId: string,
@@ -193,6 +208,69 @@ export class CharacterInfoService {
       throw new Error('CharacterInfoService is not initialized');
     }
     return await this.configManager.getAvailableCharacterIds();
+  }
+
+  /**
+   * COEIROINKで利用可能なSpeaker一覧を取得
+   * @param options.unregisteredOnly - trueの場合、キャラクター登録されていないSpeakerのみ返す
+   */
+  async listSpeakers(options?: { unregisteredOnly?: boolean }): Promise<SpeakerInfo[]> {
+    if (!this.configManager) {
+      throw new Error('CharacterInfoService is not initialized');
+    }
+
+    // 1. COEIROINK APIから全Speaker取得
+    const speakerProvider = getSpeakerProvider();
+    const apiSpeakers = await speakerProvider.getSpeakers();
+
+    // 2. 登録済みキャラクター一覧を取得
+    const characterIds = await this.configManager.getAvailableCharacterIds();
+    const characters: Record<string, { speakerId: string; characterId: string }> = {};
+
+    for (const characterId of characterIds) {
+      const character = await this.configManager.getCharacterConfig(characterId);
+      if (character) {
+        characters[character.speakerId] = characters[character.speakerId] || {
+          speakerId: character.speakerId,
+          characterId
+        };
+      }
+    }
+
+    // 3. Speaker情報を構築
+    const speakerInfos: SpeakerInfo[] = [];
+
+    for (const speaker of apiSpeakers) {
+      const usedByCharacters: string[] = [];
+
+      // このspeakerIdを使用しているキャラクターを検索
+      for (const characterId of characterIds) {
+        const character = await this.configManager.getCharacterConfig(characterId);
+        if (character?.speakerId === speaker.speakerUuid) {
+          usedByCharacters.push(characterId);
+        }
+      }
+
+      const isRegistered = usedByCharacters.length > 0;
+
+      // unregisteredOnlyオプションが有効な場合、登録済みはスキップ
+      if (options?.unregisteredOnly && isRegistered) {
+        continue;
+      }
+
+      speakerInfos.push({
+        speakerId: speaker.speakerUuid,
+        speakerName: speaker.speakerName,
+        isRegistered,
+        usedByCharacters,
+        styles: speaker.styles.map(s => ({
+          styleId: s.styleId,
+          styleName: s.styleName,
+        })),
+      });
+    }
+
+    return speakerInfos;
   }
 }
 

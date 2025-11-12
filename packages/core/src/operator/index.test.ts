@@ -301,7 +301,7 @@ describe('OperatorManager', () => {
         },
       ]);
 
-      const speakers = await operatorManager.listSpeakers();
+      const speakers = await characterInfoService.listSpeakers();
 
       expect(speakers).toHaveLength(2);
       expect(speakers[0].speakerId).toBe('speaker-uuid-1');
@@ -327,7 +327,7 @@ describe('OperatorManager', () => {
         },
       ]);
 
-      const unregistered = await operatorManager.listSpeakers({ unregisteredOnly: true });
+      const unregistered = await characterInfoService.listSpeakers({ unregisteredOnly: true });
 
       // test-speaker-uuidは登録済みなので除外され、unregistered-uuidのみ返される
       expect(unregistered.length).toBeGreaterThanOrEqual(0);
@@ -346,7 +346,7 @@ describe('OperatorManager', () => {
         },
       ]);
 
-      const speakers = await operatorManager.listSpeakers();
+      const speakers = await characterInfoService.listSpeakers();
 
       const registeredSpeaker = speakers.find(s => s.speakerId === 'test-speaker-uuid');
       if (registeredSpeaker && registeredSpeaker.isRegistered) {
