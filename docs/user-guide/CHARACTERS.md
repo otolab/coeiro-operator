@@ -75,13 +75,32 @@ curl -X GET "http://localhost:50032/v1/downloadable_speakers" | jq -r '.[].speak
 
 ### キャラクター追加手順
 
+#### 1. COEIROINKへのキャラクター追加
+
 1. **COEIROINKアプリを起動**
-2. **設定またはライブラリ画面に移動**  
+2. **設定またはライブラリ画面に移動**
 3. **「キャラクターをダウンロード」メニューを選択**
 4. **利用したいキャラクターを選択してダウンロード**
-5. **ダウンロード完了後、COEIRO Operatorで利用可能**
+5. **ダウンロード完了後、次のステップへ**
 
 **注意**: 利用するキャラクターは事前にCOEIROINKでダウンロードしておく必要があります。
+
+#### 2. coeiro-operator設定への登録
+
+COEIROINKでダウンロード済みの新しいSpeakerをcoeiro-operatorのオペレータとして使用するには、話速測定と設定登録が必要です。
+
+```bash
+# 1. 未登録Speakerの確認
+operator-manager list-unmeasured
+
+# 2. キャラクターを登録（characterIdとSpeaker名を指定）
+operator-manager add-character <characterId> <speakerName>
+
+# 3. 話速を測定して設定を更新
+operator-manager measure <characterId>
+```
+
+**詳細な登録手順**: [CLI README - 新規Speakerの登録方法](../../packages/cli/README.md#新規speakerの登録方法)を参照してください。
 
 ### 音声の確認方法
 
