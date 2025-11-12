@@ -133,14 +133,19 @@ say-coeiroink --buffer-size 256 "低レイテンシ再生"            # バッ�
 # 基本構文
 operator-manager <command> [options]
 
-# コマンド一覧
+# コマンド一覧（オペレータ管理）
 assign [オペレータID] [--style=スタイル名]   オペレータ割り当て（IDなしでランダム）
 release                                    オペレータ解放
 status                                     状況確認
 available                                  利用可能一覧
 clear                                      全オペレータ状況クリア
 
-# 使用例
+# コマンド一覧（キャラクター登録・測定）
+list-unmeasured [--json]                   未計測のSpeaker/Styleを表示
+add-character <characterId> <speakerName>  キャラクターを新規登録
+measure <characterId> [--style=スタイル名] [--dry-run]  話速を測定して設定を更新
+
+# 使用例（オペレータ管理）
 operator-manager assign                              # ランダム割り当て
 operator-manager assign tsukuyomi                   # 指定割り当て
 operator-manager assign --style=happy               # スタイル指定ランダム割り当て
@@ -149,6 +154,12 @@ operator-manager status                              # 状況確認
 operator-manager available                           # 利用可能一覧
 operator-manager release                             # オペレータ解放
 operator-manager clear                               # 全クリア
+
+# 使用例（キャラクター登録・測定）
+operator-manager list-unmeasured                    # 未計測Speaker/Style確認
+operator-manager add-character <charId> <speaker>   # キャラクター登録
+operator-manager measure <characterId> --dry-run    # 話速測定（dry-run）
+operator-manager measure <characterId>              # 話速測定・設定更新
 ```
 
 ### Claude Code MCPツール
