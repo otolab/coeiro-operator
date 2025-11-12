@@ -6,10 +6,10 @@
  */
 
 import { join } from 'path';
-import ConfigManager from './config-manager.js';
+import ConfigManager from './config/config-manager.js';
 import FileOperationManager from './file-operation-manager.js';
 import { hostname } from 'os';
-import CharacterInfoService, { Character, Style } from './character-info-service.js';
+import CharacterInfoService, { Character, Style } from './character/character-info-service.js';
 import { mkdir } from 'fs/promises';
 import { logger } from '@coeiro-operator/common';
 import { getSpeakerProvider } from '../environment/speaker-provider.js';

@@ -1,7 +1,7 @@
 import { TerminalBackground as TermBg } from '@coeiro-operator/term-bg';
 import { join } from 'path';
 import { writeFile } from 'fs/promises';
-import { ConfigManager } from '../operator/config-manager.js';
+import { ConfigManager } from '../operator/config/config-manager.js';
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
 import { logger } from '@coeiro-operator/common';
 

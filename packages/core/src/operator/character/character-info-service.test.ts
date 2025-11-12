@@ -3,8 +3,8 @@
  */
 
 import { CharacterInfoService } from './character-info-service.js';
-import FileOperationManager from './file-operation-manager.js';
-import ConfigManager, { CharacterConfig } from './config-manager.js';
+import FileOperationManager from '../file-operation-manager.js';
+import ConfigManager, { CharacterConfig } from '../config/config-manager.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';

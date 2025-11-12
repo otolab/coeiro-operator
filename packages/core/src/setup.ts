@@ -4,8 +4,8 @@
  */
 
 import { getConfigDir } from './common/config-paths.js';
-import ConfigManager from './operator/config-manager.js';
-import CharacterInfoService from './operator/character-info-service.js';
+import ConfigManager from './operator/config/config-manager.js';
+import CharacterInfoService from './operator/character/character-info-service.js';
 import OperatorManager from './operator/index.js';
 
 export interface SetupResult {

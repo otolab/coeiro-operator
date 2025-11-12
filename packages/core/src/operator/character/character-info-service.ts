@@ -9,9 +9,9 @@
  * - Operator: sessionId毎に割り当てられたCharacter
  */
 
-import ConfigManager from './config-manager.js';
+import ConfigManager from '../config/config-manager.js';
 import { CharacterConfig, StyleConfig } from './character-defaults.js';
-import { getSpeakerProvider } from '../environment/speaker-provider.js';
+import { getSpeakerProvider } from '../../environment/speaker-provider.js';
 
 /**
  * Style: Speakerの声のバリエーション（API形式）

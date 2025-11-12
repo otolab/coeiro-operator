@@ -10,11 +10,11 @@ import {
   BUILTIN_CHARACTER_CONFIGS,
   CharacterConfig,
   StyleConfig,
-} from './character-defaults.js';
-import { getSpeakerProvider } from '../environment/speaker-provider.js';
-import { AudioConfig, FullConfig as BaseFullConfig, OperatorConfig } from '../types.js';
+} from '../character/character-defaults.js';
+import { getSpeakerProvider } from '../../environment/speaker-provider.js';
+import { AudioConfig, FullConfig as BaseFullConfig, OperatorConfig } from '../../types.js';
 import { deepMerge } from '@coeiro-operator/common';
-import { Style } from './character-info-service.js';
+import { Style } from '../character/character-info-service.js';
 
 // FullConfig型の定義（BaseFullConfigを拡張）
 export interface FullConfig extends Omit<BaseFullConfig, 'characters'> {

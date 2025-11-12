@@ -5,8 +5,8 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { OperatorManager } from './index.js';
-import ConfigManager from './config-manager.js';
-import CharacterInfoService from './character-info-service.js';
+import ConfigManager from './config/config-manager.js';
+import CharacterInfoService from './character/character-info-service.js';
 import { FileOperationManager } from './file-operation-manager.js';
 import * as fs from 'fs/promises';
 import { tmpdir } from 'os';
