@@ -16,6 +16,7 @@ vi.stubGlobal('fetch', vi.fn());
 
 describe('OperatorManager', () => {
   let operatorManager: OperatorManager;
+  let characterInfoService: CharacterInfoService;
   let tempDir: string;
 
   beforeEach(async () => {
@@ -79,7 +80,7 @@ describe('OperatorManager', () => {
     await configManager.buildDynamicConfig();
 
     // CharacterInfoServiceを初期化
-    const characterInfoService = new CharacterInfoService();
+    characterInfoService = new CharacterInfoService();
     characterInfoService.initialize(configManager);
 
     // OperatorManagerを生成（DI）
@@ -150,7 +151,7 @@ describe('OperatorManager', () => {
     test('キャラクター情報取得が動作する', async () => {
       try {
         // 実際に設定されているキャラクターIDで確認
-        const characterInfo = await operatorManager.getCharacterInfo('tsukuyomi');
+        const characterInfo = await characterInfoService.getCharacterInfo('tsukuyomi');
         expect(characterInfo.characterId).toBeDefined();
       } catch (error) {
         // モック環境でのエラーは許容
@@ -233,7 +234,7 @@ describe('OperatorManager', () => {
 
   describe('エラーハンドリング', () => {
     test('存在しないキャラクターの取得でnullが返される', async () => {
-      const result = await operatorManager.getCharacterInfo('non-existent-character');
+      const result = await characterInfoService.getCharacterInfo('non-existent-character');
       expect(result).toBeNull();
     });
 
@@ -267,7 +268,7 @@ describe('OperatorManager', () => {
     test('キャラクター情報サービスが正常に動作する', async () => {
       // CharacterInfoServiceからのキャラクター情報取得を確認
       try {
-        const characterInfo = await operatorManager.getCharacterInfo('test-operator-1');
+        const characterInfo = await characterInfoService.getCharacterInfo('test-operator-1');
         expect(characterInfo).toBeDefined();
       } catch (error) {
         // モック環境でのエラーは許容

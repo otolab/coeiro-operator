@@ -2,7 +2,7 @@
  * voice-resolver.ts: 音声設定の解決を担当
  */
 
-import { OperatorManager, ConfigManager } from '@coeiro-operator/core';
+import { OperatorManager, ConfigManager, CharacterInfoService } from '@coeiro-operator/core';
 import type { Character, Speaker } from '@coeiro-operator/core';
 import { AudioSynthesizer } from './audio-synthesizer.js';
 import { logger } from '@coeiro-operator/common';
@@ -12,6 +12,7 @@ export class VoiceResolver {
   constructor(
     private configManager: ConfigManager,
     private operatorManager: OperatorManager,
+    private characterInfoService: CharacterInfoService,
     private audioSynthesizer: AudioSynthesizer
   ) {}
 
@@ -26,7 +27,7 @@ export class VoiceResolver {
         return null;
       }
 
-      const character = await this.operatorManager.getCharacterInfo(currentStatus.characterId);
+      const character = await this.characterInfoService.getCharacterInfo(currentStatus.characterId);
 
       if (character && character.speakerId) {
         // 保存されたセッション情報からスタイルを取得
@@ -44,7 +45,7 @@ export class VoiceResolver {
         if (styleName) {
           // 明示的にスタイルが指定された場合はそれを使用
           logger.debug('分岐: 明示的スタイル指定');
-          selectedStyle = this.operatorManager.selectStyle(character, styleName);
+          selectedStyle = this.characterInfoService.selectStyle(character, styleName);
         } else if (session?.styleId !== undefined) {
           // セッションに保存されたスタイルIDがある場合はそれを使用
           logger.debug('分岐: セッションからスタイル取得');
@@ -57,12 +58,12 @@ export class VoiceResolver {
           } else {
             // 保存されたスタイルが見つからない場合はデフォルトを使用
             logger.debug('保存されたスタイルが見つからない、デフォルト使用');
-            selectedStyle = this.operatorManager.selectStyle(character, null);
+            selectedStyle = this.characterInfoService.selectStyle(character, null);
           }
         } else {
           // セッション情報がない場合はデフォルトスタイルを使用
           logger.debug('分岐: セッション情報なし、デフォルト使用');
-          selectedStyle = this.operatorManager.selectStyle(character, null);
+          selectedStyle = this.characterInfoService.selectStyle(character, null);
         }
 
         // 新しいstyles構造からstyleMorasPerSecondを生成

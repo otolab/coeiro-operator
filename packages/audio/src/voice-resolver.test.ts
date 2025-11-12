@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { VoiceResolver } from './voice-resolver.js';
-import { OperatorManager, ConfigManager } from '@coeiro-operator/core';
+import { OperatorManager, ConfigManager, CharacterInfoService } from '@coeiro-operator/core';
 import { AudioSynthesizer } from './audio-synthesizer.js';
 import type { Character, Speaker } from '@coeiro-operator/core';
 import type { VoiceConfig } from './types.js';
@@ -13,6 +13,7 @@ describe('VoiceResolver', () => {
   let voiceResolver: VoiceResolver;
   let mockConfigManager: ConfigManager;
   let mockOperatorManager: OperatorManager;
+  let mockCharacterInfoService: CharacterInfoService;
   let mockAudioSynthesizer: AudioSynthesizer;
 
   const mockCharacter: Character = {
@@ -83,11 +84,15 @@ describe('VoiceResolver', () => {
       showCurrentOperator: vi.fn().mockResolvedValue({
         characterId: 'test-character',
       }),
-      getCharacterInfo: vi.fn().mockResolvedValue(mockCharacter),
       getCurrentOperatorSession: vi.fn().mockResolvedValue({
         characterId: 'test-character',
         styleId: 0,
       }),
+    } as any;
+
+    // CharacterInfoServiceのモック
+    mockCharacterInfoService = {
+      getCharacterInfo: vi.fn().mockResolvedValue(mockCharacter),
       selectStyle: vi.fn().mockImplementation((character: Character, styleName: string | null) => {
         if (styleName) {
           const style = Object.values(character.styles).find(s => s.styleName === styleName);
@@ -105,6 +110,7 @@ describe('VoiceResolver', () => {
     voiceResolver = new VoiceResolver(
       mockConfigManager,
       mockOperatorManager,
+      mockCharacterInfoService,
       mockAudioSynthesizer
     );
   });

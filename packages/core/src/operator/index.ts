@@ -132,23 +132,6 @@ export class OperatorManager {
   }
 
   /**
-   * キャラクター情報を取得
-   */
-  async getCharacterInfo(characterId: string): Promise<Character | null> {
-    return await this.characterInfoService.getCharacterInfo(characterId);
-  }
-
-  /**
-   * スタイルを選択
-   * @param character キャラクター情報
-   * @param specifiedStyle 指定されたスタイル名
-   */
-  selectStyle(character: Character, specifiedStyle: string | null = null): Style {
-    return this.characterInfoService.selectStyle(character, specifiedStyle);
-  }
-
-
-  /**
    * 利用可能なオペレータを取得（仕事中のオペレータ情報も含む）
    */
   async getAvailableOperators(): Promise<{ available: string[]; busy: string[] }> {

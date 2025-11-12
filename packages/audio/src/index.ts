@@ -22,6 +22,7 @@ export class SayCoeiroink {
   private configManager: ConfigManager;
   private config: Config;
   private operatorManager: OperatorManager;
+  private characterInfoService: CharacterInfoService;
   private speechQueue: SpeechQueue | null = null;
   private audioPlayer: AudioPlayer | null = null;
   private audioSynthesizer: AudioSynthesizer | null = null;
@@ -33,11 +34,11 @@ export class SayCoeiroink {
     this.config = {} as Config;
 
     // CharacterInfoServiceを初期化
-    const characterInfoService = new CharacterInfoService();
-    characterInfoService.initialize(configManager);
+    this.characterInfoService = new CharacterInfoService();
+    this.characterInfoService.initialize(configManager);
 
     // OperatorManagerを初期化（DI）
-    this.operatorManager = new OperatorManager(configManager, characterInfoService);
+    this.operatorManager = new OperatorManager(configManager, this.characterInfoService);
   }
 
   async initialize(): Promise<void> {
@@ -53,6 +54,7 @@ export class SayCoeiroink {
       this.voiceResolver = new VoiceResolver(
         this.configManager,
         this.operatorManager,
+        this.characterInfoService,
         this.audioSynthesizer
       );
 

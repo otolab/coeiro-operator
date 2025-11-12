@@ -99,6 +99,7 @@ logger.debug('Environment variables check:', {
 
 let sayCoeiroink: SayCoeiroink;
 let operatorManager: OperatorManager;
+let characterInfoService: CharacterInfoService;
 let dictionaryService: DictionaryService;
 let terminalBackground: TerminalBackground | null = null;
 
@@ -118,7 +119,7 @@ try {
   await sayCoeiroink.buildDynamicConfig();
 
   logger.info('Initializing OperatorManager...');
-  const characterInfoService = new CharacterInfoService();
+  characterInfoService = new CharacterInfoService();
   characterInfoService.initialize(configManager);
   operatorManager = new OperatorManager(configManager, characterInfoService);
   await operatorManager.initialize();
@@ -147,9 +148,9 @@ try {
     await sayCoeiroink.initialize();
     await sayCoeiroink.buildDynamicConfig();
 
-    const fallbackCharacterInfoService = new CharacterInfoService();
-    fallbackCharacterInfoService.initialize(fallbackConfigManager);
-    operatorManager = new OperatorManager(fallbackConfigManager, fallbackCharacterInfoService);
+    characterInfoService = new CharacterInfoService();
+    characterInfoService.initialize(fallbackConfigManager);
+    operatorManager = new OperatorManager(fallbackConfigManager, characterInfoService);
     await operatorManager.initialize();
 
     dictionaryService = new DictionaryService();
@@ -240,11 +241,12 @@ function formatAssignmentResult(assignResult: AssignResult, availableStyles: Sty
 // Utility functions for operator styles
 async function getTargetCharacter(
   manager: OperatorManager,
+  characterInfoService: CharacterInfoService,
   characterId?: string
 ): Promise<{ character: Character; characterId: string }> {
   if (characterId) {
     try {
-      const character = await manager.getCharacterInfo(characterId);
+      const character = await characterInfoService.getCharacterInfo(characterId);
       if (!character) {
         throw new Error(`キャラクター '${characterId}' が見つかりません`);
       }
@@ -260,7 +262,7 @@ async function getTargetCharacter(
       );
     }
 
-    const character = await manager.getCharacterInfo(currentOperator.characterId);
+    const character = await characterInfoService.getCharacterInfo(currentOperator.characterId);
     if (!character) {
       throw new Error(
         `現在のオペレータ '${currentOperator.characterId}' のキャラクター情報が見つかりません`
@@ -357,7 +359,7 @@ server.registerTool(
         logger.error('❌ TerminalBackground instance is null');
       }
 
-      const character = await operatorManager.getCharacterInfo(assignResult.characterId);
+      const character = await characterInfoService.getCharacterInfo(assignResult.characterId);
 
       if (!character) {
         throw new Error(`キャラクター情報が見つかりません: ${assignResult.characterId}`);
@@ -618,7 +620,7 @@ server.registerTool(
             throw new Error(`キャラクター情報が取得できません`);
           }
 
-          const character = await operatorManager.getCharacterInfo(targetCharacterId);
+          const character = await characterInfoService.getCharacterInfo(targetCharacterId);
           if (!character) {
             throw new Error(`キャラクター '${targetCharacterId}' が見つかりません`);
           }
@@ -872,7 +874,7 @@ server.registerTool(
       if (character) {
         // 指定されたキャラクターの情報を取得
         try {
-          targetCharacter = await operatorManager.getCharacterInfo(character);
+          targetCharacter = await characterInfoService.getCharacterInfo(character);
           if (!targetCharacter) {
             throw new Error(`キャラクター '${character}' が見つかりません`);
           }
@@ -889,7 +891,7 @@ server.registerTool(
           );
         }
 
-        targetCharacter = await operatorManager.getCharacterInfo(currentOperator.characterId);
+        targetCharacter = await characterInfoService.getCharacterInfo(currentOperator.characterId);
         targetCharacterId = currentOperator.characterId;
 
         if (!targetCharacter) {
