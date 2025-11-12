@@ -3,8 +3,8 @@
  */
 
 import { CharacterInfoService } from './character-info-service.js';
-import FileOperationManager from './file-operation-manager.js';
-import ConfigManager, { CharacterConfig } from './config-manager.js';
+import FileOperationManager from '../file-operation-manager.js';
+import ConfigManager, { CharacterConfig } from '../config/config-manager.js';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -27,45 +27,60 @@ describe('CharacterInfoService', () => {
     speakingStyle: 'フレンドリー',
     greeting: 'こんにちは！',
     farewell: 'またね！',
-    defaultStyle: 'normal',
+    defaultStyleId: 0,
     speakerId: 'test-voice-123',
+    styles: {
+      0: {
+        styleId: 0,
+        styleName: 'ノーマル',
+        personality: '普通',
+        speakingStyle: '標準',
+      },
+      1: {
+        styleId: 1,
+        styleName: 'ハッピー',
+        personality: 'とても明るい',
+        speakingStyle: '楽しげ',
+      },
+      2: {
+        styleId: 2,
+        styleName: 'サッド',
+        personality: '悲しげ',
+        speakingStyle: '落ち着いた',
+      },
+    },
   };
 
-  // テスト用のサンプルキャラクター（Speaker情報含む）
+  // テスト用のサンプルキャラクター（新しいCharacter型）
   const mockCharacter: Character = {
     characterId: 'test-character',
-    speaker: {
-      speakerId: 'test-voice-123',
-      speakerName: 'テストキャラクター',
-      styles: [
-        {
-          styleId: 0,
-          styleName: 'ノーマル',
-          personality: '普通',
-          speakingStyle: '標準',
-          disabled: false,
-        },
-        {
-          styleId: 1,
-          styleName: 'ハッピー',
-          personality: 'とても明るい',
-          speakingStyle: '楽しげ',
-          disabled: false,
-        },
-        {
-          styleId: 2,
-          styleName: 'サッド',
-          personality: '悲しげ',
-          speakingStyle: '落ち着いた',
-          disabled: true,
-        },
-      ],
-    },
-    defaultStyle: 'normal',
+    speakerId: 'test-voice-123',
+    speakerName: 'テストキャラクター',
+    defaultStyleId: 0,
     greeting: 'こんにちは！',
     farewell: 'またね！',
     personality: '明るくて元気',
     speakingStyle: 'フレンドリー',
+    styles: {
+      0: {
+        styleId: 0,
+        styleName: 'ノーマル',
+        personality: '普通',
+        speakingStyle: '標準',
+      },
+      1: {
+        styleId: 1,
+        styleName: 'ハッピー',
+        personality: 'とても明るい',
+        speakingStyle: '楽しげ',
+      },
+      2: {
+        styleId: 2,
+        styleName: 'サッド',
+        personality: '悲しげ',
+        speakingStyle: '落ち着いた',
+      },
+    },
   };
 
   beforeEach(async () => {
@@ -108,10 +123,10 @@ describe('CharacterInfoService', () => {
 
       const character = await characterInfoService.getCharacterInfo('test-character');
 
-      expect(character.speaker?.speakerName).toBe('テストキャラクター');
-      expect(character.speaker?.speakerId).toBe('test-voice-123');
+      expect(character.speakerName).toBe('テストキャラクター');
+      expect(character.speakerId).toBe('test-voice-123');
       expect(character.greeting).toBe('こんにちは！');
-      expect(character.speaker?.styles).toBeDefined();
+      expect(character.styles).toBeDefined();
     });
 
     test('初期化されていない場合はエラー', async () => {
@@ -174,10 +189,7 @@ describe('CharacterInfoService', () => {
     test('利用可能なスタイルがない場合はエラー', () => {
       const noStyleCharacter: Character = {
         ...mockCharacter,
-        speaker: mockCharacter.speaker ? {
-          ...mockCharacter.speaker,
-          styles: [], // 空のスタイル配列
-        } : undefined,
+        styles: {}, // 空のstylesオブジェクト
       };
 
       expect(() => characterInfoService.selectStyle(noStyleCharacter)).toThrow(
@@ -194,8 +206,8 @@ describe('CharacterInfoService', () => {
 
       const character = await characterInfoService.getOperatorCharacterInfo('operator1');
 
-      expect(character.speaker?.speakerName).toBe('テストキャラクター');
-      expect(character.speaker?.speakerId).toBe('test-voice-123');
+      expect(character.speakerName).toBe('テストキャラクター');
+      expect(character.speakerId).toBe('test-voice-123');
     });
 
     test('存在しないオペレータの場合はエラー', async () => {

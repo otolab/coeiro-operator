@@ -281,6 +281,18 @@ async function main() {
     const { values } = parseArgs({
       args: process.argv.slice(2),
       options: {
+        all: {
+          type: 'boolean',
+          default: false,
+        },
+        speaker: {
+          type: 'string',
+          default: undefined,
+        },
+        style: {
+          type: 'string',
+          default: undefined,
+        },
         output: {
           type: 'string',
           short: 'o',
@@ -302,12 +314,18 @@ async function main() {
   npx tsx packages/cli/scripts/measure-speech-rate.ts [オプション]
 
 オプション:
-  -o, --output <path>  測定結果をJSONファイルに保存
-  -h, --help          ヘルプを表示
+  --all                     全スピーカー・全スタイルを測定
+  --speaker <name>          スピーカー名を指定
+  --style <name>            スタイル名を指定
+  -o, --output <path>       測定結果をJSONファイルに保存
+  -h, --help                ヘルプを表示
 
 例:
-  npx tsx packages/cli/scripts/measure-speech-rate.ts
-  npx tsx packages/cli/scripts/measure-speech-rate.ts -o ./speech-rates.json
+  # 特定のスピーカー・スタイルを測定
+  npx tsx packages/cli/scripts/measure-speech-rate.ts --speaker アルマちゃん --style 泣き声
+
+  # 全スピーカー・全スタイルを測定
+  npx tsx packages/cli/scripts/measure-speech-rate.ts --all
 
 説明:
   COEIROINKの各Speaker/スタイルで標準話速（speedScale=1.0）のモーラ/秒を測定します。
@@ -319,19 +337,120 @@ async function main() {
     // COEIROINKサーバーの接続確認
     logger.info('COEIROINKサーバーに接続中...');
 
-    // 測定実行
-    const results = await measureSpeechRate();
+    const speakerProvider = getSpeakerProvider();
+    speakerProvider.updateConnection({
+      host: 'localhost',
+      port: '50032',
+    });
+
+    const availableSpeakers = await speakerProvider.getSpeakers();
+
+    let results: MeasurementResult[];
+
+    if (values.all) {
+      // 全測定モード
+      logger.info('全スピーカー・全スタイルを測定します...');
+      results = await measureSpeechRate();
+    } else if (values.speaker && values.style) {
+      // 特定のスピーカー・スタイルを測定
+      const selectedSpeaker = availableSpeakers.find(s => s.speakerName === values.speaker);
+      if (!selectedSpeaker) {
+        console.error(`スピーカー "${values.speaker}" が見つかりません`);
+        console.log('\n利用可能なスピーカー:');
+        availableSpeakers.forEach(s => console.log(`  - ${s.speakerName}`));
+        process.exit(1);
+      }
+
+      const selectedStyle = selectedSpeaker.styles.find(s => s.styleName === values.style);
+      if (!selectedStyle) {
+        console.error(`スタイル "${values.style}" が見つかりません`);
+        console.log(`\n${selectedSpeaker.speakerName} の利用可能なスタイル:`);
+        selectedSpeaker.styles.forEach(s => console.log(`  - ${s.styleName}`));
+        process.exit(1);
+      }
+
+      logger.info(`測定: ${selectedSpeaker.speakerName} - ${selectedStyle.styleName}`);
+      results = [];
+
+      const measurements = [];
+      let totalMoras = 0;
+      let totalDuration = 0;
+
+      for (let i = 0; i < TEST_TEXTS.length; i++) {
+        const testText = TEST_TEXTS[i];
+        const moraCount = testText.expectedMoras;
+
+        try {
+          const synthesisParams = {
+            text: testText.text,
+            speakerUuid: selectedSpeaker.speakerUuid,
+            styleId: selectedStyle.styleId,
+            speedScale: 1.0,
+            volumeScale: 1.0,
+            pitchScale: 0.0,
+            intonationScale: 1.0,
+            prePhonemeLength: 0.1,
+            postPhonemeLength: 0.1,
+            outputSamplingRate: 24000,
+          };
+
+          const url = `http://localhost:50032/v1/synthesis`;
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(synthesisParams),
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const audioBuffer = await response.arrayBuffer();
+          const duration = getWavDuration(audioBuffer);
+          const morasPerSecond = moraCount / duration;
+
+          measurements.push({
+            textIndex: i,
+            duration,
+            moraCount,
+            morasPerSecond,
+          });
+
+          totalMoras += moraCount;
+          totalDuration += duration;
+
+          logger.info(`文章${i + 1}: ${morasPerSecond.toFixed(2)} モーラ/秒 (${duration.toFixed(2)}秒, ${moraCount}モーラ)`);
+        } catch (error) {
+          logger.error(`文章${i + 1}: 測定失敗 - ${error}`);
+        }
+      }
+
+      if (measurements.length > 0) {
+        const averageMorasPerSecond = totalMoras / totalDuration;
+
+        results.push({
+          speakerId: selectedSpeaker.speakerUuid,
+          speakerName: selectedSpeaker.speakerName,
+          styleId: selectedStyle.styleId,
+          styleName: selectedStyle.styleName,
+          morasPerSecond: averageMorasPerSecond,
+          measurements,
+        });
+
+        logger.info(`平均: ${averageMorasPerSecond.toFixed(2)} モーラ/秒`);
+      }
+    } else {
+      // オプション不足
+      console.error('--speaker と --style を両方指定するか、--all を指定してください');
+      console.log('詳細は --help を参照してください');
+      process.exit(1);
+    }
 
     // 結果の表示
     console.log('\n========== 測定結果 ==========');
     for (const result of results) {
       console.log(`${result.speakerName} - ${result.styleName}: ${result.morasPerSecond.toFixed(2)} モーラ/秒`);
     }
-
-    // config.json形式の出力
-    const configFormat = formatForConfig(results);
-    console.log('\n========== config.json用設定 ==========');
-    console.log(JSON.stringify({ characters: configFormat }, null, 2));
 
     // ファイルへの保存
     if (values.output) {
@@ -341,7 +460,6 @@ async function main() {
         JSON.stringify({
           timestamp: new Date().toISOString(),
           results,
-          configFormat,
         }, null, 2)
       );
       logger.info(`測定結果を保存しました: ${outputPath}`);

@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { VoiceResolver } from './voice-resolver.js';
-import { OperatorManager, ConfigManager } from '@coeiro-operator/core';
+import { OperatorManager, ConfigManager, CharacterInfoService } from '@coeiro-operator/core';
 import { AudioSynthesizer } from './audio-synthesizer.js';
 import type { Character, Speaker } from '@coeiro-operator/core';
 import type { VoiceConfig } from './types.js';
@@ -13,23 +13,22 @@ describe('VoiceResolver', () => {
   let voiceResolver: VoiceResolver;
   let mockConfigManager: ConfigManager;
   let mockOperatorManager: OperatorManager;
+  let mockCharacterInfoService: CharacterInfoService;
   let mockAudioSynthesizer: AudioSynthesizer;
 
   const mockCharacter: Character = {
     characterId: 'test-character',
-    speaker: {
-      speakerId: 'test-speaker-uuid',
-      speakerName: 'テストスピーカー',
-      styles: [
-        { styleId: 0, styleName: 'ノーマル' },
-        { styleId: 1, styleName: 'ハッピー' },
-      ],
-    },
-    defaultStyle: 'ノーマル',
+    speakerId: 'test-speaker-uuid',
+    speakerName: 'テストスピーカー',
+    defaultStyleId: 0,
     greeting: 'こんにちは',
     farewell: 'さようなら',
     personality: 'フレンドリー',
     speakingStyle: '丁寧',
+    styles: {
+      0: { styleId: 0, styleName: 'ノーマル' },
+      1: { styleId: 1, styleName: 'ハッピー' },
+    },
   };
 
   const mockSpeakers = [
@@ -85,17 +84,21 @@ describe('VoiceResolver', () => {
       showCurrentOperator: vi.fn().mockResolvedValue({
         characterId: 'test-character',
       }),
-      getCharacterInfo: vi.fn().mockResolvedValue(mockCharacter),
       getCurrentOperatorSession: vi.fn().mockResolvedValue({
         characterId: 'test-character',
         styleId: 0,
       }),
+    } as any;
+
+    // CharacterInfoServiceのモック
+    mockCharacterInfoService = {
+      getCharacterInfo: vi.fn().mockResolvedValue(mockCharacter),
       selectStyle: vi.fn().mockImplementation((character: Character, styleName: string | null) => {
         if (styleName) {
-          const style = character.speaker?.styles.find(s => s.styleName === styleName);
-          return style || character.speaker?.styles[0];
+          const style = Object.values(character.styles).find(s => s.styleName === styleName);
+          return style || Object.values(character.styles)[0];
         }
-        return character.speaker?.styles[0];
+        return Object.values(character.styles)[0];
       }),
     } as any;
 
@@ -107,6 +110,7 @@ describe('VoiceResolver', () => {
     voiceResolver = new VoiceResolver(
       mockConfigManager,
       mockOperatorManager,
+      mockCharacterInfoService,
       mockAudioSynthesizer
     );
   });
@@ -116,7 +120,7 @@ describe('VoiceResolver', () => {
       const result = await voiceResolver.getCurrentVoiceConfig();
 
       expect(result).toBeDefined();
-      expect(result?.speaker.speakerId).toBe('test-speaker-uuid');
+      expect(result?.speakerId).toBe('test-speaker-uuid');
       expect(result?.selectedStyleId).toBe(0);
     });
 
@@ -187,14 +191,14 @@ describe('VoiceResolver', () => {
     it('オペレータの音声設定を使用する', async () => {
       const result = await voiceResolver.resolveVoiceConfig(null, undefined, true);
 
-      expect(result.speaker.speakerId).toBe('test-speaker-uuid');
+      expect(result.speakerId).toBe('test-speaker-uuid');
       expect(result.selectedStyleId).toBe(0);
     });
 
     it('文字列（CharacterId）から音声設定を解決する', async () => {
       const result = await voiceResolver.resolveVoiceConfig('test-character', undefined, true);
 
-      expect(result.speaker.speakerId).toBe('test-speaker-uuid');
+      expect(result.speakerId).toBe('test-speaker-uuid');
     });
 
     it('VoiceConfigオブジェクトをそのまま返す', async () => {

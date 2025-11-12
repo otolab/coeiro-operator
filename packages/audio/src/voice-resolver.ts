@@ -2,7 +2,7 @@
  * voice-resolver.ts: 音声設定の解決を担当
  */
 
-import { OperatorManager, ConfigManager } from '@coeiro-operator/core';
+import { OperatorManager, ConfigManager, CharacterInfoService } from '@coeiro-operator/core';
 import type { Character, Speaker } from '@coeiro-operator/core';
 import { AudioSynthesizer } from './audio-synthesizer.js';
 import { logger } from '@coeiro-operator/common';
@@ -12,6 +12,7 @@ export class VoiceResolver {
   constructor(
     private configManager: ConfigManager,
     private operatorManager: OperatorManager,
+    private characterInfoService: CharacterInfoService,
     private audioSynthesizer: AudioSynthesizer
   ) {}
 
@@ -26,9 +27,9 @@ export class VoiceResolver {
         return null;
       }
 
-      const character = await this.operatorManager.getCharacterInfo(currentStatus.characterId);
+      const character = await this.characterInfoService.getCharacterInfo(currentStatus.characterId);
 
-      if (character && character.speaker && character.speaker.speakerId) {
+      if (character && character.speakerId) {
         // 保存されたセッション情報からスタイルを取得
         const session = await this.operatorManager.getCurrentOperatorSession();
         let selectedStyle: any;
@@ -44,39 +45,41 @@ export class VoiceResolver {
         if (styleName) {
           // 明示的にスタイルが指定された場合はそれを使用
           logger.debug('分岐: 明示的スタイル指定');
-          selectedStyle = this.operatorManager.selectStyle(character, styleName);
+          selectedStyle = this.characterInfoService.selectStyle(character, styleName);
         } else if (session?.styleId !== undefined) {
           // セッションに保存されたスタイルIDがある場合はそれを使用
           logger.debug('分岐: セッションからスタイル取得');
-          const savedStyle = character.speaker.styles.find(s => s.styleId === session.styleId);
+          const savedStyle = character.styles?.[session.styleId];
           if (savedStyle) {
             selectedStyle = savedStyle;
             logger.debug(
-              `保存されたスタイルを使用: ${savedStyle.styleName} (ID:${savedStyle.styleId})`
+              `保存されたスタイルを使用: ${savedStyle.styleName} (ID:${session.styleId})`
             );
           } else {
             // 保存されたスタイルが見つからない場合はデフォルトを使用
             logger.debug('保存されたスタイルが見つからない、デフォルト使用');
-            selectedStyle = this.operatorManager.selectStyle(character, null);
+            selectedStyle = this.characterInfoService.selectStyle(character, null);
           }
         } else {
           // セッション情報がない場合はデフォルトスタイルを使用
           logger.debug('分岐: セッション情報なし、デフォルト使用');
-          selectedStyle = this.operatorManager.selectStyle(character, null);
+          selectedStyle = this.characterInfoService.selectStyle(character, null);
         }
 
         // 新しいstyles構造からstyleMorasPerSecondを生成
         const styleMorasPerSecond: Record<number, number> = {};
         if (character.styles) {
           Object.entries(character.styles).forEach(([styleId, config]) => {
-            styleMorasPerSecond[Number(styleId)] = config.morasPerSecond;
+            if (config.morasPerSecond !== undefined) {
+              styleMorasPerSecond[Number(styleId)] = config.morasPerSecond;
+            }
           });
         }
 
         return {
-          speaker: character.speaker,
+          speaker: null, // 廃止予定: character.speaker は削除されたため
           selectedStyleId: selectedStyle.styleId,
-          speakerId: character.speaker.speakerId,
+          speakerId: character.speakerId,
           styleMorasPerSecond,
         };
       }
@@ -150,7 +153,9 @@ export class VoiceResolver {
       const styleMorasPerSecond: Record<number, number> = {};
       if (characterConfig.styles) {
         Object.entries(characterConfig.styles).forEach(([styleId, config]) => {
-          styleMorasPerSecond[Number(styleId)] = config.morasPerSecond;
+          if (config.morasPerSecond !== undefined) {
+            styleMorasPerSecond[Number(styleId)] = config.morasPerSecond;
+          }
         });
       }
 
@@ -178,14 +183,20 @@ export class VoiceResolver {
       // オペレータから音声を取得（スタイル指定も渡す）
       const operatorVoice = await this.getCurrentVoiceConfig(style);
       if (operatorVoice) {
-        // スタイル情報を取得して詳細ログ出力
-        const selectedStyle = operatorVoice.speaker.styles.find(
-          s => s.styleId === operatorVoice.selectedStyleId
-        );
-        const styleName = selectedStyle?.styleName || `ID:${operatorVoice.selectedStyleId}`;
-        logger.info(
-          `オペレータ音声を使用: ${operatorVoice.speaker.speakerName} (スタイル: ${styleName})`
-        );
+        // ログ出力（speakerがnullの場合はspeakerIdを使用）
+        if (operatorVoice.speaker) {
+          const selectedStyle = operatorVoice.speaker.styles.find(
+            s => s.styleId === operatorVoice.selectedStyleId
+          );
+          const styleName = selectedStyle?.styleName || `ID:${operatorVoice.selectedStyleId}`;
+          logger.info(
+            `オペレータ音声を使用: ${operatorVoice.speaker.speakerName} (スタイル: ${styleName})`
+          );
+        } else {
+          logger.info(
+            `オペレータ音声を使用: ${operatorVoice.speakerId} (スタイルID: ${operatorVoice.selectedStyleId})`
+          );
+        }
         return operatorVoice;
       } else if (allowFallback) {
         // CLIのみ: デフォルトキャラクターを使用（つくよみちゃん）
@@ -202,19 +213,23 @@ export class VoiceResolver {
       // string型の場合はCharacterIdとして解決
       logger.info(`キャラクター解決: ${voice}`);
       const voiceConfig = await this.resolveCharacterToConfig(voice, style);
-      const selectedStyle = voiceConfig.speaker.styles.find(
-        s => s.styleId === voiceConfig.selectedStyleId
-      );
-      const styleName = selectedStyle?.styleName || `ID:${voiceConfig.selectedStyleId}`;
-      logger.info(`  → ${voiceConfig.speaker.speakerName} (スタイル: ${styleName})`);
+      if (voiceConfig.speaker) {
+        const selectedStyle = voiceConfig.speaker.styles.find(
+          s => s.styleId === voiceConfig.selectedStyleId
+        );
+        const styleName = selectedStyle?.styleName || `ID:${voiceConfig.selectedStyleId}`;
+        logger.info(`  → ${voiceConfig.speaker.speakerName} (スタイル: ${styleName})`);
+      }
       return voiceConfig;
     } else {
       // すでにVoiceConfig型の場合はそのまま使用
-      const selectedStyle = voice.speaker.styles.find(
-        s => s.styleId === voice.selectedStyleId
-      );
-      const styleName = selectedStyle?.styleName || `ID:${voice.selectedStyleId}`;
-      logger.info(`VoiceConfig使用: ${voice.speaker.speakerName} (スタイル: ${styleName})`);
+      if (voice.speaker) {
+        const selectedStyle = voice.speaker.styles.find(
+          s => s.styleId === voice.selectedStyleId
+        );
+        const styleName = selectedStyle?.styleName || `ID:${voice.selectedStyleId}`;
+        logger.info(`VoiceConfig使用: ${voice.speaker.speakerName} (スタイル: ${styleName})`);
+      }
       return voice;
     }
   }

@@ -5,6 +5,8 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import OperatorManager from './index.js';
+import ConfigManager from './config/config-manager.js';
+import CharacterInfoService from './character/character-info-service.js';
 import { writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -14,6 +16,7 @@ vi.stubGlobal('fetch', vi.fn());
 
 describe('OperatorManager', () => {
   let operatorManager: OperatorManager;
+  let characterInfoService: CharacterInfoService;
   let tempDir: string;
 
   beforeEach(async () => {
@@ -69,11 +72,19 @@ describe('OperatorManager', () => {
     // fetchモックを設定
     (global.fetch as unknown).mockRejectedValue(new Error('Network error'));
 
-    operatorManager = new OperatorManager();
-
     // 環境変数を設定して一時ディレクトリを使用
     process.env.HOME = tempDir;
 
+    // ConfigManagerを初期化
+    const configManager = new ConfigManager(configSubDir);
+    await configManager.buildDynamicConfig();
+
+    // CharacterInfoServiceを初期化
+    characterInfoService = new CharacterInfoService();
+    characterInfoService.initialize(configManager);
+
+    // OperatorManagerを生成（DI）
+    operatorManager = new OperatorManager(configManager, characterInfoService);
     await operatorManager.initialize();
   });
 
@@ -99,14 +110,6 @@ describe('OperatorManager', () => {
   });
 
   describe('初期化と基本機能', () => {
-    test('OperatorManagerが正常に初期化される', async () => {
-      // 設定の事前構築が正常に動作することを確認
-      await operatorManager.buildDynamicConfig();
-
-      // エラーが発生しないことを確認
-      expect(true).toBe(true);
-    });
-
     test('初期化が正常に完了する', async () => {
       // 初期化が正常に完了することを確認（beforeEachで実行済み）
       expect(true).toBe(true);
@@ -148,7 +151,7 @@ describe('OperatorManager', () => {
     test('キャラクター情報取得が動作する', async () => {
       try {
         // 実際に設定されているキャラクターIDで確認
-        const characterInfo = await operatorManager.getCharacterInfo('tsukuyomi');
+        const characterInfo = await characterInfoService.getCharacterInfo('tsukuyomi');
         expect(characterInfo.characterId).toBeDefined();
       } catch (error) {
         // モック環境でのエラーは許容
@@ -231,7 +234,7 @@ describe('OperatorManager', () => {
 
   describe('エラーハンドリング', () => {
     test('存在しないキャラクターの取得でnullが返される', async () => {
-      const result = await operatorManager.getCharacterInfo('non-existent-character');
+      const result = await characterInfoService.getCharacterInfo('non-existent-character');
       expect(result).toBeNull();
     });
 
@@ -265,11 +268,89 @@ describe('OperatorManager', () => {
     test('キャラクター情報サービスが正常に動作する', async () => {
       // CharacterInfoServiceからのキャラクター情報取得を確認
       try {
-        const characterInfo = await operatorManager.getCharacterInfo('test-operator-1');
+        const characterInfo = await characterInfoService.getCharacterInfo('test-operator-1');
         expect(characterInfo).toBeDefined();
       } catch (error) {
         // モック環境でのエラーは許容
         expect(error).toBeDefined();
+      }
+    });
+  });
+
+  describe('listSpeakers', () => {
+    test('Speaker一覧を取得できる', async () => {
+      // モックSpeakerProviderを設定
+      const { getSpeakerProvider } = await import('../environment/speaker-provider.js');
+      const speakerProvider = getSpeakerProvider();
+
+      vi.spyOn(speakerProvider, 'getSpeakers').mockResolvedValue([
+        {
+          speakerUuid: 'speaker-uuid-1',
+          speakerName: 'Speaker 1',
+          styles: [
+            { styleId: 0, styleName: 'ノーマル' },
+            { styleId: 1, styleName: 'ハッピー' },
+          ],
+        },
+        {
+          speakerUuid: 'speaker-uuid-2',
+          speakerName: 'Speaker 2',
+          styles: [
+            { styleId: 0, styleName: 'ノーマル' },
+          ],
+        },
+      ]);
+
+      const speakers = await characterInfoService.listSpeakers();
+
+      expect(speakers).toHaveLength(2);
+      expect(speakers[0].speakerId).toBe('speaker-uuid-1');
+      expect(speakers[0].speakerName).toBe('Speaker 1');
+      expect(speakers[0].styles).toHaveLength(2);
+    });
+
+    test('未登録のSpeakerのみをフィルタリングできる', async () => {
+      const { getSpeakerProvider } = await import('../environment/speaker-provider.js');
+      const speakerProvider = getSpeakerProvider();
+
+      // test-operator-1はspeaker-uuid-1を使用している設定
+      vi.spyOn(speakerProvider, 'getSpeakers').mockResolvedValue([
+        {
+          speakerUuid: 'test-speaker-uuid', // test-operator-1で使用
+          speakerName: 'テストスピーカー',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+        {
+          speakerUuid: 'unregistered-uuid',
+          speakerName: '未登録Speaker',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ]);
+
+      const unregistered = await characterInfoService.listSpeakers({ unregisteredOnly: true });
+
+      // test-speaker-uuidは登録済みなので除外され、unregistered-uuidのみ返される
+      expect(unregistered.length).toBeGreaterThanOrEqual(0);
+      expect(unregistered.every(s => !s.isRegistered)).toBe(true);
+    });
+
+    test('使用しているキャラクターIDを正しく返す', async () => {
+      const { getSpeakerProvider } = await import('../environment/speaker-provider.js');
+      const speakerProvider = getSpeakerProvider();
+
+      vi.spyOn(speakerProvider, 'getSpeakers').mockResolvedValue([
+        {
+          speakerUuid: 'test-speaker-uuid',
+          speakerName: 'テストスピーカー',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ]);
+
+      const speakers = await characterInfoService.listSpeakers();
+
+      const registeredSpeaker = speakers.find(s => s.speakerId === 'test-speaker-uuid');
+      if (registeredSpeaker && registeredSpeaker.isRegistered) {
+        expect(registeredSpeaker.usedByCharacters).toContain('test-operator-1');
       }
     });
   });

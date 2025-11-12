@@ -69,9 +69,10 @@ export function createMockConfigManager(overrides: Partial<Config> = {}): Config
       };
     },
     getAvailableCharacterIds: async () => ['test-speaker-1', 'tsukuyomi'],
-    getOperatorConfig: async () => mergedConfig.operator,
-    getAudioConfig: async () => mergedConfig.audio,
-    getConnectionConfig: async () => mergedConfig.connection,
+    getOperatorConfig: vi.fn().mockResolvedValue(mergedConfig.operator),
+    getAudioConfig: vi.fn().mockResolvedValue(mergedConfig.audio),
+    getConnectionConfig: vi.fn().mockResolvedValue(mergedConfig.connection),
+    getStateDir: () => '/tmp/test-state',
   } as unknown as ConfigManager;
 
   return mockConfigManager;

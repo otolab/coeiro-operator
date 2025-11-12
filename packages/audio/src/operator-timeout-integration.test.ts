@@ -5,7 +5,7 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SayCoeiroink } from './index.js';
-import { OperatorManager, ConfigManager } from '@coeiro-operator/core';
+import { OperatorManager, ConfigManager, CharacterInfoService } from '@coeiro-operator/core';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import * as fs from 'fs/promises';
@@ -14,6 +14,7 @@ describe('オペレータタイムアウト統合テスト', () => {
   let sayCoeiroink: SayCoeiroink;
   let operatorManager: OperatorManager;
   let configManager: ConfigManager;
+  let characterInfoService: CharacterInfoService;
   let testConfigDir: string;
 
   beforeEach(async () => {
@@ -42,10 +43,24 @@ describe('オペレータタイムアウト統合テスト', () => {
         }
         return Promise.resolve(null);
       }),
+      getOperatorConfig: vi.fn().mockResolvedValue({ rate: 200 }),
+      getAudioConfig: vi.fn().mockResolvedValue({
+        latencyMode: 'balanced',
+        splitMode: 'punctuation',
+        bufferSize: 2048,
+      }),
+      getConnectionConfig: vi.fn().mockResolvedValue({ host: 'localhost', port: '50032' }),
+      getConfigDir: vi.fn().mockReturnValue(testConfigDir),
+      getStateDir: vi.fn().mockReturnValue(join(testConfigDir, 'state')),
+      getCoeiroinkConfigPath: vi.fn().mockReturnValue(join(testConfigDir, 'coeiroink-config.json')),
     } as any;
 
-    // OperatorManagerを初期化
-    operatorManager = new OperatorManager();
+    // CharacterInfoServiceを初期化
+    characterInfoService = new CharacterInfoService();
+    characterInfoService.initialize(configManager);
+
+    // OperatorManagerを初期化（DI）
+    operatorManager = new OperatorManager(configManager, characterInfoService);
     await operatorManager.initialize();
 
     // SayCoeiroinkを初期化
@@ -261,7 +276,7 @@ describe('オペレータタイムアウト統合テスト', () => {
       styleName: 'のーまる',
     });
 
-    vi.spyOn(operatorManager, 'getCharacterInfo').mockResolvedValue({
+    vi.spyOn(characterInfoService, 'getCharacterInfo').mockResolvedValue({
       characterId: 'dia',
       speaker: {
         speakerId: 'dia-speaker-id',
@@ -275,7 +290,7 @@ describe('オペレータタイムアウト統合テスト', () => {
       speakingStyle: '丁寧で温かみのある口調',
     } as any);
 
-    vi.spyOn(operatorManager, 'selectStyle').mockReturnValue({
+    vi.spyOn(characterInfoService, 'selectStyle').mockReturnValue({
       styleId: 3,
       styleName: 'のーまる',
     });

@@ -45,6 +45,10 @@ packages/*/src/**/*.js.map
 # code-bugs分析ファイル
 .code-bugs/
 
+# search-docs
+.search-docs.json
+.search-docs/
+
 # テストカバレッジ
 coverage/
 

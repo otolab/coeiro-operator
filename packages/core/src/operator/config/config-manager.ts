@@ -8,16 +8,51 @@ import { constants } from 'fs';
 import { join } from 'path';
 import {
   BUILTIN_CHARACTER_CONFIGS,
-  BaseCharacterConfig,
   CharacterConfig,
-} from './character-defaults.js';
-import { getSpeakerProvider } from '../environment/speaker-provider.js';
-import { AudioConfig, FullConfig as BaseFullConfig, OperatorConfig } from '../types.js';
+  StyleConfig,
+} from '../character/character-defaults.js';
+import { getSpeakerProvider } from '../../environment/speaker-provider.js';
+import { AudioConfig, FullConfig as BaseFullConfig, OperatorConfig } from '../../types.js';
 import { deepMerge } from '@coeiro-operator/common';
+import { Style } from '../character/character-info-service.js';
 
 // FullConfig型の定義（BaseFullConfigを拡張）
 export interface FullConfig extends Omit<BaseFullConfig, 'characters'> {
-  characters: Record<string, BaseCharacterConfig | CharacterConfig>;
+  characters: Record<string, CharacterConfig>;
+}
+
+// API型（COEIROINK APIから取得されるデータ）
+interface StyleFromAPI {
+  styleId: number;
+  styleName: string;
+}
+
+/**
+ * API stylesとconfig stylesをマージ
+ * - すべてのAPI stylesが利用可能
+ * - morasPerSecondなどの付加情報はconfigから追加
+ */
+export function mergeStyles(
+  apiStyles: StyleFromAPI[],
+  configStyles: Record<number, StyleConfig> = {},
+  characterPersonality: string,
+  characterSpeakingStyle: string
+): Record<number, StyleConfig> {
+  const merged: Record<number, StyleConfig> = {};
+
+  for (const apiStyle of apiStyles) {
+    const config = configStyles[apiStyle.styleId];
+
+    merged[apiStyle.styleId] = {
+      styleName: apiStyle.styleName,
+      morasPerSecond: config?.morasPerSecond,
+      personality: config?.personality || characterPersonality,
+      speakingStyle: config?.speakingStyle || characterSpeakingStyle,
+      disabled: config?.disabled,
+    };
+  }
+
+  return merged;
 }
 
 // ターミナル背景設定の型定義
@@ -63,7 +98,7 @@ interface Config {
   };
   characters: Record<
     string,
-    Partial<BaseCharacterConfig> & { speakerId?: string; disabled?: boolean }
+    Partial<CharacterConfig> & { speakerId?: string; disabled?: boolean }
   >;
 }
 
@@ -113,6 +148,27 @@ export class ConfigManager {
   constructor(configDir: string) {
     this.configDir = configDir;
     this.configFile = join(configDir, 'config.json');
+  }
+
+  /**
+   * 設定ディレクトリのパスを取得
+   */
+  getConfigDir(): string {
+    return this.configDir;
+  }
+
+  /**
+   * 状態保存用ディレクトリのパスを取得
+   */
+  getStateDir(): string {
+    return join(this.configDir, 'state');
+  }
+
+  /**
+   * COEIROINK設定ファイルのパスを取得
+   */
+  getCoeiroinkConfigPath(): string {
+    return join(this.configDir, 'coeiroink-config.json');
   }
 
   /**
@@ -189,13 +245,21 @@ export class ConfigManager {
 
         if (userCharacterConfig.disabled) continue;
 
-        // 利用可能なスタイル一覧を追加
-        const availableStyles = speaker.styles?.map(s => s.styleName) || [];
+        // stylesをマージ（API + config）
+        const mergedStyles = mergeStyles(
+          speaker.styles,
+          {
+            ...builtinConfig.styles,
+            ...userCharacterConfig.styles,
+          },
+          userCharacterConfig.personality || builtinConfig.personality,
+          userCharacterConfig.speakingStyle || builtinConfig.speakingStyle
+        );
 
         dynamicCharacters[characterId] = {
           ...builtinConfig,
-          availableStyles,
           ...userCharacterConfig,
+          styles: mergedStyles,
         };
       }
 
@@ -221,8 +285,13 @@ export class ConfigManager {
             continue;
           }
 
-          // 利用可能なスタイル一覧を追加
-          const availableStyles = speaker.styles?.map(s => s.styleName) || [];
+          // stylesをマージ（API + config）
+          const mergedStyles = mergeStyles(
+            speaker.styles,
+            userConfig.styles || {},
+            userConfig.personality || '',
+            userConfig.speakingStyle || ''
+          );
 
           // CharacterConfigとして構築（必須フィールドのデフォルト値を提供）
           dynamicCharacters[characterId] = {
@@ -233,8 +302,7 @@ export class ConfigManager {
             greeting: userConfig.greeting || '',
             farewell: userConfig.farewell || '',
             defaultStyleId: userConfig.defaultStyleId || (speaker.styles?.[0]?.styleId ?? 0),
-            styles: userConfig.styles || {},
-            availableStyles,
+            styles: mergedStyles,
             ...userConfig,
           } as CharacterConfig;
         }
@@ -403,6 +471,78 @@ export class ConfigManager {
       operator: await this.getOperatorConfig(),
       characters: this.mergedConfig?.characters || {},
     };
+  }
+
+  /**
+   * ユーザー定義キャラクターを登録
+   * @param characterId キャラクターID
+   * @param config キャラクター設定（部分的な指定も可能）
+   * @throws {Error} バリデーションエラー時
+   */
+  async registerCharacter(
+    characterId: string,
+    config: Partial<CharacterConfig>
+  ): Promise<void> {
+    // 1. 入力バリデーション
+    if (!config.speakerId) {
+      throw new Error('speakerId is required');
+    }
+
+    if (!characterId || characterId.trim() === '') {
+      throw new Error('characterId is required');
+    }
+
+    // 2. COEIROINKサーバーとの照合
+    await this.updateVoiceProviderConnection();
+    const speakers = await this.speakerProvider.getSpeakers();
+    const availableSpeakers = Array.isArray(speakers) ? speakers : [];
+
+    const speaker = availableSpeakers.find(s => s.speakerUuid === config.speakerId);
+    if (!speaker) {
+      throw new Error(`Speaker '${config.speakerId}' not found in COEIROINK server`);
+    }
+
+    // 3. defaultStyleIdの検証
+    if (config.defaultStyleId !== undefined) {
+      const styleExists = speaker.styles.some(s => s.styleId === config.defaultStyleId);
+      if (!styleExists) {
+        throw new Error(
+          `defaultStyleId ${config.defaultStyleId} not found in speaker '${config.speakerId}'`
+        );
+      }
+    }
+
+    // 4. styles設定の検証（指定されている場合）
+    if (config.styles) {
+      for (const styleId of Object.keys(config.styles)) {
+        const numericStyleId = Number(styleId);
+        const styleExists = speaker.styles.some(s => s.styleId === numericStyleId);
+        if (!styleExists) {
+          throw new Error(
+            `Style ID ${styleId} not found in speaker '${config.speakerId}'`
+          );
+        }
+      }
+    }
+
+    // 5. 現在の設定を読み込み
+    const currentConfig = await this.loadConfig();
+
+    // 6. characters セクションに追加・上書き
+    const characters = currentConfig.characters || {};
+    characters[characterId] = {
+      ...config,
+    } as CharacterConfig;
+
+    // 7. config.jsonに書き込み
+    const updatedConfig = {
+      ...currentConfig,
+      characters,
+    };
+    await this.writeJsonFile(this.configFile, updatedConfig);
+
+    // 8. 動的設定を再構築
+    await this.buildDynamicConfig();
   }
 }
 

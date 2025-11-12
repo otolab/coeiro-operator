@@ -41,7 +41,7 @@ import type { Character, Speaker } from '@coeiro-operator/core';
  * Speaker情報と選択されたスタイルIDを含む
  */
 export interface VoiceConfig {
-  speaker: Speaker; // COEIROINKのSpeaker情報
+  speaker: Speaker | null; // COEIROINKのSpeaker情報（移行中: nullの場合はspeakerIdを使用）
   selectedStyleId: number; // 選択されたスタイルID（数値）
   speakerId?: string; // SpeakerのID（キャラクター識別用）
   styleMorasPerSecond?: Record<number, number>; // スタイル毎の基準話速（数値styleIdをキーに）
@@ -69,7 +69,7 @@ export interface PunctuationPauseSettings {
  * VoiceConfig + speed + 将来的な拡張パラメータを統合
  */
 export interface SpeakSettings {
-  speaker: Speaker; // どの声で喋るか
+  speaker: Speaker | null; // どの声で喋るか（移行中: nullの場合はVoiceConfigのspeakerIdを使用）
   styleId: number; // どのスタイルで喋るか（ノーマル、裏声など）
   speed: number; // 話速（0.5 ~ 2.0）
 

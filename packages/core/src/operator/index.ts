@@ -6,11 +6,10 @@
  */
 
 import { join } from 'path';
-import ConfigManager from './config-manager.js';
+import ConfigManager from './config/config-manager.js';
 import FileOperationManager from './file-operation-manager.js';
 import { hostname } from 'os';
-import CharacterInfoService, { Character, Style } from './character-info-service.js';
-import { getConfigDir } from '../common/config-paths.js';
+import CharacterInfoService, { Character, Style } from './character/character-info-service.js';
 import { mkdir } from 'fs/promises';
 import { logger } from '@coeiro-operator/common';
 
@@ -75,41 +74,23 @@ function getSessionId(): string {
 
 export class OperatorManager {
   private sessionId: string;
-  private configDir: string | null = null;
-  private coeiroinkConfigFile: string | null = null;
-  private configManager: ConfigManager | null = null;
   private dataStore: FileOperationManager<CharacterSession> | null = null;
-  private characterInfoService: CharacterInfoService;
 
-  constructor() {
+  constructor(
+    private configManager: ConfigManager,
+    private characterInfoService: CharacterInfoService
+  ) {
     this.sessionId = getSessionId();
-
-    // 初期化時はnullを設定（initializeで正式に設定）
-    this.dataStore = null;
-    this.characterInfoService = new CharacterInfoService();
   }
 
   async initialize(): Promise<void> {
-    this.configDir = await getConfigDir();
-    this.coeiroinkConfigFile = join(this.configDir, 'coeiroink-config.json');
-
-    // 設定管理システムを初期化
-    this.configManager = new ConfigManager(this.configDir);
-
-    // ConfigManagerの動的設定を事前にビルドして初期化を完了
-    try {
-      await this.configManager.buildDynamicConfig();
-    } catch (error) {
-      console.warn(`OperatorManager dynamic config build failed:`, (error as Error).message);
-    }
-
     // dataStoreを初期化（設定ディレクトリ内に保存）
     const operatorConfig = await this.configManager.getOperatorConfig();
     const timeoutMs = operatorConfig.timeout;
     const hostnameClean = hostname().replace(/[^a-zA-Z0-9]/g, '_');
 
     // オペレータ状態を永続的に保存するディレクトリを作成
-    const operatorStateDir = join(this.configDir, 'state');
+    const operatorStateDir = this.configManager.getStateDir();
     await mkdir(operatorStateDir, { recursive: true });
 
     // ファイルパスを設定ディレクトリ内に変更
@@ -122,19 +103,13 @@ export class OperatorManager {
     );
 
     console.log(`[OperatorManager] State file path: ${filePath}`);
-
-    // CharacterInfoServiceを初期化
-    this.characterInfoService.initialize(this.configManager, this.coeiroinkConfigFile);
   }
 
   /**
    * 設定の事前構築（外部からの呼び出し用）
+   * @deprecated Phase 2以降でsetup関数に移行予定
    */
   async buildDynamicConfig(): Promise<void> {
-    if (!this.configManager) {
-      throw new Error('ConfigManager is not initialized');
-    }
-
     try {
       await this.configManager.buildDynamicConfig();
     } catch (error) {
@@ -144,27 +119,10 @@ export class OperatorManager {
   }
 
   /**
-   * キャラクター情報を取得
-   */
-  async getCharacterInfo(characterId: string): Promise<Character | null> {
-    return await this.characterInfoService.getCharacterInfo(characterId);
-  }
-
-  /**
-   * スタイルを選択
-   * @param character キャラクター情報
-   * @param specifiedStyle 指定されたスタイル名
-   */
-  selectStyle(character: Character, specifiedStyle: string | null = null): Style {
-    return this.characterInfoService.selectStyle(character, specifiedStyle);
-  }
-
-
-  /**
    * 利用可能なオペレータを取得（仕事中のオペレータ情報も含む）
    */
   async getAvailableOperators(): Promise<{ available: string[]; busy: string[] }> {
-    if (!this.configManager || !this.dataStore) {
+    if (!this.dataStore) {
       throw new Error('State manager is not initialized');
     }
 
@@ -237,7 +195,7 @@ export class OperatorManager {
 
     return {
       characterId,
-      characterName: character?.speaker?.speakerName || characterId,
+      characterName: character?.speakerName || characterId,
       farewell: character?.farewell || '',
       wasAssigned: true,
     };
@@ -338,10 +296,6 @@ export class OperatorManager {
       throw new Error('キャラクターIDを指定してください');
     }
 
-    if (!this.configManager) {
-      throw new Error('Manager is not initialized');
-    }
-
     // キャラクター情報を取得
     const character = await this.characterInfoService.getOperatorCharacterInfo(specifiedCharacter);
     if (!character) {
@@ -369,7 +323,7 @@ export class OperatorManager {
 
         return {
           characterId: specifiedCharacter,
-          characterName: character.speaker?.speakerName || character.characterId,
+          characterName: character.speakerName || character.characterId,
           currentStyle: {
             styleId: selectedStyle.styleId.toString(),
             styleName: selectedStyle.styleName,
@@ -377,10 +331,10 @@ export class OperatorManager {
             speakingStyle: styleConfig?.speakingStyle || character.speakingStyle,
           },
           speakerConfig: {
-            speakerId: character.speaker?.speakerId || '',
+            speakerId: character.speakerId || '',
             styleId: selectedStyle.styleId,
           },
-          message: `現在のオペレータ: ${character.speaker?.speakerName || character.characterId} (${specifiedCharacter})`,
+          message: `現在のオペレータ: ${character.speakerName || character.characterId} (${specifiedCharacter})`,
         };
       }
 
@@ -408,7 +362,7 @@ export class OperatorManager {
 
     return {
       characterId: specifiedCharacter,
-      characterName: character.speaker?.speakerName || character.characterId,
+      characterName: character.speakerName || character.characterId,
       currentStyle: {
         styleId: selectedStyle.styleId.toString(),
         styleName: selectedStyle.styleName,
@@ -416,7 +370,7 @@ export class OperatorManager {
         speakingStyle: styleConfig?.speakingStyle || character.speakingStyle,
       },
       speakerConfig: {
-        speakerId: character.speaker?.speakerId || '',
+        speakerId: character.speakerId || '',
         styleId: selectedStyle.styleId,
       },
       greeting: character.greeting || '',
@@ -428,10 +382,6 @@ export class OperatorManager {
    * 仕様書準拠: getCurrentOperatorId()の自動時間切れ処理に依存し、統一された検証ロジックを実装
    */
   async showCurrentOperator(): Promise<StatusResult> {
-    if (!this.configManager) {
-      throw new Error('Manager is not initialized');
-    }
-
     // 仕様書準拠: getCurrentOperatorSession()が時間切れチェックと自動解放を実行
     const operatorSession = await this.getCurrentOperatorSession();
     if (!operatorSession) {
@@ -462,9 +412,18 @@ export class OperatorManager {
     let selectedStyle: Style;
     if (styleId !== undefined && styleName) {
       // 保存されたスタイルを検索
-      const styles = character.speaker?.styles || [];
-      selectedStyle =
-        styles.find(s => s.styleId === styleId) || this.characterInfoService.selectStyle(character);
+      const styleConfig = character.styles?.[styleId];
+      if (styleConfig && !styleConfig.disabled) {
+        selectedStyle = {
+          styleId: styleId,
+          styleName: styleConfig.styleName,
+          morasPerSecond: styleConfig.morasPerSecond,
+          personality: styleConfig.personality,
+          speakingStyle: styleConfig.speakingStyle,
+        };
+      } else {
+        selectedStyle = this.characterInfoService.selectStyle(character);
+      }
     } else {
       selectedStyle = this.characterInfoService.selectStyle(character);
     }
@@ -474,14 +433,14 @@ export class OperatorManager {
 
     return {
       characterId,
-      characterName: character.speaker?.speakerName || character.characterId,
+      characterName: character.speakerName || character.characterId,
       currentStyle: {
         styleId: selectedStyle.styleId.toString(),
         styleName: selectedStyle.styleName,
         personality: styleConfig?.personality || character.personality,
         speakingStyle: styleConfig?.speakingStyle || character.speakingStyle,
       },
-      message: `現在のオペレータ: ${character.speaker?.speakerName || character.characterId} (${characterId}) - ${selectedStyle.styleName}`,
+      message: `現在のオペレータ: ${character.speakerName || character.characterId} (${characterId}) - ${selectedStyle.styleName}`,
     };
   }
 
@@ -506,6 +465,7 @@ export class OperatorManager {
     console.log(`[OperatorManager] Refresh result: ${result ? 'success' : 'failed'}`);
     return result;
   }
+
 }
 
 export default OperatorManager;

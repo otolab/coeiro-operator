@@ -41,44 +41,65 @@ import { OperatorManager, ConfigManager } from '@coeiro-operator/core';
 global.fetch = vi.fn();
 
 // ConfigManagerのモック
-vi.mock('@coeiro-operator/core', () => ({
-  OperatorManager: vi.fn().mockImplementation(() => ({
-    initialize: vi.fn().mockResolvedValue(undefined),
-    getCharacterInfo: vi.fn(),
-    selectStyle: vi.fn(),
-    showCurrentOperator: vi.fn().mockResolvedValue({
-      message: 'オペレータは割り当てられていません',
-    }),
-    getCurrentOperatorSession: vi.fn().mockResolvedValue(null),
-  })),
-  getSpeakerProvider: vi.fn(() => ({
-    getSpeakers: vi.fn().mockResolvedValue([{
-      speakerUuid: 'test-speaker-1',
-      speakerName: 'テストスピーカー1',
-      styles: [{ styleId: 0, styleName: 'ノーマル' }],
-    }]),
-    updateConnection: vi.fn(),
-    checkConnection: vi.fn().mockResolvedValue(true),
-  })),
-  ConfigManager: vi.fn().mockImplementation(() => ({
-    getFullConfig: vi.fn().mockResolvedValue({
-      connection: { host: 'localhost', port: '50032' },
-      voice: { rate: 200 },
-      audio: { latencyMode: 'balanced' },
-      operator: { rate: 200 },
-    }),
-    getCharacterConfig: vi.fn().mockImplementation((characterId: string) => {
-      if (characterId === 'test-speaker-1' || characterId === 'tsukuyomi') {
-        return Promise.resolve({
-          characterId,
-          speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-1',
-          defaultStyle: characterId === 'tsukuyomi' ? 'れいせい' : 'ノーマル',
-        });
-      }
+vi.mock('@coeiro-operator/core', () => {
+  // CharacterInfoServiceのモック実装
+  class MockCharacterInfoService {
+    configManager: any;
+    initialize(configManager: any) {
+      this.configManager = configManager;
+    }
+    async getCharacterInfo() {
       return null;
-    }),
-  })),
-}));
+    }
+    selectStyle() {
+      return null;
+    }
+    async listSpeakers() {
+      return [];
+    }
+  }
+
+  return {
+    OperatorManager: vi.fn().mockImplementation(() => ({
+      initialize: vi.fn().mockResolvedValue(undefined),
+      getCharacterInfo: vi.fn(),
+      selectStyle: vi.fn(),
+      showCurrentOperator: vi.fn().mockResolvedValue({
+        message: 'オペレータは割り当てられていません',
+      }),
+      getCurrentOperatorSession: vi.fn().mockResolvedValue(null),
+    })),
+    CharacterInfoService: MockCharacterInfoService,
+    getSpeakerProvider: vi.fn(() => ({
+      getSpeakers: vi.fn().mockResolvedValue([{
+        speakerUuid: 'test-speaker-1',
+        speakerName: 'テストスピーカー1',
+        styles: [{ styleId: 0, styleName: 'ノーマル' }],
+      }]),
+      updateConnection: vi.fn(),
+      checkConnection: vi.fn().mockResolvedValue(true),
+    })),
+    ConfigManager: vi.fn().mockImplementation(() => ({
+      getFullConfig: vi.fn().mockResolvedValue({
+        connection: { host: 'localhost', port: '50032' },
+        voice: { rate: 200 },
+        audio: { latencyMode: 'balanced' },
+        operator: { rate: 200 },
+      }),
+      getCharacterConfig: vi.fn().mockImplementation((characterId: string) => {
+        if (characterId === 'test-speaker-1' || characterId === 'tsukuyomi') {
+          return Promise.resolve({
+            characterId,
+            speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-1',
+            defaultStyle: characterId === 'tsukuyomi' ? 'れいせい' : 'ノーマル',
+          });
+        }
+        return null;
+      }),
+      getStateDir: vi.fn().mockReturnValue('/tmp/test-state'),
+    })),
+  };
+});
 vi.mock('@echogarden/audio-io', () => ({
   createAudioOutput: vi.fn().mockImplementation(async (config: any, handler: (buffer: Int16Array) => void) => {
     // handlerを定期的に呼んでキューを消費する
@@ -153,24 +174,24 @@ describe('エラーハンドリング統合テスト', () => {
         if (characterId === 'test-speaker-1' || characterId === 'tsukuyomi') {
           return Promise.resolve({
             characterId: characterId,
-            speaker: {
-              speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-uuid',
-              speakerName: characterId === 'tsukuyomi' ? 'つくよみちゃん' : 'テストスピーカー1',
-              styles: characterId === 'tsukuyomi' 
-                ? [{ styleId: 0, styleName: 'れいせい' }]
-                : [{ styleId: 0, styleName: 'ノーマル' }],
-            },
-            defaultStyle: characterId === 'tsukuyomi' ? 'れいせい' : 'ノーマル',
+            speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-uuid',
+            speakerName: characterId === 'tsukuyomi' ? 'つくよみちゃん' : 'テストスピーカー1',
+            defaultStyleId: 0,
             greeting: 'こんにちは',
             farewell: 'さようなら',
             personality: 'テスト性格',
             speakingStyle: 'テスト話し方',
+            styles: {
+              0: characterId === 'tsukuyomi'
+                ? { styleId: 0, styleName: 'れいせい' }
+                : { styleId: 0, styleName: 'ノーマル' },
+            },
           });
         }
         throw new Error(`Character not found: ${characterId}`);
       }),
       selectStyle: vi.fn().mockImplementation((character, specifiedStyle) => {
-        return character.speaker?.styles[0] || { styleId: 0, styleName: 'ノーマル' };
+        return Object.values(character.styles)[0] || { styleId: 0, styleName: 'ノーマル' };
       }),
       showCurrentOperator: vi.fn().mockResolvedValue({
         message: 'オペレータは割り当てられていません',

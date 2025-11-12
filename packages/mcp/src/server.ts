@@ -9,6 +9,7 @@ import {
   ConfigManager,
   getConfigDir,
   OperatorManager,
+  CharacterInfoService,
   DictionaryService,
   TerminalBackground
 } from '@coeiro-operator/core';
@@ -98,6 +99,7 @@ logger.debug('Environment variables check:', {
 
 let sayCoeiroink: SayCoeiroink;
 let operatorManager: OperatorManager;
+let characterInfoService: CharacterInfoService;
 let dictionaryService: DictionaryService;
 let terminalBackground: TerminalBackground | null = null;
 
@@ -117,7 +119,9 @@ try {
   await sayCoeiroink.buildDynamicConfig();
 
   logger.info('Initializing OperatorManager...');
-  operatorManager = new OperatorManager();
+  characterInfoService = new CharacterInfoService();
+  characterInfoService.initialize(configManager);
+  operatorManager = new OperatorManager(configManager, characterInfoService);
   await operatorManager.initialize();
 
   logger.info('Initializing Dictionary...');
@@ -144,7 +148,9 @@ try {
     await sayCoeiroink.initialize();
     await sayCoeiroink.buildDynamicConfig();
 
-    operatorManager = new OperatorManager();
+    characterInfoService = new CharacterInfoService();
+    characterInfoService.initialize(fallbackConfigManager);
+    operatorManager = new OperatorManager(fallbackConfigManager, characterInfoService);
     await operatorManager.initialize();
 
     dictionaryService = new DictionaryService();
@@ -180,17 +186,18 @@ async function assignOperator(
 }
 
 function extractStyleInfo(character: Character): StyleInfo[] {
-  return (character.speaker?.styles || []).map(style => {
-    // スタイル毎の設定があればそれを使用、なければキャラクターのデフォルトを使用
-    const styleConfig = character.styles?.[style.styleId];
-    return {
-      id: style.styleId.toString(),
-      name: style.styleName,
-      personality: styleConfig?.personality || character.personality,
-      speakingStyle: styleConfig?.speakingStyle || character.speakingStyle,
-      morasPerSecond: styleConfig?.morasPerSecond,
-    };
-  });
+  // character.stylesはRecord<number, StyleConfig>形式
+  return Object.entries(character.styles || {})
+    .filter(([_, styleConfig]) => !styleConfig.disabled)
+    .map(([styleId, styleConfig]) => {
+      return {
+        id: styleId,
+        name: styleConfig.styleName,
+        personality: styleConfig.personality || character.personality,
+        speakingStyle: styleConfig.speakingStyle || character.speakingStyle,
+        morasPerSecond: styleConfig.morasPerSecond,
+      };
+    });
 }
 
 function formatAssignmentResult(assignResult: AssignResult, availableStyles: StyleInfo[]): string {
@@ -234,11 +241,12 @@ function formatAssignmentResult(assignResult: AssignResult, availableStyles: Sty
 // Utility functions for operator styles
 async function getTargetCharacter(
   manager: OperatorManager,
+  characterInfoService: CharacterInfoService,
   characterId?: string
 ): Promise<{ character: Character; characterId: string }> {
   if (characterId) {
     try {
-      const character = await manager.getCharacterInfo(characterId);
+      const character = await characterInfoService.getCharacterInfo(characterId);
       if (!character) {
         throw new Error(`キャラクター '${characterId}' が見つかりません`);
       }
@@ -254,7 +262,7 @@ async function getTargetCharacter(
       );
     }
 
-    const character = await manager.getCharacterInfo(currentOperator.characterId);
+    const character = await characterInfoService.getCharacterInfo(currentOperator.characterId);
     if (!character) {
       throw new Error(
         `現在のオペレータ '${currentOperator.characterId}' のキャラクター情報が見つかりません`
@@ -266,7 +274,7 @@ async function getTargetCharacter(
 }
 
 function formatStylesResult(character: Character, availableStyles: StyleInfo[]): string {
-  let resultText = `🎭 ${character.speaker?.speakerName || character.characterId} のスタイル情報\n\n`;
+  let resultText = `🎭 ${character.speakerName || character.characterId} のスタイル情報\n\n`;
 
   resultText += `📋 基本情報:\n`;
   resultText += `   性格: ${character.personality}\n`;
@@ -351,7 +359,7 @@ server.registerTool(
         logger.error('❌ TerminalBackground instance is null');
       }
 
-      const character = await operatorManager.getCharacterInfo(assignResult.characterId);
+      const character = await characterInfoService.getCharacterInfo(assignResult.characterId);
 
       if (!character) {
         throw new Error(`キャラクター情報が見つかりません: ${assignResult.characterId}`);
@@ -533,8 +541,9 @@ server.registerTool(
       }
 
       // Issue #58: オペレータ未アサイン時の再アサイン促進メッセージ
+      // voiceパラメータが指定されている場合はオペレータ不要
       const currentOperator = await operatorManager.showCurrentOperator();
-      if (!currentOperator.characterId) {
+      if (!currentOperator.characterId && !parsedVoice) {
         // オペレータ未割り当て時に背景画像をクリア
         if (terminalBackground) {
           if (await terminalBackground.isEnabled()) {
@@ -566,6 +575,8 @@ server.registerTool(
             '❌ 現在利用可能なオペレータがありません。しばらく待ってから再試行してください。';
         }
 
+        guidanceMessage += '\n\n💡 または、voice パラメータで直接キャラクターを指定することもできます。';
+
         return {
           content: [
             {
@@ -578,22 +589,25 @@ server.registerTool(
 
       // Issue #58: 動的タイムアウト延長 - sayコマンド実行時にオペレータ予約を延長
       // ベストエフォート非同期処理（エラーは無視、音声生成をブロックしない）
-      operatorManager
-        .refreshOperatorReservation()
-        .then(refreshSuccess => {
-          if (refreshSuccess) {
-            logger.info(`Operator reservation refreshed for: ${currentOperator.characterId}`);
-          } else {
-            logger.warn(
-              `Could not refresh operator reservation for: ${currentOperator.characterId} - operator may have already expired`
+      // オペレータがアサインされている場合のみ予約を延長
+      if (currentOperator.characterId) {
+        operatorManager
+          .refreshOperatorReservation()
+          .then(refreshSuccess => {
+            if (refreshSuccess) {
+              logger.info(`Operator reservation refreshed for: ${currentOperator.characterId}`);
+            } else {
+              logger.warn(
+                `Could not refresh operator reservation for: ${currentOperator.characterId} - operator may have already expired`
+              );
+            }
+          })
+          .catch(error => {
+            logger.error(
+              `Operator reservation refresh failed: ${(error as Error).message} - operator timeout extension failed`
             );
-          }
-        })
-        .catch(error => {
-          logger.error(
-            `Operator reservation refresh failed: ${(error as Error).message} - operator timeout extension failed`
-          );
-        });
+          });
+      }
 
       // スタイル検証（事前チェック）
       // parsedStyleとparsedVoiceを使用
@@ -606,13 +620,13 @@ server.registerTool(
             throw new Error(`キャラクター情報が取得できません`);
           }
 
-          const character = await operatorManager.getCharacterInfo(targetCharacterId);
+          const character = await characterInfoService.getCharacterInfo(targetCharacterId);
           if (!character) {
             throw new Error(`キャラクター '${targetCharacterId}' が見つかりません`);
           }
 
           // 利用可能なスタイルを取得
-          const availableStyles = character.speaker?.styles || [];
+          const availableStyles = Object.values(character.styles || {});
 
           // 指定されたスタイルが存在するか確認
           const styleExists = availableStyles.some(s => s.styleName === parsedStyle);
@@ -620,7 +634,7 @@ server.registerTool(
           if (!styleExists) {
             const styleNames = availableStyles.map(s => s.styleName);
             throw new Error(
-              `指定されたスタイル '${parsedStyle}' が ${character.speaker?.speakerName || targetCharacterId} には存在しません。\n` +
+              `指定されたスタイル '${parsedStyle}' が ${character.speakerName || targetCharacterId} には存在しません。\n` +
               `利用可能なスタイル: ${styleNames.join(', ')}`
             );
           }
@@ -658,14 +672,20 @@ server.registerTool(
 
       // 結果をログ出力
       logger.debug(`Result: ${JSON.stringify(result)}`);
-      const modeInfo = `発声キューに追加 - オペレータ: ${currentOperator.characterId}, タスクID: ${result.taskId}`;
+
+      // オペレータまたはvoice指定の情報を取得
+      const voiceInfo = currentOperator.characterId
+        ? `オペレータ: ${currentOperator.characterId}`
+        : `voice指定: ${parsedVoice}${parsedStyle ? `:${parsedStyle}` : ''}`;
+
+      const modeInfo = `発声キューに追加 - ${voiceInfo}, タスクID: ${result.taskId}`;
       logger.info(modeInfo);
 
       logger.debug('=== SAY TOOL DEBUG END ===');
 
       // 即座にレスポンスを返す（音声合成の完了を待たない）
       // タスクIDとキュー長の情報も含める
-      const responseText = `音声合成を開始しました - オペレータ: ${currentOperator.characterId}\n` +
+      const responseText = `音声合成を開始しました - ${voiceInfo}\n` +
                          `タスクID: ${result.taskId}\n` +
                          `キュー長: ${result.queueLength} 個`;
 
@@ -854,7 +874,7 @@ server.registerTool(
       if (character) {
         // 指定されたキャラクターの情報を取得
         try {
-          targetCharacter = await operatorManager.getCharacterInfo(character);
+          targetCharacter = await characterInfoService.getCharacterInfo(character);
           if (!targetCharacter) {
             throw new Error(`キャラクター '${character}' が見つかりません`);
           }
@@ -871,7 +891,7 @@ server.registerTool(
           );
         }
 
-        targetCharacter = await operatorManager.getCharacterInfo(currentOperator.characterId);
+        targetCharacter = await characterInfoService.getCharacterInfo(currentOperator.characterId);
         targetCharacterId = currentOperator.characterId;
 
         if (!targetCharacter) {
