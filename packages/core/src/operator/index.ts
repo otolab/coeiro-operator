@@ -12,7 +12,6 @@ import { hostname } from 'os';
 import CharacterInfoService, { Character, Style } from './character/character-info-service.js';
 import { mkdir } from 'fs/promises';
 import { logger } from '@coeiro-operator/common';
-import { getSpeakerProvider } from '../environment/speaker-provider.js';
 
 // セッション情報（キャラクターとスタイルの組み合わせ）
 interface CharacterSession {
