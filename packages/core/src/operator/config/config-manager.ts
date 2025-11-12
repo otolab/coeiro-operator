@@ -544,6 +544,60 @@ export class ConfigManager {
     // 8. 動的設定を再構築
     await this.buildDynamicConfig();
   }
+
+  /**
+   * キャラクター設定を更新（スタイルマージ対応）
+   * - 既存キャラクターの場合: stylesはマージ、他のフィールドは上書き
+   * - 新規キャラクターの場合: 新規追加
+   *
+   * @param characterId キャラクターID
+   * @param updates 更新内容（部分的な指定も可能）
+   */
+  async updateCharacterConfig(
+    characterId: string,
+    updates: Partial<CharacterConfig>
+  ): Promise<void> {
+    // 1. 入力バリデーション
+    if (!characterId || characterId.trim() === '') {
+      throw new Error('characterId is required');
+    }
+
+    // 2. 既存のconfig.jsonを読み込み
+    const currentConfig = await this.loadConfig();
+
+    // 3. 既存キャラクターの取得
+    const existingCharacter = currentConfig.characters?.[characterId];
+
+    // 4. マージロジック
+    const updatedCharacter = existingCharacter
+      ? {
+          // 既存: stylesはマージ、他は上書き
+          ...existingCharacter,
+          ...updates,
+          styles: {
+            ...existingCharacter.styles,
+            ...updates.styles,
+          },
+        }
+      : {
+          // 新規: そのまま追加
+          ...updates,
+        };
+
+    // 5. config.jsonに書き込み
+    const updatedConfig = {
+      ...currentConfig,
+      characters: {
+        ...currentConfig.characters,
+        [characterId]: updatedCharacter,
+      },
+    };
+
+    await this.writeJsonFile(this.configFile, updatedConfig);
+
+    // 6. 動的設定を再構築
+    await this.buildDynamicConfig();
+  }
 }
 
 export default ConfigManager;
