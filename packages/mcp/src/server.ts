@@ -9,6 +9,7 @@ import {
   ConfigManager,
   getConfigDir,
   OperatorManager,
+  CharacterInfoService,
   DictionaryService,
   TerminalBackground
 } from '@coeiro-operator/core';
@@ -117,7 +118,9 @@ try {
   await sayCoeiroink.buildDynamicConfig();
 
   logger.info('Initializing OperatorManager...');
-  operatorManager = new OperatorManager();
+  const characterInfoService = new CharacterInfoService();
+  characterInfoService.initialize(configManager);
+  operatorManager = new OperatorManager(configManager, characterInfoService);
   await operatorManager.initialize();
 
   logger.info('Initializing Dictionary...');
@@ -144,7 +147,9 @@ try {
     await sayCoeiroink.initialize();
     await sayCoeiroink.buildDynamicConfig();
 
-    operatorManager = new OperatorManager();
+    const fallbackCharacterInfoService = new CharacterInfoService();
+    fallbackCharacterInfoService.initialize(fallbackConfigManager);
+    operatorManager = new OperatorManager(fallbackConfigManager, fallbackCharacterInfoService);
     await operatorManager.initialize();
 
     dictionaryService = new DictionaryService();

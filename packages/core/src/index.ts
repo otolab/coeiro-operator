@@ -24,6 +24,9 @@ export * from './operator/character-defaults.js';
 export { default as ConfigManager, TerminalBackgroundConfig } from './operator/config-manager.js';
 export * from './operator/file-operation-manager.js';
 
+// Setup
+export * from './setup.js';
+
 // Environment (Speakerは除外してcharacter-info-serviceから使用)
 export {
   VoiceStyle,

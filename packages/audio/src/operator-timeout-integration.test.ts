@@ -5,7 +5,7 @@
 
 import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { SayCoeiroink } from './index.js';
-import { OperatorManager, ConfigManager } from '@coeiro-operator/core';
+import { OperatorManager, ConfigManager, CharacterInfoService } from '@coeiro-operator/core';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import * as fs from 'fs/promises';
@@ -14,6 +14,7 @@ describe('オペレータタイムアウト統合テスト', () => {
   let sayCoeiroink: SayCoeiroink;
   let operatorManager: OperatorManager;
   let configManager: ConfigManager;
+  let characterInfoService: CharacterInfoService;
   let testConfigDir: string;
 
   beforeEach(async () => {
@@ -42,10 +43,17 @@ describe('オペレータタイムアウト統合テスト', () => {
         }
         return Promise.resolve(null);
       }),
+      getConfigDir: vi.fn().mockReturnValue(testConfigDir),
+      getStateDir: vi.fn().mockReturnValue(join(testConfigDir, 'state')),
+      getCoeiroinkConfigPath: vi.fn().mockReturnValue(join(testConfigDir, 'coeiroink-config.json')),
     } as any;
 
-    // OperatorManagerを初期化
-    operatorManager = new OperatorManager();
+    // CharacterInfoServiceを初期化
+    characterInfoService = new CharacterInfoService();
+    characterInfoService.initialize(configManager);
+
+    // OperatorManagerを初期化（DI）
+    operatorManager = new OperatorManager(configManager, characterInfoService);
     await operatorManager.initialize();
 
     // SayCoeiroinkを初期化
