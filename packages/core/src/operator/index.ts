@@ -12,6 +12,7 @@ import { hostname } from 'os';
 import CharacterInfoService, { Character, Style } from './character/character-info-service.js';
 import { mkdir } from 'fs/promises';
 import { logger } from '@coeiro-operator/common';
+import { SpeechRateMeasurer, generateCharacterId } from './speech-rate-measurer.js';
 
 // セッション情報（キャラクターとスタイルの組み合わせ）
 interface CharacterSession {
@@ -75,12 +76,14 @@ function getSessionId(): string {
 export class OperatorManager {
   private sessionId: string;
   private dataStore: FileOperationManager<CharacterSession> | null = null;
+  private speechRateMeasurer: SpeechRateMeasurer;
 
   constructor(
     private configManager: ConfigManager,
     private characterInfoService: CharacterInfoService
   ) {
     this.sessionId = getSessionId();
+    this.speechRateMeasurer = new SpeechRateMeasurer(configManager);
   }
 
   async initialize(): Promise<void> {
@@ -464,6 +467,259 @@ export class OperatorManager {
     const result = await this.dataStore.refresh();
     console.log(`[OperatorManager] Refresh result: ${result ? 'success' : 'failed'}`);
     return result;
+  }
+
+  /**
+   * 未登録のSpeaker/Styleを検出
+   *
+   * @returns 登録状況の分類結果
+   */
+  async detectUnregisteredSpeakers(): Promise<{
+    registered: Array<{
+      speakerId: string;
+      speakerName: string;
+      characterId: string;
+      registeredStyles: number;
+      totalStyles: number;
+      allStylesHaveSpeechRate: boolean;
+    }>;
+    partiallyRegistered: Array<{
+      speakerId: string;
+      speakerName: string;
+      characterId: string;
+      missingStyles: Array<{
+        styleId: number;
+        styleName: string;
+      }>;
+    }>;
+    unregistered: Array<{
+      speakerId: string;
+      speakerName: string;
+      totalStyles: number;
+      styles: Array<{
+        styleId: number;
+        styleName: string;
+      }>;
+    }>;
+  }> {
+    // 1. API Speakersを取得
+    const { getSpeakerProvider } = await import('../environment/speaker-provider.js');
+    const speakerProvider = getSpeakerProvider();
+    const apiSpeakers = await speakerProvider.getSpeakers();
+
+    // 2. 登録済みキャラクターを取得
+    const mergedConfig = this.configManager.getMergedConfig();
+    const characters = mergedConfig?.characters || {};
+
+    const registered = [];
+    const partiallyRegistered = [];
+    const unregistered = [];
+
+    // 3. 各Speakerを分類
+    for (const speaker of apiSpeakers) {
+      const registeredChar = Object.entries(characters).find(
+        ([_, config]) => config.speakerId === speaker.speakerUuid
+      );
+
+      if (!registeredChar) {
+        // 完全未登録
+        unregistered.push({
+          speakerId: speaker.speakerUuid,
+          speakerName: speaker.speakerName,
+          totalStyles: speaker.styles.length,
+          styles: speaker.styles.map(s => ({
+            styleId: s.styleId,
+            styleName: s.styleName,
+          })),
+        });
+        continue;
+      }
+
+      const [characterId, characterConfig] = registeredChar;
+
+      // スタイルの登録状況をチェック
+      const missingStyles = speaker.styles.filter(apiStyle => {
+        const styleConfig = characterConfig.styles?.[apiStyle.styleId];
+        return !styleConfig || styleConfig.morasPerSecond === undefined;
+      });
+
+      if (missingStyles.length === 0) {
+        // 完全登録
+        registered.push({
+          speakerId: speaker.speakerUuid,
+          speakerName: speaker.speakerName,
+          characterId,
+          registeredStyles: speaker.styles.length,
+          totalStyles: speaker.styles.length,
+          allStylesHaveSpeechRate: true,
+        });
+      } else {
+        // 部分登録
+        partiallyRegistered.push({
+          speakerId: speaker.speakerUuid,
+          speakerName: speaker.speakerName,
+          characterId,
+          missingStyles: missingStyles.map(s => ({
+            styleId: s.styleId,
+            styleName: s.styleName,
+          })),
+        });
+      }
+    }
+
+    return { registered, partiallyRegistered, unregistered };
+  }
+
+  /**
+   * Speaker/Styleの話速を測定して登録
+   *
+   * @param speakerName Speaker名
+   * @param styleName スタイル名（省略時は全スタイル）
+   * @param characterId キャラクターID（省略時は自動生成）
+   * @returns 測定結果
+   */
+  async measureAndRegisterSpeaker(
+    speakerName: string,
+    styleName?: string,
+    characterId?: string
+  ): Promise<{
+    speakerId: string;
+    speakerName: string;
+    measurements: Array<{
+      styleId: number;
+      styleName: string;
+      morasPerSecond: number;
+    }>;
+  }> {
+    // 1. Speakerを検証
+    const { getSpeakerProvider } = await import('../environment/speaker-provider.js');
+    const speakerProvider = getSpeakerProvider();
+    const apiSpeakers = await speakerProvider.getSpeakers();
+
+    const speaker = apiSpeakers.find(s => s.speakerName === speakerName);
+    if (!speaker) {
+      throw new Error(`Speaker "${speakerName}" が見つかりません`);
+    }
+
+    // 2. 測定対象のスタイルを決定
+    const targetStyles = styleName
+      ? speaker.styles.filter(s => s.styleName === styleName)
+      : speaker.styles;
+
+    if (targetStyles.length === 0) {
+      throw new Error(`Style "${styleName}" が見つかりません`);
+    }
+
+    // 3. 話速測定（測定ロジックを呼び出し）
+    const measurements = await this.speechRateMeasurer.measureSpeechRateForStyles(
+      speaker.speakerUuid,
+      targetStyles
+    );
+
+    // 4. characterIdの決定
+    const finalCharacterId = characterId || generateCharacterId(speakerName);
+
+    // 5. config.jsonに登録
+    await this.configManager.updateCharacterConfig(finalCharacterId, {
+      speakerId: speaker.speakerUuid,
+      name: speaker.speakerName,
+      personality: '',
+      speakingStyle: '',
+      greeting: '',
+      farewell: '',
+      defaultStyleId: targetStyles[0].styleId,
+      styles: Object.fromEntries(
+        measurements.map(m => [
+          m.styleId,
+          {
+            styleName: m.styleName,
+            morasPerSecond: m.morasPerSecond,
+          },
+        ])
+      ),
+    });
+
+    return {
+      speakerId: speaker.speakerUuid,
+      speakerName: speaker.speakerName,
+      measurements,
+    };
+  }
+
+  /**
+   * キャラクターの話速を測定（登録済みキャラクター用）
+   *
+   * @param characterId キャラクターID
+   * @param styleName スタイル名（省略時は全スタイル）
+   * @param dryRun trueの場合は測定のみで設定更新しない
+   * @returns 測定結果
+   */
+  async measureCharacterSpeechRate(
+    characterId: string,
+    styleName?: string,
+    dryRun: boolean = false
+  ): Promise<{
+    characterId: string;
+    speakerId: string;
+    speakerName: string;
+    measurements: Array<{
+      styleId: number;
+      styleName: string;
+      morasPerSecond: number;
+    }>;
+  }> {
+    // 1. CharacterConfigを取得
+    const characterConfig = await this.configManager.getCharacterConfig(characterId);
+    if (!characterConfig) {
+      throw new Error(`Character "${characterId}" が見つかりません`);
+    }
+
+    // 2. SpeakerProviderからSpeaker情報を取得
+    const { getSpeakerProvider } = await import('../environment/speaker-provider.js');
+    const speakerProvider = getSpeakerProvider();
+    const apiSpeakers = await speakerProvider.getSpeakers();
+
+    const speaker = apiSpeakers.find(s => s.speakerUuid === characterConfig.speakerId);
+    if (!speaker) {
+      throw new Error(`Speaker "${characterConfig.speakerId}" が見つかりません`);
+    }
+
+    // 3. 測定対象のスタイルを決定
+    const targetStyles = styleName
+      ? speaker.styles.filter(s => s.styleName === styleName)
+      : speaker.styles;
+
+    if (targetStyles.length === 0) {
+      throw new Error(`Style "${styleName}" が見つかりません`);
+    }
+
+    // 4. 話速測定
+    const measurements = await this.speechRateMeasurer.measureSpeechRateForStyles(
+      speaker.speakerUuid,
+      targetStyles
+    );
+
+    // 5. config.jsonに登録（dryRunでない場合）
+    if (!dryRun) {
+      await this.configManager.updateCharacterConfig(characterId, {
+        styles: Object.fromEntries(
+          measurements.map(m => [
+            m.styleId,
+            {
+              styleName: m.styleName,
+              morasPerSecond: m.morasPerSecond,
+            },
+          ])
+        ),
+      });
+    }
+
+    return {
+      characterId,
+      speakerId: speaker.speakerUuid,
+      speakerName: speaker.speakerName,
+      measurements,
+    };
   }
 
 }
