@@ -190,6 +190,12 @@ export class TaskQueue<T extends BaseTask> extends EventEmitter {
           if (task.reject) {
             logger.debug(`[TaskQueue] タスクのPromiseをreject`);
             task.reject(error as Error);
+            // Unhandled rejectionを防ぐためにPromiseをcatch
+            if (task.promise) {
+              task.promise.catch(() => {
+                // エラーは既にrejectで通知済み、かつerrorsリストに保存済みなので、ここでは何もしない
+              });
+            }
           }
         } finally {
           this.currentTask = null;

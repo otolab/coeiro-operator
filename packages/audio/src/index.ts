@@ -7,15 +7,19 @@ import { OperatorManager, ConfigManager, CharacterInfoService } from '@coeiro-op
 import { SpeechQueue } from './speech-queue.js';
 import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
-import { VoiceResolver } from './voice-resolver.js';
 import { SynthesisProcessor } from './synthesis-processor.js';
 import { logger } from '@coeiro-operator/common';
+import { convertToSpeed, validateSpeedParameters } from './speed-utils.js';
 import type {
   Config,
   SpeechTask,
   SynthesizeOptions,
   SynthesizeResult,
+  CLISynthesizeOptions,
+  SpeakSettings,
+  ProcessingOptions,
 } from './types.js';
+import type { Character } from '@coeiro-operator/core';
 import type { StreamControllerOptions } from './audio-stream-controller.js';
 
 export class SayCoeiroink {
@@ -26,7 +30,6 @@ export class SayCoeiroink {
   private speechQueue: SpeechQueue | null = null;
   private audioPlayer: AudioPlayer | null = null;
   private audioSynthesizer: AudioSynthesizer | null = null;
-  private voiceResolver: VoiceResolver | null = null;
   private synthesisProcessor: SynthesisProcessor | null = null;
 
   constructor(configManager: ConfigManager) {
@@ -50,25 +53,19 @@ export class SayCoeiroink {
       this.audioPlayer = new AudioPlayer(this.config);
       this.audioSynthesizer = new AudioSynthesizer(this.config);
 
-      // 音声解決と合成処理を初期化
-      this.voiceResolver = new VoiceResolver(
-        this.configManager,
-        this.operatorManager,
-        this.characterInfoService,
-        this.audioSynthesizer
-      );
-
+      // 音声合成処理を初期化
       this.synthesisProcessor = new SynthesisProcessor(
         this.config,
         this.audioPlayer,
-        this.audioSynthesizer,
-        this.voiceResolver
+        this.audioSynthesizer
       );
 
       // SpeechQueueを初期化
       this.speechQueue = new SpeechQueue(
         async (task: SpeechTask) => {
-          await this.synthesisProcessor!.process(task.text, task.options);
+          // CLISynthesizeOptions → SpeakSettings + ProcessingOptionsに変換
+          const { speakSettings, processingOptions } = await this.resolveCharacterOptions(task.options);
+          await this.synthesisProcessor!.process(task.text, speakSettings, processingOptions);
         }
       );
 
@@ -92,6 +89,92 @@ export class SayCoeiroink {
     } catch (err) {
       throw new Error(`buildDynamicConfig failed: ${(err as Error).message}`);
     }
+  }
+
+  // ========================================================================
+  // 内部ヘルパーメソッド
+  // ========================================================================
+
+  /**
+   * CLISynthesizeOptionsをSpeakSettings + ProcessingOptionsに変換
+   * voice文字列→Character解決、style文字列→styleId解決、rate/factor→speed計算
+   */
+  private async resolveCharacterOptions(
+    options: CLISynthesizeOptions
+  ): Promise<{ speakSettings: SpeakSettings; processingOptions: ProcessingOptions }> {
+    // Characterを解決
+    let character: Character;
+    const allowFallback = options.allowFallback ?? true;
+
+    if (!options.voice) {
+      // voiceが未指定 → Operator経由でアサイン
+      character = await this.operatorManager.getCurrentCharacter();
+      logger.debug(`Character assigned: ${character.characterId}`);
+    } else {
+      // voiceが指定済み → CharacterInfoServiceから取得
+      const resolvedCharacter = this.characterInfoService.getCharacter(options.voice);
+      if (!resolvedCharacter) {
+        if (allowFallback) {
+          logger.warn(`Character not found: ${options.voice}, falling back to assignment`);
+          character = await this.operatorManager.getCurrentCharacter();
+        } else {
+          throw new Error(`Character not found: ${options.voice}`);
+        }
+      } else {
+        character = resolvedCharacter;
+      }
+    }
+
+    // selectedStyleIdを解決
+    let selectedStyleId = character.defaultStyleId;
+    if (options.style) {
+      // style名からstyleIdを検索
+      const styleEntry = Object.entries(character.styles).find(
+        ([_, styleConfig]) => styleConfig.styleName === options.style
+      );
+      if (styleEntry) {
+        selectedStyleId = parseInt(styleEntry[0]);
+      } else {
+        logger.warn(`Style not found: ${options.style}, using default style`);
+      }
+    }
+
+    const styleConfig = character.styles[selectedStyleId];
+    if (!styleConfig) {
+      throw new Error(`Style ${selectedStyleId} not found for character ${character.characterId}`);
+    }
+
+    // speed計算
+    const speedSpec = {
+      rate: typeof options.rate === 'number' ? options.rate : undefined,
+      factor: options.factor
+    };
+    validateSpeedParameters(speedSpec);
+    const speed = convertToSpeed(speedSpec, {
+      baseMorasPerSecond: character.baseMorasPerSecond,
+      styleMorasPerSecond: styleConfig.morasPerSecond
+    });
+
+    // SpeakSettings作成
+    const speakSettings: SpeakSettings = {
+      characterId: character.characterId,
+      speakerId: character.speakerId,
+      styleId: selectedStyleId,
+      speed,
+      styleMorasPerSecond: styleConfig.morasPerSecond,
+    };
+
+    // ProcessingOptions作成
+    const processingOptions: ProcessingOptions = {
+      outputFile: options.outputFile,
+      chunkMode: options.chunkMode,
+      bufferSize: options.bufferSize,
+    };
+
+    logger.debug('SpeakSettings作成完了:', speakSettings);
+    logger.debug('ProcessingOptions作成完了:', processingOptions);
+
+    return { speakSettings, processingOptions };
   }
 
   // ========================================================================
