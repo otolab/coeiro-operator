@@ -328,7 +328,7 @@ describe('Operator Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_styles',
         expect.objectContaining({
-          description: expect.stringContaining('利用可能なスタイル一覧'),
+          description: expect.stringContaining('スタイル一覧'),
         }),
         expect.any(Function)
       );

@@ -7,7 +7,7 @@ import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { SayCoeiroink } from '@coeiro-operator/audio';
 import type { OperatorManager, CharacterInfoService, TerminalBackground } from '@coeiro-operator/core';
-import { registerSayTool, registerParallelGenerationControlTool } from './speech.js';
+import { registerSayTool } from './speech.js';
 
 describe('Speech Tools', () => {
   let mockServer: McpServer;
@@ -375,107 +375,6 @@ describe('Speech Tools', () => {
         expect.objectContaining({
           factor: 1.5,
         })
-      );
-    });
-  });
-
-  describe('registerParallelGenerationControlTool', () => {
-    test('ツールが正しく登録されること', () => {
-      registerParallelGenerationControlTool(mockServer, mockSayCoeiroink);
-
-      expect(mockServer.registerTool).toHaveBeenCalledWith(
-        'parallel_generation_control',
-        expect.objectContaining({
-          description: expect.stringContaining('チャンク並行生成機能の制御'),
-        }),
-        expect.any(Function)
-      );
-    });
-
-    test('enableアクションが正しく動作すること', async () => {
-      registerParallelGenerationControlTool(mockServer, mockSayCoeiroink);
-
-      const tool = registeredTools.get('parallel_generation_control');
-      const result = await tool.handler({ action: 'enable' });
-
-      expect(mockSayCoeiroink.setParallelGenerationEnabled).toHaveBeenCalledWith(true);
-      expect(result.content[0].text).toContain('並行チャンク生成を有効化');
-    });
-
-    test('disableアクションが正しく動作すること', async () => {
-      registerParallelGenerationControlTool(mockServer, mockSayCoeiroink);
-
-      const tool = registeredTools.get('parallel_generation_control');
-      const result = await tool.handler({ action: 'disable' });
-
-      expect(mockSayCoeiroink.setParallelGenerationEnabled).toHaveBeenCalledWith(false);
-      expect(result.content[0].text).toContain('並行チャンク生成を無効化');
-    });
-
-    test('statusアクションが正しく動作すること', async () => {
-      registerParallelGenerationControlTool(mockServer, mockSayCoeiroink);
-
-      vi.mocked(mockSayCoeiroink.getStreamControllerOptions).mockReturnValue({
-        maxConcurrency: 2,
-        delayBetweenRequests: 50,
-        bufferAheadCount: 1,
-        pauseUntilFirstComplete: true,
-      });
-      vi.mocked(mockSayCoeiroink.getGenerationStats).mockReturnValue({
-        activeTasks: 5,
-        completedResults: 10,
-        totalMemoryUsage: 2048,
-      });
-
-      const tool = registeredTools.get('parallel_generation_control');
-      const result = await tool.handler({ action: 'status' });
-
-      expect(result.content[0].text).toContain('並行生成ステータス');
-      expect(result.content[0].text).toContain('最大並行数: 2');
-      expect(result.content[0].text).toContain('アクティブタスク: 5');
-    });
-
-    test('update_optionsアクションが正しく動作すること', async () => {
-      registerParallelGenerationControlTool(mockServer, mockSayCoeiroink);
-
-      vi.mocked(mockSayCoeiroink.getStreamControllerOptions).mockReturnValue({
-        maxConcurrency: 3,
-        delayBetweenRequests: 100,
-        bufferAheadCount: 2,
-        pauseUntilFirstComplete: false,
-      });
-
-      const tool = registeredTools.get('parallel_generation_control');
-      const result = await tool.handler({
-        action: 'update_options',
-        options: {
-          maxConcurrency: 3,
-          delayBetweenRequests: 100,
-        },
-      });
-
-      expect(mockSayCoeiroink.updateStreamControllerOptions).toHaveBeenCalledWith({
-        maxConcurrency: 3,
-        delayBetweenRequests: 100,
-      });
-      expect(result.content[0].text).toContain('オプション更新完了');
-    });
-
-    test('update_optionsでoptionsパラメータなしの場合エラーが発生すること', async () => {
-      registerParallelGenerationControlTool(mockServer, mockSayCoeiroink);
-
-      const tool = registeredTools.get('parallel_generation_control');
-      await expect(tool.handler({ action: 'update_options' })).rejects.toThrow(
-        'update_optionsアクションにはoptionsパラメータが必要です'
-      );
-    });
-
-    test('無効なアクション指定でエラーが発生すること', async () => {
-      registerParallelGenerationControlTool(mockServer, mockSayCoeiroink);
-
-      const tool = registeredTools.get('parallel_generation_control');
-      await expect(tool.handler({ action: 'invalid' as any })).rejects.toThrow(
-        '並行生成制御エラー'
       );
     });
   });

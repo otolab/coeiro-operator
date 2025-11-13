@@ -167,7 +167,7 @@ describe('Playback Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'playback_stop',
         expect.objectContaining({
-          description: expect.stringContaining('音声再生を停止'),
+          description: expect.stringContaining('音声を停止'),
         }),
         expect.any(Function)
       );
