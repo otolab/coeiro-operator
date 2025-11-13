@@ -6,8 +6,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SynthesisProcessor } from './synthesis-processor.js';
 import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
-import { VoiceResolver } from './voice-resolver.js';
-import type { Config, VoiceConfig, SynthesizeOptions } from './types.js';
+import type { Config, SpeakSettings, ProcessingOptions } from './types.js';
 import { BUFFER_SIZES } from './constants.js';
 
 describe('SynthesisProcessor', () => {
@@ -15,15 +14,13 @@ describe('SynthesisProcessor', () => {
   let mockConfig: Config;
   let mockAudioPlayer: AudioPlayer;
   let mockAudioSynthesizer: AudioSynthesizer;
-  let mockVoiceResolver: VoiceResolver;
 
-  const mockVoiceConfig: VoiceConfig = {
-    speaker: {
-      speakerId: 'test-speaker',
-      speakerName: 'テストスピーカー',
-      styles: [{ styleId: 0, styleName: 'ノーマル' }],
-    },
-    selectedStyleId: 0,
+  const mockSpeakSettings: SpeakSettings = {
+    characterId: 'test-character',
+    speakerId: 'test-speaker',
+    styleId: 0,
+    speed: 1.0,
+    styleMorasPerSecond: 7.5,
   };
 
   const mockAudioResult = {
@@ -71,45 +68,33 @@ describe('SynthesisProcessor', () => {
     // AudioSynthesizerのモック
     mockAudioSynthesizer = {
       checkServerConnection: vi.fn().mockResolvedValue(true),
-      convertRateToSpeed: vi.fn((rate, voiceConfig) => {
-        // 新しい仕様に基づく実装
-        if (rate === undefined) return 1.0;
-        return rate / 200; // 簡略化した実装
-      }),
       synthesizeStream: vi.fn().mockImplementation(async function* () {
         yield mockAudioResult;
       }),
     } as any;
 
-    // VoiceResolverのモック
-    mockVoiceResolver = {
-      resolveVoiceConfig: vi.fn().mockResolvedValue(mockVoiceConfig),
-    } as any;
-
     synthesisProcessor = new SynthesisProcessor(
       mockConfig,
       mockAudioPlayer,
-      mockAudioSynthesizer,
-      mockVoiceResolver
+      mockAudioSynthesizer
     );
   });
 
   describe('process', () => {
     it('音声合成処理を実行できる', async () => {
-      const result = await synthesisProcessor.process('テストテキスト');
+      const result = await synthesisProcessor.process('テストテキスト', mockSpeakSettings);
 
       expect(result.success).toBe(true);
       expect(result.mode).toBe('streaming');
-      expect(mockVoiceResolver.resolveVoiceConfig).toHaveBeenCalled();
       expect(mockAudioSynthesizer.checkServerConnection).toHaveBeenCalled();
     });
 
     it('ファイル出力モードで処理できる', async () => {
-      const options: SynthesizeOptions = {
+      const processingOptions: ProcessingOptions = {
         outputFile: '/tmp/test.wav',
       };
 
-      const result = await synthesisProcessor.process('テストテキスト', options);
+      const result = await synthesisProcessor.process('テストテキスト', mockSpeakSettings, processingOptions);
 
       expect(result.success).toBe(true);
       expect(result.mode).toBe('file');
@@ -117,31 +102,26 @@ describe('SynthesisProcessor', () => {
       expect(mockAudioPlayer.saveAudio).toHaveBeenCalled();
     });
 
-    it('オプションが正しく解析される', async () => {
-      const options: SynthesizeOptions = {
-        voice: 'test-character',
-        rate: 150,
-        style: 'ハッピー',
+    it('ProcessingOptionsが正しく解析される', async () => {
+      const processingOptions: ProcessingOptions = {
         chunkMode: 'small',
         bufferSize: 512,
-        allowFallback: false,
       };
 
-      await synthesisProcessor.process('テストテキスト', options);
+      await synthesisProcessor.process('テストテキスト', mockSpeakSettings, processingOptions);
 
-      expect(mockVoiceResolver.resolveVoiceConfig).toHaveBeenCalledWith(
-        'test-character',
-        'ハッピー',
-        false
+      expect(mockAudioSynthesizer.synthesizeStream).toHaveBeenCalledWith(
+        'テストテキスト',
+        mockSpeakSettings,
+        'small'
       );
-      // 速度変換は内部でspeed-utils.convertToSpeedを直接呼び出すようになった
     });
 
     it('サーバー接続エラーの場合は例外を投げる', async () => {
       mockAudioSynthesizer.checkServerConnection = vi.fn().mockResolvedValue(false);
 
       await expect(
-        synthesisProcessor.process('テストテキスト')
+        synthesisProcessor.process('テストテキスト', mockSpeakSettings)
       ).rejects.toThrow('Cannot connect to COEIROINK server');
     });
 
@@ -149,7 +129,7 @@ describe('SynthesisProcessor', () => {
       mockAudioPlayer.initialize = vi.fn().mockResolvedValue(false);
 
       await expect(
-        synthesisProcessor.process('テストテキスト')
+        synthesisProcessor.process('テストテキスト', mockSpeakSettings)
       ).rejects.toThrow('音声プレーヤーの初期化に失敗しました');
     });
   });
@@ -171,8 +151,7 @@ describe('SynthesisProcessor', () => {
       synthesisProcessor = new SynthesisProcessor(
         mockConfig,
         mockAudioPlayer,
-        mockAudioSynthesizer,
-        mockVoiceResolver
+        mockAudioSynthesizer
       );
 
       const initMethod = (synthesisProcessor as any).initializeAudioPlayer.bind(synthesisProcessor);
@@ -188,8 +167,7 @@ describe('SynthesisProcessor', () => {
       const processFileOutput = (synthesisProcessor as any).processFileOutput.bind(synthesisProcessor);
       const result = await processFileOutput(
         'テストテキスト',
-        mockVoiceConfig,
-        1.0,
+        mockSpeakSettings,
         'punctuation',
         '/tmp/output.wav'
       );
@@ -220,8 +198,7 @@ describe('SynthesisProcessor', () => {
       const processFileOutput = (synthesisProcessor as any).processFileOutput.bind(synthesisProcessor);
       await processFileOutput(
         'テストテキスト',
-        mockVoiceConfig,
-        1.0,
+        mockSpeakSettings,
         'punctuation',
         '/tmp/output.wav'
       );
@@ -237,8 +214,7 @@ describe('SynthesisProcessor', () => {
       const processStreamingOutput = (synthesisProcessor as any).processStreamingOutput.bind(synthesisProcessor);
       const result = await processStreamingOutput(
         'テストテキスト',
-        mockVoiceConfig,
-        1.0,
+        mockSpeakSettings,
         'punctuation',
         BUFFER_SIZES.DEFAULT
       );
@@ -253,8 +229,7 @@ describe('SynthesisProcessor', () => {
       const processStreamingOutput = (synthesisProcessor as any).processStreamingOutput.bind(synthesisProcessor);
       await processStreamingOutput(
         'テストテキスト',
-        mockVoiceConfig,
-        1.0,
+        mockSpeakSettings,
         'punctuation',
         bufferSize
       );
@@ -269,16 +244,14 @@ describe('SynthesisProcessor', () => {
       const processStreamingOutput = (synthesisProcessor as any).processStreamingOutput.bind(synthesisProcessor);
       await processStreamingOutput(
         'テストテキスト',
-        mockVoiceConfig,
-        1.0,
+        mockSpeakSettings,
         'small',
         BUFFER_SIZES.DEFAULT
       );
 
       expect(mockAudioSynthesizer.synthesizeStream).toHaveBeenCalledWith(
         'テストテキスト',
-        mockVoiceConfig,
-        1.0,
+        mockSpeakSettings,
         'small'
       );
     });
