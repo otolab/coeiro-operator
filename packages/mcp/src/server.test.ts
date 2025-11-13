@@ -2,7 +2,7 @@
  * src/index.test.ts: MCPサーバーテスト（allowFallback動作確認）
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { SayCoeiroink } from '@coeiro-operator/audio';
 import type { SynthesizeResult } from '@coeiro-operator/audio';
 
@@ -10,7 +10,7 @@ import type { SynthesizeResult } from '@coeiro-operator/audio';
 vi.mock('@coeiro-operator/audio');
 vi.mock('@coeiro-operator/core');
 
-const MockSayCoeiroink = SayCoeiroink as unknown;
+const MockSayCoeiroink = SayCoeiroink as unknown as ReturnType<typeof vi.fn>;
 
 describe('MCP Server allowFallback behavior', () => {
     let mockSayCoeiroinkInstance: any;
@@ -268,14 +268,9 @@ describe('MCP Server allowFallback behavior', () => {
 
             const currentOperator = { characterId: 'tsukuyomi' };
             const voice = 'alma';
-            const style = 'のーまる';
-
-            // パース処理
-            const parsedVoice = voice;
-            const parsedStyle = style;
 
             // targetCharacterIdの決定（voice指定時はそのキャラ、未指定時はオペレータ）
-            const targetCharacterId = parsedVoice || currentOperator.characterId;
+            const targetCharacterId = voice || currentOperator.characterId;
 
             expect(targetCharacterId).toBe('alma');
             // almaの「のーまる」が検証される
@@ -288,14 +283,9 @@ describe('MCP Server allowFallback behavior', () => {
 
             const currentOperator = { characterId: 'tsukuyomi' };
             const voice = null;
-            const style = 'ささやき';
-
-            // パース処理
-            const parsedVoice = voice;
-            const parsedStyle = style;
 
             // targetCharacterIdの決定
-            const targetCharacterId = parsedVoice || currentOperator.characterId;
+            const targetCharacterId = voice || currentOperator.characterId;
 
             expect(targetCharacterId).toBe('tsukuyomi');
             // tsukuyomiの「ささやき」が検証される
