@@ -107,7 +107,7 @@ export async function getTargetCharacter(
         throw new Error(`キャラクター '${characterId}' が見つかりません`);
       }
       return { character, characterId };
-    } catch (error) {
+    } catch {
       throw new Error(`キャラクター '${characterId}' が見つかりません`);
     }
   } else {

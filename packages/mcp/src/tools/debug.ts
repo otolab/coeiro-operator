@@ -49,7 +49,7 @@ export function registerDebugLogsTool(server: McpServer): void {
             const options: Parameters<typeof logger.getLogEntries>[0] = {};
 
             if (level && level.length > 0) {
-              options.level = level as any;
+              options.level = level as Array<'error' | 'warn' | 'info' | 'verbose' | 'debug'>;
             }
 
             if (since) {

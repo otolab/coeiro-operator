@@ -8,7 +8,6 @@ import type {
   OperatorManager,
   CharacterInfoService,
   TerminalBackground,
-  Character,
 } from '@coeiro-operator/core';
 import { logger } from '@coeiro-operator/common';
 
@@ -257,7 +256,7 @@ export function registerOperatorStylesTool(
 
       try {
         // getTargetCharacter関数を使用してキャラクター情報を取得
-        const { character: targetCharacter, characterId: targetCharacterId } = await getTargetCharacter(
+        const { character: targetCharacter } = await getTargetCharacter(
           operatorManager,
           characterInfoService,
           character
