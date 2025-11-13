@@ -20,17 +20,17 @@ export function registerSayTool(
     'say',
     {
       description:
-        'COEIROINKを使って日本語音声を非同期で出力します（低レイテンシストリーミング対応、即座にレスポンス）',
+        '日本語音声を非同期で出力します',
       inputSchema: {
         message: z.string().describe('発話させるメッセージ（日本語）'),
-        voice: z.string().optional().describe('音声ID（省略時はオペレータ設定を使用）'),
+        voice: z.string().optional().describe('キャラクタID（省略時はオペレータ設定を使用）'),
         rate: z.number().optional().describe('絶対速度（WPM、200 = 標準）'),
         factor: z.number().optional().describe('相対速度（倍率、1.0 = 等速）'),
         style: z
           .string()
           .optional()
           .describe(
-            "スタイル名（日本語名をそのまま指定。例: ディアちゃんの場合 'のーまる', 'ひそひそ', 'セクシー'）"
+            "スタイル名（例: 'のーまる'など）"
           ),
       },
     },
@@ -246,120 +246,120 @@ export function registerSayTool(
  * parallel_generation_controlツールの登録
  * チャンク並行生成機能の制御と設定管理
  */
-export function registerParallelGenerationControlTool(
-  server: McpServer,
-  sayCoeiroink: SayCoeiroink
-): void {
-  server.registerTool(
-    'parallel_generation_control',
-    {
-      description:
-        'チャンク並行生成機能の制御と設定管理を行います。生成の並行数、待機時間、先読み数、初回ポーズ機能などを調整できます。',
-      inputSchema: {
-        action: z
-          .enum(['enable', 'disable', 'status', 'update_options'])
-          .describe('実行するアクション'),
-        options: z
-          .object({
-            maxConcurrency: z.number().min(1).max(5).optional().describe('最大並行生成数（1-5）'),
-            delayBetweenRequests: z
-              .number()
-              .min(0)
-              .max(1000)
-              .optional()
-              .describe('リクエスト間隔（ms、0-1000）'),
-            bufferAheadCount: z.number().min(0).max(3).optional().describe('先読みチャンク数（0-3）'),
-            pauseUntilFirstComplete: z
-              .boolean()
-              .optional()
-              .describe('初回チャンク完了まで並行生成をポーズ（レイテンシ改善）'),
-          })
-          .optional()
-          .describe('更新するオプション（action=update_optionsの場合）'),
-      },
-    },
-    async args => {
-      const { action, options } = args || {};
+// export function registerParallelGenerationControlTool(
+//   server: McpServer,
+//   sayCoeiroink: SayCoeiroink
+// ): void {
+//   server.registerTool(
+//     'parallel_generation_control',
+//     {
+//       description:
+//         'チャンク並行生成機能の制御と設定管理を行います。生成の並行数、待機時間、先読み数、初回ポーズ機能などを調整できます。',
+//       inputSchema: {
+//         action: z
+//           .enum(['enable', 'disable', 'status', 'update_options'])
+//           .describe('実行するアクション'),
+//         options: z
+//           .object({
+//             maxConcurrency: z.number().min(1).max(5).optional().describe('最大並行生成数（1-5）'),
+//             delayBetweenRequests: z
+//               .number()
+//               .min(0)
+//               .max(1000)
+//               .optional()
+//               .describe('リクエスト間隔（ms、0-1000）'),
+//             bufferAheadCount: z.number().min(0).max(3).optional().describe('先読みチャンク数（0-3）'),
+//             pauseUntilFirstComplete: z
+//               .boolean()
+//               .optional()
+//               .describe('初回チャンク完了まで並行生成をポーズ（レイテンシ改善）'),
+//           })
+//           .optional()
+//           .describe('更新するオプション（action=update_optionsの場合）'),
+//       },
+//     },
+//     async args => {
+//       const { action, options } = args || {};
 
-      try {
-        switch (action) {
-          case 'enable':
-            sayCoeiroink.setParallelGenerationEnabled(true);
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: '✅ 並行チャンク生成を有効化しました。\n\n⚡ 効果:\n- 複数チャンクの同時生成により高速化\n- レスポンシブな音声再生開始\n- 体感的なレイテンシ削減',
-                },
-              ],
-            };
+//       try {
+//         switch (action) {
+//           case 'enable':
+//             sayCoeiroink.setParallelGenerationEnabled(true);
+//             return {
+//               content: [
+//                 {
+//                   type: 'text',
+//                   text: '✅ 並行チャンク生成を有効化しました。\n\n⚡ 効果:\n- 複数チャンクの同時生成により高速化\n- レスポンシブな音声再生開始\n- 体感的なレイテンシ削減',
+//                 },
+//               ],
+//             };
 
-          case 'disable':
-            sayCoeiroink.setParallelGenerationEnabled(false);
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text: '⏸️ 並行チャンク生成を無効化しました。\n\n🔄 従来の逐次生成モードに戻りました。\n- 安定性重視の動作\n- メモリ使用量削減',
-                },
-              ],
-            };
+//           case 'disable':
+//             sayCoeiroink.setParallelGenerationEnabled(false);
+//             return {
+//               content: [
+//                 {
+//                   type: 'text',
+//                   text: '⏸️ 並行チャンク生成を無効化しました。\n\n🔄 従来の逐次生成モードに戻りました。\n- 安定性重視の動作\n- メモリ使用量削減',
+//                 },
+//               ],
+//             };
 
-          case 'status': {
-            const currentOptions = sayCoeiroink.getStreamControllerOptions();
-            const stats = sayCoeiroink.getGenerationStats();
+//           case 'status': {
+//             const currentOptions = sayCoeiroink.getStreamControllerOptions();
+//             const stats = sayCoeiroink.getGenerationStats();
 
-            return {
-              content: [
-                {
-                  type: 'text',
-                  text:
-                    `📊 並行生成ステータス\n\n` +
-                    `🎛️ 設定:\n` +
-                    `  - 状態: ${currentOptions.maxConcurrency > 1 ? '✅ 並行生成' : '❌ 逐次生成'}\n` +
-                    `  - 最大並行数: ${currentOptions.maxConcurrency} ${currentOptions.maxConcurrency === 1 ? '(逐次モード)' : '(並行モード)'}\n` +
-                    `  - リクエスト間隔: ${currentOptions.delayBetweenRequests}ms\n` +
-                    `  - 先読み数: ${currentOptions.bufferAheadCount}\n` +
-                    `  - 初回ポーズ: ${currentOptions.pauseUntilFirstComplete ? '✅ 有効' : '❌ 無効'}\n\n` +
-                    `📈 現在の統計:\n` +
-                    `  - アクティブタスク: ${stats.activeTasks}\n` +
-                    `  - 完了済み結果: ${stats.completedResults}\n` +
-                    `  - メモリ使用量: ${(stats.totalMemoryUsage / 1024).toFixed(1)}KB`,
-                },
-              ],
-            };
-          }
+//             return {
+//               content: [
+//                 {
+//                   type: 'text',
+//                   text:
+//                     `📊 並行生成ステータス\n\n` +
+//                     `🎛️ 設定:\n` +
+//                     `  - 状態: ${currentOptions.maxConcurrency > 1 ? '✅ 並行生成' : '❌ 逐次生成'}\n` +
+//                     `  - 最大並行数: ${currentOptions.maxConcurrency} ${currentOptions.maxConcurrency === 1 ? '(逐次モード)' : '(並行モード)'}\n` +
+//                     `  - リクエスト間隔: ${currentOptions.delayBetweenRequests}ms\n` +
+//                     `  - 先読み数: ${currentOptions.bufferAheadCount}\n` +
+//                     `  - 初回ポーズ: ${currentOptions.pauseUntilFirstComplete ? '✅ 有効' : '❌ 無効'}\n\n` +
+//                     `📈 現在の統計:\n` +
+//                     `  - アクティブタスク: ${stats.activeTasks}\n` +
+//                     `  - 完了済み結果: ${stats.completedResults}\n` +
+//                     `  - メモリ使用量: ${(stats.totalMemoryUsage / 1024).toFixed(1)}KB`,
+//                 },
+//               ],
+//             };
+//           }
 
-          case 'update_options':
-            if (options) {
-              sayCoeiroink.updateStreamControllerOptions(options);
-              const updatedOptions = sayCoeiroink.getStreamControllerOptions();
+//           case 'update_options':
+//             if (options) {
+//               sayCoeiroink.updateStreamControllerOptions(options);
+//               const updatedOptions = sayCoeiroink.getStreamControllerOptions();
 
-              return {
-                content: [
-                  {
-                    type: 'text',
-                    text:
-                      `⚙️ オプション更新完了\n\n` +
-                      `🔧 新しい設定:\n` +
-                      `  - 最大並行数: ${updatedOptions.maxConcurrency} ${updatedOptions.maxConcurrency === 1 ? '(逐次モード)' : '(並行モード)'}\n` +
-                      `  - リクエスト間隔: ${updatedOptions.delayBetweenRequests}ms\n` +
-                      `  - 先読み数: ${updatedOptions.bufferAheadCount}\n` +
-                      `  - 初回ポーズ: ${updatedOptions.pauseUntilFirstComplete ? '✅ 有効' : '❌ 無効'}\n\n` +
-                      `💡 次回の音声合成から適用されます。`,
-                  },
-                ],
-              };
-            } else {
-              throw new Error('update_optionsアクションにはoptionsパラメータが必要です');
-            }
+//               return {
+//                 content: [
+//                   {
+//                     type: 'text',
+//                     text:
+//                       `⚙️ オプション更新完了\n\n` +
+//                       `🔧 新しい設定:\n` +
+//                       `  - 最大並行数: ${updatedOptions.maxConcurrency} ${updatedOptions.maxConcurrency === 1 ? '(逐次モード)' : '(並行モード)'}\n` +
+//                       `  - リクエスト間隔: ${updatedOptions.delayBetweenRequests}ms\n` +
+//                       `  - 先読み数: ${updatedOptions.bufferAheadCount}\n` +
+//                       `  - 初回ポーズ: ${updatedOptions.pauseUntilFirstComplete ? '✅ 有効' : '❌ 無効'}\n\n` +
+//                       `💡 次回の音声合成から適用されます。`,
+//                   },
+//                 ],
+//               };
+//             } else {
+//               throw new Error('update_optionsアクションにはoptionsパラメータが必要です');
+//             }
 
-          default:
-            throw new Error(`無効なアクション: ${action}`);
-        }
-      } catch (error) {
-        throw new Error(`並行生成制御エラー: ${(error as Error).message}`);
-      }
-    }
-  );
-}
+//           default:
+//             throw new Error(`無効なアクション: ${action}`);
+//         }
+//       } catch (error) {
+//         throw new Error(`並行生成制御エラー: ${(error as Error).message}`);
+//       }
+//     }
+//   );
+// }

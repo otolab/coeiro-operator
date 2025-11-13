@@ -17,7 +17,7 @@ export function registerDebugLogsTool(server: McpServer): void {
     'debug_logs',
     {
       description:
-        'デバッグ用ログの取得と表示。ログレベル・時刻・検索条件による絞り込み、統計情報の表示が可能',
+        'デバッグ用ログの取得と表示',
       inputSchema: {
         action: z
           .enum(['get', 'stats', 'clear'])

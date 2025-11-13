@@ -21,12 +21,12 @@ export function registerDictionaryRegisterTool(
     'dictionary_register',
     {
       description:
-        'COEIROINKのユーザー辞書に単語を登録します。専門用語や固有名詞の読み方を正確に制御できます。',
+        'ユーザー辞書に単語を登録します',
       inputSchema: {
-        word: z.string().describe('登録する単語（半角英数字も可、自動で全角変換されます）'),
+        word: z.string().describe('登録する単語（半角英数字も可）'),
         yomi: z.string().describe('読み方（全角カタカナ）'),
         accent: z.number().describe('アクセント位置（0:平板型、1以上:該当モーラが高い）'),
-        numMoras: z.number().describe('モーラ数（カタカナの音節数）'),
+        numMoras: z.number().describe('モーラ数（音節数）'),
       },
     },
     async (args): Promise<ToolResponse> => {

@@ -35,19 +35,19 @@ export function registerOperatorAssignTool(
     'operator_assign',
     {
       description:
-        'オペレータを割り当てます。通常は引数なしで実行し、ランダムに選択されます。特定のオペレータが必要な場合のみ名前を指定してください。スタイル切り替えはsayツールのstyleパラメータで日本語名を指定します。',
+        'オペレータを割り当てます。',
       inputSchema: {
         operator: z
           .string()
           .optional()
           .describe(
-            'オペレータ名（省略推奨。特定のオペレータが必要な場合のみ英語表記で指定）'
+            'オペレータ指名（キャラクタID、指示がなければ継続orランダム。例: "tsukuyomi"）'
           ),
         style: z
           .string()
           .optional()
           .describe(
-            "指定するスタイル名（例: 'normal', 'ura', 'sleepy'など。省略時はキャラクターのデフォルト設定に従う）"
+            'スタイル指定（例: "のーまる"など）',
           ),
       },
     },
@@ -200,7 +200,7 @@ export function registerOperatorAvailableTool(
   server.registerTool(
     'operator_available',
     {
-      description: '利用可能なオペレータ一覧を表示します',
+      description: '利用可能なオペレータ一覧（キャラクタID）を表示します',
       inputSchema: {},
     },
     async (): Promise<ToolResponse> => {
@@ -243,12 +243,12 @@ export function registerOperatorStylesTool(
     'operator_styles',
     {
       description:
-        '現在のオペレータまたは指定したキャラクターの利用可能なスタイル一覧を表示します。キャラクターの基本情報、全スタイルの詳細（性格・話し方）、スタイル選択方法を確認できます。スタイル切り替えにはsayツールのstyleパラメータで日本語名を使用してください。',
+        '現在のオペレータまたは指定したキャラクターの基礎情報とスタイル一覧を表示します。',
       inputSchema: {
         character: z
           .string()
           .optional()
-          .describe('キャラクターID（省略時は現在のオペレータのスタイル情報を表示）'),
+          .describe('キャラクターID（省略時は現在のオペレータ）'),
       },
     },
     async (args): Promise<ToolResponse> => {

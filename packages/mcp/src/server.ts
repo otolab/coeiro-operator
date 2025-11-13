@@ -24,7 +24,7 @@ import {
 } from './tools/operator.js';
 import {
   registerSayTool,
-  registerParallelGenerationControlTool,
+  // registerParallelGenerationControlTool,
 } from './tools/speech.js';
 import {
   registerQueueStatusTool,
@@ -165,7 +165,7 @@ registerOperatorStylesTool(server, operatorManager, characterInfoService);
 
 // Speech tools
 registerSayTool(server, sayCoeiroink, operatorManager, characterInfoService, terminalBackground);
-registerParallelGenerationControlTool(server, sayCoeiroink);
+// registerParallelGenerationControlTool(server, sayCoeiroink);
 
 // Playback tools
 registerQueueStatusTool(server, sayCoeiroink);
