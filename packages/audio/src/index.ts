@@ -108,15 +108,31 @@ export class SayCoeiroink {
 
     if (!options.voice) {
       // voiceが未指定 → Operator経由でアサイン
-      character = await this.operatorManager.getCurrentCharacter();
+      const session = await this.operatorManager.getCurrentOperatorSession();
+      if (!session) {
+        throw new Error('No operator assigned. Please assign an operator first.');
+      }
+      const assignedCharacter = await this.characterInfoService.getCharacterInfo(session.characterId);
+      if (!assignedCharacter) {
+        throw new Error(`Assigned character not found: ${session.characterId}`);
+      }
+      character = assignedCharacter;
       logger.debug(`Character assigned: ${character.characterId}`);
     } else {
       // voiceが指定済み → CharacterInfoServiceから取得
-      const resolvedCharacter = this.characterInfoService.getCharacter(options.voice);
+      const resolvedCharacter = await this.characterInfoService.getCharacterInfo(options.voice);
       if (!resolvedCharacter) {
         if (allowFallback) {
           logger.warn(`Character not found: ${options.voice}, falling back to assignment`);
-          character = await this.operatorManager.getCurrentCharacter();
+          const session = await this.operatorManager.getCurrentOperatorSession();
+          if (!session) {
+            throw new Error('No operator assigned and character not found.');
+          }
+          const assignedCharacter = await this.characterInfoService.getCharacterInfo(session.characterId);
+          if (!assignedCharacter) {
+            throw new Error(`Assigned character not found: ${session.characterId}`);
+          }
+          character = assignedCharacter;
         } else {
           throw new Error(`Character not found: ${options.voice}`);
         }
@@ -151,7 +167,6 @@ export class SayCoeiroink {
     };
     validateSpeedParameters(speedSpec);
     const speed = convertToSpeed(speedSpec, {
-      baseMorasPerSecond: character.baseMorasPerSecond,
       styleMorasPerSecond: styleConfig.morasPerSecond
     });
 

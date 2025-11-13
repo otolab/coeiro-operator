@@ -3,7 +3,7 @@
  */
 
 import { AudioSynthesizer } from './audio-synthesizer.js';
-import type { Config, Chunk, VoiceConfig, AudioResult } from './types.js';
+import type { Config, Chunk, SpeakSettings, AudioResult } from './types.js';
 import type { Speaker } from '@coeiro-operator/core';
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
@@ -312,15 +312,13 @@ describe('AudioSynthesizer', () => {
     test('文字列音声IDで正常に合成できること', async () => {
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      // 文字列IDからVoiceConfigを作成
-      const testSpeaker: Speaker = {
+      // SpeakSettingsを作成
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'test-voice-id',
-        speakerName: 'テストキャラクター',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 0,
+        styleId: 0,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       // synthesisエンドポイントのモック
@@ -332,7 +330,7 @@ describe('AudioSynthesizer', () => {
         })
       );
 
-      const result = await audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0);
+      const result = await audioSynthesizer.synthesizeChunk(mockChunk, mockSpeakSettings);
 
       expect(result).toEqual({
         chunk: mockChunk,
@@ -347,15 +345,13 @@ describe('AudioSynthesizer', () => {
       });
     });
 
-    test('VoiceConfig形式で正常に合成できること', async () => {
-      const testSpeaker: Speaker = {
+    test('SpeakSettings形式で正常に合成できること', async () => {
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'operator-voice-id',
-        speakerName: 'Test Speaker',
-        styles: [{ styleId: 1, styleName: 'normal' }],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 1,
+        styleId: 1,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       const mockAudioBuffer = new ArrayBuffer(1000);
@@ -368,7 +364,7 @@ describe('AudioSynthesizer', () => {
         })
       );
 
-      const result = await audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0);
+      const result = await audioSynthesizer.synthesizeChunk(mockChunk, mockSpeakSettings);
 
       expect(result.audioBuffer).toStrictEqual(mockAudioBuffer);
 
@@ -379,19 +375,13 @@ describe('AudioSynthesizer', () => {
       expect(requestBody.styleId).toBe(1);
     });
 
-    test('VoiceConfigで指定スタイルが正常に動作すること', async () => {
-      const testSpeaker: Speaker = {
+    test('SpeakSettingsで指定スタイルが正常に動作すること', async () => {
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'style-test-id',
-        speakerName: 'Test Speaker',
-        styles: [
-          { styleId: 1, styleName: 'style1' },
-          { styleId: 2, styleName: 'style2' },
-          { styleId: 5, styleName: 'selected' },
-        ],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 5,
+        styleId: 5,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       const mockAudioBuffer = new ArrayBuffer(1000);
@@ -404,7 +394,7 @@ describe('AudioSynthesizer', () => {
       );
 
       // 音声合成を実行
-      await audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0);
+      await audioSynthesizer.synthesizeChunk(mockChunk, mockSpeakSettings);
       const fetchCall = vi.mocked(global.fetch).mock.calls[0];
       const requestBody = JSON.parse(fetchCall[1].body);
 
@@ -413,14 +403,12 @@ describe('AudioSynthesizer', () => {
     });
 
     test('APIエラー時に適切なエラーを投げること', async () => {
-      const testSpeaker: Speaker = {
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'test-voice-id',
-        speakerName: 'テストキャラクター',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 0,
+        styleId: 0,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       // speakersエンドポイントのモック
@@ -434,25 +422,23 @@ describe('AudioSynthesizer', () => {
       );
 
       await expect(
-        audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0)
+        audioSynthesizer.synthesizeChunk(mockChunk, mockSpeakSettings)
       ).rejects.toThrow('チャンク0合成エラー');
     });
 
     test('ネットワークエラー時に適切なエラーを投げること', async () => {
-      const testSpeaker: Speaker = {
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'test-voice-id',
-        speakerName: 'テストキャラクター',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 0,
+        styleId: 0,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       vi.mocked(global.fetch).mockRejectedValueOnce(new Error('Network error'));
 
       await expect(
-        audioSynthesizer.synthesizeChunk(mockChunk, voiceConfig, 1.0)
+        audioSynthesizer.synthesizeChunk(mockChunk, mockSpeakSettings)
       ).rejects.toThrow('Network error');
     });
   });
@@ -462,14 +448,12 @@ describe('AudioSynthesizer', () => {
       const text = 'こんにちは';
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      const testSpeaker: Speaker = {
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'test-voice-id',
-        speakerName: 'テストキャラクター',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 0,
+        styleId: 0,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       // synthesisエンドポイントのモック
@@ -481,7 +465,7 @@ describe('AudioSynthesizer', () => {
       );
 
       const results: AudioResult[] = [];
-      for await (const result of audioSynthesizer.synthesizeStream(text, voiceConfig, 1.0)) {
+      for await (const result of audioSynthesizer.synthesizeStream(text, mockSpeakSettings, 'punctuation')) {
         results.push(result);
       }
 
@@ -503,14 +487,12 @@ describe('AudioSynthesizer', () => {
       const longText = 'a'.repeat(150); // 複数チャンクに分割される
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      const testSpeaker: Speaker = {
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'test-voice-id',
-        speakerName: 'テストキャラクター',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 0,
+        styleId: 0,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       vi.mocked(global.fetch).mockResolvedValue({
@@ -521,8 +503,8 @@ describe('AudioSynthesizer', () => {
       const results: AudioResult[] = [];
       for await (const result of audioSynthesizer.synthesizeStream(
         longText,
-        voiceConfig,
-        1.0
+        mockSpeakSettings,
+        'medium'
       )) {
         results.push(result);
       }
@@ -540,14 +522,12 @@ describe('AudioSynthesizer', () => {
     });
 
     test('空のテキストで空のストリームが返されること', async () => {
-      const testSpeaker: Speaker = {
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'test-voice-id',
-        speakerName: 'テストキャラクター',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 0,
+        styleId: 0,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       vi.mocked(global.fetch).mockResolvedValue(
@@ -559,7 +539,7 @@ describe('AudioSynthesizer', () => {
       );
 
       const results: AudioResult[] = [];
-      for await (const result of audioSynthesizer.synthesizeStream('', voiceConfig, 1.0)) {
+      for await (const result of audioSynthesizer.synthesizeStream('', mockSpeakSettings, 'punctuation')) {
         results.push(result);
       }
 
@@ -573,14 +553,12 @@ describe('AudioSynthesizer', () => {
       const text = 'あ';
       const mockAudioBuffer = new ArrayBuffer(100);
 
-      const testSpeaker: Speaker = {
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'test-voice-id',
-        speakerName: 'テストキャラクター',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 0,
+        styleId: 0,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       vi.mocked(global.fetch).mockResolvedValue({
@@ -589,7 +567,7 @@ describe('AudioSynthesizer', () => {
       });
 
       const results: AudioResult[] = [];
-      for await (const result of audioSynthesizer.synthesizeStream(text, voiceConfig, 1.0)) {
+      for await (const result of audioSynthesizer.synthesizeStream(text, mockSpeakSettings, 'punctuation')) {
         results.push(result);
       }
 
@@ -602,14 +580,12 @@ describe('AudioSynthesizer', () => {
       const text = 'こんにちは！？😊🎵';
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      const testSpeaker: Speaker = {
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'test-voice-id',
-        speakerName: 'テストキャラクター',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 0,
+        styleId: 0,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       vi.mocked(global.fetch).mockResolvedValue({
@@ -618,7 +594,7 @@ describe('AudioSynthesizer', () => {
       });
 
       const results: AudioResult[] = [];
-      for await (const result of audioSynthesizer.synthesizeStream(text, voiceConfig, 1.0)) {
+      for await (const result of audioSynthesizer.synthesizeStream(text, mockSpeakSettings, 'punctuation')) {
         results.push(result);
       }
 
@@ -630,14 +606,12 @@ describe('AudioSynthesizer', () => {
       const text = '12345';
       const mockAudioBuffer = new ArrayBuffer(1000);
 
-      const testSpeaker: Speaker = {
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'test-voice-id',
-        speakerName: 'テストキャラクター',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 0,
+        styleId: 0,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       vi.mocked(global.fetch).mockResolvedValue({
@@ -646,7 +620,7 @@ describe('AudioSynthesizer', () => {
       });
 
       const results: AudioResult[] = [];
-      for await (const result of audioSynthesizer.synthesizeStream(text, voiceConfig, 1.0)) {
+      for await (const result of audioSynthesizer.synthesizeStream(text, mockSpeakSettings, 'punctuation')) {
         results.push(result);
       }
 
@@ -675,22 +649,21 @@ describe('AudioSynthesizer', () => {
       );
 
       // テキスト分割
-      const chunks = audioSynthesizer.splitTextIntoChunks(longText);
+      const chunks = audioSynthesizer.splitTextIntoChunks(longText, 'medium');
       expect(chunks.length).toBeGreaterThanOrEqual(1);
 
-      // VoiceConfig を作成
-      const voiceConfig: VoiceConfig = {
-        speaker: {
-          speakerId: 'test-speaker-1',
-          speakerName: 'テストキャラクター',
-          styles: [{ styleId: 0, styleName: 'ノーマル' }],
-        },
-        selectedStyleId: 0,
+      // SpeakSettings を作成
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
+        speakerId: 'test-speaker-1',
+        styleId: 0,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       // 各チャンクの合成
       for (const chunk of chunks) {
-        const result = await audioSynthesizer.synthesizeChunk(chunk, voiceConfig, 1.0);
+        const result = await audioSynthesizer.synthesizeChunk(chunk, mockSpeakSettings);
 
         expect(result.chunk).toEqual(chunk);
         expect(result.audioBuffer).toBeInstanceOf(ArrayBuffer);
@@ -704,14 +677,12 @@ describe('AudioSynthesizer', () => {
       const longText = 'あ'.repeat(1000); // 多数のチャンクに分割される
       const mockAudioBuffer = new ArrayBuffer(100);
 
-      const testSpeaker: Speaker = {
+      const mockSpeakSettings: SpeakSettings = {
+        characterId: 'test-character',
         speakerId: 'test-voice-id',
-        speakerName: 'テストキャラクター',
-        styles: [{ styleId: 0, styleName: 'ノーマル' }],
-      };
-      const voiceConfig: VoiceConfig = {
-        speaker: testSpeaker,
-        selectedStyleId: 0,
+        styleId: 0,
+        speed: 1.0,
+        styleMorasPerSecond: 7.5,
       };
 
       vi.mocked(global.fetch).mockResolvedValue({
@@ -724,8 +695,8 @@ describe('AudioSynthesizer', () => {
 
       for await (const result of audioSynthesizer.synthesizeStream(
         longText,
-        voiceConfig,
-        1.0
+        mockSpeakSettings,
+        'medium'
       )) {
         results.push(result);
       }
