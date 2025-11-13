@@ -13,6 +13,85 @@ import { join } from 'path';
 // モックの設定
 global.fetch = vi.fn();
 
+// @coeiro-operator/coreのモック設定
+vi.mock('@coeiro-operator/core', () => {
+  // CharacterInfoServiceのモック実装
+  class MockCharacterInfoService {
+    configManager: any;
+    initialize(configManager: any) {
+      this.configManager = configManager;
+    }
+    async getCharacterInfo(characterId: string) {
+      // テスト用のCharacter情報を返す
+      if (characterId === 'test-speaker-1' || characterId === 'tsukuyomi') {
+        return {
+          characterId: characterId,
+          speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-uuid',
+          speakerName: characterId === 'tsukuyomi' ? 'つくよみちゃん' : 'テストスピーカー1',
+          defaultStyleId: 0,
+          greeting: 'こんにちは',
+          farewell: 'さようなら',
+          personality: 'テスト性格',
+          speakingStyle: 'テスト話し方',
+          styles: {
+            0: { styleId: 0, styleName: 'ノーマル', morasPerSecond: 7.5 },
+          },
+        };
+      }
+      return null;
+    }
+    selectStyle() {
+      return null;
+    }
+    async listSpeakers() {
+      return [];
+    }
+  }
+
+  return {
+    OperatorManager: vi.fn().mockImplementation(() => ({
+      initialize: vi.fn(),
+      getCurrentOperatorSession: vi.fn().mockResolvedValue({
+        characterId: 'test-speaker-1',
+        styleId: 0,
+        styleName: 'ノーマル',
+      }),
+    })),
+    CharacterInfoService: MockCharacterInfoService,
+    getSpeakerProvider: vi.fn(() => ({
+      getSpeakers: vi.fn().mockResolvedValue([
+        {
+          speakerUuid: 'test-speaker-1',
+          speakerName: 'テストスピーカー1',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ]),
+      updateConnection: vi.fn(),
+      checkConnection: vi.fn().mockResolvedValue(true),
+      logAvailableVoices: vi.fn(),
+    })),
+    ConfigManager: vi.fn().mockImplementation(() => ({
+      getFullConfig: vi.fn().mockResolvedValue({
+        connection: { host: 'localhost', port: '50032' },
+        voice: { rate: 200 },
+        audio: { latencyMode: 'balanced' },
+        operator: { rate: 200 },
+      }),
+      getCharacterConfig: vi.fn().mockImplementation((characterId: string) => {
+        if (characterId === 'test-speaker-1') {
+          return Promise.resolve({
+            characterId,
+            speakerId: 'test-speaker-uuid',
+            defaultStyle: 'ノーマル',
+          });
+        }
+        return null;
+      }),
+      getStateDir: vi.fn().mockReturnValue('/tmp/test-state'),
+    })),
+  };
+});
+
 // AudioPlayerのplayStreamingAudioをモック化して即座に完了させる
 vi.mock('./audio-player.js', async () => {
   const actual = await vi.importActual<typeof import('./audio-player.js')>('./audio-player.js');

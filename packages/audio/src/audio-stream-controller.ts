@@ -4,8 +4,8 @@
  */
 
 import { logger } from '@coeiro-operator/common';
-import { ChunkGenerationManager, GenerationOptions, toSpeakSettings } from './chunk-generation-manager.js';
-import type { Chunk, AudioResult, VoiceConfig, PunctuationPauseSettings } from './types.js';
+import { ChunkGenerationManager, GenerationOptions } from './chunk-generation-manager.js';
+import type { Chunk, AudioResult, PunctuationPauseSettings, SpeakSettings } from './types.js';
 import { AudioPlayer } from './audio-player.js';
 import { SAMPLE_RATES } from './constants.js';
 
@@ -32,15 +32,13 @@ export class AudioStreamController {
   private audioPlayer: AudioPlayer;
   private synthesizeFunction: (
     chunk: Chunk,
-    voiceConfig: VoiceConfig,
-    speed: number
+    speakSettings: SpeakSettings
   ) => Promise<AudioResult>;
 
   constructor(
     synthesizeFunction: (
       chunk: Chunk,
-      voiceConfig: VoiceConfig,
-      speed: number
+      speakSettings: SpeakSettings
     ) => Promise<AudioResult>,
     options: Partial<StreamControllerOptions> = {},
     audioPlayer?: AudioPlayer
@@ -171,16 +169,19 @@ export class AudioStreamController {
   /**
    * 並行生成対応の音声合成ジェネレータ（句読点ポーズ対応）
    * @param chunks - テキストチャンク
-   * @param voiceConfig - 音声設定
-   * @param speed - COEIROINKのspeedScale値（0.5〜2.0）
+   * @param speakSettings - 音声設定
    */
   async *synthesizeStream(
     chunks: Chunk[],
-    voiceConfig: VoiceConfig,
-    speed: number
+    speakSettings: SpeakSettings
   ): AsyncGenerator<AudioResult> {
     const mode = this.options.maxConcurrency === 1 ? '逐次' : '並行';
     logger.debug(`${mode}生成モードで音声合成開始 (maxConcurrency=${this.options.maxConcurrency})`);
+    logger.debug(`speakSettings:`, {
+      characterId: speakSettings.characterId,
+      styleId: speakSettings.styleId,
+      speed: speakSettings.speed,
+    });
 
     if (chunks.length === 0) {
       return;
@@ -188,14 +189,10 @@ export class AudioStreamController {
 
     // 実際のモーラ/秒を計算（句読点ポーズ用）
     let actualMorasPerSecond = 7.5; // デフォルト値
-    if (voiceConfig.styleMorasPerSecond && voiceConfig.selectedStyleId !== undefined) {
-      const baseMorasPerSecond = voiceConfig.styleMorasPerSecond[voiceConfig.selectedStyleId] || 7.5;
-      actualMorasPerSecond = baseMorasPerSecond * speed;
-      logger.debug(`実際の話速: ${actualMorasPerSecond}モーラ/秒 (基準: ${baseMorasPerSecond} × speed: ${speed})`);
+    if (speakSettings.styleMorasPerSecond) {
+      actualMorasPerSecond = speakSettings.styleMorasPerSecond * speakSettings.speed;
+      logger.debug(`実際の話速: ${actualMorasPerSecond}モーラ/秒 (基準: ${speakSettings.styleMorasPerSecond} × speed: ${speakSettings.speed})`);
     }
-
-    // SpeakSettings変換
-    const speakSettings = toSpeakSettings(voiceConfig, speed);
 
     let chunkIndex = 0;
     // 新しいgenerate()メソッドを使用（シンプル）

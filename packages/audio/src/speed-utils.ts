@@ -3,7 +3,6 @@
  */
 
 import { logger } from '@coeiro-operator/common';
-import type { VoiceConfig } from './types.js';
 
 /**
  * 速度指定の内部表現（数値のみ）
@@ -11,6 +10,14 @@ import type { VoiceConfig } from './types.js';
 export interface SpeedSpecification {
   rate?: number;    // 絶対速度（WPM）
   factor?: number;  // 相対速度（倍率）
+}
+
+/**
+ * 話速情報（速度計算用）
+ */
+export interface SpeakerRateInfo {
+  baseMorasPerSecond?: number;      // キャラクターの基準話速
+  styleMorasPerSecond?: number;     // スタイルの基準話速
 }
 
 /**
@@ -22,21 +29,24 @@ const BASE_MORAS_PER_SECOND = 7.5; // 200 WPM時のモーラ/秒
 /**
  * WPMからCOEIROINKのspeed値を計算
  * @param wpm - Words Per Minute
- * @param voiceConfig - 音声設定（スタイル別の話速情報を含む）
+ * @param rateInfo - 話速情報（スタイル別の話速情報を含む）
  * @returns COEIROINKのspeed値
  */
-function calculateSpeedFromWPM(wpm: number, voiceConfig: VoiceConfig): number {
+function calculateSpeedFromWPM(wpm: number, rateInfo: SpeakerRateInfo): number {
   const targetMorasPerSecond = BASE_MORAS_PER_SECOND * (wpm / BASE_RATE_WPM);
 
   // 話者の実測速度を取得
   let speakerMorasPerSecond = BASE_MORAS_PER_SECOND;
-  logger.debug(`voiceConfig.styleMorasPerSecond: ${JSON.stringify(voiceConfig.styleMorasPerSecond)}`);
-  logger.debug(`voiceConfig.selectedStyleId: ${voiceConfig.selectedStyleId}`);
 
-  if (voiceConfig.styleMorasPerSecond && voiceConfig.selectedStyleId !== undefined) {
-    // 数値のselectedStyleIdで直接アクセス
-    speakerMorasPerSecond = voiceConfig.styleMorasPerSecond[voiceConfig.selectedStyleId] || BASE_MORAS_PER_SECOND;
-    logger.debug(`話者固有速度を使用: styleId=${voiceConfig.selectedStyleId} → ${speakerMorasPerSecond} モーラ/秒`);
+  // styleMorasPerSecondが設定されていればそれを使用
+  if (rateInfo.styleMorasPerSecond) {
+    speakerMorasPerSecond = rateInfo.styleMorasPerSecond;
+    logger.debug(`話者固有速度を使用: ${speakerMorasPerSecond} モーラ/秒`);
+  }
+  // baseMorasPerSecondフォールバック
+  else if (rateInfo.baseMorasPerSecond) {
+    speakerMorasPerSecond = rateInfo.baseMorasPerSecond;
+    logger.debug(`基準速度を使用: ${speakerMorasPerSecond} モーラ/秒`);
   } else {
     logger.debug(`デフォルト速度を使用: ${BASE_MORAS_PER_SECOND} モーラ/秒`);
   }
@@ -52,10 +62,10 @@ function calculateSpeedFromWPM(wpm: number, voiceConfig: VoiceConfig): number {
 /**
  * 速度指定をCOEIROINKのspeedScale値に変換
  * @param spec - 速度指定
- * @param voiceConfig - 音声設定（スタイル別の話速情報を含む）
+ * @param rateInfo - 話速情報（スタイル別の話速情報を含む）
  * @returns COEIROINKのspeed値（0.5〜2.0）
  */
-export function convertToSpeed(spec: SpeedSpecification, voiceConfig: VoiceConfig): number {
+export function convertToSpeed(spec: SpeedSpecification, rateInfo: SpeakerRateInfo): number {
   logger.debug(`convertToSpeed入力 - spec: ${JSON.stringify(spec)}`);
   logger.debug(`convertToSpeed入力 - spec.rate type: ${typeof spec.rate}, value: ${spec.rate}`);
   logger.debug(`convertToSpeed入力 - spec.factor type: ${typeof spec.factor}, value: ${spec.factor}`);
@@ -69,7 +79,7 @@ export function convertToSpeed(spec: SpeedSpecification, voiceConfig: VoiceConfi
   }
   // rateをWPMとして処理
   else if (spec.rate !== undefined) {
-    speed = calculateSpeedFromWPM(spec.rate, voiceConfig);
+    speed = calculateSpeedFromWPM(spec.rate, rateInfo);
     logger.debug(`絶対速度: rate=${spec.rate} WPM → speed=${speed.toFixed(2)}`);
   }
   // 未指定

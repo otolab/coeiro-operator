@@ -4,23 +4,21 @@
 
 import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
-import { VoiceResolver } from './voice-resolver.js';
 import { logger } from '@coeiro-operator/common';
 import { BUFFER_SIZES, FILTER_SETTINGS } from './constants.js';
 import { convertToSpeed, validateSpeedParameters } from './speed-utils.js';
 import type {
   Config,
-  VoiceConfig,
-  SynthesizeOptions,
+  ProcessingOptions,
   SynthesizeResult,
+  SpeakSettings,
 } from './types.js';
 
 export class SynthesisProcessor {
   constructor(
     private config: Config,
     private audioPlayer: AudioPlayer,
-    private audioSynthesizer: AudioSynthesizer,
-    private voiceResolver: VoiceResolver
+    private audioSynthesizer: AudioSynthesizer
   ) {}
 
   /**
@@ -53,64 +51,39 @@ export class SynthesisProcessor {
 
   /**
    * 音声合成処理のメインメソッド
+   * @param text 合成するテキスト
+   * @param speakSettings 音声生成パラメータ
+   * @param processingOptions 処理制御オプション
    */
   async process(
     text: string,
-    options: SynthesizeOptions = {}
+    speakSettings: SpeakSettings,
+    processingOptions: ProcessingOptions = {}
   ): Promise<SynthesizeResult> {
     logger.info(
       `音声合成開始: テキスト="${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`
     );
-    logger.debug(`process - raw options: ${JSON.stringify(options)}`);
-
-    // オプション解析
-    const resolvedOptions = this.resolveOptions(options);
-    logger.debug(`process - resolved rate: ${resolvedOptions.rate} (type: ${typeof resolvedOptions.rate})`);
+    logger.debug(`SpeakSettings:`, speakSettings);
+    logger.debug(`ProcessingOptions:`, processingOptions);
 
     // サーバー接続確認を最初に行う
     await this.validateServerConnection();
 
-    // 音声設定の解決
-    logger.debug('SynthesisProcessor.process() - 音声設定解決開始', {
-      'resolvedOptions.voice': resolvedOptions.voice,
-      'resolvedOptions.style': resolvedOptions.style,
-      'resolvedOptions.allowFallback': resolvedOptions.allowFallback,
-    });
-
-    const voiceConfig = await this.voiceResolver.resolveVoiceConfig(
-      resolvedOptions.voice,
-      resolvedOptions.style || undefined,
-      resolvedOptions.allowFallback
-    );
-
-    logger.debug('SynthesisProcessor.process() - VoiceConfig解決完了', {
-      speaker: voiceConfig.speaker?.speakerName || voiceConfig.speakerId || 'unknown',
-      selectedStyleId: voiceConfig.selectedStyleId,
-    });
-
-    // 速度指定を変換（シンプルに両方渡す）
-    const speedSpec = {
-      rate: typeof resolvedOptions.rate === 'number' ? resolvedOptions.rate : undefined,
-      factor: resolvedOptions.factor
-    };
-    validateSpeedParameters(speedSpec);
-    const speed = convertToSpeed(speedSpec, voiceConfig);
-    logger.debug(`process - converted speed: ${speed} (type: ${typeof speed})`);
+    // オプション解析
+    const resolvedOptions = this.resolveOptions(processingOptions);
 
     // 出力モードに応じた処理
     if (resolvedOptions.outputFile) {
       return await this.processFileOutput(
         text,
-        voiceConfig,
-        speed,
+        speakSettings,
         resolvedOptions.chunkMode,
         resolvedOptions.outputFile
       );
     } else {
       return await this.processStreamingOutput(
         text,
-        voiceConfig,
-        speed,
+        speakSettings,
         resolvedOptions.chunkMode,
         resolvedOptions.bufferSize
       );
@@ -120,35 +93,24 @@ export class SynthesisProcessor {
   /**
    * オプション解析
    */
-  private resolveOptions(options: SynthesizeOptions): {
-    voice: string | VoiceConfig | null;
-    rate: number | string | undefined;
-    factor: number | undefined;
+  private resolveOptions(options: ProcessingOptions): {
     outputFile: string | null;
-    style: string | null;
     chunkMode: any;
     bufferSize: number;
-    allowFallback: boolean;
   } {
     const resolved = {
-      voice: options.voice || null,
-      rate: options.rate ?? this.config.audio?.defaultRate,
-      factor: options.factor,
       outputFile: options.outputFile || null,
-      style: options.style || null,
       chunkMode: options.chunkMode || this.config.audio?.splitMode || 'punctuation',
       bufferSize: options.bufferSize || this.config.audio?.bufferSize || BUFFER_SIZES.DEFAULT,
-      allowFallback: options.allowFallback ?? true,
     };
 
-    logger.debug('=== SYNTHESIZE_TEXT_INTERNAL DEBUG ===');
+    logger.debug('=== PROCESSING OPTIONS DEBUG ===');
     logger.debug(`Resolved options:`);
     logger.debug(
       `  chunkMode: ${resolved.chunkMode} (from: ${options.chunkMode ? 'options' : 'config.audio.splitMode fallback'})`
     );
     logger.debug(`  config.audio.splitMode: ${this.config.audio?.splitMode || 'undefined'}`);
     logger.debug(`  bufferSize: ${resolved.bufferSize}`);
-    logger.debug(`  allowFallback: ${resolved.allowFallback}`);
 
     return resolved;
   }
@@ -170,8 +132,7 @@ export class SynthesisProcessor {
    */
   private async processFileOutput(
     text: string,
-    voiceConfig: VoiceConfig,
-    speed: number,
+    speakSettings: SpeakSettings,
     chunkMode: any,
     outputFile: string
   ): Promise<SynthesizeResult> {
@@ -179,8 +140,8 @@ export class SynthesisProcessor {
 
     // Step 1: 音声合成（データ生成のみ）
     logger.info('音声データ生成開始...');
-    logger.debug(`合成パラメータ - chunkMode: ${chunkMode}, speed: ${speed}`);
-    const generator = this.audioSynthesizer.synthesizeStream(text, voiceConfig, speed, chunkMode);
+    logger.debug(`合成パラメータ - chunkMode: ${chunkMode}, speed: ${speakSettings.speed}`);
+    const generator = this.audioSynthesizer.synthesizeStream(text, speakSettings, chunkMode);
 
     // Step 2: データ収集（フラットな処理）
     logger.info('音声データ収集中...');
@@ -214,8 +175,7 @@ export class SynthesisProcessor {
    */
   private async processStreamingOutput(
     text: string,
-    voiceConfig: VoiceConfig,
-    speed: number,
+    speakSettings: SpeakSettings,
     chunkMode: any,
     bufferSize: number
   ): Promise<SynthesizeResult> {
@@ -223,8 +183,8 @@ export class SynthesisProcessor {
 
     // Step 1: 音声合成（データ生成のみ）
     logger.info('音声合成開始...');
-    logger.debug(`合成パラメータ - chunkMode: ${chunkMode}, speed: ${speed}`);
-    const generator = this.audioSynthesizer.synthesizeStream(text, voiceConfig, speed, chunkMode);
+    logger.debug(`合成パラメータ - chunkMode: ${chunkMode}, speed: ${speakSettings.speed}`);
+    const generator = this.audioSynthesizer.synthesizeStream(text, speakSettings, chunkMode);
 
     // Step 2: 音声再生（再生のみ） - フラットな呼び出し
     logger.info('音声再生開始...');

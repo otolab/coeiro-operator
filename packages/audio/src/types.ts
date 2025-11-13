@@ -34,18 +34,7 @@ export interface AudioResult {
 }
 
 // CharacterInfoServiceのCharacter型を使用
-import type { Character, Speaker } from '@coeiro-operator/core';
-
-/**
- * VoiceConfig: 音声合成に必要な最小限の情報
- * Speaker情報と選択されたスタイルIDを含む
- */
-export interface VoiceConfig {
-  speaker: Speaker | null; // COEIROINKのSpeaker情報（移行中: nullの場合はspeakerIdを使用）
-  selectedStyleId: number; // 選択されたスタイルID（数値）
-  speakerId?: string; // SpeakerのID（キャラクター識別用）
-  styleMorasPerSecond?: Record<number, number>; // スタイル毎の基準話速（数値styleIdをキーに）
-}
+import type { Character } from '@coeiro-operator/core';
 
 /**
  * PunctuationPauseSettings: 句読点ポーズ設定
@@ -65,13 +54,15 @@ export interface PunctuationPauseSettings {
 }
 
 /**
- * SpeakSettings: 音声合成タスク全体の設定
- * VoiceConfig + speed + 将来的な拡張パラメータを統合
+ * SpeakSettings: チャンク生成時の音声合成パラメータ
+ * 並行生成のために必要な最小限の情報のみを保持
  */
 export interface SpeakSettings {
-  speaker: Speaker | null; // どの声で喋るか（移行中: nullの場合はVoiceConfigのspeakerIdを使用）
-  styleId: number; // どのスタイルで喋るか（ノーマル、裏声など）
+  characterId: string; // キャラクターID（ログ出力用）
+  speakerId: string; // speakerUuid（音声合成API用）
+  styleId: number; // スタイルID
   speed: number; // 話速（0.5 ~ 2.0）
+  styleMorasPerSecond?: number; // 選択されたスタイルの基準話速（ポーズ計算用）
 
   // 将来的に可変にする場合（現在は未使用、デフォルト値を使用）
   volume?: number; // 音量（デフォルト: 1.0）
@@ -89,16 +80,35 @@ export type GenerationResult =
 // SpeechTaskはqueue/speech-queue.tsに移動
 export type { SpeechTask } from './queue/speech-queue.js';
 
-export interface SynthesizeOptions {
-  voice?: string | VoiceConfig | null;
+/**
+ * CLISynthesizeOptions: CLI/MCP用の音声合成オプション（文字列ベース）
+ * SayCoeiroink.synthesize()が受け取るオプション
+ */
+export interface CLISynthesizeOptions {
+  voice?: string | null; // 音声ID or名前（省略時はアサイン）
+  style?: string; // スタイル名（省略時はデフォルトスタイル）
   rate?: number | string; // 数値（WPM）または文字列（"150%"）形式
   factor?: number; // 相対速度（倍率、1.0 = 等速）
   outputFile?: string | null;
-  style?: string;
   chunkMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation'; // テキスト分割モード
   bufferSize?: number; // スピーカーバッファサイズ制御（バイト単位）
-  allowFallback?: boolean; // デフォルトフォールバックを許可するかどうか
+  allowFallback?: boolean; // voice解決時のフォールバック許可（デフォルト: true）
 }
+
+/**
+ * ProcessingOptions: 音声処理制御オプション
+ * ファイル出力、チャンク分割、バッファサイズ等の制御
+ */
+export interface ProcessingOptions {
+  outputFile?: string | null;
+  chunkMode?: 'none' | 'small' | 'medium' | 'large' | 'punctuation';
+  bufferSize?: number;
+}
+
+/**
+ * SynthesizeOptions: 後方互換性のためのエイリアス（CLISynthesizeOptions）
+ */
+export type SynthesizeOptions = CLISynthesizeOptions;
 
 export interface SynthesizeResult {
   success: boolean;

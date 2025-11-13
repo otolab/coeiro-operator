@@ -9,8 +9,8 @@ import type {
   Chunk,
   AudioResult,
   AudioConfig,
-  VoiceConfig,
   PunctuationPauseSettings,
+  SpeakSettings,
 } from './types.js';
 import { logger } from '@coeiro-operator/common';
 import { SAMPLE_RATES, SPLIT_SETTINGS, PADDING_SETTINGS, SYNTHESIS_SETTINGS } from './constants.js';
@@ -65,7 +65,7 @@ export class AudioSynthesizer {
     }
 
     this.streamController = new AudioStreamController(
-      (chunk, voiceConfig, speed) => this.synthesizeChunk(chunk, voiceConfig, speed),
+      (chunk, speakSettings) => this.synthesizeChunk(chunk, speakSettings),
       options
     );
   }
@@ -401,8 +401,7 @@ export class AudioSynthesizer {
    */
   async synthesizeChunk(
     chunk: Chunk,
-    voiceConfig: VoiceConfig,
-    speed: number
+    speakSettings: SpeakSettings
   ): Promise<AudioResult> {
     logger.debug(`[AudioSynth] チャンク${chunk.index}: synthesizeChunk開始`);
     logger.log(
@@ -411,12 +410,16 @@ export class AudioSynthesizer {
 
     const url = `http://${this.config.connection.host}:${this.config.connection.port}/v1/synthesis`;
 
-    // VoiceConfigから音声IDとスタイルIDを取得
-    const voiceId = voiceConfig.speakerId || voiceConfig.speaker?.speakerId;
-    if (!voiceId) {
-      throw new Error('Voice ID not found in VoiceConfig');
-    }
-    const styleId = voiceConfig.selectedStyleId;
+    // SpeakSettingsから音声IDとスタイルIDを取得
+    logger.debug(`[AudioSynth] チャンク${chunk.index}: speakSettings確認`, {
+      'characterId': speakSettings.characterId,
+      'speakerId': speakSettings.speakerId,
+      'styleId': speakSettings.styleId,
+    });
+
+    const voiceId = speakSettings.speakerId;
+    const styleId = speakSettings.styleId;
+    const speed = speakSettings.speed;
 
     // 音切れ防止: 前後に無音パディングを追加（設定に基づく）
     let paddingMs = 0;
@@ -493,25 +496,29 @@ export class AudioSynthesizer {
   /**
    * ストリーミング音声合成（リファクタリング版）
    * @param text - 合成するテキスト
-   * @param voiceConfig - 音声設定
-   * @param speed - COEIROINKのspeedScale値（0.5〜2.0）
+   * @param speakSettings - 音声設定
    * @param chunkMode - チャンク分割モード
    */
   async *synthesizeStream(
     text: string,
-    voiceConfig: VoiceConfig,
-    speed: number,
+    speakSettings: SpeakSettings,
     chunkMode: 'none' | 'small' | 'medium' | 'large' | 'punctuation' = 'punctuation'
   ): AsyncGenerator<AudioResult> {
     logger.debug('=== SYNTHESIZE_STREAM DEBUG ===');
     logger.debug(`chunkMode parameter: ${chunkMode}`);
     logger.debug(`text length: ${text.length}`);
+    logger.debug(`speakSettings:`, {
+      characterId: speakSettings.characterId,
+      speakerId: speakSettings.speakerId,
+      styleId: speakSettings.styleId,
+      speed: speakSettings.speed,
+    });
 
     const chunks = this.splitTextIntoChunks(text, chunkMode);
     logger.debug(`Total chunks generated: ${chunks.length}`);
 
     // AudioStreamControllerを使用してストリーミング生成
-    yield* this.streamController.synthesizeStream(chunks, voiceConfig, speed);
+    yield* this.streamController.synthesizeStream(chunks, speakSettings);
 
     logger.debug('=== SYNTHESIZE_STREAM COMPLETE ===');
   }

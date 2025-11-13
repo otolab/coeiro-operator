@@ -4,23 +4,11 @@
  */
 
 import { logger } from '@coeiro-operator/common';
-import type { Chunk, AudioResult, VoiceConfig, SpeakSettings } from './types.js';
-
-/**
- * VoiceConfigとspeedからSpeakSettingsへ変換
- */
-export function toSpeakSettings(voiceConfig: VoiceConfig, speed: number): SpeakSettings {
-  return {
-    speaker: voiceConfig.speaker,
-    styleId: voiceConfig.selectedStyleId,
-    speed,
-  };
-}
+import type { Chunk, AudioResult, SpeakSettings } from './types.js';
 
 export interface GenerationTask {
   chunk: Chunk;
-  voiceConfig: VoiceConfig;
-  speed: number;
+  speakSettings: SpeakSettings;
   startTime: number;
   promise: Promise<AudioResult>;
 }
@@ -49,8 +37,7 @@ export class ChunkGenerationManager {
   private options: GenerationOptions;
   private synthesizeFunction: (
     chunk: Chunk,
-    voiceConfig: VoiceConfig,
-    speed: number
+    speakSettings: SpeakSettings
   ) => Promise<AudioResult>;
   private firstChunkCompleted: boolean = false; // 初回チャンク完了フラグ
 
@@ -62,8 +49,7 @@ export class ChunkGenerationManager {
   constructor(
     synthesizeFunction: (
       chunk: Chunk,
-      voiceConfig: VoiceConfig,
-      speed: number
+      speakSettings: SpeakSettings
     ) => Promise<AudioResult>,
     options: Partial<GenerationOptions> = {}
   ) {
@@ -79,7 +65,7 @@ export class ChunkGenerationManager {
   /**
    * チャンクの生成を開始（並行制御あり）
    */
-  async startGeneration(chunk: Chunk, voiceConfig: VoiceConfig, speed: number): Promise<void> {
+  async startGeneration(chunk: Chunk, speakSettings: SpeakSettings): Promise<void> {
     // 初回ポーズ機能: 初回チャンク完了まで後続チャンクの生成を待機
     if (this.options.pauseUntilFirstComplete && chunk.index > 0 && !this.firstChunkCompleted) {
       logger.debug(`チャンク${chunk.index}: 初回チャンク完了まで生成をポーズ`);
@@ -97,7 +83,7 @@ export class ChunkGenerationManager {
 
     const handledPromise = new Promise<AudioResult | undefined>((resolve, reject) => {
       // synthesizeFunctionを呼び出し、その結果を処理
-      this.synthesizeFunction(chunk, voiceConfig, speed)
+      this.synthesizeFunction(chunk, speakSettings)
         .then((result: AudioResult) => {
           logger.debug(`[ChunkGen] チャンク${chunk.index}: 生成成功`);
           this.onTaskCompleted(chunk.index, result);
@@ -115,8 +101,7 @@ export class ChunkGenerationManager {
 
     const task: GenerationTask = {
       chunk,
-      voiceConfig,
-      speed,
+      speakSettings,
       startTime: Date.now(),
       promise: handledPromise as Promise<AudioResult>,
     };
@@ -317,7 +302,7 @@ export class ChunkGenerationManager {
    * 新しいインターフェース: チャンク配列を並列生成し、順序保証されたストリームを返す
    *
    * @param chunks - 生成対象のチャンク配列（既に分割済み）
-   * @param speakSettings - 音声設定（全チャンク共通）
+   * @param speakSettings - 音声設定
    * @returns 順序保証された音声結果のストリーム
    */
   async *generate(
@@ -407,6 +392,7 @@ export class ChunkGenerationManager {
    */
   private startNewGeneration(chunk: Chunk, speakSettings: SpeakSettings): void {
     logger.debug(`[ChunkGen] チャンク${chunk.index}: 生成開始（新方式）`);
+    logger.debug(`SpeakSettings: characterId=${speakSettings.characterId}, styleId=${speakSettings.styleId}`);
 
     // 1. OpenPromiseパターン: Promiseを先に作成
     let resolveTask!: (result: AudioResult) => void;
@@ -430,12 +416,8 @@ export class ChunkGenerationManager {
     };
     this.newActiveTasks.set(chunk.index, task);
 
-    // 4. 後から処理を実行（仕様書通りのシンプルな実装）
-    this.synthesizeFunction(
-      chunk,
-      { speaker: speakSettings.speaker, selectedStyleId: speakSettings.styleId },
-      speakSettings.speed
-    )
+    // 4. synthesizeFunctionを呼び出し
+    this.synthesizeFunction(chunk, speakSettings)
       .then((result) => {
         logger.debug(`[ChunkGen] チャンク${chunk.index}: 生成成功（新方式）`);
         resolveTask(result);

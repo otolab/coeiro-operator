@@ -48,7 +48,30 @@ vi.mock('@coeiro-operator/core', () => {
     initialize(configManager: any) {
       this.configManager = configManager;
     }
-    async getCharacterInfo() {
+    async getCharacterInfo(characterId: string) {
+      // テスト用のCharacter情報を返す
+      if (characterId === 'test-speaker-1' || characterId === 'tsukuyomi') {
+        return {
+          characterId: characterId,
+          speakerId: characterId === 'tsukuyomi' ? '3c37646f-3881-5374-2a83-149267990abc' : 'test-speaker-uuid',
+          speakerName: characterId === 'tsukuyomi' ? 'つくよみちゃん' : 'テストスピーカー1',
+          defaultStyleId: 0,
+          greeting: 'こんにちは',
+          farewell: 'さようなら',
+          personality: 'テスト性格',
+          speakingStyle: 'テスト話し方',
+          styles: characterId === 'tsukuyomi'
+            ? {
+                0: { styleId: 0, styleName: 'れいせい', morasPerSecond: 7.5 },
+                1: { styleId: 1, styleName: 'おしとやか', morasPerSecond: 7.2 },
+                2: { styleId: 2, styleName: 'げんき', morasPerSecond: 8.0 },
+              }
+            : {
+                0: { styleId: 0, styleName: 'ノーマル', morasPerSecond: 7.5 },
+                1: { styleId: 1, styleName: 'ハッピー', morasPerSecond: 7.8 },
+              },
+        };
+      }
       return null;
     }
     selectStyle() {
@@ -62,7 +85,11 @@ vi.mock('@coeiro-operator/core', () => {
   return {
     OperatorManager: vi.fn().mockImplementation(() => ({
       initialize: vi.fn(),
-      getCharacterInfo: vi.fn(),
+      getCurrentOperatorSession: vi.fn().mockResolvedValue({
+        characterId: 'tsukuyomi',
+        styleId: 0,
+        styleName: 'れいせい',
+      }),
     })),
     CharacterInfoService: MockCharacterInfoService,
     getSpeakerProvider: vi.fn(() => ({
@@ -171,6 +198,11 @@ describe('Say Integration Tests', () => {
     // OperatorManagerモックの設定
     mockOperatorManager = {
       initialize: vi.fn(),
+      getCurrentOperatorSession: vi.fn().mockResolvedValue({
+        characterId: 'tsukuyomi',
+        styleId: 0,
+        styleName: 'れいせい',
+      }),
       getCharacterInfo: vi.fn().mockImplementation((characterId: string) => {
         // test-speaker-1をCharacterIdとして扱い、Character情報を返す
         if (
