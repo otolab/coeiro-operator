@@ -37,7 +37,7 @@
     "@coeiro-operator/audio": "workspace:*",
     "@coeiro-operator/common": "workspace:*",
     "@coeiro-operator/core": "workspace:*",
-    "commander": "^14.0.1"
+    "commander": "^14.0.2"
   },
   "devDependencies": {
     "@types/commander": "^2.12.5",
