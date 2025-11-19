@@ -5,6 +5,7 @@
 
 import { readFile, writeFile, stat, unlink, rename, access } from 'fs/promises';
 import { constants } from 'fs';
+import { logger } from '@coeiro-operator/common';
 
 // 期限付きストレージ構造
 interface StorageEntry<T> {
@@ -207,11 +208,11 @@ export class FileOperationManager<T> {
         const oldTimestamp = entry.updated_at;
         entry.updated_at = new Date().toISOString();
         await this.write(cleaned);
-        console.log(`[FileOperationManager] Timeout refreshed for key: ${this.key}, old: ${oldTimestamp}, new: ${entry.updated_at}`);
+        logger.debug(`[FileOperationManager] Timeout refreshed for key: ${this.key}, old: ${oldTimestamp}, new: ${entry.updated_at}`);
         return true;
       }
       await this.write(cleaned);
-      console.log(`[FileOperationManager] Cannot refresh - key not found: ${this.key}`);
+      logger.debug(`[FileOperationManager] Cannot refresh - key not found: ${this.key}`);
       return false;
     });
   }

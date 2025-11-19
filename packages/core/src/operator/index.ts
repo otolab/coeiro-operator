@@ -104,8 +104,6 @@ export class OperatorManager {
       this.sessionId,
       timeoutMs
     );
-
-    console.log(`[OperatorManager] State file path: ${filePath}`);
   }
 
   /**
@@ -454,18 +452,18 @@ export class OperatorManager {
   async refreshOperatorReservation(): Promise<boolean> {
     const operatorSession = await this.getCurrentOperatorSession();
     if (!operatorSession) {
-      console.log('[OperatorManager] Cannot refresh - no operator assigned');
+      logger.debug('[OperatorManager] Cannot refresh - no operator assigned');
       return false; // オペレータが割り当てられていない
     }
 
     if (!this.dataStore) {
-      console.log('[OperatorManager] Cannot refresh - dataStore not initialized');
+      logger.debug('[OperatorManager] Cannot refresh - dataStore not initialized');
       return false;
     }
 
-    console.log(`[OperatorManager] Refreshing reservation for: ${operatorSession.characterId}`);
+    logger.debug(`[OperatorManager] Refreshing reservation for: ${operatorSession.characterId}`);
     const result = await this.dataStore.refresh();
-    console.log(`[OperatorManager] Refresh result: ${result ? 'success' : 'failed'}`);
+    logger.debug(`[OperatorManager] Refresh result: ${result ? 'success' : 'failed'}`);
     return result;
   }
 

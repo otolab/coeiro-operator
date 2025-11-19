@@ -10,7 +10,7 @@ import { constants } from 'fs';
 import { Command } from 'commander';
 import { SayCoeiroink } from '@coeiro-operator/audio';
 import { ConfigManager, getConfigDir } from '@coeiro-operator/core';
-import { LoggerPresets } from '@coeiro-operator/common';
+import { LoggerPresets, logger } from '@coeiro-operator/common';
 import type { Config } from '@coeiro-operator/audio';
 import { BUFFER_SIZES } from '@coeiro-operator/audio';
 
@@ -160,7 +160,7 @@ Examples:
     });
 
     if (options.outputFile) {
-      console.error(`Audio saved to: ${options.outputFile}`);
+      logger.error(`Audio saved to: ${options.outputFile}`);
     }
 
     // すべてのタスクの完了を待つ
@@ -214,12 +214,12 @@ Examples:
 // プロセス終了ハンドリング（テスト環境では無効化）
 if (process.env.NODE_ENV !== 'test') {
   process.on('uncaughtException', error => {
-    console.error('Uncaught Exception:', error.message);
+    logger.error('Uncaught Exception:', error.message);
     process.exit(1);
   });
 
   process.on('unhandledRejection', (reason) => {
-    console.error('Unhandled Rejection:', reason);
+    logger.error('Unhandled Rejection:', reason);
     process.exit(1);
   });
 }
@@ -256,7 +256,7 @@ if (process.env.NODE_ENV !== 'test') {
       process.exit(0);
     })
     .catch(error => {
-      console.error(`Error: ${(error as Error).message}`);
+      logger.error(`Error: ${(error as Error).message}`);
       process.exit(1);
     });
 }
