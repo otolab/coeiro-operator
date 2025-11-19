@@ -307,7 +307,7 @@ async function main() {
     });
 
     if (values.help) {
-      console.log(`
+      logger.info(`
 話速測定ツール - Speaker/スタイル毎のモーラ/秒を測定
 
 使用方法:
@@ -355,17 +355,17 @@ async function main() {
       // 特定のスピーカー・スタイルを測定
       const selectedSpeaker = availableSpeakers.find(s => s.speakerName === values.speaker);
       if (!selectedSpeaker) {
-        console.error(`スピーカー "${values.speaker}" が見つかりません`);
-        console.log('\n利用可能なスピーカー:');
-        availableSpeakers.forEach(s => console.log(`  - ${s.speakerName}`));
+        logger.error(`スピーカー "${values.speaker}" が見つかりません`);
+        logger.info('\n利用可能なスピーカー:');
+        availableSpeakers.forEach(s => logger.info(`  - ${s.speakerName}`));
         process.exit(1);
       }
 
       const selectedStyle = selectedSpeaker.styles.find(s => s.styleName === values.style);
       if (!selectedStyle) {
-        console.error(`スタイル "${values.style}" が見つかりません`);
-        console.log(`\n${selectedSpeaker.speakerName} の利用可能なスタイル:`);
-        selectedSpeaker.styles.forEach(s => console.log(`  - ${s.styleName}`));
+        logger.error(`スタイル "${values.style}" が見つかりません`);
+        logger.info(`\n${selectedSpeaker.speakerName} の利用可能なスタイル:`);
+        selectedSpeaker.styles.forEach(s => logger.info(`  - ${s.styleName}`));
         process.exit(1);
       }
 
@@ -441,15 +441,15 @@ async function main() {
       }
     } else {
       // オプション不足
-      console.error('--speaker と --style を両方指定するか、--all を指定してください');
-      console.log('詳細は --help を参照してください');
+      logger.error('--speaker と --style を両方指定するか、--all を指定してください');
+      logger.info('詳細は --help を参照してください');
       process.exit(1);
     }
 
     // 結果の表示
-    console.log('\n========== 測定結果 ==========');
+    logger.info('\n========== 測定結果 ==========');
     for (const result of results) {
-      console.log(`${result.speakerName} - ${result.styleName}: ${result.morasPerSecond.toFixed(2)} モーラ/秒`);
+      logger.info(`${result.speakerName} - ${result.styleName}: ${result.morasPerSecond.toFixed(2)} モーラ/秒`);
     }
 
     // ファイルへの保存
