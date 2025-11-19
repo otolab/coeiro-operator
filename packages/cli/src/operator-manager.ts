@@ -6,6 +6,7 @@
  */
 
 import { OperatorManager, ConfigManager, CharacterInfoService, TerminalBackground, getConfigDir } from '@coeiro-operator/core';
+import { logger } from '@coeiro-operator/common';
 
 interface AssignResult {
   characterId: string; // キャラクターID（例: 'tsukuyomi'）
@@ -64,9 +65,9 @@ class OperatorManagerCLI {
   private async executeAssignment(characterId: string | null, style: string | null): Promise<void> {
     if (characterId) {
       const result: AssignResult = await this.manager!.assignSpecificOperator(characterId, style);
-      console.log(`オペレータ決定: ${result.characterName} (${result.characterId})`);
+      logger.info(`オペレータ決定: ${result.characterName} (${result.characterId})`);
       if (result.currentStyle) {
-        console.log(
+        logger.info(
           `スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`
         );
       }
@@ -77,12 +78,12 @@ class OperatorManagerCLI {
     } else {
       const currentStatus: StatusResult = await this.manager!.showCurrentOperator();
       if (currentStatus.characterId) {
-        console.log(currentStatus.message);
+        logger.info(currentStatus.message);
       } else {
         const result: AssignResult = await this.manager!.assignRandomOperator(style);
-        console.log(`オペレータ決定: ${result.characterName} (${result.characterId})`);
+        logger.info(`オペレータ決定: ${result.characterName} (${result.characterId})`);
         if (result.currentStyle) {
-          console.log(
+          logger.info(
             `スタイル: ${result.currentStyle.styleName} - ${result.currentStyle.personality}`
           );
         }
@@ -95,7 +96,7 @@ class OperatorManagerCLI {
   }
 
   async showUsage(): Promise<void> {
-    console.log(`使用法: operator-manager <command> [options]
+    logger.info(`使用法: operator-manager <command> [options]
 
 オペレータ管理:
   assign [オペレータID] [--style=スタイル名] - オペレータを割り当て（IDを指定しない場合はランダム）
@@ -167,7 +168,7 @@ class OperatorManagerCLI {
           process.exit(1);
       }
     } catch (error) {
-      console.error(`エラー: ${(error as Error).message}`);
+      logger.error(`エラー: ${(error as Error).message}`);
       process.exit(1);
     }
   }
@@ -181,9 +182,9 @@ class OperatorManagerCLI {
     const result: ReleaseResult = await this.manager!.releaseOperator();
 
     if (result.wasAssigned) {
-      console.log(`オペレータ返却: ${result.characterName}`);
+      logger.info(`オペレータ返却: ${result.characterName}`);
     } else {
-      console.log('オペレータは割り当てられていません');
+      logger.info('オペレータは割り当てられていません');
     }
 
     // 背景画像をクリア（オペレータの有無に関わらず実行）
@@ -194,20 +195,20 @@ class OperatorManagerCLI {
 
   async handleStatus(): Promise<void> {
     const result: StatusResult = await this.manager!.showCurrentOperator();
-    console.log(result.message);
+    logger.info(result.message);
   }
 
   async handleAvailable(): Promise<void> {
     const result = await this.manager!.getAvailableOperators();
-    console.log(`利用可能なオペレータ: ${result.available.join(', ')}`);
+    logger.info(`利用可能なオペレータ: ${result.available.join(', ')}`);
     if (result.busy.length > 0) {
-      console.log(`仕事中のオペレータ: ${result.busy.join(', ')}`);
+      logger.info(`仕事中のオペレータ: ${result.busy.join(', ')}`);
     }
   }
 
   async handleClear(): Promise<void> {
     await this.manager!.clearAllOperators();
-    console.log('全てのオペレータ利用状況をクリアしました');
+    logger.info('全てのオペレータ利用状況をクリアしました');
   }
 
   async handleListUnmeasured(args: string[]): Promise<void> {
@@ -218,59 +219,59 @@ class OperatorManagerCLI {
 
     if (jsonOutput) {
       // JSON形式で出力
-      console.log(JSON.stringify(result, null, 2));
+      logger.info(JSON.stringify(result, null, 2));
     } else {
       // 人間が読みやすい形式で出力
-      console.log('=== キャラクター登録状況 ===\n');
+      logger.info('=== キャラクター登録状況 ===\n');
 
       // 完全未登録
       if (result.unregistered.length > 0) {
-        console.log('【未登録キャラクター】');
+        logger.info('【未登録キャラクター】');
         for (const speaker of result.unregistered) {
-          console.log(`  ${speaker.speakerName} (${speaker.speakerId})`);
-          console.log(`    スタイル数: ${speaker.totalStyles}`);
+          logger.info(`  ${speaker.speakerName} (${speaker.speakerId})`);
+          logger.info(`    スタイル数: ${speaker.totalStyles}`);
           for (const style of speaker.styles) {
-            console.log(`      - ${style.styleName} (ID: ${style.styleId})`);
+            logger.info(`      - ${style.styleName} (ID: ${style.styleId})`);
           }
         }
-        console.log();
+        logger.info('');
       }
 
       // 部分登録（未計測スタイルあり）
       if (result.partiallyRegistered.length > 0) {
-        console.log('【未計測スタイルがあるキャラクター】');
+        logger.info('【未計測スタイルがあるキャラクター】');
         for (const speaker of result.partiallyRegistered) {
-          console.log(`  ${speaker.speakerName} (characterId: ${speaker.characterId})`);
-          console.log(`    未計測スタイル: ${speaker.missingStyles.length}個`);
+          logger.info(`  ${speaker.speakerName} (characterId: ${speaker.characterId})`);
+          logger.info(`    未計測スタイル: ${speaker.missingStyles.length}個`);
           for (const style of speaker.missingStyles) {
-            console.log(`      - ${style.styleName} (ID: ${style.styleId})`);
+            logger.info(`      - ${style.styleName} (ID: ${style.styleId})`);
           }
         }
-        console.log();
+        logger.info('');
       }
 
       // 完全登録
       if (result.registered.length > 0) {
-        console.log('【登録・計測済みキャラクター】');
+        logger.info('【登録・計測済みキャラクター】');
         for (const speaker of result.registered) {
-          console.log(`  ${speaker.speakerName} (characterId: ${speaker.characterId})`);
-          console.log(`    登録スタイル数: ${speaker.registeredStyles}/${speaker.totalStyles}`);
+          logger.info(`  ${speaker.speakerName} (characterId: ${speaker.characterId})`);
+          logger.info(`    登録スタイル数: ${speaker.registeredStyles}/${speaker.totalStyles}`);
         }
-        console.log();
+        logger.info('');
       }
 
       // サマリー
-      console.log('=== サマリー ===');
-      console.log(`未登録: ${result.unregistered.length}キャラクター`);
-      console.log(`未計測スタイルあり: ${result.partiallyRegistered.length}キャラクター`);
-      console.log(`登録・計測済み: ${result.registered.length}キャラクター`);
+      logger.info('=== サマリー ===');
+      logger.info(`未登録: ${result.unregistered.length}キャラクター`);
+      logger.info(`未計測スタイルあり: ${result.partiallyRegistered.length}キャラクター`);
+      logger.info(`登録・計測済み: ${result.registered.length}キャラクター`);
     }
   }
 
   async handleAddCharacter(args: string[]): Promise<void> {
     if (args.length < 2) {
-      console.error('エラー: characterIdとspeakerNameが必要です');
-      console.error('使用法: operator-manager add-character <characterId> <speakerName>');
+      logger.error('エラー: characterIdとspeakerNameが必要です');
+      logger.error('使用法: operator-manager add-character <characterId> <speakerName>');
       process.exit(1);
     }
 
@@ -288,7 +289,7 @@ class OperatorManagerCLI {
     );
 
     if (!speaker) {
-      console.error(`エラー: Speaker '${speakerNameOrUuid}' が見つかりません`);
+      logger.error(`エラー: Speaker '${speakerNameOrUuid}' が見つかりません`);
       process.exit(1);
     }
 
@@ -307,26 +308,26 @@ class OperatorManagerCLI {
     // ConfigManagerを使ってキャラクターを登録
     await this.configManager!.registerCharacter(characterId, characterConfig);
 
-    console.log(`キャラクター '${characterId}' を登録しました`);
-    console.log(`  Speaker: ${speaker.speakerName} (${speaker.speakerUuid})`);
-    console.log(`  デフォルトスタイル: ${speaker.styles[0]?.styleName ?? 'N/A'}`);
-    console.log();
-    console.log('次のステップ:');
-    console.log('  1. config.jsonを編集してキャラクター設定を追加（personality, greeting, farewellなど）');
-    console.log(`  2. 話速を測定: operator-manager measure ${characterId}`);
+    logger.info(`キャラクター '${characterId}' を登録しました`);
+    logger.info(`  Speaker: ${speaker.speakerName} (${speaker.speakerUuid})`);
+    logger.info(`  デフォルトスタイル: ${speaker.styles[0]?.styleName ?? 'N/A'}`);
+    logger.info('');
+    logger.info('次のステップ:');
+    logger.info('  1. config.jsonを編集してキャラクター設定を追加（personality, greeting, farewellなど）');
+    logger.info(`  2. 話速を測定: operator-manager measure ${characterId}`);
   }
 
   async handleMeasure(args: string[]): Promise<void> {
     if (args.length < 1) {
-      console.error('エラー: characterIdが必要です');
-      console.error('使用法: operator-manager measure <characterId> [--style=スタイル名] [--dry-run]');
+      logger.error('エラー: characterIdが必要です');
+      logger.error('使用法: operator-manager measure <characterId> [--style=スタイル名] [--dry-run]');
       process.exit(1);
     }
 
     // 引数をパース
     const characterId = args.find(arg => !arg.startsWith('--'));
     if (!characterId) {
-      console.error('エラー: characterIdが必要です');
+      logger.error('エラー: characterIdが必要です');
       process.exit(1);
     }
 
@@ -335,11 +336,11 @@ class OperatorManagerCLI {
     const dryRun = args.includes('--dry-run');
 
     if (dryRun) {
-      console.log('[DRY RUN モード] 測定結果を表示しますが、設定は更新しません\n');
+      logger.info('[DRY RUN モード] 測定結果を表示しますが、設定は更新しません\n');
     }
 
     try {
-      console.log(`キャラクター '${characterId}' の話速を測定中...\n`);
+      logger.info(`キャラクター '${characterId}' の話速を測定中...\n`);
 
       const result = await this.manager!.measureCharacterSpeechRate(
         characterId,
@@ -347,27 +348,27 @@ class OperatorManagerCLI {
         dryRun
       );
 
-      console.log(`=== 測定結果 ===`);
-      console.log(`キャラクター: ${result.speakerName} (${result.characterId})`);
-      console.log(`Speaker UUID: ${result.speakerId}`);
-      console.log();
+      logger.info(`=== 測定結果 ===`);
+      logger.info(`キャラクター: ${result.speakerName} (${result.characterId})`);
+      logger.info(`Speaker UUID: ${result.speakerId}`);
+      logger.info('');
 
       for (const measurement of result.measurements) {
-        console.log(`スタイル: ${measurement.styleName} (ID: ${measurement.styleId})`);
-        console.log(`  話速: ${measurement.morasPerSecond} モーラ/秒`);
+        logger.info(`スタイル: ${measurement.styleName} (ID: ${measurement.styleId})`);
+        logger.info(`  話速: ${measurement.morasPerSecond} モーラ/秒`);
       }
-      console.log();
+      logger.info('');
 
       if (dryRun) {
-        console.log('[DRY RUN] 設定は更新されませんでした');
-        console.log(`実際に更新する場合は --dry-run を外して再実行してください:`);
-        console.log(`  operator-manager measure ${characterId}${styleName ? ` --style=${styleName}` : ''}`);
+        logger.info('[DRY RUN] 設定は更新されませんでした');
+        logger.info(`実際に更新する場合は --dry-run を外して再実行してください:`);
+        logger.info(`  operator-manager measure ${characterId}${styleName ? ` --style=${styleName}` : ''}`);
       } else {
-        console.log('設定を更新しました');
-        console.log(`config.jsonの ${characterId}.styles に話速情報を追加・更新しました`);
+        logger.info('設定を更新しました');
+        logger.info(`config.jsonの ${characterId}.styles に話速情報を追加・更新しました`);
       }
     } catch (error) {
-      console.error(`エラー: ${(error as Error).message}`);
+      logger.error(`エラー: ${(error as Error).message}`);
       process.exit(1);
     }
   }

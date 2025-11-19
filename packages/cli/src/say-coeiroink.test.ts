@@ -133,7 +133,7 @@ describe('SayCoeiroinkCLI', () => {
                     outputFile: 'output.wav'
                 })
             );
-            expect(consoleSpy.error).toHaveBeenCalledWith('Audio saved to: output.wav');
+            expect(consoleSpy.error).toHaveBeenCalledWith(expect.stringContaining('Audio saved to: output.wav'));
         });
 
         test('入力ファイル指定オプションが正しく処理されること', async () => {

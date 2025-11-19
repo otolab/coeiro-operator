@@ -109,24 +109,24 @@ async function listCharacters() {
     Object.values(config.characters || {}).map((char: any) => char.speakerId)
   );
 
-  console.log('Available COEIROINK Characters:\n');
+  logger.info('Available COEIROINK Characters:\n');
 
   for (const speaker of speakers) {
     const isRegistered = registeredSpeakerIds.has(speaker.speakerUuid);
     const mark = isRegistered ? '✓' : ' ';
     const status = isRegistered ? '- 登録済み' : '';
 
-    console.log(`  ${mark} ${speaker.speakerName} (${speaker.speakerUuid}) ${status}`);
+    logger.info(`  ${mark} ${speaker.speakerName} (${speaker.speakerUuid}) ${status}`);
 
     if (speaker.styles && speaker.styles.length > 0) {
       for (const style of speaker.styles) {
-        console.log(`      - ${style.styleName} (ID: ${style.styleId})`);
+        logger.info(`      - ${style.styleName} (ID: ${style.styleId})`);
       }
     }
-    console.log('');
+    logger.info('');
   }
 
-  console.log('Usage: add-character <speakerId>');
+  logger.info('Usage: add-character <speakerId>');
 }
 
 // キャラクターを追加
@@ -135,31 +135,31 @@ async function addCharacter(speakerId: string) {
   const configDir = await getConfigDir();
   const configManager = new ConfigManager(configDir);
 
-  console.log(`キャラクター追加: ${speakerId}\n`);
+  logger.info(`キャラクター追加: ${speakerId}\n`);
 
   // 1. COEIROINK APIからキャラクター情報を取得
-  console.log('1. キャラクター情報を取得中...');
+  logger.info('1. キャラクター情報を取得中...');
   const speakers = await speakerProvider.getSpeakers();
   const speaker = speakers.find(s => s.speakerUuid === speakerId);
 
   if (!speaker) {
-    console.error(`エラー: speakerId "${speakerId}" が見つかりません`);
-    console.log('\n利用可能なキャラクター一覧を表示するには、引数なしで実行してください。');
+    logger.error(`エラー: speakerId "${speakerId}" が見つかりません`);
+    logger.info('\n利用可能なキャラクター一覧を表示するには、引数なしで実行してください。');
     process.exit(1);
   }
 
-  console.log(`  キャラクター名: ${speaker.speakerName}`);
-  console.log(`  スタイル数: ${speaker.styles?.length || 0}`);
+  logger.info(`  キャラクター名: ${speaker.speakerName}`);
+  logger.info(`  スタイル数: ${speaker.styles?.length || 0}`);
 
   // 2. 話速を測定
-  console.log('\n2. 各スタイルの話速を測定中...');
+  logger.info('\n2. 各スタイルの話速を測定中...');
   const styles: Record<string, { styleName: string; morasPerSecond: number }> = {};
 
   if (speaker.styles && speaker.styles.length > 0) {
     for (const style of speaker.styles) {
-      console.log(`  測定中: ${style.styleName} (ID: ${style.styleId})...`);
+      logger.info(`  測定中: ${style.styleName} (ID: ${style.styleId})...`);
       const morasPerSecond = await measureStyleSpeechRate(speakerId, style.styleId);
-      console.log(`    -> ${morasPerSecond.toFixed(2)} モーラ/秒`);
+      logger.info(`    -> ${morasPerSecond.toFixed(2)} モーラ/秒`);
 
       styles[style.styleId.toString()] = {
         styleName: style.styleName,
@@ -177,13 +177,13 @@ async function addCharacter(speakerId: string) {
   // 日本語名などで空になった場合はspeakerIdの最初の8文字を使用
   if (!characterId) {
     characterId = speakerId.substring(0, 8);
-    console.log(`\n  日本語名のためspeakerIdから生成: ${characterId}`);
+    logger.info(`\n  日本語名のためspeakerIdから生成: ${characterId}`);
   } else {
-    console.log(`\n  生成されたcharacterId: ${characterId}`);
+    logger.info(`\n  生成されたcharacterId: ${characterId}`);
   }
 
   // 4. config.jsonに追加
-  console.log('\n3. config.jsonに追加中...');
+  logger.info('\n3. config.jsonに追加中...');
 
   const config = await configManager.loadConfig();
 
@@ -192,7 +192,7 @@ async function addCharacter(speakerId: string) {
   }
 
   if (config.characters[characterId]) {
-    console.log(`  警告: characterId "${characterId}" は既に存在します。上書きします。`);
+    logger.info(`  警告: characterId "${characterId}" は既に存在します。上書きします。`);
   }
 
   const defaultStyleId = speaker.styles?.[0]?.styleId || 0;
@@ -212,20 +212,20 @@ async function addCharacter(speakerId: string) {
   const configFile = join(configDir, 'config.json');
   await configManager.writeJsonFile(configFile, config);
 
-  console.log(`  ✓ config.jsonに追加しました\n`);
+  logger.info(`  ✓ config.jsonに追加しました\n`);
 
   // 5. 完了メッセージ
-  console.log('✓ キャラクター追加が完了しました！\n');
-  console.log('次のステップ:');
-  console.log(`  1. ~/.coeiro-operator/config.json を開く`);
-  console.log(`  2. characters.${characterId} セクションに以下を追加:`);
-  console.log('     - personality: キャラクターの性格');
-  console.log('     - speakingStyle: 話し方の特徴');
-  console.log('     - greeting: アサイン時の挨拶');
-  console.log('     - farewell: 解放時のお別れメッセージ\n');
-  console.log(`  3. 動作確認:`);
-  console.log(`     operator-manager available`);
-  console.log(`     operator-manager assign ${characterId}`);
+  logger.info('✓ キャラクター追加が完了しました！\n');
+  logger.info('次のステップ:');
+  logger.info(`  1. ~/.coeiro-operator/config.json を開く`);
+  logger.info(`  2. characters.${characterId} セクションに以下を追加:`);
+  logger.info('     - personality: キャラクターの性格');
+  logger.info('     - speakingStyle: 話し方の特徴');
+  logger.info('     - greeting: アサイン時の挨拶');
+  logger.info('     - farewell: 解放時のお別れメッセージ\n');
+  logger.info(`  3. 動作確認:`);
+  logger.info(`     operator-manager available`);
+  logger.info(`     operator-manager assign ${characterId}`);
 }
 
 // CLI設定
@@ -244,7 +244,7 @@ program
         await addCharacter(speakerId);
       }
     } catch (error) {
-      console.error('エラー:', error);
+      logger.error('エラー:', error);
       process.exit(1);
     }
   });
