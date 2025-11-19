@@ -1,6 +1,6 @@
 {
   "name": "@coeiro-operator/cli",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "CLI tools for COEIRO Operator",
   "type": "module",
   "main": "dist/index.js",

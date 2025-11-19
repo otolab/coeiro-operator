@@ -1,6 +1,6 @@
 {
   "name": "@coeiro-operator/audio",
-  "version": "1.2.6",
+  "version": "1.2.7",
   "description": "Audio synthesis and playback module for COEIRO Operator",
   "type": "module",
   "main": "dist/index.js",

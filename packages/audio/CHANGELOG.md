@@ -1,5 +1,12 @@
 # @coeiro-operator/audio
 
+## 1.2.7
+
+### Patch Changes
+
+- Updated dependencies [25bd21a]
+  - @coeiro-operator/core@1.3.1
+
 ## 1.2.6
 
 ### Patch Changes
