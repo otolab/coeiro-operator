@@ -107,17 +107,29 @@ export class SayCoeiroink {
     const allowFallback = options.allowFallback ?? true;
 
     if (!options.voice) {
-      // voiceが未指定 → Operator経由でアサイン
+      // voiceが未指定 → Operator経由でアサイン、なければデフォルトキャラクター
       const session = await this.operatorManager.getCurrentOperatorSession();
       if (!session) {
-        throw new Error('No operator assigned. Please assign an operator first.');
+        // オペレータアサインなし → デフォルトキャラクターを使用（最初に見つかるキャラクター）
+        const availableCharacterIds = await this.characterInfoService.getAvailableCharacterIds();
+        if (availableCharacterIds.length === 0) {
+          throw new Error('No characters configured. Please configure at least one character.');
+        }
+        const defaultCharacterId = availableCharacterIds[0];
+        const defaultCharacter = await this.characterInfoService.getCharacterInfo(defaultCharacterId);
+        if (!defaultCharacter) {
+          throw new Error(`Default character not found: ${defaultCharacterId}`);
+        }
+        character = defaultCharacter;
+        logger.debug(`Using default character: ${character.characterId}`);
+      } else {
+        const assignedCharacter = await this.characterInfoService.getCharacterInfo(session.characterId);
+        if (!assignedCharacter) {
+          throw new Error(`Assigned character not found: ${session.characterId}`);
+        }
+        character = assignedCharacter;
+        logger.debug(`Character assigned: ${character.characterId}`);
       }
-      const assignedCharacter = await this.characterInfoService.getCharacterInfo(session.characterId);
-      if (!assignedCharacter) {
-        throw new Error(`Assigned character not found: ${session.characterId}`);
-      }
-      character = assignedCharacter;
-      logger.debug(`Character assigned: ${character.characterId}`);
     } else {
       // voiceが指定済み → CharacterInfoServiceから取得
       const resolvedCharacter = await this.characterInfoService.getCharacterInfo(options.voice);
