@@ -6,6 +6,7 @@
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { OperatorManager, CharacterInfoService, TerminalBackground, Character } from '@coeiro-operator/core';
+import type { SayCoeiroink } from '@coeiro-operator/audio';
 import {
   registerOperatorAssignTool,
   registerOperatorReleaseTool,
@@ -16,10 +17,12 @@ import {
 
 describe('Operator Tools', () => {
   let mockServer: McpServer;
+  let mockSayCoeiroink: SayCoeiroink;
   let mockOperatorManager: OperatorManager;
   let mockCharacterInfoService: CharacterInfoService;
   let mockTerminalBackground: TerminalBackground;
   let registeredTools: Map<string, any>;
+  const availableCharacters = ['tsukuyomi', 'mana', 'zundamon'];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -30,6 +33,11 @@ describe('Operator Tools', () => {
       registerTool: vi.fn((name: string, schema: any, handler: any) => {
         registeredTools.set(name, { schema, handler });
       }),
+    } as any;
+
+    // SayCoeiroinkのモック
+    mockSayCoeiroink = {
+      synthesize: vi.fn().mockReturnValue({ taskId: 1, queueLength: 1 }),
     } as any;
 
     // OperatorManagerのモック
@@ -58,9 +66,11 @@ describe('Operator Tools', () => {
     test('ツールが正しく登録されること', () => {
       registerOperatorAssignTool(
         mockServer,
+        mockSayCoeiroink,
         mockOperatorManager,
         mockCharacterInfoService,
-        mockTerminalBackground
+        mockTerminalBackground,
+        availableCharacters
       );
 
       expect(mockServer.registerTool).toHaveBeenCalledWith(
@@ -75,9 +85,11 @@ describe('Operator Tools', () => {
     test('オペレータ割り当てが成功すること', async () => {
       registerOperatorAssignTool(
         mockServer,
+        mockSayCoeiroink,
         mockOperatorManager,
         mockCharacterInfoService,
-        mockTerminalBackground
+        mockTerminalBackground,
+        availableCharacters
       );
 
       const mockAssignResult = {
@@ -128,9 +140,11 @@ describe('Operator Tools', () => {
     test('オペレータ割り当てでエラーが発生すること', async () => {
       registerOperatorAssignTool(
         mockServer,
+        mockSayCoeiroink,
         mockOperatorManager,
         mockCharacterInfoService,
-        mockTerminalBackground
+        mockTerminalBackground,
+        availableCharacters
       );
 
       vi.mocked(mockOperatorManager.assignSpecificOperator).mockRejectedValue(
@@ -146,9 +160,11 @@ describe('Operator Tools', () => {
     test('背景画像が切り替わること', async () => {
       registerOperatorAssignTool(
         mockServer,
+        mockSayCoeiroink,
         mockOperatorManager,
         mockCharacterInfoService,
-        mockTerminalBackground
+        mockTerminalBackground,
+        availableCharacters
       );
 
       const mockAssignResult = {

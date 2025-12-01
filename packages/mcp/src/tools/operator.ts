@@ -10,6 +10,7 @@ import type {
   TerminalBackground,
 } from '@coeiro-operator/core';
 import { logger } from '@coeiro-operator/common';
+import { SayCoeiroink } from '@coeiro-operator/audio';
 
 import type { ToolResponse, StyleInfo } from '../types.js';
 import {
@@ -27,27 +28,32 @@ import {
  */
 export function registerOperatorAssignTool(
   server: McpServer,
+  sayCoeiroink: SayCoeiroink,
   operatorManager: OperatorManager,
   characterInfoService: CharacterInfoService,
-  terminalBackground: TerminalBackground | null
+  terminalBackground: TerminalBackground | null,
+  availableCharacters: string[]
 ): void {
+  // 'AUTO'を先頭に追加して選択肢を作成
+  const operatorOptions = ['AUTO', ...availableCharacters] as [string, ...string[]];
+
   server.registerTool(
     'operator_assign',
     {
       description:
-        'オペレータを割り当てます。',
+        'オペレータを割り当てます。AUTOを選択すると自動的にキャラクターが選ばれます。',
       inputSchema: {
         operator: z
-          .string()
+          .enum(operatorOptions)
           .optional()
           .describe(
-            'オペレータ指名（キャラクタID、指示がなければ継続orランダム。例: "tsukuyomi"）'
+            'オペレータをキャラクタIDで指名。AUTOは自動選択、省略時もAUTOと同じ動作',
           ),
         style: z
           .string()
           .optional()
           .describe(
-            'スタイル指定（例: "のーまる"など）',
+            'スタイル指定。オペレータごとに利用可能なスタイルが異なります（例: "のーまる"など）',
           ),
       },
     },
@@ -55,10 +61,14 @@ export function registerOperatorAssignTool(
       const { operator, style } = args || {};
 
       logger.info('オペレータアサイン開始', { operator, style });
-      validateOperatorInput(operator);
+
+      // 'AUTO'の場合はundefinedとして扱う（自動選択）
+      const effectiveOperator = operator === 'AUTO' ? undefined : operator;
+
+      validateOperatorInput(effectiveOperator);
 
       try {
-        const assignResult = await assignOperator(operatorManager, operator, style);
+        const assignResult = await assignOperator(operatorManager, effectiveOperator, style);
         logger.info('オペレータアサイン成功', {
           characterId: assignResult.characterId,
           characterName: assignResult.characterName,
@@ -89,6 +99,23 @@ export function registerOperatorAssignTool(
 
         const availableStyles = extractStyleInfo(character);
         const resultText = formatAssignmentResult(assignResult, availableStyles);
+
+        // 挨拶メッセージがある場合は発話
+        if (assignResult.greeting && assignResult.currentStyle) {
+          logger.info('オペレータ挨拶を発話', { greeting: assignResult.greeting });
+          try {
+            // MCP設計: 音声合成タスクをキューに投稿のみ（再生完了を待たない）
+            const result = sayCoeiroink.synthesize(assignResult.greeting, {
+              voice: assignResult.characterId,
+              style: assignResult.currentStyle.styleName,
+              allowFallback: false,
+            });
+            logger.info('挨拶発話をキューに追加', { taskId: result.taskId });
+          } catch (sayError) {
+            logger.warn('挨拶の発話に失敗しました', { error: (sayError as Error).message });
+            // 発話エラーはアサイン処理全体のエラーとはしない
+          }
+        }
 
         return {
           content: [

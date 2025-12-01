@@ -156,8 +156,12 @@ try {
 // ツールの登録
 logger.info('Registering MCP tools...');
 
+// 利用可能なキャラクタ一覧を取得
+const availableCharacters = await operatorManager.getAvailableOperators();
+logger.info('Available characters for MCP tools:', { available: availableCharacters.available });
+
 // Operator tools
-registerOperatorAssignTool(server, operatorManager, characterInfoService, terminalBackground);
+registerOperatorAssignTool(server, sayCoeiroink, operatorManager, characterInfoService, terminalBackground, availableCharacters.available);
 registerOperatorReleaseTool(server, operatorManager, terminalBackground);
 registerOperatorStatusTool(server, operatorManager);
 registerOperatorAvailableTool(server, operatorManager);
