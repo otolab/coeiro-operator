@@ -15,7 +15,7 @@ export function registerQueueStatusTool(
     'queue_status',
     {
       description:
-        '音声キューの状態を確認します。',
+        'Check the status of the speech queue',
       inputSchema: {},
     },
     async (): Promise<ToolResponse> => {
@@ -65,12 +65,12 @@ export function registerQueueClearTool(
     'queue_clear',
     {
       description:
-        '音声キューをクリアします。現在再生中の音声は停止しません。',
+        'Clear the speech queue (does not stop currently playing audio)',
       inputSchema: {
         taskIds: z
           .array(z.number())
           .optional()
-          .describe('削除するタスクIDのリスト（省略時は全タスク削除）'),
+          .describe('List of task IDs to remove (defaults to removing all tasks if omitted)'),
       },
     },
     async (args): Promise<ToolResponse> => {
@@ -128,7 +128,7 @@ export function registerPlaybackStopTool(
     'playback_stop',
     {
       description:
-        '現在再生中の音声を停止します。キューにあるタスクは削除されません。',
+        'Stop currently playing audio (tasks in queue are not deleted)',
       inputSchema: {},
     },
     async (): Promise<ToolResponse> => {
@@ -171,19 +171,19 @@ export function registerWaitForTaskCompletionTool(
     'wait_for_task_completion',
     {
       description:
-        '音声タスクの完了を待機します。',
+        'Wait for speech tasks to complete',
       inputSchema: {
         timeout: z
           .number()
           .min(1000)
           .max(60000)
           .optional()
-          .describe('タイムアウト時間（ミリ秒、1000-60000、デフォルト30000）'),
+          .describe('Timeout in milliseconds (1000-60000, defaults to 30000 if omitted)'),
         remainingQueueLength: z
           .number()
           .min(0)
           .optional()
-          .describe('指定数までキューが減ったら待ちを解除（デフォルト0=全タスク完了まで待機）'),
+          .describe('Release wait when queue reduces to this number (defaults to 0 = wait until all tasks complete if omitted)'),
       },
     },
     async (args): Promise<ToolResponse> => {

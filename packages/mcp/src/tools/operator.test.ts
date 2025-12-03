@@ -76,7 +76,7 @@ describe('Operator Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_assign',
         expect.objectContaining({
-          description: expect.stringContaining('オペレータを割り当てます'),
+          description: expect.stringContaining('Assign an operator'),
         }),
         expect.any(Function)
       );
@@ -131,7 +131,7 @@ describe('Operator Tools', () => {
       vi.mocked(mockTerminalBackground.isEnabled).mockResolvedValue(false);
 
       const tool = registeredTools.get('operator_assign');
-      const result = await tool.handler({ operator: 'tsukuyomi' });
+      const result = await tool.handler({ characterId: 'tsukuyomi' });
 
       expect(result.content[0].text).toContain('つくよみちゃん');
       expect(result.content[0].text).toContain('ノーマル');
@@ -152,7 +152,7 @@ describe('Operator Tools', () => {
       );
 
       const tool = registeredTools.get('operator_assign');
-      await expect(tool.handler({ operator: 'invalid' })).rejects.toThrow(
+      await expect(tool.handler({ characterId: 'invalid' })).rejects.toThrow(
         'オペレータ割り当てエラー'
       );
     });
@@ -199,7 +199,7 @@ describe('Operator Tools', () => {
       vi.mocked(mockTerminalBackground.isEnabled).mockResolvedValue(true);
 
       const tool = registeredTools.get('operator_assign');
-      await tool.handler({ operator: 'tsukuyomi' });
+      await tool.handler({ characterId: 'tsukuyomi' });
 
       expect(mockTerminalBackground.switchCharacter).toHaveBeenCalledWith('tsukuyomi');
     });
@@ -212,7 +212,7 @@ describe('Operator Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_release',
         expect.objectContaining({
-          description: expect.stringContaining('現在のオペレータを解放'),
+          description: expect.stringContaining('Release the current operator'),
         }),
         expect.any(Function)
       );
@@ -273,7 +273,7 @@ describe('Operator Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_status',
         expect.objectContaining({
-          description: expect.stringContaining('現在のオペレータ状況を確認'),
+          description: expect.stringContaining('Check the current operator status'),
         }),
         expect.any(Function)
       );
@@ -300,7 +300,7 @@ describe('Operator Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_available',
         expect.objectContaining({
-          description: expect.stringContaining('利用可能なオペレータ一覧'),
+          description: expect.stringContaining('Display list of available operators'),
         }),
         expect.any(Function)
       );
@@ -344,7 +344,7 @@ describe('Operator Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_styles',
         expect.objectContaining({
-          description: expect.stringContaining('スタイル一覧'),
+          description: expect.stringContaining('Display basic information and available styles'),
         }),
         expect.any(Function)
       );
@@ -418,7 +418,7 @@ describe('Operator Tools', () => {
       vi.mocked(mockCharacterInfoService.getCharacterInfo).mockResolvedValue(mockCharacter);
 
       const tool = registeredTools.get('operator_styles');
-      const result = await tool.handler({ character: 'alma' });
+      const result = await tool.handler({ characterId: 'alma' });
 
       expect(result.content[0].text).toContain('ALMA');
       expect(result.content[0].text).toContain('のーまる');
@@ -430,7 +430,7 @@ describe('Operator Tools', () => {
       vi.mocked(mockCharacterInfoService.getCharacterInfo).mockResolvedValue(null);
 
       const tool = registeredTools.get('operator_styles');
-      await expect(tool.handler({ character: 'invalid' })).rejects.toThrow(
+      await expect(tool.handler({ characterId: 'invalid' })).rejects.toThrow(
         'スタイル情報取得エラー'
       );
     });

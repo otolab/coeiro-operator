@@ -45,7 +45,7 @@ describe('Debug Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'debug_logs',
         expect.objectContaining({
-          description: expect.stringContaining('デバッグ用ログの取得と表示'),
+          description: expect.stringContaining('Retrieve and display debug logs'),
         }),
         expect.any(Function)
       );

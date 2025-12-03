@@ -41,34 +41,34 @@ export function registerOperatorAssignTool(
     'operator_assign',
     {
       description:
-        'オペレータを割り当てます。AUTOを選択すると自動的にキャラクターが選ばれます。',
+        'Assign an operator. Selecting AUTO will automatically choose a character.',
       inputSchema: {
-        operator: z
+        characterId: z
           .enum(operatorOptions)
           .optional()
           .describe(
-            'オペレータをキャラクタIDで指名。AUTOは自動選択、省略時もAUTOと同じ動作',
+            'Character ID to assign (AUTO for automatic selection, defaults to AUTO if omitted)',
           ),
-        style: z
+        styleName: z
           .string()
           .optional()
           .describe(
-            'スタイル指定。オペレータごとに利用可能なスタイルが異なります（例: "のーまる"など）',
+            'Style name (e.g., "のーまる", defaults to character\'s default style if omitted, available styles vary by character)',
           ),
       },
     },
     async (args): Promise<ToolResponse> => {
-      const { operator, style } = args || {};
+      const { characterId, styleName } = args || {};
 
-      logger.info('オペレータアサイン開始', { operator, style });
+      logger.info('オペレータアサイン開始', { characterId, styleName });
 
       // 'AUTO'の場合はundefinedとして扱う（自動選択）
-      const effectiveOperator = operator === 'AUTO' ? undefined : operator;
+      const effectiveCharacterId = characterId === 'AUTO' ? undefined : characterId;
 
-      validateOperatorInput(effectiveOperator);
+      validateOperatorInput(effectiveCharacterId);
 
       try {
-        const assignResult = await assignOperator(operatorManager, effectiveOperator, style);
+        const assignResult = await assignOperator(operatorManager, effectiveCharacterId, styleName);
         logger.info('オペレータアサイン成功', {
           characterId: assignResult.characterId,
           characterName: assignResult.characterName,
@@ -144,7 +144,7 @@ export function registerOperatorReleaseTool(
   server.registerTool(
     'operator_release',
     {
-      description: '現在のオペレータを解放します',
+      description: 'Release the current operator',
       inputSchema: {},
     },
     async (): Promise<ToolResponse> => {
@@ -194,7 +194,7 @@ export function registerOperatorStatusTool(
   server.registerTool(
     'operator_status',
     {
-      description: '現在のオペレータ状況を確認します',
+      description: 'Check the current operator status',
       inputSchema: {},
     },
     async (): Promise<ToolResponse> => {
@@ -227,7 +227,7 @@ export function registerOperatorAvailableTool(
   server.registerTool(
     'operator_available',
     {
-      description: '利用可能なオペレータ一覧（キャラクタID）を表示します',
+      description: 'Display list of available operators (character IDs)',
       inputSchema: {},
     },
     async (): Promise<ToolResponse> => {
@@ -270,23 +270,23 @@ export function registerOperatorStylesTool(
     'operator_styles',
     {
       description:
-        '現在のオペレータまたは指定したキャラクターの基礎情報とスタイル一覧を表示します。',
+        'Display basic information and available styles for the current operator or specified character.',
       inputSchema: {
-        character: z
+        characterId: z
           .string()
           .optional()
-          .describe('キャラクターID（省略時は現在のオペレータ）'),
+          .describe('Character ID (defaults to current operator if omitted)'),
       },
     },
     async (args): Promise<ToolResponse> => {
-      const { character } = args || {};
+      const { characterId } = args || {};
 
       try {
         // getTargetCharacter関数を使用してキャラクター情報を取得
         const { character: targetCharacter } = await getTargetCharacter(
           operatorManager,
           characterInfoService,
-          character
+          characterId
         );
 
         // スタイル情報を取得
