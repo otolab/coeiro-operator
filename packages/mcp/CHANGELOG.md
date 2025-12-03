@@ -1,5 +1,23 @@
 # @coeiro-operator/mcp
 
+## 1.4.8
+
+### Patch Changes
+
+- bb663b1: refactor: improve MCP tool parameter names and descriptions
+
+  Parameter naming improvements:
+  - operator => characterId (more explicit)
+  - voice => characterId
+  - message => speechText
+  - style => styleName
+
+  Description improvements:
+  - Converted all tool descriptions to clear English
+  - Added explicit default behavior for all optional parameters
+
+  All 11 MCP tools updated.
+
 ## 1.4.7
 
 ### Patch Changes
