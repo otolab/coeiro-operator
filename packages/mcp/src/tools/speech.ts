@@ -22,53 +22,53 @@ export function registerSayTool(
       description:
         '日本語音声を非同期で出力します',
       inputSchema: {
-        message: z.string().describe('発話させるメッセージ（日本語）'),
-        voice: z.string().optional().describe('キャラクタID（省略時はオペレータ設定を使用）'),
-        rate: z.number().optional().describe('絶対速度（WPM、200 = 標準）'),
-        factor: z.number().optional().describe('相対速度（倍率、1.0 = 等速）'),
-        style: z
+        speechText: z.string().describe('Text to speak (Japanese)'),
+        characterId: z.string().optional().describe('Character ID (defaults to current operator if omitted)'),
+        rate: z.number().optional().describe('Absolute speed in WPM (200 = standard, defaults to config value if omitted)'),
+        factor: z.number().optional().describe('Relative speed multiplier (1.0 = normal speed, defaults to character\'s natural speed if omitted)'),
+        styleName: z
           .string()
           .optional()
           .describe(
-            "スタイル名（例: 'のーまる'など）"
+            'Style name (e.g., "のーまる", defaults to character\'s default style if omitted)'
           ),
       },
     },
     async (args): Promise<ToolResponse> => {
-      const { message, voice, rate, factor, style } = args;
+      const { speechText, characterId, rate, factor, styleName } = args;
 
       try {
         logger.debug('=== SAY TOOL DEBUG START ===');
         logger.debug(`Input parameters:`);
-        logger.debug(`  message: "${message}"`);
-        logger.debug(`  voice: ${voice || 'null (will use operator voice)'}`);
+        logger.debug(`  speechText: "${speechText}"`);
+        logger.debug(`  characterId: ${characterId || 'null (will use operator voice)'}`);
         logger.debug(`  rate: ${rate || 'undefined (will use config default)'}`);
         logger.debug(`  factor: ${factor || 'undefined (will use speaker natural speed)'}`);
-        logger.debug(`  style: ${style || 'undefined (will use operator default)'}`);
+        logger.debug(`  styleName: ${styleName || 'undefined (will use operator default)'}`);
 
         // rateとfactorの同時指定チェック
         if (rate !== undefined && factor !== undefined) {
           throw new Error('rateとfactorは同時に指定できません。どちらか一方を指定してください。');
         }
 
-        // voice文字列をパース（"characterId:styleName"形式に対応）
-        let parsedVoice: string | null = voice || null;
-        let parsedStyle: string | undefined = style;
+        // characterId文字列をパース（"characterId:styleName"形式に対応）
+        let parsedCharacterId: string | null = characterId || null;
+        let parsedStyleName: string | undefined = styleName;
 
-        if (voice && voice.includes(':')) {
-          const parts = voice.split(':');
+        if (characterId && characterId.includes(':')) {
+          const parts = characterId.split(':');
           if (parts.length === 2) {
-            parsedVoice = parts[0];
-            // styleパラメータが明示されていない場合のみ、voice文字列から抽出したstyleを使用
-            if (!style) {
-              parsedStyle = parts[1];
-              logger.debug(`  voice文字列からパース: characterId="${parsedVoice}", style="${parsedStyle}"`);
+            parsedCharacterId = parts[0];
+            // styleNameパラメータが明示されていない場合のみ、characterId文字列から抽出したstyleNameを使用
+            if (!styleName) {
+              parsedStyleName = parts[1];
+              logger.debug(`  characterId文字列からパース: characterId="${parsedCharacterId}", styleName="${parsedStyleName}"`);
             } else {
-              logger.warn(`voice文字列にstyleが含まれていますが、styleパラメータが優先されます`);
+              logger.warn(`characterId文字列にstyleNameが含まれていますが、styleNameパラメータが優先されます`);
             }
           } else {
             throw new Error(
-              `不正なvoice形式です: "${voice}"\n` +
+              `不正なcharacterId形式です: "${characterId}"\n` +
               `使用可能な形式:\n` +
               `  - "characterId" (例: "alma")\n` +
               `  - "characterId:styleName" (例: "alma:のーまる")`
@@ -77,9 +77,9 @@ export function registerSayTool(
         }
 
         // Issue #58: オペレータ未アサイン時の再アサイン促進メッセージ
-        // voiceパラメータが指定されている場合はオペレータ不要
+        // characterIdパラメータが指定されている場合はオペレータ不要
         const currentOperator = await operatorManager.showCurrentOperator();
-        if (!currentOperator.characterId && !parsedVoice) {
+        if (!currentOperator.characterId && !parsedCharacterId) {
           // オペレータ未割り当て時に背景画像をクリア
           if (terminalBackground) {
             if (await terminalBackground.isEnabled()) {
@@ -111,7 +111,7 @@ export function registerSayTool(
               '❌ 現在利用可能なオペレータがありません。しばらく待ってから再試行してください。';
           }
 
-          guidanceMessage += '\n\n💡 または、voice パラメータで直接キャラクターを指定することもできます。';
+          guidanceMessage += '\n\n💡 または、characterId パラメータで直接キャラクターを指定することもできます。';
 
           return {
             content: [
@@ -146,11 +146,11 @@ export function registerSayTool(
         }
 
         // スタイル検証（事前チェック）
-        // parsedStyleとparsedVoiceを使用
-        if (parsedStyle) {
+        // parsedStyleNameとparsedCharacterIdを使用
+        if (parsedStyleName) {
           try {
-            // voiceが指定されている場合はそのキャラクターのスタイル、なければ現在のオペレータのスタイルを検証
-            const targetCharacterId = parsedVoice || currentOperator.characterId;
+            // characterIdが指定されている場合はそのキャラクターのスタイル、なければ現在のオペレータのスタイルを検証
+            const targetCharacterId = parsedCharacterId || currentOperator.characterId;
 
             if (!targetCharacterId) {
               throw new Error(`キャラクター情報が取得できません`);
@@ -165,12 +165,12 @@ export function registerSayTool(
             const availableStyles = Object.values(character.styles || {});
 
             // 指定されたスタイルが存在するか確認
-            const styleExists = availableStyles.some(s => s.styleName === parsedStyle);
+            const styleExists = availableStyles.some(s => s.styleName === parsedStyleName);
 
             if (!styleExists) {
               const styleNames = availableStyles.map(s => s.styleName);
               throw new Error(
-                `指定されたスタイル '${parsedStyle}' が ${character.speakerName || targetCharacterId} には存在しません。\n` +
+                `指定されたスタイル '${parsedStyleName}' が ${character.speakerName || targetCharacterId} には存在しません。\n` +
                 `利用可能なスタイル: ${styleNames.join(', ')}`
               );
             }
@@ -199,20 +199,20 @@ export function registerSayTool(
         // - synthesize() はキューに追加して即座にレスポンス
         // - 実際の音声合成・再生は背景のSpeechQueueで非同期処理
         // - CLIとは異なり、MCPではウォームアップ・完了待機は実行しない
-        const result = sayCoeiroink.synthesize(message, {
-          voice: parsedVoice,
+        const result = sayCoeiroink.synthesize(speechText, {
+          voice: parsedCharacterId,
           ...speedOptions,  // rateまたはfactorを展開
-          style: parsedStyle,
+          style: parsedStyleName,
           allowFallback: false, // MCPツールではオペレータが必須
         });
 
         // 結果をログ出力
         logger.debug(`Result: ${JSON.stringify(result)}`);
 
-        // オペレータまたはvoice指定の情報を取得
+        // オペレータまたはcharacterId指定の情報を取得
         const voiceInfo = currentOperator.characterId
           ? `オペレータ: ${currentOperator.characterId}`
-          : `voice指定: ${parsedVoice}${parsedStyle ? `:${parsedStyle}` : ''}`;
+          : `characterId指定: ${parsedCharacterId}${parsedStyleName ? `:${parsedStyleName}` : ''}`;
 
         const modeInfo = `発声キューに追加 - ${voiceInfo}, タスクID: ${result.taskId}`;
         logger.info(modeInfo);
