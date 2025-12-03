@@ -17,27 +17,27 @@ export function registerDebugLogsTool(server: McpServer): void {
     'debug_logs',
     {
       description:
-        'デバッグ用ログの取得と表示',
+        'Retrieve and display debug logs',
       inputSchema: {
         action: z
           .enum(['get', 'stats', 'clear'])
-          .describe('実行するアクション: get=ログ取得, stats=統計表示, clear=ログクリア'),
+          .describe('Action to perform: get=retrieve logs, stats=show statistics, clear=clear logs'),
         level: z
           .array(z.enum(['error', 'warn', 'info', 'verbose', 'debug']))
           .optional()
-          .describe('取得するログレベル（複数選択可）'),
-        since: z.string().optional().describe('この時刻以降のログを取得（ISO 8601形式）'),
+          .describe('Log levels to retrieve (multiple selection allowed, defaults to all levels if omitted)'),
+        since: z.string().optional().describe('Retrieve logs after this time (ISO 8601 format, defaults to all logs if omitted)'),
         limit: z
           .number()
           .min(1)
           .max(1000)
           .optional()
-          .describe('取得する最大ログエントリ数（1-1000）'),
-        search: z.string().optional().describe('ログメッセージ内の検索キーワード'),
+          .describe('Maximum number of log entries to retrieve (1-1000, defaults to all entries if omitted)'),
+        search: z.string().optional().describe('Search keyword in log messages (defaults to no filtering if omitted)'),
         format: z
           .enum(['formatted', 'raw'])
           .optional()
-          .describe('出力形式: formatted=整形済み, raw=生データ'),
+          .describe('Output format (formatted=formatted, raw=raw data, defaults to formatted if omitted)'),
       },
     },
     async (args): Promise<ToolResponse> => {

@@ -69,7 +69,7 @@ describe('Speech Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'say',
         expect.objectContaining({
-          description: expect.stringContaining('音声を非同期で出力'),
+          description: expect.stringContaining('日本語音声を非同期で出力'),
         }),
         expect.any(Function)
       );
@@ -97,7 +97,7 @@ describe('Speech Tools', () => {
       vi.mocked(mockOperatorManager.refreshOperatorReservation).mockResolvedValue(true);
 
       const tool = registeredTools.get('say');
-      const result = await tool.handler({ message: 'テストメッセージ' });
+      const result = await tool.handler({ speechText: 'テストメッセージ' });
 
       expect(result.content[0].text).toContain('音声合成を開始');
       expect(result.content[0].text).toContain('12345');
@@ -130,14 +130,14 @@ describe('Speech Tools', () => {
       vi.mocked(mockTerminalBackground.isEnabled).mockResolvedValue(false);
 
       const tool = registeredTools.get('say');
-      const result = await tool.handler({ message: 'テストメッセージ' });
+      const result = await tool.handler({ speechText: 'テストメッセージ' });
 
       expect(result.content[0].text).toContain('オペレータが割り当てられていません');
       expect(result.content[0].text).toContain('operator_assign');
       expect(result.content[0].text).toContain('tsukuyomi');
     });
 
-    test('voice指定時にオペレータなしで動作すること', async () => {
+    test('characterId指定時にオペレータなしで動作すること', async () => {
       registerSayTool(
         mockServer,
         mockSayCoeiroink,
@@ -176,7 +176,7 @@ describe('Speech Tools', () => {
       });
 
       const tool = registeredTools.get('say');
-      const result = await tool.handler({ message: 'テストメッセージ', voice: 'alma' });
+      const result = await tool.handler({ speechText: 'テストメッセージ', characterId: 'alma' });
 
       expect(result.content[0].text).toContain('音声合成を開始');
       expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
@@ -188,7 +188,7 @@ describe('Speech Tools', () => {
       );
     });
 
-    test('voice形式のパースが正しく動作すること（characterId:styleName）', async () => {
+    test('characterId形式のパースが正しく動作すること（characterId:styleName）', async () => {
       registerSayTool(
         mockServer,
         mockSayCoeiroink,
@@ -222,7 +222,7 @@ describe('Speech Tools', () => {
       });
 
       const tool = registeredTools.get('say');
-      await tool.handler({ message: 'テストメッセージ', voice: 'alma:のーまる' });
+      await tool.handler({ speechText: 'テストメッセージ', characterId: 'alma:のーまる' });
 
       expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
         'テストメッセージ',
@@ -233,7 +233,7 @@ describe('Speech Tools', () => {
       );
     });
 
-    test('不正なvoice形式でエラーが発生すること', async () => {
+    test('不正なcharacterId形式でエラーが発生すること', async () => {
       registerSayTool(
         mockServer,
         mockSayCoeiroink,
@@ -250,8 +250,8 @@ describe('Speech Tools', () => {
 
       const tool = registeredTools.get('say');
       await expect(
-        tool.handler({ message: 'テストメッセージ', voice: 'alma:のーまる:extra' })
-      ).rejects.toThrow('不正なvoice形式');
+        tool.handler({ speechText: 'テストメッセージ', characterId: 'alma:のーまる:extra' })
+      ).rejects.toThrow('不正なcharacterId形式');
     });
 
     test('rateとfactorの同時指定でエラーが発生すること', async () => {
@@ -271,7 +271,7 @@ describe('Speech Tools', () => {
 
       const tool = registeredTools.get('say');
       await expect(
-        tool.handler({ message: 'テストメッセージ', rate: 200, factor: 1.5 })
+        tool.handler({ speechText: 'テストメッセージ', rate: 200, factor: 1.5 })
       ).rejects.toThrow('rateとfactorは同時に指定できません');
     });
 
@@ -310,7 +310,7 @@ describe('Speech Tools', () => {
 
       const tool = registeredTools.get('say');
       await expect(
-        tool.handler({ message: 'テストメッセージ', style: '存在しないスタイル' })
+        tool.handler({ speechText: 'テストメッセージ', styleName: '存在しないスタイル' })
       ).rejects.toThrow('指定されたスタイル \'存在しないスタイル\' が つくよみちゃん には存在しません');
     });
 
@@ -336,7 +336,7 @@ describe('Speech Tools', () => {
       vi.mocked(mockOperatorManager.refreshOperatorReservation).mockResolvedValue(true);
 
       const tool = registeredTools.get('say');
-      await tool.handler({ message: 'テストメッセージ', rate: 300 });
+      await tool.handler({ speechText: 'テストメッセージ', rate: 300 });
 
       expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
         'テストメッセージ',
@@ -368,7 +368,7 @@ describe('Speech Tools', () => {
       vi.mocked(mockOperatorManager.refreshOperatorReservation).mockResolvedValue(true);
 
       const tool = registeredTools.get('say');
-      await tool.handler({ message: 'テストメッセージ', factor: 1.5 });
+      await tool.handler({ speechText: 'テストメッセージ', factor: 1.5 });
 
       expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
         'テストメッセージ',

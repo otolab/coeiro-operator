@@ -45,7 +45,7 @@ describe('Playback Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'queue_status',
         expect.objectContaining({
-          description: expect.stringContaining('音声キューの状態を確認'),
+          description: expect.stringContaining('Check the status of the speech queue'),
         }),
         expect.any(Function)
       );
@@ -94,7 +94,7 @@ describe('Playback Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'queue_clear',
         expect.objectContaining({
-          description: expect.stringContaining('音声キューをクリア'),
+          description: expect.stringContaining('Clear the speech queue'),
         }),
         expect.any(Function)
       );
@@ -167,7 +167,7 @@ describe('Playback Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'playback_stop',
         expect.objectContaining({
-          description: expect.stringContaining('音声を停止'),
+          description: expect.stringContaining('Stop currently playing audio'),
         }),
         expect.any(Function)
       );
@@ -199,7 +199,7 @@ describe('Playback Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'wait_for_task_completion',
         expect.objectContaining({
-          description: expect.stringContaining('音声タスクの完了を待機'),
+          description: expect.stringContaining('Wait for speech tasks to complete'),
         }),
         expect.any(Function)
       );
