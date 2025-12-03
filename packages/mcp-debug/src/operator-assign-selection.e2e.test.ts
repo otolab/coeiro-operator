@@ -45,25 +45,25 @@ describe('operator_assign選択式パラメータ', () => {
     const inputSchema = operatorAssignTool.inputSchema;
     expect(inputSchema).toBeDefined();
     expect(inputSchema.properties).toBeDefined();
-    expect(inputSchema.properties.operator).toBeDefined();
+    expect(inputSchema.properties.characterId).toBeDefined();
 
-    // operatorパラメータがenum型であることを確認
-    const operatorParam = inputSchema.properties.operator;
-    expect(operatorParam.enum).toBeDefined();
-    expect(Array.isArray(operatorParam.enum)).toBe(true);
+    // characterIdパラメータがenum型であることを確認
+    const characterIdParam = inputSchema.properties.characterId;
+    expect(characterIdParam.enum).toBeDefined();
+    expect(Array.isArray(characterIdParam.enum)).toBe(true);
 
     // 'AUTO'が先頭にあることを確認
-    expect(operatorParam.enum[0]).toBe('AUTO');
+    expect(characterIdParam.enum[0]).toBe('AUTO');
 
     // 少なくとも1つのキャラクターが含まれていることを確認（AUTO + キャラクター）
-    expect(operatorParam.enum.length).toBeGreaterThan(1);
+    expect(characterIdParam.enum.length).toBeGreaterThan(1);
 
-    console.log('利用可能なオプション:', operatorParam.enum);
+    console.log('利用可能なオプション:', characterIdParam.enum);
   });
 
   it('AUTOを指定してオペレータをアサインできること', async () => {
     const result = await tester.callTool('operator_assign', {
-      operator: 'AUTO',
+      characterId: 'AUTO',
     });
 
     expect(result.success).toBe(true);
