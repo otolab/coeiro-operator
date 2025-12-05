@@ -104,11 +104,12 @@ export class SayCoeiroink {
   ): Promise<{ speakSettings: SpeakSettings; processingOptions: ProcessingOptions }> {
     // Characterを解決
     let character: Character;
+    let session: Awaited<ReturnType<typeof this.operatorManager.getCurrentOperatorSession>> | null = null;
     const allowFallback = options.allowFallback ?? true;
 
     if (!options.voice) {
       // voiceが未指定 → Operator経由でアサイン、なければデフォルトキャラクター
-      const session = await this.operatorManager.getCurrentOperatorSession();
+      session = await this.operatorManager.getCurrentOperatorSession();
       if (!session) {
         // オペレータアサインなし → デフォルトキャラクターを使用（最初に見つかるキャラクター）
         const availableCharacterIds = await this.characterInfoService.getAvailableCharacterIds();
@@ -136,7 +137,7 @@ export class SayCoeiroink {
       if (!resolvedCharacter) {
         if (allowFallback) {
           logger.warn(`Character not found: ${options.voice}, falling back to assignment`);
-          const session = await this.operatorManager.getCurrentOperatorSession();
+          session = await this.operatorManager.getCurrentOperatorSession();
           if (!session) {
             throw new Error('No operator assigned and character not found.');
           }
@@ -156,7 +157,7 @@ export class SayCoeiroink {
     // selectedStyleIdを解決
     let selectedStyleId = character.defaultStyleId;
     if (options.style) {
-      // style名からstyleIdを検索
+      // style名からstyleIdを検索（明示的にstyleが指定された場合）
       const styleEntry = Object.entries(character.styles).find(
         ([_, styleConfig]) => styleConfig.styleName === options.style
       );
@@ -165,6 +166,10 @@ export class SayCoeiroink {
       } else {
         logger.warn(`Style not found: ${options.style}, using default style`);
       }
+    } else if (!options.voice && session?.styleId !== undefined) {
+      // voiceもstyleも未指定で、セッションが存在する場合は、セッションのstyleIdを使用
+      selectedStyleId = session.styleId;
+      logger.debug(`Using session style: ${session.styleName} (ID:${session.styleId})`);
     }
 
     const styleConfig = character.styles[selectedStyleId];
