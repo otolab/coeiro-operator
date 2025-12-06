@@ -1,5 +1,12 @@
 # @coeiro-operator/mcp
 
+## 1.4.9
+
+### Patch Changes
+
+- Updated dependencies [88cea0a]
+  - @coeiro-operator/audio@1.2.8
+
 ## 1.4.8
 
 ### Patch Changes
