@@ -55,14 +55,15 @@ jobs:
       - name: Build packages
         run: pnpm build:all
 
-      - name: Publish to npm
+      - name: Update npm for Trusted Publishing
+        run: npm install -g npm@latest
+
+      - name: Publish to npm (with Trusted Publishing)
         run: |
           # Versions and changelogs are already updated in the release branch
           # Use pnpm to publish packages in dependency order (prevents race conditions)
-          pnpm publish -r --no-git-checks
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Use --provenance for trusted publishing (requires id-token: write permission)
+          pnpm publish -r --no-git-checks --provenance --access public
 
       - name: Push tags only
         run: |
