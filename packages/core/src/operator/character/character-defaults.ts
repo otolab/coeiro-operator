@@ -229,6 +229,20 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
       75: { styleName: '囁きβ', morasPerSecond: 7.50 },
     },
   },
+  ameno: {
+    speakerId: 'cc31327e-6617-446f-ba41-eb88f89b8fce',
+    name: 'アメノちゃん',
+    personality: '明るく元気で前向き、親しみやすい性格',
+    speakingStyle: '元気いっぱいの明るい口調',
+    greeting: 'おはよーございます！アメノです！今日も一緒に頑張りましょう！',
+    farewell: '今日もお疲れ様でした！また明日も元気にいきましょう！',
+    defaultStyleId: 140,
+    styles: {
+      140: { styleName: 'のーまる', morasPerSecond: 6.81 },
+      141: { styleName: 'ギャル', morasPerSecond: 5.63 },
+      142: { styleName: '熊本弁', morasPerSecond: 6.98 },
+    },
+  },
 } as const;
 
 // デフォルトのキャラクターID
