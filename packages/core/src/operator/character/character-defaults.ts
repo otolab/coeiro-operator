@@ -238,9 +238,9 @@ export const BUILTIN_CHARACTER_CONFIGS: Record<string, CharacterConfig> = {
     farewell: '今日もお疲れ様でした！また明日も元気にいきましょう！',
     defaultStyleId: 140,
     styles: {
-      140: { styleName: 'のーまる', morasPerSecond: 7.50 },
-      141: { styleName: 'ギャル', morasPerSecond: 7.50 },
-      142: { styleName: '熊本弁', morasPerSecond: 7.50 },
+      140: { styleName: 'のーまる', morasPerSecond: 6.81 },
+      141: { styleName: 'ギャル', morasPerSecond: 5.63 },
+      142: { styleName: '熊本弁', morasPerSecond: 6.98 },
     },
   },
 } as const;
