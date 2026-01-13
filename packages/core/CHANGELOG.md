@@ -1,5 +1,11 @@
 # @coeiro-operator/core
 
+## 1.3.2
+
+### Patch Changes
+
+- e028653: 公式キャラクター「アメノ」を組み込みキャラデータに追加
+
 ## 1.3.1
 
 ### Patch Changes
