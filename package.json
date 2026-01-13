@@ -1,6 +1,6 @@
 {
   "name": "coeiro-operator",
-  "version": "1.4.4",
+  "version": "1.4.5",
   "description": "MCP server for COEIROINK voice synthesis and operator management",
   "type": "module",
   "private": true,
