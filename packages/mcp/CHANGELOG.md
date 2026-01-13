@@ -1,5 +1,17 @@
 # @coeiro-operator/mcp
 
+## 1.4.11
+
+### Patch Changes
+
+- 91a1fe8: npm Trusted Publishingに対応
+
+  リリースワークフローでnpmのTrusted Publishing（Provenance）を使用するように変更しました。これによりより安全なパッケージ公開が可能になります。
+
+- Updated dependencies [91a1fe8]
+  - @coeiro-operator/core@1.3.3
+  - @coeiro-operator/audio@1.2.10
+
 ## 1.4.10
 
 ### Patch Changes
