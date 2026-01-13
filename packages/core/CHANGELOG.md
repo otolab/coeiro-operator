@@ -1,5 +1,13 @@
 # @coeiro-operator/core
 
+## 1.3.3
+
+### Patch Changes
+
+- 91a1fe8: npm Trusted Publishingに対応
+
+  リリースワークフローでnpmのTrusted Publishing（Provenance）を使用するように変更しました。これによりより安全なパッケージ公開が可能になります。
+
 ## 1.3.2
 
 ### Patch Changes
