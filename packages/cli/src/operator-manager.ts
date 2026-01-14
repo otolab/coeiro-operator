@@ -5,7 +5,7 @@
  * operator-managerスクリプトのJavaScript版
  */
 
-import { OperatorManager, ConfigManager, CharacterInfoService, TerminalBackground, getConfigDir } from '@coeiro-operator/core';
+import { OperatorManager, getSessionId, ConfigManager, CharacterInfoService, TerminalBackground, getConfigDir } from '@coeiro-operator/core';
 import { logger } from '@coeiro-operator/common';
 
 interface AssignResult {
@@ -117,15 +117,17 @@ class OperatorManagerCLI {
     this.configManager = new ConfigManager(configDir);
     await this.configManager.buildDynamicConfig();
 
+    const sessionId = await getSessionId();
     const characterInfoService = new CharacterInfoService();
     characterInfoService.initialize(this.configManager);
 
     // OperatorManagerを初期化（DI）
-    this.manager = new OperatorManager(this.configManager, characterInfoService);
+    this.manager = new OperatorManager(sessionId, this.configManager, characterInfoService);
     await this.manager.initialize();
 
     // TerminalBackgroundを初期化
     this.terminalBackground = new TerminalBackground(this.configManager);
+    await this.terminalBackground.initialize();
 
     const command = args[0];
 

@@ -4,54 +4,32 @@ import { writeFile } from 'fs/promises';
 import { ConfigManager } from '../operator/config/config-manager.js';
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
 import { logger } from '@coeiro-operator/common';
+import { getSessionId } from '../operator/index.js';
 
 export class TerminalBackground {
   private currentCharacterId: string | null = null;
   private configManager: ConfigManager;
   private termBg: TermBg;
   private sessionId: string | undefined;
+  private initialized: boolean = false;
 
   constructor(configManager: ConfigManager, sessionId?: string) {
     this.configManager = configManager;
     this.termBg = new TermBg();
-    this.sessionId = sessionId || this.getSessionId();
+    this.sessionId = sessionId;
   }
 
   /**
-   * セッションIDを取得
-   *
-   * 複数の環境（iTmux、tmux、iTerm2、その他）に対応。
-   * iTerm2の背景画像API用にセッションIDを取得します。
-   *
-   * 優先順位:
-   * 1. ITMUX_PROJECT - iTmuxプロジェクト単位
-   * 2. TMUX_SESSION_ID - tmux window単位
-   * 3. ITERM_SESSION_ID - iTerm2セッション単位
-   * 4. TERM_SESSION_ID - その他のターミナル
-   *
-   * Note: iTerm2 APIは純粋なUUIDを期待するため、
-   * プレフィックス（"w4t0p0:" など）を除去します。
+   * セッションIDを取得して初期化
    */
-  private getSessionId(): string | undefined {
-    // 環境変数から取得（優先順位順）
-    let sessionId =
-      process.env.ITMUX_PROJECT ||
-      process.env.TMUX_SESSION_ID ||
-      process.env.ITERM_SESSION_ID ||
-      process.env.TERM_SESSION_ID;
-
-    if (sessionId && sessionId !== 'inherit') {
-      // プレフィックス（例: "w4t0p0:"）を除去
-      // 環境変数のセッションIDは "w4t0p0:UUID" の形式だが、
-      // iTerm2 APIは "UUID" のみを期待する
-      const colonIndex = sessionId.indexOf(':');
-      if (colonIndex !== -1) {
-        sessionId = sessionId.substring(colonIndex + 1);
-      }
-      return sessionId;
+  async initialize(): Promise<void> {
+    if (!this.sessionId) {
+      const fullSessionId = await getSessionId();
+      // iTerm2 APIは純粋なUUIDを期待するため、プレフィックスを除去
+      const colonIndex = fullSessionId.indexOf(':');
+      this.sessionId = colonIndex !== -1 ? fullSessionId.substring(colonIndex + 1) : fullSessionId;
     }
-
-    return undefined;
+    this.initialized = true;
   }
 
   /**

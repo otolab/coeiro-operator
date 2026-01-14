@@ -3,7 +3,7 @@
  * 音声合成ライブラリのファサード
  */
 
-import { OperatorManager, ConfigManager, CharacterInfoService } from '@coeiro-operator/core';
+import { OperatorManager, getSessionId, ConfigManager, CharacterInfoService } from '@coeiro-operator/core';
 import { SpeechQueue } from './speech-queue.js';
 import { AudioPlayer } from './audio-player.js';
 import { AudioSynthesizer } from './audio-synthesizer.js';
@@ -25,7 +25,7 @@ import type { StreamControllerOptions } from './audio-stream-controller.js';
 export class SayCoeiroink {
   private configManager: ConfigManager;
   private config: Config;
-  private operatorManager: OperatorManager;
+  private operatorManager!: OperatorManager;
   private characterInfoService: CharacterInfoService;
   private speechQueue: SpeechQueue | null = null;
   private audioPlayer: AudioPlayer | null = null;
@@ -39,15 +39,16 @@ export class SayCoeiroink {
     // CharacterInfoServiceを初期化
     this.characterInfoService = new CharacterInfoService();
     this.characterInfoService.initialize(configManager);
-
-    // OperatorManagerを初期化（DI）
-    this.operatorManager = new OperatorManager(configManager, this.characterInfoService);
   }
 
   async initialize(): Promise<void> {
     try {
       // ConfigManagerから完全な設定を取得
       this.config = await this.configManager.getFullConfig();
+
+      // OperatorManagerを初期化（DI）
+      const sessionId = await getSessionId();
+      this.operatorManager = new OperatorManager(sessionId, this.configManager, this.characterInfoService);
 
       // 基本コンポーネントを初期化
       this.audioPlayer = new AudioPlayer(this.config);

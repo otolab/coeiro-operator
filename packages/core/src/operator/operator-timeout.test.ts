@@ -60,7 +60,7 @@ describe('オペレータタイムアウト時の動作', () => {
     characterInfoService.initialize(configManager);
 
     // OperatorManagerを生成（DI）
-    operatorManager = new OperatorManager(configManager, characterInfoService);
+    operatorManager = new OperatorManager("test-session", configManager, characterInfoService);
     await operatorManager.initialize();
   });
 
