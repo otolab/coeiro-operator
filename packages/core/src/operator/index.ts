@@ -62,15 +62,44 @@ interface StatusResult {
 
 /**
  * セッションIDを取得
+ *
+ * 複数の環境（iTmux、tmux、iTerm2、その他）に対応し、
+ * 名前空間の衝突を防ぐためプレフィックスを付与します。
+ *
+ * 優先順位:
+ * 1. ITMUX_PROJECT - iTmuxプロジェクト単位
+ * 2. TMUX_SESSION_ID - tmux window単位
+ * 3. ITERM_SESSION_ID - iTerm2セッション単位
+ * 4. TERM_SESSION_ID - その他のターミナル
+ * 5. PID - フォールバック
  */
 function getSessionId(): string {
-  if (process.env.ITERM_SESSION_ID) {
-    return process.env.ITERM_SESSION_ID.replace(/[:-]/g, '_');
-  } else if (process.env.TERM_SESSION_ID) {
-    return process.env.TERM_SESSION_ID.replace(/[:-]/g, '_');
-  } else {
-    return process.ppid.toString();
+  // 1. iTmux使用時: プロジェクト単位
+  if (process.env.ITMUX_PROJECT) {
+    const projectName = process.env.ITMUX_PROJECT.replace(/[^a-zA-Z0-9]/g, '_');
+    return `ITMUX_PROJECT:${projectName}`;
   }
+
+  // 2. tmux使用時: window単位
+  if (process.env.TMUX_SESSION_ID) {
+    const sessionId = process.env.TMUX_SESSION_ID.replace(/[^a-zA-Z0-9_]/g, '_');
+    return `TMUX_SESSION_ID:${sessionId}`;
+  }
+
+  // 3. iTerm2セッション単位
+  if (process.env.ITERM_SESSION_ID) {
+    const sessionId = process.env.ITERM_SESSION_ID.replace(/[:-]/g, '_');
+    return `ITERM_SESSION_ID:${sessionId}`;
+  }
+
+  // 4. その他のターミナル
+  if (process.env.TERM_SESSION_ID) {
+    const sessionId = process.env.TERM_SESSION_ID.replace(/[:-]/g, '_');
+    return `TERM_SESSION_ID:${sessionId}`;
+  }
+
+  // 5. フォールバック
+  return `PID:${process.ppid}`;
 }
 
 export class OperatorManager {

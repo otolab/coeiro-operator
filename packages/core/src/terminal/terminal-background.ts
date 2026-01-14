@@ -18,11 +18,27 @@ export class TerminalBackground {
   }
 
   /**
-   * セッションIDを取得（OperatorManagerと同じロジック）
+   * セッションIDを取得
+   *
+   * 複数の環境（iTmux、tmux、iTerm2、その他）に対応。
+   * iTerm2の背景画像API用にセッションIDを取得します。
+   *
+   * 優先順位:
+   * 1. ITMUX_PROJECT - iTmuxプロジェクト単位
+   * 2. TMUX_SESSION_ID - tmux window単位
+   * 3. ITERM_SESSION_ID - iTerm2セッション単位
+   * 4. TERM_SESSION_ID - その他のターミナル
+   *
+   * Note: iTerm2 APIは純粋なUUIDを期待するため、
+   * プレフィックス（"w4t0p0:" など）を除去します。
    */
   private getSessionId(): string | undefined {
-    // ITERM_SESSION_IDを優先、次にTERM_SESSION_IDを使用
-    let sessionId = process.env.ITERM_SESSION_ID || process.env.TERM_SESSION_ID;
+    // 環境変数から取得（優先順位順）
+    let sessionId =
+      process.env.ITMUX_PROJECT ||
+      process.env.TMUX_SESSION_ID ||
+      process.env.ITERM_SESSION_ID ||
+      process.env.TERM_SESSION_ID;
 
     if (sessionId && sessionId !== 'inherit') {
       // プレフィックス（例: "w4t0p0:"）を除去
