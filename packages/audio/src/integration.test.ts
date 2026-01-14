@@ -248,8 +248,10 @@ describe('Say Integration Tests', () => {
       }),
     };
 
-    // OperatorManagerのモックを設定
-    vi.mocked(OperatorManager).mockImplementation(() => mockOperatorManager);
+    // OperatorManagerのモックを設定（Vitest 4ではfunctionキーワードが必須）
+    vi.mocked(OperatorManager).mockImplementation(function() {
+      return mockOperatorManager;
+    });
 
     // デフォルト設定を使用
     const configManager = createMockConfigManager();

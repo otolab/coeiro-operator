@@ -49,29 +49,35 @@ vi.mock('@coeiro-operator/core', () => {
   }
 
   return {
-    OperatorManager: vi.fn().mockImplementation(() => ({
-      initialize: vi.fn(),
-      getCurrentOperatorSession: vi.fn().mockResolvedValue({
-        characterId: 'test-speaker-1',
-        styleId: 0,
-        styleName: 'ノーマル',
-      }),
-    })),
+    // Vitest 4ではコンストラクタモックにfunctionキーワードが必須
+    OperatorManager: vi.fn().mockImplementation(function() {
+      return {
+        initialize: vi.fn(),
+        getCurrentOperatorSession: vi.fn().mockResolvedValue({
+          characterId: 'test-speaker-1',
+          styleId: 0,
+          styleName: 'ノーマル',
+        }),
+      };
+    }),
     CharacterInfoService: MockCharacterInfoService,
     getSessionId: vi.fn().mockResolvedValue('test-session'),
-    getSpeakerProvider: vi.fn(() => ({
-      getSpeakers: vi.fn().mockResolvedValue([
-        {
-          speakerUuid: 'test-speaker-1',
-          speakerName: 'テストスピーカー1',
-          styles: [{ styleId: 0, styleName: 'ノーマル' }],
-        },
-      ]),
-      updateConnection: vi.fn(),
-      checkConnection: vi.fn().mockResolvedValue(true),
-      logAvailableVoices: vi.fn(),
-    })),
-    ConfigManager: vi.fn().mockImplementation(() => ({
+    getSpeakerProvider: vi.fn(function() {
+      return {
+        getSpeakers: vi.fn().mockResolvedValue([
+          {
+            speakerUuid: 'test-speaker-1',
+            speakerName: 'テストスピーカー1',
+            styles: [{ styleId: 0, styleName: 'ノーマル' }],
+          },
+        ]),
+        updateConnection: vi.fn(),
+        checkConnection: vi.fn().mockResolvedValue(true),
+        logAvailableVoices: vi.fn(),
+      };
+    }),
+    ConfigManager: vi.fn().mockImplementation(function() {
+      return {
       getFullConfig: vi.fn().mockResolvedValue({
         connection: { host: 'localhost', port: '50032' },
         voice: { rate: 200 },
@@ -89,7 +95,8 @@ vi.mock('@coeiro-operator/core', () => {
         return null;
       }),
       getStateDir: vi.fn().mockReturnValue('/tmp/test-state'),
-    })),
+    };
+    }),
   };
 });
 
@@ -98,14 +105,16 @@ vi.mock('./audio-player.js', async () => {
   const actual = await vi.importActual<typeof import('./audio-player.js')>('./audio-player.js');
   return {
     ...actual,
-    AudioPlayer: vi.fn().mockImplementation(() => ({
-      initialize: vi.fn().mockResolvedValue(true),
-      setSynthesisRate: vi.fn(),
-      setPlaybackRate: vi.fn(),
-      setNoiseReduction: vi.fn(),
-      setLowpassFilter: vi.fn(),
-      // playStreamingAudioを即座に完了させる
-      playStreamingAudio: vi.fn().mockImplementation(async (audioStream) => {
+    // Vitest 4ではコンストラクタモックにfunctionキーワードが必須
+    AudioPlayer: vi.fn().mockImplementation(function() {
+      return {
+        initialize: vi.fn().mockResolvedValue(true),
+        setSynthesisRate: vi.fn(),
+        setPlaybackRate: vi.fn(),
+        setNoiseReduction: vi.fn(),
+        setLowpassFilter: vi.fn(),
+        // playStreamingAudioを即座に完了させる
+        playStreamingAudio: vi.fn().mockImplementation(async (audioStream) => {
         // ジェネレータを消費し、エラーを適切に伝播
         try {
           for await (const _ of audioStream) {
@@ -118,7 +127,8 @@ vi.mock('./audio-player.js', async () => {
       }),
       stopPlayback: vi.fn().mockResolvedValue(undefined),
       cleanup: vi.fn().mockResolvedValue(undefined),
-    })),
+    };
+    }),
   };
 });
 

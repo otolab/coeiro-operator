@@ -200,8 +200,10 @@ describe('エラーハンドリング統合テスト', () => {
       getCurrentOperatorSession: vi.fn().mockResolvedValue(null),
     };
 
-    // OperatorManagerモックを設定
-    (OperatorManager as unknown).mockImplementation(() => mockOperatorManager);
+    // OperatorManagerモックを設定（Vitest 4ではfunctionキーワードが必須）
+    (OperatorManager as unknown as ReturnType<typeof vi.fn>).mockImplementation(function() {
+      return mockOperatorManager;
+    });
 
     // fetchモックを設定（speakers APIは成功させる）
     vi.mocked(global.fetch).mockImplementation((url: string) => {
