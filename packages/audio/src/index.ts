@@ -25,7 +25,7 @@ import type { StreamControllerOptions } from './audio-stream-controller.js';
 export class SayCoeiroink {
   private configManager: ConfigManager;
   private config: Config;
-  private operatorManager!: OperatorManager;
+  private operatorManager: OperatorManager | null = null;
   private characterInfoService: CharacterInfoService;
   private speechQueue: SpeechQueue | null = null;
   private audioPlayer: AudioPlayer | null = null;
@@ -79,7 +79,9 @@ export class SayCoeiroink {
   async buildDynamicConfig(): Promise<void> {
     try {
       await this.configManager.buildDynamicConfig();
-      await this.operatorManager.buildDynamicConfig();
+      if (this.operatorManager) {
+        await this.operatorManager.buildDynamicConfig();
+      }
       // 設定を再取得して更新
       this.config = await this.configManager.getFullConfig();
 
@@ -105,12 +107,14 @@ export class SayCoeiroink {
   ): Promise<{ speakSettings: SpeakSettings; processingOptions: ProcessingOptions }> {
     // Characterを解決
     let character: Character;
-    let session: Awaited<ReturnType<typeof this.operatorManager.getCurrentOperatorSession>> | null = null;
+    let session: any = null;
     const allowFallback = options.allowFallback ?? true;
 
     if (!options.voice) {
       // voiceが未指定 → Operator経由でアサイン、なければデフォルトキャラクター
-      session = await this.operatorManager.getCurrentOperatorSession();
+      if (this.operatorManager) {
+        session = await this.operatorManager.getCurrentOperatorSession();
+      }
       if (!session) {
         // オペレータアサインなし → デフォルトキャラクターを使用（最初に見つかるキャラクター）
         const availableCharacterIds = await this.characterInfoService.getAvailableCharacterIds();
@@ -138,7 +142,9 @@ export class SayCoeiroink {
       if (!resolvedCharacter) {
         if (allowFallback) {
           logger.warn(`Character not found: ${options.voice}, falling back to assignment`);
-          session = await this.operatorManager.getCurrentOperatorSession();
+          if (this.operatorManager) {
+            session = await this.operatorManager.getCurrentOperatorSession();
+          }
           if (!session) {
             throw new Error('No operator assigned and character not found.');
           }
