@@ -138,6 +138,9 @@ describe('並行チャンク生成システム統合テスト', () => {
   let tempDir: string;
 
   beforeEach(async () => {
+    // fetchをモック（unstubGlobals: trueによりテストファイル間でクリアされるため、beforeEach内で設定）
+    vi.stubGlobal('fetch', vi.fn());
+
     tempDir = join(tmpdir(), `parallel-generation-test-${Date.now()}`);
 
     // 並行生成有効な設定
@@ -159,10 +162,22 @@ describe('並行チャンク生成システム統合テスト', () => {
       },
     };
 
-    const configManager = createMockConfigManager(config);
-    sayCoeiroink = new SayCoeiroink(configManager);
+    // getSpeakerProviderのモックを明示的に設定
+    const { getSpeakerProvider } = await import('@coeiro-operator/core');
+    vi.mocked(getSpeakerProvider).mockReturnValue({
+      getSpeakers: vi.fn().mockResolvedValue([
+        {
+          speakerUuid: 'test-speaker-1',
+          speakerName: 'テストスピーカー1',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ]),
+      updateConnection: vi.fn(),
+      checkConnection: vi.fn().mockResolvedValue(true),
+      logAvailableVoices: vi.fn(),
+    } as any);
 
-    // COEIROINK サーバーのモック設定
+    // COEIROINK サーバーのモック設定（SayCoeiroink初期化の前に設定）
     (global.fetch as unknown).mockImplementation((url: string) => {
       if (url.includes('/v1/speakers')) {
         return Promise.resolve({
@@ -213,6 +228,9 @@ describe('並行チャンク生成システム統合テスト', () => {
 
       return Promise.reject(new Error('Unknown endpoint'));
     });
+
+    const configManager = createMockConfigManager(config);
+    sayCoeiroink = new SayCoeiroink(configManager);
 
     vi.clearAllMocks();
   });

@@ -161,6 +161,9 @@ describe('エラーハンドリング統合テスト', () => {
   let mockOperatorManager: any;
 
   beforeEach(async () => {
+    // fetchをモック（unstubGlobals: trueによりテストファイル間でクリアされるため、beforeEach内で設定）
+    vi.stubGlobal('fetch', vi.fn());
+
     // ログスパイ設定
     consoleSpy = {
       error: vi.spyOn(console, 'error').mockImplementation(() => {}),
@@ -204,6 +207,21 @@ describe('エラーハンドリング統合テスト', () => {
     (OperatorManager as unknown as ReturnType<typeof vi.fn>).mockImplementation(function() {
       return mockOperatorManager;
     });
+
+    // getSpeakerProviderのモックを明示的に設定
+    const { getSpeakerProvider } = await import('@coeiro-operator/core');
+    vi.mocked(getSpeakerProvider).mockReturnValue({
+      getSpeakers: vi.fn().mockResolvedValue([
+        {
+          speakerUuid: 'test-speaker-1',
+          speakerName: 'テストスピーカー1',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+      ]),
+      updateConnection: vi.fn(),
+      checkConnection: vi.fn().mockResolvedValue(true),
+      logAvailableVoices: vi.fn(),
+    } as any);
 
     // fetchモックを設定（speakers APIは成功させる）
     vi.mocked(global.fetch).mockImplementation((url: string) => {

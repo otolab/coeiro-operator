@@ -194,6 +194,9 @@ describe('Say Integration Tests', () => {
   let mockOperatorManager: any;
 
   beforeEach(async () => {
+    // fetchをモック（unstubGlobals: trueによりテストファイル間でクリアされるため、beforeEach内で設定）
+    vi.stubGlobal('fetch', vi.fn());
+
     tempDir = join(tmpdir(), `say-integration-test-${Date.now()}`);
 
     // OperatorManagerモックの設定
@@ -253,13 +256,31 @@ describe('Say Integration Tests', () => {
       return mockOperatorManager;
     });
 
-    // デフォルト設定を使用
-    const configManager = createMockConfigManager();
+    // getSpeakerProviderのモックを明示的に設定
+    const { getSpeakerProvider } = await import('@coeiro-operator/core');
+    vi.mocked(getSpeakerProvider).mockReturnValue({
+      getSpeakers: vi.fn().mockResolvedValue([
+        {
+          speakerUuid: 'test-speaker-1',
+          speakerName: 'テストスピーカー1',
+          styles: [{ styleId: 0, styleName: 'ノーマル' }],
+        },
+        {
+          speakerUuid: '3c37646f-3881-5374-2a83-149267990abc',
+          speakerName: 'つくよみちゃん',
+          styles: [
+            { styleId: 0, styleName: 'れいせい' },
+            { styleId: 1, styleName: 'おしとやか' },
+            { styleId: 2, styleName: 'げんき' },
+          ],
+        },
+      ]),
+      updateConnection: vi.fn(),
+      checkConnection: vi.fn().mockResolvedValue(true),
+      logAvailableVoices: vi.fn(),
+    } as any);
 
-    sayCoeiroink = new SayCoeiroink(configManager);
-
-
-    // COEIROINK サーバーのモック設定
+    // COEIROINK サーバーのモック設定（SayCoeiroink初期化の前に設定）
     vi.mocked(global.fetch).mockImplementation((url: string) => {
       if (url.includes('/v1/speakers')) {
         return Promise.resolve(
@@ -323,6 +344,11 @@ describe('Say Integration Tests', () => {
       return Promise.reject(new Error('Unknown endpoint'));
     });
 
+    // デフォルト設定を使用
+    const configManager = createMockConfigManager();
+
+    sayCoeiroink = new SayCoeiroink(configManager);
+
     vi.clearAllMocks();
 
     // 一時ディレクトリを作成
@@ -346,8 +372,8 @@ describe('Say Integration Tests', () => {
       // クリーンアップエラーは無視
     }
 
-    // モックをリセット
-    vi.restoreAllMocks();
+    // モックのcall historyをクリア（mockImplementationは保持）
+    vi.clearAllMocks();
 
     // 一時ファイルのクリーンアップ
     try {
