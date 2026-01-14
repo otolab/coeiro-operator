@@ -58,6 +58,7 @@ vi.mock('@coeiro-operator/core', () => {
       }),
     })),
     CharacterInfoService: MockCharacterInfoService,
+    getSessionId: vi.fn().mockResolvedValue('test-session'),
     getSpeakerProvider: vi.fn(() => ({
       getSpeakers: vi.fn().mockResolvedValue([
         {
