@@ -90,7 +90,7 @@ export async function getSessionId(): Promise<string> {
       }
     } catch (error) {
       // itmuxコマンドが存在しない、またはプロジェクト外の場合は次へ
-      logger.debug('itmux currentコマンドが失敗しました。tmux window単位にフォールバックします。');
+      logger.debug('itmux currentコマンドが失敗しました。tmux window単位にフォールバックします。', error);
     }
 
     // 1-2. tmux window単位（動的取得）
