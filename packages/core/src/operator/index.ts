@@ -71,21 +71,29 @@ interface StatusResult {
  * 名前空間の衝突を防ぐためプレフィックスを付与します。
  *
  * 優先順位:
- * 1. ITMUX_PROJECT - iTmuxプロジェクト単位
+ * 1. itmux current - iTmuxプロジェクト単位（tmux環境で優先的に試行）
  * 2. TMUX - tmux window単位（動的取得）
  * 3. ITERM_SESSION_ID - iTerm2セッション単位
  * 4. TERM_SESSION_ID - その他のターミナル
  * 5. PID - フォールバック
  */
 export async function getSessionId(): Promise<string> {
-  // 1. iTmux使用時: プロジェクト単位
-  if (process.env.ITMUX_PROJECT) {
-    const projectName = process.env.ITMUX_PROJECT.replace(/[^a-zA-Z0-9]/g, '_');
-    return `ITMUX_PROJECT:${projectName}`;
-  }
-
-  // 2. tmux使用時: window単位（動的取得）
+  // 1. tmux使用時: iTmuxプロジェクト名 → tmux window単位の順で試行
   if (process.env.TMUX) {
+    // 1-1. iTmux使用時: プロジェクト単位（itmux currentコマンド）
+    try {
+      const { stdout } = await execAsync('itmux current');
+      const projectName = stdout.trim();
+      if (projectName) {
+        const sanitizedName = projectName.replace(/[^a-zA-Z0-9]/g, '_');
+        return `ITMUX_PROJECT:${sanitizedName}`;
+      }
+    } catch (error) {
+      // itmuxコマンドが存在しない、またはプロジェクト外の場合は次へ
+      logger.debug('itmux currentコマンドが失敗しました。tmux window単位にフォールバックします。');
+    }
+
+    // 1-2. tmux window単位（動的取得）
     try {
       const { stdout } = await execAsync('tmux display-message -p "#{session_name}:#{window_index}"');
       const sessionId = stdout.trim().replace(/[^a-zA-Z0-9_:]/g, '_');
