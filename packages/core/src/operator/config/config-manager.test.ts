@@ -2,28 +2,28 @@
  * src/operator/config-manager.test.ts: ConfigManager テスト
  */
 
-import { describe, test, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, test, expect, beforeEach, afterEach, afterAll, vi } from 'vitest';
 import { ConfigManager } from './config-manager.js';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
-
-// fetchをモック
-vi.stubGlobal('fetch', vi.fn());
 
 describe('ConfigManager', () => {
   let configManager: ConfigManager;
   let tempDir: string;
 
   beforeEach(async () => {
-    // 一時ディレクトリを作成
-    tempDir = join(tmpdir(), `coeiro-test-${Date.now()}`);
+    // fetchをモック（unstubGlobals: trueによりテストファイル間でクリアされるため、beforeEach内で設定）
+    vi.stubGlobal('fetch', vi.fn());
+
+    // 一時ディレクトリを作成（並列実行時の衝突を避けるためランダム要素を追加）
+    tempDir = join(tmpdir(), `coeiro-test-${Date.now()}-${Math.random().toString(36).substring(7)}`);
     await mkdir(tempDir, { recursive: true });
 
     configManager = new ConfigManager(tempDir);
 
     // fetchモックを設定（エラーを返す）
-    (global.fetch as unknown).mockRejectedValue(new Error('Network error'));
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
 
     // モックをリセット
     vi.clearAllMocks();

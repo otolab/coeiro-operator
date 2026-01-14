@@ -2,6 +2,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // グローバルセットアップ
+    setupFiles: ['./vitest.setup.ts'],
+
     // 基本設定
     environment: 'node',
     testTimeout: 20000,
@@ -12,19 +15,17 @@ export default defineConfig({
       CI: 'true'
     },
 
+    // グローバルモックを各テスト後に自動クリーンアップ
+    unstubGlobals: true,
+
     // テスト出力制御
     // 環境変数TEST_VERBOSEが設定されていない限りサイレントモード
     silent: process.env.TEST_VERBOSE !== 'true',
     reporters: process.env.TEST_VERBOSE === 'true' ? 'verbose' : 'default',
     
     // Issue #50: メモリリーク検出のためのNode.jsオプション
-    // シングルスレッド実行でGCフラグ対応
+    // Vitest 4.0ではsingleForkが廃止され、代わりにmaxWorkers/isolateを使用
     pool: 'forks',
-    poolOptions: {
-      forks: {
-        singleFork: true
-      }
-    },
 
     // テストファイルパターン
     include: [

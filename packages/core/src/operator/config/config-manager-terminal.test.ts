@@ -13,7 +13,8 @@ describe('ConfigManager - Terminal Background Config', () => {
   let tempDir: string;
 
   beforeEach(async () => {
-    tempDir = join(tmpdir(), `coeiro-test-${Date.now()}`);
+    // 一時ディレクトリを作成（並列実行時の衝突を避けるためランダム要素を追加）
+    tempDir = join(tmpdir(), `coeiro-test-${Date.now()}-${Math.random().toString(36).substring(7)}`);
     await mkdir(tempDir, { recursive: true });
     configManager = new ConfigManager(tempDir);
 

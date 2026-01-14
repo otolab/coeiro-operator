@@ -251,6 +251,175 @@ it('長時間処理のテスト', async () => {
 - **独立性**: テスト間の依存を避ける
 - **決定的**: ランダム要素の制御
 
+## テストの独立性とグローバル状態管理
+
+### 原則: テストは完全に独立すべき
+
+**要求事項**:
+- 実行順序に関係なく同じ結果
+- 単独実行とまとめて実行で同じ結果
+- 並列実行でも安定
+- **0 failed以外は許容しない**
+
+### グローバルシングルトンの問題と対策
+
+**問題**: モジュールレベルのシングルトン変数がテスト間で共有
+
+```typescript
+// 本番コード（良い設計）
+let globalSpeakerProvider: SpeakerProvider | null = null;
+
+export function getSpeakerProvider(): SpeakerProvider {
+  if (!globalSpeakerProvider) {
+    globalSpeakerProvider = new SpeakerProvider();
+  }
+  return globalSpeakerProvider;
+}
+```
+
+**症状**:
+- テスト単独では成功、複数実行では失敗
+- 実行順序で結果が変わる
+- 前のテストの状態が次のテストに影響
+
+**対策**: リセット関数の実装と利用
+
+```typescript
+// 本番コードにリセット関数を追加（テスト用でも構わない）
+export function resetSpeakerProvider(): void {
+  globalSpeakerProvider = null;
+}
+```
+
+```typescript
+// vitest.setup.ts でグローバルに適用
+import { beforeEach } from 'vitest';
+import { resetSpeakerProvider } from './path/to/service.js';
+
+beforeEach(() => {
+  resetSpeakerProvider();
+});
+```
+
+### 一時リソースの命名戦略
+
+**問題**: `Date.now()`のみでは並列実行時に衝突
+
+```typescript
+// ❌ 悪い例: 並列実行で衝突する可能性
+tempDir = join(tmpdir(), `test-${Date.now()}`);
+```
+
+**対策**: ランダム要素の追加
+
+```typescript
+// ✅ 良い例: 衝突を回避
+tempDir = join(
+  tmpdir(),
+  `test-${Date.now()}-${Math.random().toString(36).substring(7)}`
+);
+```
+
+### グローバルモックのライフサイクル
+
+**Vitest 4の設定**:
+```typescript
+// vitest.config.ts
+export default defineConfig({
+  test: {
+    unstubGlobals: true,  // グローバルモックを自動クリーンアップ
+  }
+});
+```
+
+**推奨パターン**: beforeEach内でのモック設定
+
+```typescript
+// ❌ 悪い例: モジュールレベル
+vi.stubGlobal('fetch', vi.fn());
+
+describe('MyTest', () => {
+  // ...
+});
+```
+
+```typescript
+// ✅ 良い例: beforeEach内
+describe('MyTest', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn());
+  });
+
+  // ...
+});
+```
+
+### テスト独立性の検証方法
+
+**1. 連続実行テスト**
+```bash
+# 10回連続で実行して結果が一致することを確認
+for i in {1..10}; do
+  echo "=== Run $i ===";
+  pnpm vitest --run 2>&1 | grep "Test Files";
+done
+```
+
+**期待される結果**: 全ての実行で同一の結果
+- ✅ 全て "29 passed (29)"
+- ❌ "26 passed | 3 failed" や結果が変動
+
+**2. 単独実行との比較**
+```bash
+# 特定のテストファイル単独
+pnpm vitest --run packages/core/src/config/*.test.ts
+
+# 全テストまとめて
+pnpm vitest --run
+```
+
+**確認ポイント**:
+- 単独で成功、まとめると失敗 → グローバル状態汚染または実行順序依存
+- 常に失敗 → テスト自体の問題
+- ランダムに失敗 → 並列実行の衝突またはタイミング依存
+
+**3. 並列度の変更**
+```bash
+# ワーカー数を変えて挙動を確認
+pnpm vitest --run --maxWorkers=1
+pnpm vitest --run --maxWorkers=4
+```
+
+### Vitest 4固有の注意点
+
+**Automocked Gettersの挙動**: `fs.promises`などのgetterプロパティは`undefined`を返す
+
+```typescript
+// ❌ 動作しない
+import fs from 'fs';
+vi.mock('fs');
+vi.mocked(fs.promises).writeFile = vi.fn();  // fs.promisesがundefined
+
+// ✅ 正しい方法
+import * as fsPromises from 'fs/promises';
+vi.mock('fs/promises');
+vi.mocked(fsPromises).writeFile = vi.fn();
+```
+
+**コンストラクタモックの厳格化**: アロー関数は使用不可
+
+```typescript
+// ❌ Vitest 4ではエラー
+vi.mocked(MyClass).mockImplementation(() => mockInstance);
+
+// ✅ function キーワードを使用
+vi.mocked(MyClass).mockImplementation(function() {
+  return mockInstance;
+});
+```
+
+詳細は `prompts/recipes/vitest4-migration.md` を参照。
+
 ## まとめ
 
 ### テスト作成のチェックリスト
@@ -276,4 +445,18 @@ it('長時間処理のテスト', async () => {
   - テストコードの可読性
   - 変更に強い構造
 
+- [ ] **独立性は保証されているか？** ⬅ NEW
+  - グローバルシングルトンのリセット
+  - 一時リソース名にランダム要素
+  - グローバルモックはbeforeEach内
+  - 連続10回実行で同じ結果
+
+- [ ] **Vitest 4の仕様に準拠しているか？** ⬅ NEW
+  - getter経由アクセスを直接インポートに変更
+  - コンストラクタモックで`function`キーワード使用
+  - `unstubGlobals: true`を設定
+
 このガイドラインに従うことで、効率的で保守性の高いテストスイートを構築できます。
+
+**更新履歴**:
+- 2026-01-14: テストの独立性とVitest 4対応を追記
