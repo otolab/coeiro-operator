@@ -10,9 +10,6 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { vi } from 'vitest';
 
-// fetchをモック
-vi.stubGlobal('fetch', vi.fn());
-
 describe('CharacterInfoService', () => {
   let characterInfoService: CharacterInfoService;
   let fileManager: FileOperationManager;
@@ -84,8 +81,11 @@ describe('CharacterInfoService', () => {
   };
 
   beforeEach(async () => {
+    // fetchをモック（unstubGlobals: trueによりテストファイル間でクリアされるため、beforeEach内で設定）
+    vi.stubGlobal('fetch', vi.fn());
+
     // fetchモックを設定
-    (global.fetch as unknown).mockRejectedValue(new Error('Network error'));
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
     
     // 一時ディレクトリを作成
     tempDir = join(

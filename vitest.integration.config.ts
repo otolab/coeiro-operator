@@ -4,6 +4,9 @@ import path from 'path';
 export default defineConfig({
   test: {
     name: 'integration',
+    // グローバルセットアップ
+    setupFiles: ['./vitest.setup.ts'],
+
     include: ['packages/**/*integration*.test.ts'],
     exclude: [
       'node_modules/**',
@@ -17,6 +20,9 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     isolate: true,
+
+    // グローバルモックを各テスト後に自動クリーンアップ
+    unstubGlobals: true,
     poolOptions: {
       threads: {
         singleThread: false,

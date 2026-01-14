@@ -11,15 +11,15 @@ import { writeFile, mkdir, rm } from 'fs/promises';
 import { join } from 'path';
 import { tmpdir } from 'os';
 
-// fetchをモック
-vi.stubGlobal('fetch', vi.fn());
-
 describe('OperatorManager', () => {
   let operatorManager: OperatorManager;
   let characterInfoService: CharacterInfoService;
   let tempDir: string;
 
   beforeEach(async () => {
+    // fetchをモック（unstubGlobals: trueによりテストファイル間でクリアされるため、beforeEach内で設定）
+    vi.stubGlobal('fetch', vi.fn());
+
     // 一時ディレクトリを作成
     tempDir = join(
       tmpdir(),
@@ -70,7 +70,7 @@ describe('OperatorManager', () => {
     await writeFile(join(configSubDir, 'config.json'), JSON.stringify(config), 'utf8');
 
     // fetchモックを設定
-    (global.fetch as unknown).mockRejectedValue(new Error('Network error'));
+    (global.fetch as unknown as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network error'));
 
     // 環境変数を設定して一時ディレクトリを使用
     process.env.HOME = tempDir;

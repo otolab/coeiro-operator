@@ -5,6 +5,7 @@
  */
 
 import fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { DictionaryWord } from './dictionary-client.js';
@@ -53,7 +54,7 @@ export class DictionaryPersistenceManager {
     };
 
     try {
-      await fs.promises.writeFile(this.dictionaryFile, JSON.stringify(data, null, 2), 'utf8');
+      await fsPromises.writeFile(this.dictionaryFile, JSON.stringify(data, null, 2), 'utf8');
     } catch (error) {
       throw new Error(`辞書データの保存に失敗しました: ${(error as Error).message}`);
     }
@@ -68,7 +69,7 @@ export class DictionaryPersistenceManager {
     }
 
     try {
-      const content = await fs.promises.readFile(this.dictionaryFile, 'utf8');
+      const content = await fsPromises.readFile(this.dictionaryFile, 'utf8');
       const data = JSON.parse(content) as PersistentDictionary;
 
       // バージョンチェック（将来の拡張用）
@@ -87,7 +88,7 @@ export class DictionaryPersistenceManager {
    */
   async clear(): Promise<void> {
     if (fs.existsSync(this.dictionaryFile)) {
-      await fs.promises.unlink(this.dictionaryFile);
+      await fsPromises.unlink(this.dictionaryFile);
     }
   }
 

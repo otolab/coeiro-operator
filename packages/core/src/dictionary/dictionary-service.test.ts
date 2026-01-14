@@ -46,14 +46,18 @@ describe('DictionaryService', () => {
                 error: null
             })
         };
-        vi.mocked(DictionaryClient).mockImplementation(() => mockClient as unknown as DictionaryClient);
+        (DictionaryClient as unknown as ReturnType<typeof vi.fn>).mockImplementation(function() {
+            return mockClient as unknown as DictionaryClient;
+        });
 
         // DictionaryPersistenceManagerのモック設定
         mockPersistenceManager = {
             load: vi.fn().mockResolvedValue(null),
             save: vi.fn().mockResolvedValue(undefined)
         };
-        vi.mocked(DictionaryPersistenceManager).mockImplementation(() => mockPersistenceManager as unknown as DictionaryPersistenceManager);
+        (DictionaryPersistenceManager as unknown as ReturnType<typeof vi.fn>).mockImplementation(function() {
+            return mockPersistenceManager as unknown as DictionaryPersistenceManager;
+        });
 
         service = new DictionaryService();
     });

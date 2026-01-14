@@ -125,7 +125,7 @@ say-coeiroink --buffer-size 256 "低レイテンシ再生"            # バッ�
 オペレータ管理システムは、端末セッションごとに音声キャラクターを割り当てる仕組みです。各端末（ターミナルウィンドウ、Claude Codeの接続など）に1つのオペレータが固定され、その端末での全ての音声出力に使用されます。
 
 - **セッション単位の管理**: 複数の環境に対応したセッション識別
-  - iTmux: プロジェクト単位（`ITMUX_PROJECT`）
+  - iTmux: プロジェクト単位（`itmux current`コマンドで動的取得）
   - tmux: window単位（`tmux display-message`で動的取得）
   - iTerm2: セッション単位（`ITERM_SESSION_ID`）
   - その他: `TERM_SESSION_ID`またはプロセスID

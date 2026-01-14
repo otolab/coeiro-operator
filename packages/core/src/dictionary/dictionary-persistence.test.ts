@@ -4,6 +4,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
+import * as fsPromises from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { DictionaryPersistenceManager, PersistentDictionary } from './dictionary-persistence.js';
@@ -71,7 +72,7 @@ describe('DictionaryPersistenceManager', () => {
       ];
 
       const writeFileMock = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(fs.promises).writeFile = writeFileMock;
+      vi.mocked(fsPromises).writeFile = writeFileMock;
 
       await manager.save(words, true);
 
@@ -95,7 +96,7 @@ describe('DictionaryPersistenceManager', () => {
       const words: DictionaryWord[] = [];
       
       const writeFileMock = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(fs.promises).writeFile = writeFileMock;
+      vi.mocked(fsPromises).writeFile = writeFileMock;
 
       await manager.save(words);
 
@@ -107,7 +108,7 @@ describe('DictionaryPersistenceManager', () => {
       const words: DictionaryWord[] = [];
       
       const writeFileMock = vi.fn().mockRejectedValue(new Error('Write failed'));
-      vi.mocked(fs.promises).writeFile = writeFileMock;
+      vi.mocked(fsPromises).writeFile = writeFileMock;
 
       await expect(manager.save(words)).rejects.toThrow('辞書データの保存に失敗しました');
     });
@@ -120,7 +121,7 @@ describe('DictionaryPersistenceManager', () => {
       ];
 
       const writeFileMock = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(fs.promises).writeFile = writeFileMock;
+      vi.mocked(fsPromises).writeFile = writeFileMock;
 
       await manager.save(words, false);
 
@@ -152,7 +153,7 @@ describe('DictionaryPersistenceManager', () => {
       };
 
       const readFileMock = vi.fn().mockResolvedValue(JSON.stringify(mockData));
-      vi.mocked(fs.promises).readFile = readFileMock;
+      vi.mocked(fsPromises).readFile = readFileMock;
 
       const result = await manager.load();
       
@@ -169,7 +170,7 @@ describe('DictionaryPersistenceManager', () => {
       };
 
       const readFileMock = vi.fn().mockResolvedValue(JSON.stringify(invalidData));
-      vi.mocked(fs.promises).readFile = readFileMock;
+      vi.mocked(fsPromises).readFile = readFileMock;
 
       await expect(manager.load()).rejects.toThrow('辞書データのバージョンが不明です');
     });
@@ -178,7 +179,7 @@ describe('DictionaryPersistenceManager', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       
       const readFileMock = vi.fn().mockResolvedValue('invalid json');
-      vi.mocked(fs.promises).readFile = readFileMock;
+      vi.mocked(fsPromises).readFile = readFileMock;
 
       await expect(manager.load()).rejects.toThrow('辞書データの読み込みに失敗しました');
     });
@@ -187,7 +188,7 @@ describe('DictionaryPersistenceManager', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       
       const readFileMock = vi.fn().mockRejectedValue(new Error('Read failed'));
-      vi.mocked(fs.promises).readFile = readFileMock;
+      vi.mocked(fsPromises).readFile = readFileMock;
 
       await expect(manager.load()).rejects.toThrow('辞書データの読み込みに失敗しました');
     });
@@ -198,7 +199,7 @@ describe('DictionaryPersistenceManager', () => {
       vi.mocked(fs.existsSync).mockReturnValue(true);
       
       const unlinkMock = vi.fn().mockResolvedValue(undefined);
-      vi.mocked(fs.promises).unlink = unlinkMock;
+      vi.mocked(fsPromises).unlink = unlinkMock;
 
       await manager.clear();
       
@@ -209,7 +210,7 @@ describe('DictionaryPersistenceManager', () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
       
       const unlinkMock = vi.fn();
-      vi.mocked(fs.promises).unlink = unlinkMock;
+      vi.mocked(fsPromises).unlink = unlinkMock;
 
       await manager.clear();
       
@@ -257,14 +258,14 @@ describe('DictionaryPersistenceManager', () => {
         savedData = data;
         return Promise.resolve();
       });
-      vi.mocked(fs.promises).writeFile = writeFileMock;
+      vi.mocked(fsPromises).writeFile = writeFileMock;
 
       // load のモック
       vi.mocked(fs.existsSync).mockReturnValue(true);
       const readFileMock = vi.fn().mockImplementation(() => {
         return Promise.resolve(savedData);
       });
-      vi.mocked(fs.promises).readFile = readFileMock;
+      vi.mocked(fsPromises).readFile = readFileMock;
 
       // 保存
       await manager.save(words, false);
@@ -287,7 +288,7 @@ describe('DictionaryPersistenceManager', () => {
         vi.mocked(fs.existsSync).mockReturnValue(false);
         return Promise.resolve();
       });
-      vi.mocked(fs.promises).unlink = unlinkMock;
+      vi.mocked(fsPromises).unlink = unlinkMock;
 
       expect(manager.exists()).toBe(true);
       
