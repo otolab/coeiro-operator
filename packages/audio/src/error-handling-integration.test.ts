@@ -70,6 +70,7 @@ vi.mock('@coeiro-operator/core', () => {
       getCurrentOperatorSession: vi.fn().mockResolvedValue(null),
     })),
     CharacterInfoService: MockCharacterInfoService,
+    getSessionId: vi.fn().mockResolvedValue('test-session'),
     getSpeakerProvider: vi.fn(() => ({
       getSpeakers: vi.fn().mockResolvedValue([{
         speakerUuid: 'test-speaker-1',

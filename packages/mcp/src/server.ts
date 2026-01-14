@@ -8,6 +8,7 @@ import {
   ConfigManager,
   getConfigDir,
   OperatorManager,
+  getSessionId,
   CharacterInfoService,
   DictionaryService,
   TerminalBackground
@@ -101,6 +102,7 @@ try {
 
   // TerminalBackgroundを初期化
   terminalBackground = new TerminalBackground(configManager);
+  await terminalBackground.initialize();
 
   sayCoeiroink = new SayCoeiroink(configManager);
 
@@ -110,9 +112,10 @@ try {
   await sayCoeiroink.buildDynamicConfig();
 
   logger.info('Initializing OperatorManager...');
+  const sessionId = await getSessionId();
   characterInfoService = new CharacterInfoService();
   characterInfoService.initialize(configManager);
-  operatorManager = new OperatorManager(configManager, characterInfoService);
+  operatorManager = new OperatorManager(sessionId, configManager, characterInfoService);
   await operatorManager.initialize();
 
   logger.info('Initializing Dictionary...');
@@ -134,14 +137,16 @@ try {
 
     // TerminalBackgroundを初期化
     terminalBackground = new TerminalBackground(fallbackConfigManager);
+    await terminalBackground.initialize();
 
     sayCoeiroink = new SayCoeiroink(fallbackConfigManager);
     await sayCoeiroink.initialize();
     await sayCoeiroink.buildDynamicConfig();
 
+    const fallbackSessionId = await getSessionId();
     characterInfoService = new CharacterInfoService();
     characterInfoService.initialize(fallbackConfigManager);
-    operatorManager = new OperatorManager(fallbackConfigManager, characterInfoService);
+    operatorManager = new OperatorManager(fallbackSessionId, fallbackConfigManager, characterInfoService);
     await operatorManager.initialize();
 
     dictionaryService = new DictionaryService();

@@ -60,7 +60,7 @@ describe('オペレータタイムアウト統合テスト', () => {
     characterInfoService.initialize(configManager);
 
     // OperatorManagerを初期化（DI）
-    operatorManager = new OperatorManager(configManager, characterInfoService);
+    operatorManager = new OperatorManager("test-session", configManager, characterInfoService);
     await operatorManager.initialize();
 
     // SayCoeiroinkを初期化

@@ -13,6 +13,10 @@ import CharacterInfoService, { Character, Style } from './character/character-in
 import { mkdir } from 'fs/promises';
 import { logger } from '@coeiro-operator/common';
 import { SpeechRateMeasurer, generateCharacterId } from './speech-rate-measurer.js';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 // セッション情報（キャラクターとスタイルの組み合わせ）
 interface CharacterSession {
@@ -62,15 +66,49 @@ interface StatusResult {
 
 /**
  * セッションIDを取得
+ *
+ * 複数の環境（iTmux、tmux、iTerm2、その他）に対応し、
+ * 名前空間の衝突を防ぐためプレフィックスを付与します。
+ *
+ * 優先順位:
+ * 1. ITMUX_PROJECT - iTmuxプロジェクト単位
+ * 2. TMUX - tmux window単位（動的取得）
+ * 3. ITERM_SESSION_ID - iTerm2セッション単位
+ * 4. TERM_SESSION_ID - その他のターミナル
+ * 5. PID - フォールバック
  */
-function getSessionId(): string {
-  if (process.env.ITERM_SESSION_ID) {
-    return process.env.ITERM_SESSION_ID.replace(/[:-]/g, '_');
-  } else if (process.env.TERM_SESSION_ID) {
-    return process.env.TERM_SESSION_ID.replace(/[:-]/g, '_');
-  } else {
-    return process.ppid.toString();
+export async function getSessionId(): Promise<string> {
+  // 1. iTmux使用時: プロジェクト単位
+  if (process.env.ITMUX_PROJECT) {
+    const projectName = process.env.ITMUX_PROJECT.replace(/[^a-zA-Z0-9]/g, '_');
+    return `ITMUX_PROJECT:${projectName}`;
   }
+
+  // 2. tmux使用時: window単位（動的取得）
+  if (process.env.TMUX) {
+    try {
+      const { stdout } = await execAsync('tmux display-message -p "#{session_name}:#{window_index}"');
+      const sessionId = stdout.trim().replace(/[^a-zA-Z0-9_:]/g, '_');
+      return `TMUX:${sessionId}`;
+    } catch (error) {
+      logger.warn('tmuxコマンドの実行に失敗しました。フォールバックします。', error);
+    }
+  }
+
+  // 3. iTerm2セッション単位
+  if (process.env.ITERM_SESSION_ID) {
+    const sessionId = process.env.ITERM_SESSION_ID.replace(/[:-]/g, '_');
+    return `ITERM_SESSION_ID:${sessionId}`;
+  }
+
+  // 4. その他のターミナル
+  if (process.env.TERM_SESSION_ID) {
+    const sessionId = process.env.TERM_SESSION_ID.replace(/[:-]/g, '_');
+    return `TERM_SESSION_ID:${sessionId}`;
+  }
+
+  // 5. フォールバック
+  return `PID:${process.ppid}`;
 }
 
 export class OperatorManager {
@@ -79,10 +117,11 @@ export class OperatorManager {
   private speechRateMeasurer: SpeechRateMeasurer;
 
   constructor(
+    sessionId: string,
     private configManager: ConfigManager,
     private characterInfoService: CharacterInfoService
   ) {
-    this.sessionId = getSessionId();
+    this.sessionId = sessionId;
     this.speechRateMeasurer = new SpeechRateMeasurer(configManager);
   }
 
