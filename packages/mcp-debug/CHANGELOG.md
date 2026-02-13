@@ -1,5 +1,11 @@
 # @coeiro-operator/mcp-debug
 
+## 1.2.0
+
+### Minor Changes
+
+- 704c583: リソース取得テストインターフェースの追加（listResources/readResource）
+
 ## 1.1.0
 
 ### Minor Changes
