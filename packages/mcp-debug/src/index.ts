@@ -22,6 +22,7 @@ export {
   MCPServiceE2ETester,
   createMCPTester,
   type ToolCallResult,
+  type ResourceReadResult,
   type ServerStatus,
 } from './e2e/index.js';
 

@@ -7,7 +7,7 @@ import { MCPStateManager, MCPServerState } from './state-manager.js';
 import { ProcessManager } from './process-manager.js';
 import { MCPProtocolHandler, MCPCapabilities, MCPMessage } from './mcp-protocol-handler.js';
 import { RequestTracker } from './request-tracker.js';
-import { MCPToolsListResponse } from '../types/mcp-protocol.js';
+import { MCPToolsListResponse, MCPResourcesListResponse, MCPResourceReadResponse } from '../types/mcp-protocol.js';
 
 export interface MCPDebugClientOptions {
   serverPath: string;
@@ -292,6 +292,56 @@ export class MCPDebugClient {
     }
 
     return result as MCPToolsListResponse;
+  }
+
+  /**
+   * 利用可能なリソースのリストを取得
+   */
+  async getResources(): Promise<MCPResourcesListResponse> {
+    if (!this.isInitialized) {
+      throw new Error('Client is not initialized. Call start() first.');
+    }
+
+    if (!this.stateManager.canAcceptRequest()) {
+      throw new Error(`Server not ready. Current state: ${this.stateManager.currentState}`);
+    }
+
+    if (this.options.debug) {
+      console.error('[MCP Debug] Requesting resources list...');
+    }
+
+    const result = await this.protocolHandler.listResources();
+
+    if (this.options.debug) {
+      console.error('[MCP Debug] Resources list:', result);
+    }
+
+    return result as MCPResourcesListResponse;
+  }
+
+  /**
+   * リソースの内容を読み取り
+   */
+  async readResource(uri: string): Promise<MCPResourceReadResponse> {
+    if (!this.isInitialized) {
+      throw new Error('Client is not initialized. Call start() first.');
+    }
+
+    if (!this.stateManager.canAcceptRequest()) {
+      throw new Error(`Server not ready. Current state: ${this.stateManager.currentState}`);
+    }
+
+    if (this.options.debug) {
+      console.error('[MCP Debug] Reading resource:', uri);
+    }
+
+    const result = await this.protocolHandler.readResource(uri);
+
+    if (this.options.debug) {
+      console.error('[MCP Debug] Resource content:', result);
+    }
+
+    return result as MCPResourceReadResponse;
   }
 
   /**

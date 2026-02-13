@@ -5,9 +5,16 @@
 
 import { MCPDebugClient, MCPDebugClientOptions } from '../core/mcp-debug-client.js';
 import { MCPServerState } from '../core/state-manager.js';
-import { MCPToolsListResponse } from '../types/mcp-protocol.js';
+import { MCPToolsListResponse, MCPResourcesListResponse } from '../types/mcp-protocol.js';
 
 export interface ToolCallResult<T = unknown> {
+  success: boolean;
+  result?: T;
+  error?: Error;
+  duration?: number;
+}
+
+export interface ResourceReadResult<T = unknown> {
   success: boolean;
   result?: T;
   error?: Error;
@@ -165,6 +172,49 @@ export class MCPServiceE2ETester {
     } catch (error) {
       console.error('Failed to get tools list:', error);
       return [];
+    }
+  }
+
+  /**
+   * 利用可能なリソース一覧を取得
+   */
+  async getAvailableResources(): Promise<string[]> {
+    if (!this.isStarted) {
+      throw new Error('Tester is not started. Call start() first.');
+    }
+
+    try {
+      const response: MCPResourcesListResponse = await this.client.getResources();
+      return response.resources.map(resource => resource.uri);
+    } catch (error) {
+      console.error('Failed to get resources list:', error);
+      return [];
+    }
+  }
+
+  /**
+   * リソースを読み取り
+   */
+  async readResource<T = unknown>(uri: string): Promise<ResourceReadResult<T>> {
+    if (!this.isStarted) {
+      throw new Error('Tester is not started. Call start() first.');
+    }
+
+    const startTime = Date.now();
+
+    try {
+      const result = await this.client.readResource(uri);
+      return {
+        success: true,
+        result: result as T,
+        duration: Date.now() - startTime,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error as Error,
+        duration: Date.now() - startTime,
+      };
     }
   }
 
