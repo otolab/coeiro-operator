@@ -29,6 +29,7 @@ const server = new McpServer(
   {
     capabilities: {
       tools: {},
+      resources: {},
     },
   }
 );
@@ -156,6 +157,54 @@ server.registerTool(
         {
           type: 'text',
           text: `✅ Test message sent to ${channel} channel: "${message}"`,
+        },
+      ],
+    };
+  }
+);
+
+// server-info リソース（テキスト）
+server.resource(
+  'server-info',
+  'echo://server/info',
+  {
+    description: 'サーバー情報リソース',
+    mimeType: 'text/plain',
+  },
+  async (uri) => {
+    debugLog('Resource read: server-info', { uri: uri.href });
+    return {
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: 'text/plain',
+          text: `Echo MCP Server v1.0.0\nMessages processed: ${messageCount}\nUptime: ${((Date.now() - startTime) / 1000).toFixed(1)}s`,
+        },
+      ],
+    };
+  }
+);
+
+// config リソース（JSON）
+server.resource(
+  'config',
+  'echo://server/config',
+  {
+    description: 'サーバー設定リソース',
+    mimeType: 'application/json',
+  },
+  async (uri) => {
+    debugLog('Resource read: config', { uri: uri.href });
+    return {
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: 'application/json',
+          text: JSON.stringify({
+            debugMode: isDebugMode,
+            version: '1.0.0',
+            serverName: 'echo-mcp-server',
+          }),
         },
       ],
     };

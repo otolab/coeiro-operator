@@ -28,6 +28,8 @@ export interface MCPCapabilities {
 export interface IMCPProtocolHandler {
   initialize(capabilities: MCPCapabilities): Promise<unknown>;
   listTools(): Promise<unknown>;
+  listResources(): Promise<unknown>;
+  readResource(uri: string): Promise<unknown>;
   sendRequest<T = unknown>(method: string, params?: unknown, timeout?: number): Promise<T>;
   sendNotification(method: string, params?: unknown): void;
   handleMessage(message: MCPMessage): void;
@@ -98,6 +100,20 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
    */
   async listTools(): Promise<unknown> {
     return this.sendRequest('tools/list', {});
+  }
+
+  /**
+   * 利用可能なリソースのリストを取得
+   */
+  async listResources(): Promise<unknown> {
+    return this.sendRequest('resources/list', {});
+  }
+
+  /**
+   * リソースを読み取り
+   */
+  async readResource(uri: string): Promise<unknown> {
+    return this.sendRequest('resources/read', { uri });
   }
 
   /**
