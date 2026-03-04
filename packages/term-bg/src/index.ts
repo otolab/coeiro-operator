@@ -219,7 +219,7 @@ export class TerminalBackground {
    * iTerm2で実行中かチェック
    */
   isITerm2(): boolean {
-    return process.env.TERM_PROGRAM === 'iTerm.app';
+    return process.env.TERM_PROGRAM === 'iTerm.app' || !!process.env.ITERM_SESSION_ID;
   }
 
   /**
