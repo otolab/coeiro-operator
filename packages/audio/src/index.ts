@@ -145,14 +145,26 @@ export class SayCoeiroink {
           if (this.operatorManager) {
             session = await this.operatorManager.getCurrentOperatorSession();
           }
-          if (!session) {
-            throw new Error('No operator assigned and character not found.');
+          if (session) {
+            const assignedCharacter = await this.characterInfoService.getCharacterInfo(session.characterId);
+            if (!assignedCharacter) {
+              throw new Error(`Assigned character not found: ${session.characterId}`);
+            }
+            character = assignedCharacter;
+          } else {
+            // オペレータ未アサイン → デフォルトキャラクターにフォールバック
+            const availableCharacterIds = await this.characterInfoService.getAvailableCharacterIds();
+            if (availableCharacterIds.length === 0) {
+              throw new Error('No characters configured. Please configure at least one character.');
+            }
+            const defaultCharacterId = availableCharacterIds[0];
+            const defaultCharacter = await this.characterInfoService.getCharacterInfo(defaultCharacterId);
+            if (!defaultCharacter) {
+              throw new Error(`Default character not found: ${defaultCharacterId}`);
+            }
+            character = defaultCharacter;
+            logger.warn(`Falling back to default character: ${character.characterId}`);
           }
-          const assignedCharacter = await this.characterInfoService.getCharacterInfo(session.characterId);
-          if (!assignedCharacter) {
-            throw new Error(`Assigned character not found: ${session.characterId}`);
-          }
-          character = assignedCharacter;
         } else {
           throw new Error(`Character not found: ${options.voice}`);
         }
@@ -285,10 +297,26 @@ export class SayCoeiroink {
    * 利用可能な音声をリスト表示
    */
   async listVoices(): Promise<void> {
-    if (!this.audioSynthesizer) {
-      throw new Error('AudioSynthesizer is not initialized. Call initialize() first.');
+    // キャラクター設定からの一覧（-vで指定可能なID）
+    const characterIds = await this.characterInfoService.getAvailableCharacterIds();
+    if (characterIds.length > 0) {
+      console.log('Available voices (-v で指定可能):');
+      for (const id of characterIds) {
+        const char = await this.characterInfoService.getCharacterInfo(id);
+        if (char) {
+          const styles = Object.entries(char.styles)
+            .map(([, s]) => s.styleName)
+            .join(', ');
+          console.log(`  ${id}: ${char.speakerName} [${styles}]`);
+        }
+      }
+    } else {
+      // フォールバック: COEIROINK APIから直接表示
+      if (!this.audioSynthesizer) {
+        throw new Error('AudioSynthesizer is not initialized. Call initialize() first.');
+      }
+      await this.audioSynthesizer.listVoices();
     }
-    await this.audioSynthesizer.listVoices();
   }
 
   /**

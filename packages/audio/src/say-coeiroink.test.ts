@@ -156,13 +156,20 @@ describe('SayCoeiroink - オペレータアサインなしでの動作', () => {
     const sayCoeiroink = new SayCoeiroink(configManager);
     await sayCoeiroink.initialize();
 
-    // 存在しないvoiceを指定してもフォールバックで動作するはず
+    // 存在しないvoiceを指定してもデフォルトキャラクターにフォールバックして動作するはず
     const result = sayCoeiroink.synthesize('テスト', { voice: 'non-existent' });
 
     expect(result.taskId).toBeDefined();
-    await new Promise(resolve => setTimeout(resolve, 100));
 
-    const status = sayCoeiroink.getSpeechQueueStatus();
-    expect(status.queueLength).toBeGreaterThanOrEqual(0);
+    // キャラクター解決はフォールバックで成功するが、モック環境では音声再生でエラーになる
+    // 重要: "No operator assigned" エラーが出ないことを確認
+    try {
+      await sayCoeiroink.waitCompletion();
+    } catch (error) {
+      // 音声再生エラーは許容（モック環境の制限）
+      // キャラクター解決エラーは許容しない
+      expect((error as Error).message).not.toContain('No operator assigned');
+      expect((error as Error).message).not.toContain('Character not found');
+    }
   });
 });
