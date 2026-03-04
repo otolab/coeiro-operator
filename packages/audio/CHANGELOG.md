@@ -1,5 +1,11 @@
 # @coeiro-operator/audio
 
+## 1.3.2
+
+### Patch Changes
+
+- 3c0c732: オペレータ未アサイン時のvoiceフォールバックと-v ?表示を改善
+
 ## 1.3.1
 
 ### Patch Changes

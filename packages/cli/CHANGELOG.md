@@ -1,5 +1,12 @@
 # @coeiro-operator/cli
 
+## 1.5.2
+
+### Patch Changes
+
+- Updated dependencies [3c0c732]
+  - @coeiro-operator/audio@1.3.2
+
 ## 1.5.1
 
 ### Patch Changes
