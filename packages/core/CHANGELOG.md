@@ -1,5 +1,12 @@
 # @coeiro-operator/core
 
+## 1.4.2
+
+### Patch Changes
+
+- Updated dependencies [598ae41]
+  - @coeiro-operator/term-bg@1.0.2
+
 ## 1.4.1
 
 ### Patch Changes

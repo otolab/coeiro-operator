@@ -1,5 +1,12 @@
 # @coeiro-operator/mcp
 
+## 1.5.3
+
+### Patch Changes
+
+- @coeiro-operator/core@1.4.2
+- @coeiro-operator/audio@1.3.3
+
 ## 1.5.2
 
 ### Patch Changes

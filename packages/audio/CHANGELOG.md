@@ -1,5 +1,11 @@
 # @coeiro-operator/audio
 
+## 1.3.3
+
+### Patch Changes
+
+- @coeiro-operator/core@1.4.2
+
 ## 1.3.2
 
 ### Patch Changes
