@@ -38,8 +38,13 @@ async def main(connection):
                 break
 
         if not session:
-            print(json.dumps({"error": f"Session with ID {config['sessionId']} not found"}))
-            return
+            # セッションIDが見つからない場合（tmux環境等）はcurrent_sessionにフォールバック
+            window = app.current_terminal_window
+            if window:
+                session = window.current_tab.current_session
+            if not session:
+                print(json.dumps({"error": f"Session with ID {config['sessionId']} not found"}))
+                return
     else:
         # セッションIDが指定されていない場合は現在のセッションを使用
         window = app.current_terminal_window
