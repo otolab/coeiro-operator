@@ -1,5 +1,11 @@
 # @coeiro-operator/term-bg
 
+## 1.0.3
+
+### Patch Changes
+
+- 371cb15: tmux環境での背景画像設定をiTmuxプロジェクト名ベースのウィンドウ特定に改善
+
 ## 1.0.2
 
 ### Patch Changes
