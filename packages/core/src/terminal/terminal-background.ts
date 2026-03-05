@@ -11,6 +11,7 @@ export class TerminalBackground {
   private configManager: ConfigManager;
   private termBg: TermBg;
   private sessionId: string | undefined;
+  private projectName: string | undefined;
   private initialized: boolean = false;
 
   constructor(configManager: ConfigManager, sessionId?: string) {
@@ -23,11 +24,17 @@ export class TerminalBackground {
    * セッションIDを取得して初期化
    */
   async initialize(): Promise<void> {
-    if (!this.sessionId) {
+    if (!this.sessionId && !this.projectName) {
       const fullSessionId = await getSessionId();
-      // iTerm2 APIは純粋なUUIDを期待するため、プレフィックスを除去
-      const colonIndex = fullSessionId.indexOf(':');
-      this.sessionId = colonIndex !== -1 ? fullSessionId.substring(colonIndex + 1) : fullSessionId;
+      if (fullSessionId.startsWith('ITMUX_PROJECT:')) {
+        // iTmux環境: プロジェクト名でウィンドウを特定
+        this.projectName = fullSessionId.substring('ITMUX_PROJECT:'.length);
+      } else if (fullSessionId.startsWith('ITERM_SESSION_ID:')) {
+        // iTerm2直接: セッションIDで特定
+        const colonIndex = fullSessionId.indexOf(':');
+        this.sessionId = colonIndex !== -1 ? fullSessionId.substring(colonIndex + 1) : fullSessionId;
+      }
+      // TMUX:やPID:の場合はどちらも未設定 → Python側でcurrent_sessionを使用
     }
     this.initialized = true;
   }
@@ -149,7 +156,8 @@ export class TerminalBackground {
         position,
         scale,
         mode: 'fit',  // アスペクト比を保持
-        sessionId: this.sessionId  // SessionIDを指定
+        sessionId: this.sessionId,
+        projectName: this.projectName,
       });
 
       logger.error(`✅ 背景画像の設定に成功: ${absolutePath}${this.sessionId ? ` (Session: ${this.sessionId})` : ''}`);

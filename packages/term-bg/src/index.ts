@@ -10,6 +10,7 @@ export interface BackgroundConfig {
   position?: 'bottom-right' | 'top-right' | 'bottom-left' | 'top-left' | 'center';
   scale?: number;  // 0.0 - 1.0 (画像のサイズ比率)
   sessionId?: string;  // 対象セッションID（省略時は現在のセッション）
+  projectName?: string;  // iTmuxプロジェクト名（user.projectIDでウィンドウを特定）
 }
 
 const __dirname = getDirname(import.meta.url);

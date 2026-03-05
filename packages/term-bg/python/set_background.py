@@ -22,10 +22,26 @@ async def main(connection):
 
     app = await iterm2.async_get_app(connection)
 
-    # セッションIDが指定されている場合は、そのセッションを取得
+    # セッションの特定（優先順位: projectName > sessionId > current_session）
     session = None
-    if "sessionId" in config and config["sessionId"]:
-        # 指定されたセッションIDでセッションを検索
+
+    if "projectName" in config and config["projectName"]:
+        # 1. iTmuxプロジェクト名でウィンドウを検索
+        project_name = config["projectName"]
+        for window in app.windows:
+            try:
+                project_id = await window.async_get_variable("user.projectID")
+                if project_id == project_name:
+                    session = window.current_tab.current_session
+                    break
+            except Exception:
+                continue
+        if not session:
+            print(json.dumps({"error": f"Window with projectID '{project_name}' not found"}))
+            return
+
+    elif "sessionId" in config and config["sessionId"]:
+        # 2. セッションIDでセッションを検索
         for window in app.windows:
             for tab in window.tabs:
                 for s in tab.sessions:
@@ -38,7 +54,7 @@ async def main(connection):
                 break
 
         if not session:
-            # セッションIDが見つからない場合（tmux環境等）はcurrent_sessionにフォールバック
+            # セッションIDが見つからない場合はcurrent_sessionにフォールバック
             window = app.current_terminal_window
             if window:
                 session = window.current_tab.current_session
