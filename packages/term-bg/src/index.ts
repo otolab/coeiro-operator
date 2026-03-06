@@ -161,8 +161,8 @@ export class TerminalBackground {
   /**
    * 背景画像をクリア
    */
-  async clearBackground(sessionId?: string): Promise<void> {
-    return this.setBackground({ imagePath: '', sessionId });
+  async clearBackground(sessionId?: string, projectName?: string): Promise<void> {
+    return this.setBackground({ imagePath: '', sessionId, projectName });
   }
 
   /**
