@@ -22,21 +22,20 @@ async def main(connection):
 
     app = await iterm2.async_get_app(connection)
 
-    # セッションの特定（優先順位: projectName > sessionId > current_session）
-    session = None
+    # 対象セッションの特定（優先順位: projectName > sessionId > current_session）
+    sessions = []
 
     if "projectName" in config and config["projectName"]:
-        # 1. iTmuxプロジェクト名でウィンドウを検索
+        # 1. iTmuxプロジェクト名で全マッチウィンドウを検索
         project_name = config["projectName"]
         for window in app.windows:
             try:
                 project_id = await window.async_get_variable("user.projectID")
                 if project_id == project_name:
-                    session = window.current_tab.current_session
-                    break
+                    sessions.append(window.current_tab.current_session)
             except Exception:
                 continue
-        if not session:
+        if not sessions:
             print(json.dumps({"error": f"Window with projectID '{project_name}' not found"}))
             return
 
@@ -46,19 +45,19 @@ async def main(connection):
             for tab in window.tabs:
                 for s in tab.sessions:
                     if s.session_id == config["sessionId"]:
-                        session = s
+                        sessions.append(s)
                         break
-                if session:
+                if sessions:
                     break
-            if session:
+            if sessions:
                 break
 
-        if not session:
+        if not sessions:
             # セッションIDが見つからない場合はcurrent_sessionにフォールバック
             window = app.current_terminal_window
             if window:
-                session = window.current_tab.current_session
-            if not session:
+                sessions.append(window.current_tab.current_session)
+            if not sessions:
                 print(json.dumps({"error": f"Session with ID {config['sessionId']} not found"}))
                 return
     else:
@@ -67,9 +66,7 @@ async def main(connection):
         if not window:
             print(json.dumps({"error": "No current window found"}))
             return
-
-        tab = window.current_tab
-        session = tab.current_session
+        sessions.append(window.current_tab.current_session)
 
     # 設定を変更
     change = iterm2.LocalWriteOnlyProfile()
@@ -94,11 +91,12 @@ async def main(connection):
         if config["mode"] in mode_map:
             change.set_background_image_mode(mode_map[config["mode"]])
 
-    await session.async_set_profile_properties(change)
+    for session in sessions:
+        await session.async_set_profile_properties(change)
 
     print(json.dumps({
         "success": True,
-        "sessionId": session.session_id,
+        "sessionIds": [s.session_id for s in sessions],
         "imagePath": config.get("imagePath"),
         "opacity": config.get("opacity"),
         "mode": config.get("mode")
