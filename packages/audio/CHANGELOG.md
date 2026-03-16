@@ -1,5 +1,12 @@
 # @coeiro-operator/audio
 
+## 1.3.5
+
+### Patch Changes
+
+- Updated dependencies [62ea415]
+  - @coeiro-operator/core@1.4.4
+
 ## 1.3.4
 
 ### Patch Changes

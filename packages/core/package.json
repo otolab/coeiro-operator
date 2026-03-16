@@ -1,6 +1,6 @@
 {
   "name": "@coeiro-operator/core",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "description": "Core utilities and shared functionality for COEIRO Operator",
   "type": "module",
   "main": "dist/index.js",
