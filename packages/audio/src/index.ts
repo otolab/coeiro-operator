@@ -47,7 +47,7 @@ export class SayCoeiroink {
       this.config = await this.configManager.getFullConfig();
 
       // OperatorManagerを初期化（DI）
-      const sessionId = await getSessionId();
+      const { id: sessionId } = await getSessionId();
       this.operatorManager = new OperatorManager(sessionId, this.configManager, this.characterInfoService);
 
       // 基本コンポーネントを初期化

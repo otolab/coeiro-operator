@@ -112,7 +112,7 @@ try {
   await sayCoeiroink.buildDynamicConfig();
 
   logger.info('Initializing OperatorManager...');
-  const sessionId = await getSessionId();
+  const { id: sessionId } = await getSessionId();
   characterInfoService = new CharacterInfoService();
   characterInfoService.initialize(configManager);
   operatorManager = new OperatorManager(sessionId, configManager, characterInfoService);
@@ -143,7 +143,7 @@ try {
     await sayCoeiroink.initialize();
     await sayCoeiroink.buildDynamicConfig();
 
-    const fallbackSessionId = await getSessionId();
+    const { id: fallbackSessionId } = await getSessionId();
     characterInfoService = new CharacterInfoService();
     characterInfoService.initialize(fallbackConfigManager);
     operatorManager = new OperatorManager(fallbackSessionId, fallbackConfigManager, characterInfoService);

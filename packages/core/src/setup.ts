@@ -27,7 +27,7 @@ export async function setup(): Promise<SetupResult> {
   await configManager.buildDynamicConfig();
 
   // 2. セッションIDを取得
-  const sessionId = await getSessionId();
+  const { id: sessionId } = await getSessionId();
 
   // 3. CharacterInfoServiceを初期化
   const characterInfoService = new CharacterInfoService();
