@@ -18,6 +18,16 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
+// セッション識別情報
+export interface SessionInfo {
+  /** サニタイズ済みプレフィックス付きID（FileOperationManagerのキーとして使用） */
+  id: string;
+  /** ITERM_SESSION_IDの生値（iTerm2 APIでのセッション特定用） */
+  itermSessionId?: string;
+  /** itmuxプロジェクト名の生値（iTerm2 APIでのウィンドウ特定用） */
+  projectName?: string;
+}
+
 // セッション情報（キャラクターとスタイルの組み合わせ）
 interface CharacterSession {
   characterId: string; // キャラクターID（例: 'tsukuyomi'）
@@ -72,51 +82,50 @@ interface StatusResult {
  *
  * 優先順位:
  * 1. itmux current - iTmuxプロジェクト単位（tmux環境で優先的に試行）
- * 2. TMUX - tmux window単位（動的取得）
- * 3. ITERM_SESSION_ID - iTerm2セッション単位
- * 4. TERM_SESSION_ID - その他のターミナル
- * 5. PID - フォールバック
+ * 2. ITERM_SESSION_ID - iTerm2セッション単位
+ * 3. TERM_SESSION_ID - その他のターミナル
+ * 4. PID - フォールバック
  */
-export async function getSessionId(): Promise<string> {
-  // 1. tmux使用時: iTmuxプロジェクト名 → tmux window単位の順で試行
+export async function getSessionId(): Promise<SessionInfo> {
+  // 1. tmux使用時: iTmuxプロジェクト名を試行
   if (process.env.TMUX) {
-    // 1-1. iTmux使用時: プロジェクト単位（itmux currentコマンド）
     try {
       const { stdout } = await execAsync('itmux current');
       const projectName = stdout.trim();
       if (projectName) {
         const sanitizedName = projectName.replace(/[^a-zA-Z0-9]/g, '_');
-        return `ITMUX_PROJECT:${sanitizedName}`;
+        return {
+          id: `ITMUX_PROJECT:${sanitizedName}`,
+          projectName
+        };
       }
     } catch (error) {
       // itmuxコマンドが存在しない、またはプロジェクト外の場合は次へ
-      logger.debug('itmux currentコマンドが失敗しました。tmux window単位にフォールバックします。', error);
-    }
-
-    // 1-2. tmux window単位（動的取得）
-    try {
-      const { stdout } = await execAsync('tmux display-message -p "#{session_name}:#{window_index}"');
-      const sessionId = stdout.trim().replace(/[^a-zA-Z0-9_:]/g, '_');
-      return `TMUX:${sessionId}`;
-    } catch (error) {
-      logger.warn('tmuxコマンドの実行に失敗しました。フォールバックします。', error);
+      logger.debug('itmux currentコマンドが失敗しました。', error);
     }
   }
 
-  // 3. iTerm2セッション単位
+  // 2. iTerm2セッション単位
   if (process.env.ITERM_SESSION_ID) {
     const sessionId = process.env.ITERM_SESSION_ID.replace(/[:-]/g, '_');
-    return `ITERM_SESSION_ID:${sessionId}`;
+    return {
+      id: `ITERM_SESSION_ID:${sessionId}`,
+      itermSessionId: process.env.ITERM_SESSION_ID
+    };
   }
 
-  // 4. その他のターミナル
+  // 3. その他のターミナル
   if (process.env.TERM_SESSION_ID) {
     const sessionId = process.env.TERM_SESSION_ID.replace(/[:-]/g, '_');
-    return `TERM_SESSION_ID:${sessionId}`;
+    return {
+      id: `TERM_SESSION_ID:${sessionId}`
+    };
   }
 
-  // 5. フォールバック
-  return `PID:${process.ppid}`;
+  // 4. フォールバック
+  return {
+    id: `PID:${process.ppid}`
+  };
 }
 
 export class OperatorManager {

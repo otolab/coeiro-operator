@@ -1,14 +1,10 @@
 import { TerminalBackground as TermBg } from '@coeiro-operator/term-bg';
 import { join } from 'path';
 import { writeFile } from 'fs/promises';
-import { exec } from 'child_process';
-import { promisify } from 'util';
 import { ConfigManager } from '../operator/config/config-manager.js';
 import { getSpeakerProvider } from '../environment/speaker-provider.js';
 import { logger } from '@coeiro-operator/common';
 import { getSessionId } from '../operator/index.js';
-
-const execAsync = promisify(exec);
 
 export class TerminalBackground {
   private currentCharacterId: string | null = null;
@@ -29,27 +25,17 @@ export class TerminalBackground {
    */
   async initialize(): Promise<void> {
     if (!this.sessionId && !this.projectName) {
-      // 背景画像の対象ウィンドウ特定にはサニタイズ前のオリジナル値が必要なため、
-      // getSessionId()（セッション管理用にサニタイズ済み）とは別に直接取得する
-      if (process.env.TMUX) {
-        try {
-          const { stdout } = await execAsync('itmux current');
-          const projectName = stdout.trim();
-          if (projectName) {
-            this.projectName = projectName;
-          }
-        } catch {
-          // itmuxコマンドが存在しない、またはプロジェクト外
-        }
-      }
+      const sessionInfo = await getSessionId();
 
-      if (!this.projectName) {
-        const fullSessionId = await getSessionId();
-        if (fullSessionId.startsWith('ITERM_SESSION_ID:')) {
-          this.sessionId = fullSessionId.substring('ITERM_SESSION_ID:'.length);
-        }
-        // TMUX:やPID:の場合はどちらも未設定 → Python側でcurrent_sessionを使用
+      if (sessionInfo.projectName) {
+        // itmuxプロジェクト名でウィンドウを特定
+        this.projectName = sessionInfo.projectName;
+      } else if (sessionInfo.itermSessionId) {
+        // iTerm2セッションIDでセッションを特定
+        this.sessionId = sessionInfo.itermSessionId;
       }
+      // projectNameもitermSessionIdもない場合は対象ウィンドウを特定できないため背景画像設定をスキップ
+      // NOTE: current_sessionへのフォールバックは行わない（意図しないウィンドウへの設定を防ぐため）
     }
     this.initialized = true;
   }

@@ -117,7 +117,7 @@ class OperatorManagerCLI {
     this.configManager = new ConfigManager(configDir);
     await this.configManager.buildDynamicConfig();
 
-    const sessionId = await getSessionId();
+    const { id: sessionId } = await getSessionId();
     const characterInfoService = new CharacterInfoService();
     characterInfoService.initialize(this.configManager);
 

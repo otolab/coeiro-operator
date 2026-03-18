@@ -53,20 +53,16 @@ async def main(connection):
                 break
 
         if not sessions:
-            # セッションIDが見つからない場合はcurrent_sessionにフォールバック
-            window = app.current_terminal_window
-            if window:
-                sessions.append(window.current_tab.current_session)
-            if not sessions:
-                print(json.dumps({"error": f"Session with ID {config['sessionId']} not found"}))
-                return
-    else:
-        # セッションIDが指定されていない場合は現在のセッションを使用
-        window = app.current_terminal_window
-        if not window:
-            print(json.dumps({"error": "No current window found"}))
+            # NOTE: current_sessionへのフォールバックは行わない
+            # 意図しないウィンドウへの背景設定を防ぐため、対象が特定できない場合はエラーとする
+            print(json.dumps({"error": f"Session with ID {config['sessionId']} not found"}))
             return
-        sessions.append(window.current_tab.current_session)
+    else:
+        # projectNameもsessionIdも未指定 → 対象ウィンドウを特定できない
+        # NOTE: current_sessionへのフォールバックは行わない
+        # 意図しないウィンドウへの背景設定を防ぐため、対象が特定できない場合はエラーとする
+        print(json.dumps({"error": "No projectName or sessionId specified. Cannot identify target window."}))
+        return
 
     # 設定を変更
     change = iterm2.LocalWriteOnlyProfile()

@@ -37,11 +37,13 @@ interface TimedStorage<T> {
 
 ### セッション識別
 優先順位に従って以下から選択：
-1. `ITERM_SESSION_ID` (iTerm2環境)
-2. `TERM_SESSION_ID` (ターミナル環境)
-3. `process.ppid` (親プロセスID、フォールバック)
+1. `itmux current` (iTmuxプロジェクト単位、tmux環境で優先的に試行)
+2. `ITERM_SESSION_ID` (iTerm2セッション単位)
+3. `TERM_SESSION_ID` (ターミナル環境)
+4. `process.ppid` (親プロセスID、フォールバック)
 
-同一セッション内の全プロセスが同じオペレータを共有する。
+iTmuxプロジェクト内では同一プロジェクトの全セッションが同じオペレータを共有する。
+それ以外の環境ではiTerm2セッション単位でオペレータを管理する。
 
 ## 状態遷移
 
