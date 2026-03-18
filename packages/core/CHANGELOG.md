@@ -1,5 +1,13 @@
 # @coeiro-operator/core
 
+## 1.4.5
+
+### Patch Changes
+
+- a2fd2c8: getSessionId()を構造化しセッション特定ロジックを統一、current_sessionフォールバックを削除
+- Updated dependencies [a2fd2c8]
+  - @coeiro-operator/term-bg@1.0.5
+
 ## 1.4.4
 
 ### Patch Changes

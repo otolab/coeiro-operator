@@ -1,5 +1,13 @@
 # @coeiro-operator/audio
 
+## 1.3.6
+
+### Patch Changes
+
+- a2fd2c8: getSessionId()を構造化しセッション特定ロジックを統一、current_sessionフォールバックを削除
+- Updated dependencies [a2fd2c8]
+  - @coeiro-operator/core@1.4.5
+
 ## 1.3.5
 
 ### Patch Changes
