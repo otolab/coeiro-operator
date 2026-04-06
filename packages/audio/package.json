@@ -30,17 +30,17 @@
   "dependencies": {
     "@coeiro-operator/common": "workspace:*",
     "@coeiro-operator/core": "workspace:*",
-    "@echogarden/audio-io": "^0.4.2",
-    "dsp.js": "^1.0.1",
-    "echogarden": "^2.10.1",
-    "node-fetch": "^3.3.2",
-    "wav": "^1.0.2"
+    "@echogarden/audio-io": "0.4.2",
+    "dsp.js": "1.0.1",
+    "echogarden": "2.10.1",
+    "node-fetch": "3.3.2",
+    "wav": "1.0.2"
   },
   "devDependencies": {
-    "@types/node": "^22.18.3",
-    "@types/wav": "^1.0.4",
-    "typescript": "^5.7.3",
-    "vitest": "^3.2.4"
+    "@types/node": "22.18.10",
+    "@types/wav": "1.0.4",
+    "typescript": "5.9.3",
+    "vitest": "3.2.4"
   },
   "keywords": [
     "audio",
