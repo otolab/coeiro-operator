@@ -22,7 +22,7 @@
     "coeiro-operator": "./dist/server.js"
   },
   "scripts": {
-    "build": "tsc --build",
+    "build": "tsc --build && node -e \"require('fs').cpSync('../../docs/user-guide', './dist/docs', {recursive: true})\"",
     "start": "node dist/server.js",
     "test": "vitest --silent",
     "test:watch": "vitest --watch",
