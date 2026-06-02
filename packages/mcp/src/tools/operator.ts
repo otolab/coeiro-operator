@@ -40,20 +40,19 @@ export function registerOperatorAssignTool(
   server.registerTool(
     'operator_assign',
     {
-      description:
-        'Assign an operator. Selecting AUTO will automatically choose a character.',
+      description: 'オペレータを割り当てる。AUTOで自動選択',
       inputSchema: {
         characterId: z
           .enum(operatorOptions)
           .optional()
           .describe(
-            'Character ID to assign (AUTO for automatic selection, defaults to AUTO if omitted)',
+            'キャラクターID（省略時AUTO）',
           ),
         styleName: z
           .string()
           .optional()
           .describe(
-            'Style name (e.g., "のーまる", defaults to character\'s default style if omitted, available styles vary by character)',
+            'スタイル名またはスタイルID',
           ),
       },
     },
@@ -144,7 +143,7 @@ export function registerOperatorReleaseTool(
   server.registerTool(
     'operator_release',
     {
-      description: 'Release the current operator',
+      description: '現在のオペレータを解放する',
       inputSchema: {},
     },
     async (): Promise<ToolResponse> => {
@@ -194,7 +193,7 @@ export function registerOperatorStatusTool(
   server.registerTool(
     'operator_status',
     {
-      description: 'Check the current operator status',
+      description: '現在のオペレータ状態を確認する',
       inputSchema: {},
     },
     async (): Promise<ToolResponse> => {
@@ -227,7 +226,7 @@ export function registerOperatorAvailableTool(
   server.registerTool(
     'operator_available',
     {
-      description: 'Display list of available operators (character IDs)',
+      description: '利用可能なオペレータ一覧を表示する',
       inputSchema: {},
     },
     async (): Promise<ToolResponse> => {
@@ -269,13 +268,12 @@ export function registerOperatorStylesTool(
   server.registerTool(
     'operator_styles',
     {
-      description:
-        'Display basic information and available styles for the current operator or specified character.',
+      description: '指定キャラクターの基本情報とスタイル一覧を表示する',
       inputSchema: {
         characterId: z
           .string()
           .optional()
-          .describe('Character ID (defaults to current operator if omitted)'),
+          .describe('キャラクターID（省略時は現在のオペレータ）'),
       },
     },
     async (args): Promise<ToolResponse> => {

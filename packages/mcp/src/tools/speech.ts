@@ -19,18 +19,17 @@ export function registerSayTool(
   server.registerTool(
     'say',
     {
-      description:
-        '日本語音声を非同期で出力します',
+      description: '日本語音声を非同期で出力する',
       inputSchema: {
-        speechText: z.string().describe('Text to speak (Japanese)'),
-        characterId: z.string().optional().describe('Character ID (defaults to current operator if omitted)'),
-        rate: z.number().optional().describe('Absolute speed in WPM (200 = standard, defaults to config value if omitted)'),
-        factor: z.number().optional().describe('Relative speed multiplier (1.0 = normal speed, defaults to character\'s natural speed if omitted)'),
+        speechText: z.string().describe('発声テキスト（日本語）'),
+        characterId: z.string().optional().describe('キャラクターID（省略時は現在のオペレータ）'),
+        rate: z.number().optional().describe('絶対速度 WPM（200=標準）'),
+        factor: z.number().optional().describe('相対速度倍率（1.0=等速）'),
         styleName: z
           .string()
           .optional()
           .describe(
-            'Style name (e.g., "のーまる", defaults to character\'s default style if omitted)'
+            'スタイル名またはスタイルID'
           ),
       },
     },
@@ -164,14 +163,15 @@ export function registerSayTool(
             // 利用可能なスタイルを取得
             const availableStyles = Object.values(character.styles || {});
 
-            // 指定されたスタイルが存在するか確認
-            const styleExists = availableStyles.some(s => s.styleName === parsedStyleName);
+            // 指定されたスタイルが存在するか確認（名前またはID）
+            const styleExists = availableStyles.some(s => s.styleName === parsedStyleName)
+              || (/^\d+$/.test(parsedStyleName) && (character.styles || {})[parseInt(parsedStyleName)] !== undefined);
 
             if (!styleExists) {
-              const styleNames = availableStyles.map(s => s.styleName);
+              const styleList = Object.entries(character.styles || {}).map(([id, s]) => `${s.styleName}(${id})`);
               throw new Error(
                 `指定されたスタイル '${parsedStyleName}' が ${character.speakerName || targetCharacterId} には存在しません。\n` +
-                `利用可能なスタイル: ${styleNames.join(', ')}`
+                `利用可能なスタイル: ${styleList.join(', ')}`
               );
             }
           } catch (error) {

@@ -20,13 +20,12 @@ export function registerDictionaryRegisterTool(
   server.registerTool(
     'dictionary_register',
     {
-      description:
-        'Register a word in the user dictionary',
+      description: 'ユーザー辞書に単語を登録する',
       inputSchema: {
-        word: z.string().describe('Word to register (alphanumeric characters allowed)'),
-        yomi: z.string().describe('Reading (full-width katakana)'),
-        accent: z.number().describe('Accent position (0: flat type, 1 or more: corresponding mora is high)'),
-        numMoras: z.number().describe('Number of moras (syllables)'),
+        word: z.string().describe('登録する単語'),
+        yomi: z.string().describe('読み（全角カタカナ）'),
+        accent: z.number().describe('アクセント位置（0=平板型、1以上=該当モーラが高）'),
+        numMoras: z.number().describe('モーラ数'),
       },
     },
     async (args): Promise<ToolResponse> => {

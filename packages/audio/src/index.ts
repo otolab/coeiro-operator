@@ -176,12 +176,14 @@ export class SayCoeiroink {
     // selectedStyleIdを解決
     let selectedStyleId = character.defaultStyleId;
     if (options.style) {
-      // style名からstyleIdを検索（明示的にstyleが指定された場合）
+      // style名またはstyleIdで検索（明示的にstyleが指定された場合）
       const styleEntry = Object.entries(character.styles).find(
         ([_, styleConfig]) => styleConfig.styleName === options.style
       );
       if (styleEntry) {
         selectedStyleId = parseInt(styleEntry[0]);
+      } else if (/^\d+$/.test(options.style) && character.styles[parseInt(options.style)]) {
+        selectedStyleId = parseInt(options.style);
       } else {
         logger.warn(`Style not found: ${options.style}, using default style`);
       }
