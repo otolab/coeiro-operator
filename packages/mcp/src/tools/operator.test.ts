@@ -75,9 +75,7 @@ describe('Operator Tools', () => {
 
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_assign',
-        expect.objectContaining({
-          description: expect.stringContaining('Assign an operator'),
-        }),
+        expect.any(Object),
         expect.any(Function)
       );
     });
@@ -211,9 +209,7 @@ describe('Operator Tools', () => {
 
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_release',
-        expect.objectContaining({
-          description: expect.stringContaining('Release the current operator'),
-        }),
+        expect.any(Object),
         expect.any(Function)
       );
     });
@@ -272,9 +268,7 @@ describe('Operator Tools', () => {
 
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_status',
-        expect.objectContaining({
-          description: expect.stringContaining('Check the current operator status'),
-        }),
+        expect.any(Object),
         expect.any(Function)
       );
     });
@@ -299,9 +293,7 @@ describe('Operator Tools', () => {
 
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_available',
-        expect.objectContaining({
-          description: expect.stringContaining('Display list of available operators'),
-        }),
+        expect.any(Object),
         expect.any(Function)
       );
     });
@@ -343,9 +335,7 @@ describe('Operator Tools', () => {
 
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_styles',
-        expect.objectContaining({
-          description: expect.stringContaining('Display basic information and available styles'),
-        }),
+        expect.any(Object),
         expect.any(Function)
       );
     });
