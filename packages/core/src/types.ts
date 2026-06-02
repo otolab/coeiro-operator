@@ -63,10 +63,15 @@ export interface OperatorConfig {
   assignmentStrategy: 'random';
 }
 
+// ツールグループの型定義
+export type ToolGroup = 'operator' | 'speech' | 'playback' | 'dictionary' | 'debug';
+export type ToolsConfig = Partial<Record<ToolGroup, boolean>>;
+
 // 完全な設定型
 export interface FullConfig {
   connection: ConnectionConfig;
   audio: AudioConfig;
   operator: OperatorConfig;
   characters: Record<string, any>;
+  tools?: ToolsConfig;
 }

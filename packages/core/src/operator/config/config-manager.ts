@@ -12,7 +12,7 @@ import {
   StyleConfig,
 } from '../character/character-defaults.js';
 import { getSpeakerProvider } from '../../environment/speaker-provider.js';
-import { AudioConfig, FullConfig as BaseFullConfig, OperatorConfig } from '../../types.js';
+import { AudioConfig, FullConfig as BaseFullConfig, OperatorConfig, ToolGroup, ToolsConfig } from '../../types.js';
 import { deepMerge } from '@coeiro-operator/common';
 import { Style } from '../character/character-info-service.js';
 
@@ -100,6 +100,7 @@ interface Config {
     string,
     Partial<CharacterConfig> & { speakerId?: string; disabled?: boolean }
   >;
+  tools?: ToolsConfig;
 }
 
 // ユーザー設定の型定義（すべてオプショナル）
@@ -198,6 +199,21 @@ export class ConfigManager {
       console.error(`設定ファイル書き込みエラー: ${(error as Error).message}`);
       throw error;
     }
+  }
+
+  /**
+   * ツールグループの設定を取得
+   */
+  async getToolsConfig(): Promise<ToolsConfig> {
+    const config = await this.loadConfig();
+    return config.tools ?? {};
+  }
+
+  /**
+   * 指定されたツールグループが有効かどうかを確認
+   */
+  isToolGroupEnabled(toolsConfig: ToolsConfig, group: ToolGroup): boolean {
+    return toolsConfig[group] !== false;
   }
 
   /**
