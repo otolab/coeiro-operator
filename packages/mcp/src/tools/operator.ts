@@ -18,6 +18,7 @@ import {
   assignOperator,
   extractStyleInfo,
   formatAssignmentResult,
+  formatStyleList,
   formatStylesResult,
   getTargetCharacter,
 } from '../utils.js';
@@ -188,7 +189,8 @@ export function registerOperatorReleaseTool(
  */
 export function registerOperatorStatusTool(
   server: McpServer,
-  operatorManager: OperatorManager
+  operatorManager: OperatorManager,
+  characterInfoService: CharacterInfoService
 ): void {
   server.registerTool(
     'operator_status',
@@ -200,13 +202,28 @@ export function registerOperatorStatusTool(
       try {
         const status = await operatorManager.showCurrentOperator();
 
+        if (!status.characterId) {
+          return {
+            content: [{ type: 'text', text: status.message }],
+          };
+        }
+
+        let resultText = `現在のオペレータ: ${status.characterName || status.characterId} (${status.characterId})\n`;
+
+        if (status.currentStyle) {
+          resultText += `現在のスタイル: ${status.currentStyle.styleName} (${status.currentStyle.styleId})\n`;
+          resultText += `   性格: ${status.currentStyle.personality}\n`;
+          resultText += `   話し方: ${status.currentStyle.speakingStyle}\n`;
+        }
+
+        const character = await characterInfoService.getCharacterInfo(status.characterId);
+        if (character) {
+          const availableStyles = extractStyleInfo(character);
+          resultText += formatStyleList(availableStyles, status.currentStyle?.styleId);
+        }
+
         return {
-          content: [
-            {
-              type: 'text',
-              text: status.message,
-            },
-          ],
+          content: [{ type: 'text', text: resultText }],
         };
       } catch (error) {
         throw new Error(`オペレータ状況確認エラー: ${(error as Error).message}`);

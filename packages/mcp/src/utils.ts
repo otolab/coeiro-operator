@@ -52,38 +52,34 @@ export function extractStyleInfo(character: Character): StyleInfo[] {
 }
 
 /**
+ * スタイル一覧を簡潔にフォーマット（operator_status / operator_assign 共通）
+ */
+export function formatStyleList(availableStyles: StyleInfo[], currentStyleId?: string): string {
+  if (availableStyles.length <= 1) return '';
+
+  let text = `\n利用可能なスタイル:\n`;
+  availableStyles.forEach(style => {
+    const isCurrent = style.id === currentStyleId;
+    const marker = isCurrent ? '→ ' : '  ';
+    text += `${marker}${style.id}: ${style.name}\n`;
+  });
+  text += `\n💡 スタイル変更: operator_assign の styleName に名前またはIDを指定（例: styleName="おしとやか" または styleName="5"）\n`;
+  return text;
+}
+
+/**
  * アサイン結果をフォーマット
  */
 export function formatAssignmentResult(assignResult: AssignResult, availableStyles: StyleInfo[]): string {
   let resultText = `${assignResult.characterName} (${assignResult.characterId}) をアサインしました。\n\n`;
 
   if (assignResult.currentStyle) {
-    resultText += `📍 現在のスタイル: ${assignResult.currentStyle.styleName}\n`;
+    resultText += `📍 現在のスタイル: ${assignResult.currentStyle.styleName} (${assignResult.currentStyle.styleId})\n`;
     resultText += `   性格: ${assignResult.currentStyle.personality}\n`;
     resultText += `   話し方: ${assignResult.currentStyle.speakingStyle}\n`;
-    // 現在のスタイルの話速を取得
-    const currentStyleInfo = availableStyles.find(s => s.id === assignResult.currentStyle?.styleId);
-    if (currentStyleInfo?.morasPerSecond) {
-      resultText += `   基準話速: ${currentStyleInfo.morasPerSecond} モーラ/秒\n`;
-    }
-    resultText += '\n';
   }
 
-  if (availableStyles.length > 1) {
-    resultText += `🎭 利用可能なスタイル（切り替え可能）:\n`;
-    availableStyles.forEach(style => {
-      const isCurrent = style.id === assignResult.currentStyle?.styleId;
-      const marker = isCurrent ? '→ ' : '  ';
-      resultText += `${marker}${style.id}: ${style.name}\n`;
-      resultText += `    性格: ${style.personality}\n`;
-      resultText += `    話し方: ${style.speakingStyle}\n`;
-      if (style.morasPerSecond) {
-        resultText += `    基準話速: ${style.morasPerSecond} モーラ/秒\n`;
-      }
-    });
-  } else {
-    resultText += `ℹ️  このキャラクターは1つのスタイルのみ利用可能です。\n`;
-  }
+  resultText += formatStyleList(availableStyles, assignResult.currentStyle?.styleId);
 
   if (assignResult.greeting) {
     resultText += `\n💬 "${assignResult.greeting}"\n`;

@@ -188,7 +188,7 @@ logger.info('Available characters for MCP tools:', { available: availableCharact
 if (isGroupEnabled('operator')) {
   registerOperatorAssignTool(server, sayCoeiroink, operatorManager, characterInfoService, terminalBackground, availableCharacters.available);
   registerOperatorReleaseTool(server, operatorManager, terminalBackground);
-  registerOperatorStatusTool(server, operatorManager);
+  registerOperatorStatusTool(server, operatorManager, characterInfoService);
   registerOperatorAvailableTool(server, operatorManager);
   registerOperatorStylesTool(server, operatorManager, characterInfoService);
 } else {
