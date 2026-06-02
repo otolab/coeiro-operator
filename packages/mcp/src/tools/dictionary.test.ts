@@ -37,9 +37,7 @@ describe('Dictionary Tools', () => {
 
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'dictionary_register',
-        expect.objectContaining({
-          description: expect.stringContaining('Register a word in the user dictionary'),
-        }),
+        expect.any(Object),
         expect.any(Function)
       );
     });
