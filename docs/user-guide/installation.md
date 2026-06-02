@@ -154,6 +154,30 @@ claude mcp test coeiro-operator
 }
 ```
 
+### ツールグループの有効/無効設定
+
+MCPツールをグループ単位で無効化できます。不要なツールを無効化することで、MCPクライアントのツール一覧を簡素化しトークン消費を削減できます。
+
+```json
+{
+  "tools": {
+    "playback": false,
+    "dictionary": false,
+    "debug": false
+  }
+}
+```
+
+| グループ | ツール | デフォルト |
+|---------|--------|----------|
+| `operator` | operator_assign, operator_release, operator_status, operator_available, operator_styles | 有効 |
+| `speech` | say | 有効 |
+| `playback` | queue_status, queue_clear, playback_stop, wait_for_task_completion | 有効 |
+| `dictionary` | dictionary_register | 有効 |
+| `debug` | debug_logs | 有効 |
+
+未指定のグループはデフォルトで有効です。`tools`セクション自体を省略した場合は全ツールが有効になります。
+
 ## 初期セットアップ
 
 ### 1. 基本動作確認

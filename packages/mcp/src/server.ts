@@ -11,7 +11,8 @@ import {
   getSessionId,
   CharacterInfoService,
   DictionaryService,
-  TerminalBackground
+  TerminalBackground,
+  type ToolGroup,
 } from '@coeiro-operator/core';
 import { logger, LoggerPresets } from '@coeiro-operator/common';
 
@@ -94,6 +95,7 @@ let operatorManager: OperatorManager;
 let characterInfoService: CharacterInfoService;
 let dictionaryService: DictionaryService;
 let terminalBackground: TerminalBackground | null = null;
+let isGroupEnabled: (group: ToolGroup) => boolean = () => true;
 
 try {
   const configDir = configPath ? path.dirname(configPath) : await getConfigDir();
@@ -123,6 +125,10 @@ try {
   dictionaryService = new DictionaryService(config?.connection);
   await dictionaryService.initialize();
 
+  // ツールグループの有効/無効設定を取得
+  const toolsConfig = await configManager.getToolsConfig();
+  isGroupEnabled = (group: ToolGroup) => configManager.isToolGroupEnabled(toolsConfig, group);
+
   logger.info('SayCoeiroink, OperatorManager and Dictionary initialized successfully');
 } catch (error) {
   logger.error('Failed to initialize services:', (error as Error).message);
@@ -151,6 +157,10 @@ try {
 
     dictionaryService = new DictionaryService();
     await dictionaryService.initialize();
+
+    const fallbackToolsConfig = await fallbackConfigManager.getToolsConfig();
+    isGroupEnabled = (group: ToolGroup) => fallbackConfigManager.isToolGroupEnabled(fallbackToolsConfig, group);
+
     logger.info('Fallback initialization completed');
   } catch (fallbackError) {
     logger.error('Fallback initialization also failed:', (fallbackError as Error).message);
@@ -166,27 +176,46 @@ const availableCharacters = await operatorManager.getAvailableOperators();
 logger.info('Available characters for MCP tools:', { available: availableCharacters.available });
 
 // Operator tools
-registerOperatorAssignTool(server, sayCoeiroink, operatorManager, characterInfoService, terminalBackground, availableCharacters.available);
-registerOperatorReleaseTool(server, operatorManager, terminalBackground);
-registerOperatorStatusTool(server, operatorManager);
-registerOperatorAvailableTool(server, operatorManager);
-registerOperatorStylesTool(server, operatorManager, characterInfoService);
+if (isGroupEnabled('operator')) {
+  registerOperatorAssignTool(server, sayCoeiroink, operatorManager, characterInfoService, terminalBackground, availableCharacters.available);
+  registerOperatorReleaseTool(server, operatorManager, terminalBackground);
+  registerOperatorStatusTool(server, operatorManager);
+  registerOperatorAvailableTool(server, operatorManager);
+  registerOperatorStylesTool(server, operatorManager, characterInfoService);
+} else {
+  logger.info('Operator tools disabled by configuration');
+}
 
 // Speech tools
-registerSayTool(server, sayCoeiroink, operatorManager, characterInfoService, terminalBackground);
-// registerParallelGenerationControlTool(server, sayCoeiroink);
+if (isGroupEnabled('speech')) {
+  registerSayTool(server, sayCoeiroink, operatorManager, characterInfoService, terminalBackground);
+} else {
+  logger.info('Speech tools disabled by configuration');
+}
 
 // Playback tools
-registerQueueStatusTool(server, sayCoeiroink);
-registerQueueClearTool(server, sayCoeiroink);
-registerPlaybackStopTool(server, sayCoeiroink);
-registerWaitForTaskCompletionTool(server, sayCoeiroink);
+if (isGroupEnabled('playback')) {
+  registerQueueStatusTool(server, sayCoeiroink);
+  registerQueueClearTool(server, sayCoeiroink);
+  registerPlaybackStopTool(server, sayCoeiroink);
+  registerWaitForTaskCompletionTool(server, sayCoeiroink);
+} else {
+  logger.info('Playback tools disabled by configuration');
+}
 
 // Dictionary tool
-registerDictionaryRegisterTool(server, dictionaryService);
+if (isGroupEnabled('dictionary')) {
+  registerDictionaryRegisterTool(server, dictionaryService);
+} else {
+  logger.info('Dictionary tools disabled by configuration');
+}
 
 // Debug tool
-registerDebugLogsTool(server);
+if (isGroupEnabled('debug')) {
+  registerDebugLogsTool(server);
+} else {
+  logger.info('Debug tools disabled by configuration');
+}
 
 logger.info('All MCP tools registered successfully');
 
