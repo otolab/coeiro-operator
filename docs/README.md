@@ -16,6 +16,7 @@
 システム設計と内部構造
 - [音声アーキテクチャ](architecture/voice-architecture.md) - 音声合成システム設計
 - [音声システム](architecture/audio-system.md) - 音声処理の仕組み
+- [音声再生パイプライン](architecture/audio-playback.md) - 合成から再生までのデータフロー
 - [音声キューシステム](architecture/speech-queue-system.md) - 非同期処理
 - [音声プロバイダーシステム](architecture/voice-provider-system.md) - 音声エンジン抽象化
 - [オペレータ割り当て仕様](architecture/operator-assignment-specification.md) - オペレータ管理
