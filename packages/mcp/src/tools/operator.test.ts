@@ -264,7 +264,7 @@ describe('Operator Tools', () => {
 
   describe('registerOperatorStatusTool', () => {
     test('ツールが正しく登録されること', () => {
-      registerOperatorStatusTool(mockServer, mockOperatorManager);
+      registerOperatorStatusTool(mockServer, mockOperatorManager, mockCharacterInfoService);
 
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'operator_status',
@@ -274,10 +274,32 @@ describe('Operator Tools', () => {
     });
 
     test('ステータスが取得できること', async () => {
-      registerOperatorStatusTool(mockServer, mockOperatorManager);
+      registerOperatorStatusTool(mockServer, mockOperatorManager, mockCharacterInfoService);
 
       vi.mocked(mockOperatorManager.showCurrentOperator).mockResolvedValue({
+        characterId: 'tsukuyomi',
+        characterName: 'つくよみちゃん',
+        currentStyle: {
+          styleId: '0',
+          styleName: 'れいせい',
+          personality: '冷静で丁寧',
+          speakingStyle: '敬語',
+        },
         message: '現在のオペレータ: つくよみちゃん',
+      });
+
+      vi.mocked(mockCharacterInfoService.getCharacterInfo).mockResolvedValue({
+        characterId: 'tsukuyomi',
+        speakerId: '0',
+        speakerName: 'つくよみちゃん',
+        personality: '冷静で丁寧',
+        speakingStyle: '敬語',
+        defaultStyleId: 0,
+        greeting: 'こんにちは',
+        farewell: 'さようなら',
+        styles: {
+          0: { styleName: 'れいせい', morasPerSecond: 8.61, personality: '冷静で丁寧', speakingStyle: '敬語' },
+        },
       });
 
       const tool = registeredTools.get('operator_status');
