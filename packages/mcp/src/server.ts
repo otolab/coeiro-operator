@@ -2,6 +2,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as path from 'path';
+import { readFile } from 'fs/promises';
+import { fileURLToPath } from 'url';
 import { Command } from 'commander';
 import { SayCoeiroink } from '@coeiro-operator/audio';
 import {
@@ -75,6 +77,7 @@ const server = new McpServer(
   {
     capabilities: {
       tools: {},
+      resources: {},
     },
     instructions: [
       'COEIRO Operator - 音声オペレータの管理と日本語発声を提供するMCPサーバー。',
@@ -84,6 +87,8 @@ const server = new McpServer(
       '- オペレータは端末セッション単位で管理され(operator_status)、音声出力に使用するキャラクター×そのスタイルの割り当て(operator_assign)で管理される',
       '- 割り当てにおいてキャラクタは重複できず(operator_available)、LLMのセッションとは独立して永続する',
       '- 明示的(operator_release)・あるいは一定時間未使用で解放',
+      '',
+      '初期設定や設定ファイルの書き方などはリソース(coeiro://docs/*)を参照してください。',
     ].join('\n'),
   }
 );
@@ -227,6 +232,39 @@ if (isGroupEnabled('debug')) {
 }
 
 logger.info('All MCP tools registered successfully');
+
+// ユーザーガイドドキュメントをresourceとして登録
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const docsDir = path.join(currentDir, 'docs');
+
+const USER_GUIDE_RESOURCES = [
+  { name: 'installation-guide', file: 'installation.md', description: 'インストール・セットアップ・設定ファイルガイド' },
+  { name: 'configuration-guide', file: 'configuration-guide.md', description: '設定の優先順位と詳細な設定方法' },
+  { name: 'characters', file: 'CHARACTERS.md', description: 'キャラクター一覧と設定' },
+  { name: 'user-dictionary-guide', file: 'user-dictionary-guide.md', description: 'ユーザー辞書の使い方' },
+  { name: 'debugging-guide', file: 'debugging-guide.md', description: 'デバッグガイド' },
+];
+
+for (const doc of USER_GUIDE_RESOURCES) {
+  server.resource(
+    doc.name,
+    `coeiro://docs/${doc.name}`,
+    { description: doc.description, mimeType: 'text/markdown' },
+    async (uri) => {
+      try {
+        const text = await readFile(path.join(docsDir, doc.file), 'utf-8');
+        return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text }] };
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          throw new Error(`ドキュメント ${doc.file} が見つかりません。pnpm build を実行してください。`);
+        }
+        throw new Error(`ドキュメント ${doc.file} の読み込みに失敗: ${(error as Error).message}`, { cause: error });
+      }
+    }
+  );
+}
+
+logger.info('User guide resources registered');
 
 // サーバーの起動
 async function main(): Promise<void> {
