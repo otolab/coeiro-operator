@@ -250,13 +250,14 @@ for (const doc of USER_GUIDE_RESOURCES) {
     doc.name,
     `coeiro://docs/${doc.name}`,
     { description: doc.description, mimeType: 'text/markdown' },
-    async (uri) => ({
-      contents: [{
-        uri: uri.href,
-        mimeType: 'text/markdown',
-        text: await readFile(path.join(docsDir, doc.file), 'utf-8'),
-      }],
-    })
+    async (uri) => {
+      try {
+        const text = await readFile(path.join(docsDir, doc.file), 'utf-8');
+        return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text }] };
+      } catch {
+        throw new Error(`ドキュメント ${doc.file} が見つかりません。pnpm build を実行してください。`);
+      }
+    }
   );
 }
 

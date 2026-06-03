@@ -24,7 +24,7 @@
   },
   "scripts": {
     "start": "node dist/mcp/server.js",
-    "build": "tsc --build && node -e \"require('fs').cpSync('docs/user-guide', 'packages/mcp/dist/docs', {recursive: true})\"",
+    "build": "tsc --build && node -e \"const fs=require('fs'); fs.rmSync('packages/mcp/dist/docs',{recursive:true,force:true}); fs.cpSync('docs/user-guide','packages/mcp/dist/docs',{recursive:true})\"",
     "build:watch": "tsc --build --watch",
     "build:all": "tsc --build --force",
     "build:packages": "pnpm --filter @coeiro-operator/common build && pnpm --filter @coeiro-operator/core build && pnpm --filter @coeiro-operator/audio build && pnpm --filter @coeiro-operator/term-bg build && pnpm --filter @coeiro-operator/cli build && pnpm --filter @coeiro-operator/mcp build && pnpm --filter @coeiro-operator/mcp-debug build",
