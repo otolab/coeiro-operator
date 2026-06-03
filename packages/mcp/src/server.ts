@@ -254,8 +254,11 @@ for (const doc of USER_GUIDE_RESOURCES) {
       try {
         const text = await readFile(path.join(docsDir, doc.file), 'utf-8');
         return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text }] };
-      } catch {
-        throw new Error(`ドキュメント ${doc.file} が見つかりません。pnpm build を実行してください。`);
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+          throw new Error(`ドキュメント ${doc.file} が見つかりません。pnpm build を実行してください。`);
+        }
+        throw new Error(`ドキュメント ${doc.file} の読み込みに失敗: ${(error as Error).message}`, { cause: error });
       }
     }
   );
