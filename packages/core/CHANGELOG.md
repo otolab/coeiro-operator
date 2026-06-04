@@ -1,5 +1,11 @@
 # @coeiro-operator/core
 
+## 1.4.6
+
+### Patch Changes
+
+- 03195e2: config.jsonのtoolsセクションでMCPツールをグループ単位で無効化できる機能を追加
+
 ## 1.4.5
 
 ### Patch Changes

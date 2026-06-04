@@ -1,5 +1,18 @@
 # @coeiro-operator/mcp
 
+## 1.5.7
+
+### Patch Changes
+
+- a5be07d: MCPツールのdescription/describe文を日本語に統一・短縮し、server instructionsを追加。スタイル指定でスタイルIDにも対応。
+- 34926f3: ユーザーガイドドキュメントをMCP resourceとして公開。ビルド時にdocs/user-guide/をパッケージに組み込み、coeiro://docs/\*で参照可能に
+- ba22149: operator_statusにキャラクタ設定・スタイル一覧を表示。operator_assignのスタイル一覧を簡潔化し、スタイル変更方法の案内を追加。
+- 03195e2: config.jsonのtoolsセクションでMCPツールをグループ単位で無効化できる機能を追加
+- Updated dependencies [a5be07d]
+- Updated dependencies [03195e2]
+  - @coeiro-operator/audio@1.3.7
+  - @coeiro-operator/core@1.4.6
+
 ## 1.5.6
 
 ### Patch Changes
