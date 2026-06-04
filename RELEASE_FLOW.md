@@ -282,6 +282,35 @@ git push -u origin release/1.3.0
 2. changesetを処理してバージョン・CHANGELOGを更新
 3. リリースPRが自動作成される
 
+### 2.4 リリースブランチでのchangeset調整
+
+リリースブランチ作成後でも、changesetの追加や修正が可能です。pushするたびにGitHub Actionsが再実行され、バージョンとCHANGELOGが再生成されます。
+
+**よくある調整**:
+- **changesetの追加忘れ**: mainにマージ済みだがchangesetが漏れていたPR分を追加
+- **バージョンタイプの変更**: patchをminorに格上げするなど、`.changeset/*.md` のバージョンタイプを編集
+- **メッセージの修正**: CHANGELOGに反映される説明文の修正
+
+```bash
+# リリースブランチで作業
+git checkout release/1.3.0
+
+# 例: 追加忘れのchangesetを作成
+cat > .changeset/missed-feature.md << 'EOF'
+---
+"@coeiro-operator/mcp": patch
+---
+
+説明文
+EOF
+
+# 例: 既存changesetのバージョンタイプを変更
+# .changeset/existing.md の "patch" を "minor" に編集
+
+git add .changeset/ && git commit -m "changeset追加" && git push
+# → GitHub Actionsが再実行され、Version Packagesコミットが更新される
+```
+
 #### 手動版（自動化が動作しない場合）
 
 ```bash
