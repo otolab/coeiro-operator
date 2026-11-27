@@ -53,6 +53,14 @@ claude mcp add coeiro-operator
 - `debug_logs` - デバッグログの取得
 - `parallel_generation_control` - 並行生成制御
 
+## MCP tool metadata と音声キュー
+
+SDK v2 への移行により、`tools/list` の各 tool から `execution.taskSupport: "forbidden"` が省略されます。MCP 2025-11-25 仕様では、この field の省略も task-augmented execution 非対応を意味します。通常の `tools/call` による機能や、COEIRO Operator が MCP Tasks を提供しない点に変更はありません。
+
+`say` の応答に含まれる task ID は、音声再生キューが発行するアプリ内 ID です。MCP の Tasks protocol とは別の仕組みで、`wait_for_task_completion` や `queue_status` も通常の `tools/call` で利用します。MCP 2026-07-28 の Tasks extension はこのサーバーでは実装していません。
+
+MCP 仕様に従う client は、field の省略を task execution 非対応として扱えます。JSON 内で `execution` の存在を直接調べている独自 client は、field がない場合も非対応として扱うようにしてください。リポジトリでは Claude Code / Claude Desktop を利用例として案内していますが、実際に接続している外部 client の種類・版や独自実装の利用状況までは把握していません。
+
 ## 使用例（Claude Codeでの会話）
 
 ```

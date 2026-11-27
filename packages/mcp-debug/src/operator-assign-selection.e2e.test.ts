@@ -73,6 +73,19 @@ describe('operator_assign選択式パラメータ', () => {
     console.log('利用可能なオプション:', characterIdParam.enum);
   });
 
+  it('MCP taskSupport を広告せず、音声キュー待機を通常の tool call で使えること', async () => {
+    const response = await tester.sendRequest<{
+      tools: Array<{ name: string; execution?: unknown }>;
+    }>('tools/list');
+
+    expect(response.tools.length).toBeGreaterThan(0);
+    expect(response.tools.every(tool => !Object.hasOwn(tool, 'execution'))).toBe(true);
+    expect(response.tools.some(tool => tool.name === 'wait_for_task_completion')).toBe(true);
+
+    const waitResult = await tester.callTool('wait_for_task_completion', { timeout: 1000 });
+    expect(waitResult.success).toBe(true);
+  });
+
   it('AUTOを指定してオペレータをアサインできること', async () => {
     const result = await tester.callTool('operator_assign', {
       characterId: 'AUTO',
