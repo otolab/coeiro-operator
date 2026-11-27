@@ -1,5 +1,11 @@
 # @coeiro-operator/audio
 
+## 1.3.8
+
+### Patch Changes
+
+- c77d538: 音声パッケージからechogarden本体への依存を外し、RNNoiseによるノイズ除去を維持しました。
+
 ## 1.3.7
 
 ### Patch Changes

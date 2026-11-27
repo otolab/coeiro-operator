@@ -1,5 +1,17 @@
 # @coeiro-operator/mcp
 
+## 1.6.0
+
+### Minor Changes
+
+- 1cdc5fa: sayツールの速度指定を統一し、数値のWPM指定と`x1.2`形式の倍率指定を`rate`で受け付けるようにしました。
+
+### Patch Changes
+
+- 30f5690: MCPサーバーとmcp-debugで利用するMCP SDKを1.32.2へ更新しました。
+- Updated dependencies [c77d538]
+  - @coeiro-operator/audio@1.3.8
+
 ## 1.5.7
 
 ### Patch Changes
