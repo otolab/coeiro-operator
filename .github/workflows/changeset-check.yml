@@ -29,6 +29,8 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+        env:
+          ONNXRUNTIME_NODE_INSTALL_CUDA: skip
 
       - name: Check for changesets
         id: changesets
