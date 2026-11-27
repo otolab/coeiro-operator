@@ -44,6 +44,12 @@ Issue #248 は、`@modelcontextprotocol/sdk` v1 から公式 TypeScript SDK v2 �
 - 2026-07-28 protocol revision の機能はこの移行では提供しない。必要になった段階で、client 対応と `serveStdio()` への切り替えを別途評価する。
 - SDK v1 の保守期間には最低保証があるが、終了日は確定していない。v2 はすでに安定版のため、Node.js 20 への更新と破壊的変更の説明を含めて移行する。
 
+## Unresolved and deferred
+
+- SDK v1.x の保守終了日は公式資料に記載されていない。2027-01-27 頃は v2 公開後 6 か月の最低保証期間を満たす目安であり、確定した終了日ではない。
+- 導入する v2 package の具体的な patch version は実装時点で選ぶ。公式の stable 2.x package を選び、リポジトリの既存方針に沿って lockfile と package manifest に固定する。
+- 2026-07-28 protocol revision への対応は今回の移行対象外とする。現行利用者からの要件が出た段階で別途判断する。
+
 ## Implementation and verification requirements
 
 実装 PR では、少なくとも以下を確認する。
