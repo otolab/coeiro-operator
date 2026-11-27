@@ -237,7 +237,7 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"リファクタリング後のテスト音声です。チャンク生成管理システムが正常に動作していることを確認します。並行生成機能により、複数のチャンクが同時に処理され、レイテンシが大幅に改善されています。"}},"id":4}' | node dist/mcp/server.js
 
 # 話速調整テスト
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"話速テストです。","rate":150}},"id":5}' | node dist/mcp/server.js
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"話速テストです。","rate":150}},"id":5}' | node dist/mcp/server.js
 ```
 
 ##### 設定変更テスト

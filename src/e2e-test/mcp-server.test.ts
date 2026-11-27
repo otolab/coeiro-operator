@@ -78,6 +78,8 @@ describe('COEIRO Operator with MCP Debug Integration E2E Tests', () => {
                 minimum?: number;
                 maximum?: number;
                 pattern?: string;
+                not?: Record<string, unknown>;
+                description?: string;
                 anyOf?: Array<{
                   type?: string;
                   minimum?: number;
@@ -107,7 +109,10 @@ describe('COEIRO Operator with MCP Debug Integration E2E Tests', () => {
       expect(sayTool?.inputSchema.required).toContain('speechText');
       expect(sayTool?.inputSchema.required ?? []).not.toContain('rate');
       expect(sayTool?.inputSchema.required ?? []).not.toContain('factor');
-      expect(sayTool?.inputSchema.properties ?? {}).not.toHaveProperty('factor');
+      expect(sayTool?.inputSchema.properties?.factor).toMatchObject({
+        not: {},
+        description: expect.stringContaining('旧パラメータ'),
+      });
       expect(assignTool?.inputSchema.properties?.characterId?.enum?.[0]).toBe('AUTO');
       expect(assignTool?.inputSchema.required ?? []).not.toContain('characterId');
 
@@ -136,6 +141,17 @@ describe('COEIRO Operator with MCP Debug Integration E2E Tests', () => {
         expect(result.result?.isError).toBe(true);
         expect(result.result?.content?.[0]?.text).toContain('Input validation error');
       }
+    });
+
+    test('say rejects the retired factor parameter', async () => {
+      const result = await tester.callTool<{
+        isError?: boolean;
+        content?: Array<{ text: string }>;
+      }>('say', { speechText: '旧形式の検証', factor: 1.5 });
+
+      expect(result.success).toBe(true);
+      expect(result.result?.isError).toBe(true);
+      expect(result.result?.content?.[0]?.text).toContain('Input validation error');
     });
   });
 

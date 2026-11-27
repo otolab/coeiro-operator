@@ -4,7 +4,9 @@
  */
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { z } from 'zod';
 import type { SayCoeiroink } from '@coeiro-operator/audio';
 import type { OperatorManager, CharacterInfoService, TerminalBackground } from '@coeiro-operator/core';
@@ -405,6 +407,68 @@ describe('Speech Tools', () => {
       const options = vi.mocked(mockSayCoeiroink.synthesize).mock.calls[0][1];
       expect(options).not.toHaveProperty('rate');
       expect(options).not.toHaveProperty('factor');
+    });
+  });
+
+  describe('SDK経由のMCPツール呼び出し', () => {
+    test('倍率はsynthesizeに届き、旧factorと不正なrateは合成前に拒否されること', async () => {
+      const server = new McpServer(
+        { name: 'speech-test-server', version: '1.0.0' },
+        { capabilities: { tools: {} } }
+      );
+      const client = new Client({ name: 'speech-test-client', version: '1.0.0' });
+      const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+
+      vi.mocked(mockOperatorManager.showCurrentOperator).mockResolvedValue({
+        characterId: 'tsukuyomi',
+        characterName: 'つくよみちゃん',
+        message: '現在のオペレータ: つくよみちゃん',
+      });
+      vi.mocked(mockSayCoeiroink.synthesize).mockReturnValue({
+        success: true,
+        taskId: 12345,
+        queueLength: 1,
+      });
+
+      registerSayTool(
+        server,
+        mockSayCoeiroink,
+        mockOperatorManager,
+        mockCharacterInfoService,
+        mockTerminalBackground
+      );
+
+      try {
+        await server.connect(serverTransport);
+        await client.connect(clientTransport);
+
+        const validResult = await client.callTool({
+          name: 'say',
+          arguments: { speechText: '倍率テストです。', rate: 'x1.2' },
+        });
+
+        expect(validResult.isError).not.toBe(true);
+        expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
+          '倍率テストです。',
+          expect.objectContaining({ factor: 1.2, allowFallback: false })
+        );
+
+        const legacyFactorResult = await client.callTool({
+          name: 'say',
+          arguments: { speechText: '旧形式です。', factor: 1.5 },
+        });
+        const invalidRateResult = await client.callTool({
+          name: 'say',
+          arguments: { speechText: '不正な速度です。', rate: '1.2x' },
+        });
+
+        expect(legacyFactorResult.isError).toBe(true);
+        expect(invalidRateResult.isError).toBe(true);
+        expect(mockSayCoeiroink.synthesize).toHaveBeenCalledTimes(1);
+      } finally {
+        await client.close();
+        await server.close();
+      }
     });
   });
 });
