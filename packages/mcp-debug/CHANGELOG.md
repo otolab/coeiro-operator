@@ -1,5 +1,11 @@
 # @coeiro-operator/mcp-debug
 
+## 1.2.1
+
+### Patch Changes
+
+- 30f5690: MCPサーバーとmcp-debugで利用するMCP SDKを1.32.2へ更新しました。
+
 ## 1.2.0
 
 ### Minor Changes
