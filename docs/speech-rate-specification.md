@@ -72,12 +72,17 @@ say-coeiroink -r 100 "こんにちは"
 
 ### 2. MCPツール
 ```typescript
-// 話者固有速度
-await say({ message: "こんにちは" })
+// rate省略時は話者・スタイル固有の速度
+await say({ speechText: "こんにちは" })
 
 // 絶対速度指定
-await say({ message: "こんにちは", rate: 200 })
+await say({ speechText: "こんにちは", rate: 200 })
+
+// 相対倍率指定（0.5〜2.0倍）
+await say({ speechText: "こんにちは", rate: "x1.2" })
 ```
+
+MCPツールの `rate` は省略可能です。数値は絶対速度（50〜400 WPM）、`x` で始まる文字列は相対倍率として扱います。`rate` を省略すると既定の200 WPMにはせず、選択中の話者・スタイル固有の速度を使います。
 
 ### 3. 設定ファイル（config.json）
 ```json

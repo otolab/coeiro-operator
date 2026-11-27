@@ -5,6 +5,7 @@
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 import type { SayCoeiroink } from '@coeiro-operator/audio';
 import type { OperatorManager, CharacterInfoService, TerminalBackground } from '@coeiro-operator/core';
 import { registerSayTool } from './speech.js';
@@ -254,7 +255,7 @@ describe('Speech Tools', () => {
       ).rejects.toThrow('不正なcharacterId形式');
     });
 
-    test('rateとfactorの同時指定でエラーが発生すること', async () => {
+    test('rateはWPMまたは範囲内のx倍率を受け付ける', () => {
       registerSayTool(
         mockServer,
         mockSayCoeiroink,
@@ -263,16 +264,16 @@ describe('Speech Tools', () => {
         mockTerminalBackground
       );
 
-      vi.mocked(mockOperatorManager.showCurrentOperator).mockResolvedValue({
-        characterId: 'tsukuyomi',
-        characterName: 'つくよみちゃん',
-        message: '現在のオペレータ: つくよみちゃん',
-      });
+      const inputSchema = z.object(registeredTools.get('say').schema.inputSchema);
+      const speechText = 'テストメッセージ';
 
-      const tool = registeredTools.get('say');
-      await expect(
-        tool.handler({ speechText: 'テストメッセージ', rate: 200, factor: 1.5 })
-      ).rejects.toThrow('rateとfactorは同時に指定できません');
+      for (const rate of [50, 200, 400, 'x0.5', 'x1.2', 'x2.0']) {
+        expect(inputSchema.safeParse({ speechText, rate }).success).toBe(true);
+      }
+
+      for (const rate of [49, 401, 'x0.49', 'x2.01', '1.2x', 'fast']) {
+        expect(inputSchema.safeParse({ speechText, rate }).success).toBe(false);
+      }
     });
 
     test('存在しないスタイル指定でエラーが発生すること', async () => {
@@ -346,7 +347,7 @@ describe('Speech Tools', () => {
       );
     });
 
-    test('factor指定が正しく渡されること', async () => {
+    test('x接頭辞の倍率指定がfactorとして渡されること', async () => {
       registerSayTool(
         mockServer,
         mockSayCoeiroink,
@@ -368,7 +369,7 @@ describe('Speech Tools', () => {
       vi.mocked(mockOperatorManager.refreshOperatorReservation).mockResolvedValue(true);
 
       const tool = registeredTools.get('say');
-      await tool.handler({ speechText: 'テストメッセージ', factor: 1.5 });
+      await tool.handler({ speechText: 'テストメッセージ', rate: 'x1.5' });
 
       expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
         'テストメッセージ',
@@ -376,6 +377,34 @@ describe('Speech Tools', () => {
           factor: 1.5,
         })
       );
+    });
+
+    test('rate省略時に絶対速度・倍率の既定値を追加しないこと', async () => {
+      registerSayTool(
+        mockServer,
+        mockSayCoeiroink,
+        mockOperatorManager,
+        mockCharacterInfoService,
+        mockTerminalBackground
+      );
+
+      vi.mocked(mockOperatorManager.showCurrentOperator).mockResolvedValue({
+        characterId: 'tsukuyomi',
+        characterName: 'つくよみちゃん',
+        message: '現在のオペレータ: つくよみちゃん',
+      });
+      vi.mocked(mockSayCoeiroink.synthesize).mockReturnValue({
+        success: true,
+        taskId: 12345,
+        queueLength: 1,
+      });
+
+      const tool = registeredTools.get('say');
+      await tool.handler({ speechText: 'テストメッセージ' });
+
+      const options = vi.mocked(mockSayCoeiroink.synthesize).mock.calls[0][1];
+      expect(options).not.toHaveProperty('rate');
+      expect(options).not.toHaveProperty('factor');
     });
   });
 });

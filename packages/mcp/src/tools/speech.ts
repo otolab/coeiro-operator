@@ -6,6 +6,8 @@ import { logger } from '@coeiro-operator/common';
 import type { ToolResponse } from '../types.js';
 import { registerToolWithZod3Shape } from './register-tool.js';
 
+const relativeRatePattern = /^x(?:0\.(?:[5-9]\d*)|1(?:\.\d+)?|2(?:\.0+)?)$/;
+
 /**
  * sayツールの登録
  * COEIROINKを使って日本語音声を非同期で出力します（低レイテンシストリーミング対応）
@@ -25,32 +27,25 @@ export function registerSayTool(
       inputSchema: {
         speechText: z.string().describe('発声テキスト（日本語）'),
         characterId: z.string().optional().describe('キャラクターID（省略時は現在のオペレータ）'),
-        rate: z.number().optional().describe('絶対速度 WPM（200=標準）'),
-        factor: z.number().optional().describe('相対速度倍率（1.0=等速）'),
-        styleName: z
-          .string()
+        rate: z
+          .union([z.number().min(50).max(400), z.string().regex(relativeRatePattern)])
           .optional()
           .describe(
-            'スタイル名またはスタイルID'
+            '速度指定（省略時は話者固有）。数値は絶対速度 WPM（50〜400）、"x1.2"形式の文字列は倍率（0.5〜2.0）'
           ),
+        styleName: z.string().optional().describe('スタイル名またはスタイルID'),
       },
     },
     async (args): Promise<ToolResponse> => {
-      const { speechText, characterId, rate, factor, styleName } = args;
+      const { speechText, characterId, rate, styleName } = args;
 
       try {
         logger.debug('=== SAY TOOL DEBUG START ===');
         logger.debug(`Input parameters:`);
         logger.debug(`  speechText: "${speechText}"`);
         logger.debug(`  characterId: ${characterId || 'null (will use operator voice)'}`);
-        logger.debug(`  rate: ${rate || 'undefined (will use config default)'}`);
-        logger.debug(`  factor: ${factor || 'undefined (will use speaker natural speed)'}`);
+        logger.debug(`  rate: ${rate ?? 'undefined (will use speaker natural speed)'}`);
         logger.debug(`  styleName: ${styleName || 'undefined (will use operator default)'}`);
-
-        // rateとfactorの同時指定チェック
-        if (rate !== undefined && factor !== undefined) {
-          throw new Error('rateとfactorは同時に指定できません。どちらか一方を指定してください。');
-        }
 
         // characterId文字列をパース（"characterId:styleName"形式に対応）
         let parsedCharacterId: string | null = characterId || null;
@@ -188,13 +183,12 @@ export function registerSayTool(
         logger.debug('Audio config is managed internally by SayCoeiroink');
         logger.debug('==============================');
 
-        // 速度設定オプションを構築（CLIと同じ形式）
+        // 数値は絶対速度、x接頭辞の文字列は相対倍率として音声合成APIへ渡す
         const speedOptions: { rate?: number; factor?: number } = {};
-        if (rate !== undefined) {
+        if (typeof rate === 'number') {
           speedOptions.rate = rate;
-        }
-        if (factor !== undefined) {
-          speedOptions.factor = factor;
+        } else if (rate !== undefined) {
+          speedOptions.factor = Number(rate.slice(1));
         }
 
         // MCP設計: 音声合成タスクをキューに投稿のみ（再生完了を待たない）
@@ -203,7 +197,7 @@ export function registerSayTool(
         // - CLIとは異なり、MCPではウォームアップ・完了待機は実行しない
         const result = sayCoeiroink.synthesize(speechText, {
           voice: parsedCharacterId,
-          ...speedOptions,  // rateまたはfactorを展開
+          ...speedOptions,
           style: parsedStyleName,
           allowFallback: false, // MCPツールではオペレータが必須
         });

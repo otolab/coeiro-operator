@@ -12,7 +12,16 @@ const __dirname = getDirname(import.meta.url);
 type JsonSchemaProperty = {
   type?: string | string[];
   enum?: unknown[];
-  anyOf?: Array<{ type?: string }>;
+  minimum?: number;
+  maximum?: number;
+  pattern?: string;
+  default?: unknown;
+  anyOf?: Array<{
+    type?: string;
+    minimum?: number;
+    maximum?: number;
+    pattern?: string;
+  }>;
 };
 
 type ListedTool = {
@@ -41,40 +50,69 @@ describe('registerTool Zod schema compatibility', () => {
   it('tools/list preserves optional, enum, and property union schemas', async () => {
     const response = await tester.sendRequest<{ tools: ListedTool[] }>('tools/list');
     const tool = response.tools.find(candidate => candidate.name === 'schema_compatibility');
+    const rateBranches = tool?.inputSchema.properties?.rate.anyOf;
 
     expect(tool).toBeDefined();
     expect(tool?.inputSchema.type).toBe('object');
     expect(tool?.inputSchema.properties?.mode.enum).toEqual(['absolute', 'relative']);
-    expect(tool?.inputSchema.properties?.speed.type).toEqual(['number', 'string']);
+    expect(rateBranches).toHaveLength(2);
+    expect(rateBranches?.[0]).toMatchObject({
+      type: 'number',
+      minimum: 50,
+      maximum: 400,
+    });
+    expect(rateBranches?.[1]).toMatchObject({
+      type: 'string',
+      pattern: /^x(?:0\.(?:[5-9]\d*)|1(?:\.\d+)?|2(?:\.0+)?)$/.source,
+    });
+    expect(tool?.inputSchema.properties?.defaulted.default).toBe('natural');
     expect(tool?.inputSchema.required).toContain('mode');
-    expect(tool?.inputSchema.required).toContain('speed');
+    expect(tool?.inputSchema.required).not.toContain('rate');
     expect(tool?.inputSchema.required).not.toContain('label');
+    expect(tool?.inputSchema.required).not.toContain('defaulted');
   });
 
-  it.each([200, '1.25x'])('tools/call accepts speed value %s', async speed => {
+  it.each([200, 'x1.25'])('tools/call accepts rate value %s', async rate => {
     const result = await tester.callTool<{ content: Array<{ text: string }> }>(
       'schema_compatibility',
-      { mode: 'relative', speed }
+      { mode: 'relative', rate }
     );
 
     expect(result.success).toBe(true);
     expect(JSON.parse(result.result?.content[0].text ?? '{}')).toMatchObject({
       mode: 'relative',
-      speed,
+      rate,
+      defaulted: 'natural',
     });
   });
 
-  it('tools/call rejects values outside the union', async () => {
-    const result = await tester.callTool<{
-      isError?: boolean;
-      content?: Array<{ text: string }>;
-    }>('schema_compatibility', {
-      mode: 'relative',
-      speed: true,
-    });
+  it.each([49, 401, 'x0.49', 'x2.01', '1.2x', true])(
+    'tools/call rejects invalid rate value %s',
+    async rate => {
+      const result = await tester.callTool<{
+        isError?: boolean;
+        content?: Array<{ text: string }>;
+      }>('schema_compatibility', {
+        mode: 'relative',
+        rate,
+      });
+
+      expect(result.success).toBe(true);
+      expect(result.result?.isError).toBe(true);
+      expect(result.result?.content?.[0]?.text).toContain('Input validation error');
+    }
+  );
+
+  it('tools/call applies a default value when the field is omitted', async () => {
+    const result = await tester.callTool<{ content: Array<{ text: string }> }>(
+      'schema_compatibility',
+      { mode: 'absolute' }
+    );
 
     expect(result.success).toBe(true);
-    expect(result.result?.isError).toBe(true);
-    expect(result.result?.content?.[0]?.text).toContain('Input validation error');
+    expect(JSON.parse(result.result?.content[0].text ?? '{}')).toMatchObject({
+      mode: 'absolute',
+      defaulted: 'natural',
+    });
   });
 });

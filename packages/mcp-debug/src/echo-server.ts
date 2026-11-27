@@ -35,6 +35,8 @@ const server = new McpServer(
   }
 );
 
+const relativeRatePattern = /^x(?:0\.(?:[5-9]\d*)|1(?:\.\d+)?|2(?:\.0+)?)$/;
+
 debugLog('Echo MCP Server instance created');
 
 // echoツール
@@ -131,15 +133,18 @@ registerToolWithZod3Shape(
     description: 'Zod schema compatibility test tool',
     inputSchema: {
       label: z.string().optional(),
+      defaulted: z.string().default('natural'),
       mode: z.enum(['absolute', 'relative']),
-      speed: z.union([z.number(), z.string()]),
+      rate: z
+        .union([z.number().min(50).max(400), z.string().regex(relativeRatePattern)])
+        .optional(),
     },
   },
-  async ({ label, mode, speed }) => ({
+  async ({ label, defaulted, mode, rate }) => ({
     content: [
       {
         type: 'text',
-        text: JSON.stringify({ label, mode, speed }),
+        text: JSON.stringify({ label, defaulted, mode, rate }),
       },
     ],
   })
