@@ -1,6 +1,6 @@
 #!/usr/bin/env node --no-deprecation
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { McpServer } from '@modelcontextprotocol/server';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import * as path from 'path';
 import { readFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
@@ -38,6 +38,7 @@ import {
 } from './tools/playback.js';
 import { registerDictionaryRegisterTool } from './tools/dictionary.js';
 import { registerDebugLogsTool } from './tools/debug.js';
+import { LegacyToolResponseTransport } from './legacy-tool-response-transport.js';
 
 interface CLIOptions {
   debug?: boolean;
@@ -246,7 +247,7 @@ const USER_GUIDE_RESOURCES = [
 ];
 
 for (const doc of USER_GUIDE_RESOURCES) {
-  server.resource(
+  server.registerResource(
     doc.name,
     `coeiro://docs/${doc.name}`,
     { description: doc.description, mimeType: 'text/markdown' },
@@ -268,7 +269,7 @@ logger.info('User guide resources registered');
 
 // サーバーの起動
 async function main(): Promise<void> {
-  const transport = new StdioServerTransport();
+  const transport = new LegacyToolResponseTransport(new StdioServerTransport());
 
   logger.info('Say COEIROINK MCP Server starting...');
   await server.connect(transport);

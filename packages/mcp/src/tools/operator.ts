@@ -2,7 +2,7 @@
  * Operator関連のMCPツール定義
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type {
   OperatorManager,
@@ -13,7 +13,7 @@ import { logger } from '@coeiro-operator/common';
 import { SayCoeiroink } from '@coeiro-operator/audio';
 
 import type { ToolResponse, StyleInfo } from '../types.js';
-import { registerToolWithZod3Shape } from './register-tool.js';
+import { registerToolWithZodShape } from './register-tool.js';
 import {
   validateOperatorInput,
   assignOperator,
@@ -39,7 +39,7 @@ export function registerOperatorAssignTool(
   // 'AUTO'を先頭に追加して選択肢を作成
   const operatorOptions = ['AUTO', ...availableCharacters] as [string, ...string[]];
 
-  registerToolWithZod3Shape(
+  registerToolWithZodShape(
     server,
     'operator_assign',
     {
@@ -143,7 +143,8 @@ export function registerOperatorReleaseTool(
   operatorManager: OperatorManager,
   terminalBackground: TerminalBackground | null
 ): void {
-  server.registerTool(
+  registerToolWithZodShape(
+    server,
     'operator_release',
     {
       description: '現在のオペレータを解放する',
@@ -194,7 +195,8 @@ export function registerOperatorStatusTool(
   operatorManager: OperatorManager,
   characterInfoService: CharacterInfoService
 ): void {
-  server.registerTool(
+  registerToolWithZodShape(
+    server,
     'operator_status',
     {
       description: '現在のオペレータ状態を確認する',
@@ -242,7 +244,8 @@ export function registerOperatorAvailableTool(
   server: McpServer,
   operatorManager: OperatorManager
 ): void {
-  server.registerTool(
+  registerToolWithZodShape(
+    server,
     'operator_available',
     {
       description: '利用可能なオペレータ一覧を表示する',
@@ -284,7 +287,7 @@ export function registerOperatorStylesTool(
   operatorManager: OperatorManager,
   characterInfoService: CharacterInfoService
 ): void {
-  registerToolWithZod3Shape(
+  registerToolWithZodShape(
     server,
     'operator_styles',
     {

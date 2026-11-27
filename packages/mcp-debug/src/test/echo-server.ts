@@ -4,9 +4,10 @@
  * MCPライブラリを使用した最小限のテスト用エコーバックサーバー
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { McpServer } from '@modelcontextprotocol/server';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { z } from 'zod';
+import { registerToolWithZodShape } from '../register-tool.js';
 
 // デバッグモードの判定
 const isDebugMode = process.argv.includes('--debug') || process.argv.includes('-d');
@@ -36,7 +37,8 @@ const server = new McpServer(
 debugLog('Echo MCP Server instance created');
 
 // echoツール
-server.registerTool(
+registerToolWithZodShape(
+  server,
   'echo',
   {
     description: 'エコーバックテストツール',
@@ -67,7 +69,8 @@ server.registerTool(
 );
 
 // debug_infoツール
-server.registerTool(
+registerToolWithZodShape(
+  server,
   'debug_info',
   {
     description: 'デバッグ情報取得ツール',
@@ -120,7 +123,8 @@ server.registerTool(
 );
 
 // test_outputツール
-server.registerTool(
+registerToolWithZodShape(
+  server,
   'test_output',
   {
     description: '出力チャネルテストツール',

@@ -73,7 +73,7 @@ Claude Code: [say ツールでstyle: "ひそひそ"を指定して音声出力]
 
 ## 動作要件
 
-- Node.js 18以上
+- Node.js 20以上
 - COEIROINK本体が起動済み（http://localhost:50032）
 - Claude Code（MCPクライアント）
 

@@ -2,6 +2,9 @@
   "name": "@coeiro-operator/mcp-debug",
   "version": "1.2.1",
   "description": "MCP debug tools for COEIRO Operator",
+  "engines": {
+    "node": ">=20"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -40,8 +43,8 @@
     "prepublishOnly": "pnpm build"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.32.2",
-    "zod": "3.25.76"
+    "@modelcontextprotocol/server": "2.4.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@types/node": "22.18.10",

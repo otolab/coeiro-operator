@@ -4,7 +4,7 @@
  */
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import type { DictionaryService } from '@coeiro-operator/core';
 import { registerDictionaryRegisterTool } from './dictionary.js';
 

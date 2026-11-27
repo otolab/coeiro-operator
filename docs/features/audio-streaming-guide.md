@@ -305,7 +305,7 @@ await sayCoeiroink.synthesizeText(longContent, {
 - **出力**: PCMデータ（ネイティブ音声デバイス）
 
 ### システム要件
-- Node.js 18.0以上
+- Node.js 20以上（本リポジトリのMCPサーバー経由で利用する場合）
 - speakerライブラリ対応OS
   - macOS: Core Audio
   - Linux: ALSA/PulseAudio

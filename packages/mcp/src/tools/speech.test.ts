@@ -4,12 +4,13 @@
  */
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { z } from 'zod';
+import { InMemoryTransport, McpServer, type JSONRPCMessage } from '@modelcontextprotocol/server';
 import type { SayCoeiroink } from '@coeiro-operator/audio';
-import type { OperatorManager, CharacterInfoService, TerminalBackground } from '@coeiro-operator/core';
+import type {
+  OperatorManager,
+  CharacterInfoService,
+  TerminalBackground,
+} from '@coeiro-operator/core';
 import { registerSayTool } from './speech.js';
 
 describe('Speech Tools', () => {
@@ -257,7 +258,7 @@ describe('Speech Tools', () => {
       ).rejects.toThrow('不正なcharacterId形式');
     });
 
-    test('rateはWPMまたは範囲内のx倍率を受け付ける', () => {
+    test('rateはWPMまたは範囲内のx倍率を受け付ける', async () => {
       registerSayTool(
         mockServer,
         mockSayCoeiroink,
@@ -266,15 +267,17 @@ describe('Speech Tools', () => {
         mockTerminalBackground
       );
 
-      const inputSchema = z.object(registeredTools.get('say').schema.inputSchema);
+      const inputSchema = registeredTools.get('say').schema.inputSchema;
       const speechText = 'テストメッセージ';
 
       for (const rate of [50, 200, 400, 'x0.5', 'x1.2', 'x2.0']) {
-        expect(inputSchema.safeParse({ speechText, rate }).success).toBe(true);
+        const result = await inputSchema['~standard'].validate({ speechText, rate });
+        expect('issues' in result).toBe(false);
       }
 
       for (const rate of [49, 401, 'x0.49', 'x2.01', '1.2x', 'fast']) {
-        expect(inputSchema.safeParse({ speechText, rate }).success).toBe(false);
+        const result = await inputSchema['~standard'].validate({ speechText, rate });
+        expect('issues' in result).toBe(true);
       }
     });
 
@@ -314,7 +317,9 @@ describe('Speech Tools', () => {
       const tool = registeredTools.get('say');
       await expect(
         tool.handler({ speechText: 'テストメッセージ', styleName: '存在しないスタイル' })
-      ).rejects.toThrow('指定されたスタイル \'存在しないスタイル\' が つくよみちゃん には存在しません');
+      ).rejects.toThrow(
+        "指定されたスタイル '存在しないスタイル' が つくよみちゃん には存在しません"
+      );
     });
 
     test('rate指定が正しく渡されること', async () => {
@@ -416,8 +421,36 @@ describe('Speech Tools', () => {
         { name: 'speech-test-server', version: '1.0.0' },
         { capabilities: { tools: {} } }
       );
-      const client = new Client({ name: 'speech-test-client', version: '1.0.0' });
       const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+      let requestId = 0;
+      const pendingRequests = new Map<
+        number,
+        { resolve: (result: unknown) => void; reject: (error: Error) => void }
+      >();
+      clientTransport.onmessage = (message: JSONRPCMessage) => {
+        if (!('id' in message) || typeof message.id !== 'number' || 'method' in message) {
+          return;
+        }
+        const pending = pendingRequests.get(message.id);
+        if (!pending) return;
+        pendingRequests.delete(message.id);
+        if ('error' in message) {
+          pending.reject(new Error(`MCP error ${message.error.code}: ${message.error.message}`));
+        } else {
+          pending.resolve(message.result);
+        }
+      };
+
+      const sendRequest = (method: string, params: unknown): Promise<unknown> => {
+        const id = ++requestId;
+        return new Promise((resolve, reject) => {
+          pendingRequests.set(id, { resolve, reject });
+          void clientTransport.send({ jsonrpc: '2.0', id, method, params }).catch(error => {
+            pendingRequests.delete(id);
+            reject(error);
+          });
+        });
+      };
 
       vi.mocked(mockOperatorManager.showCurrentOperator).mockResolvedValue({
         characterId: 'tsukuyomi',
@@ -440,12 +473,21 @@ describe('Speech Tools', () => {
 
       try {
         await server.connect(serverTransport);
-        await client.connect(clientTransport);
+        await clientTransport.start();
+        await sendRequest('initialize', {
+          protocolVersion: '2024-11-05',
+          capabilities: {},
+          clientInfo: { name: 'speech-test-client', version: '1.0.0' },
+        });
+        await clientTransport.send({
+          jsonrpc: '2.0',
+          method: 'notifications/initialized',
+        });
 
-        const validResult = await client.callTool({
+        const validResult = (await sendRequest('tools/call', {
           name: 'say',
           arguments: { speechText: '倍率テストです。', rate: 'x1.2' },
-        });
+        })) as { isError?: boolean };
 
         expect(validResult.isError).not.toBe(true);
         expect(mockSayCoeiroink.synthesize).toHaveBeenCalledWith(
@@ -453,20 +495,20 @@ describe('Speech Tools', () => {
           expect.objectContaining({ factor: 1.2, allowFallback: false })
         );
 
-        const legacyFactorResult = await client.callTool({
+        const legacyFactorResult = (await sendRequest('tools/call', {
           name: 'say',
           arguments: { speechText: '旧形式です。', factor: 1.5 },
-        });
-        const invalidRateResult = await client.callTool({
+        })) as { isError?: boolean };
+        const invalidRateResult = (await sendRequest('tools/call', {
           name: 'say',
           arguments: { speechText: '不正な速度です。', rate: '1.2x' },
-        });
+        })) as { isError?: boolean };
 
         expect(legacyFactorResult.isError).toBe(true);
         expect(invalidRateResult.isError).toBe(true);
         expect(mockSayCoeiroink.synthesize).toHaveBeenCalledTimes(1);
       } finally {
-        await client.close();
+        await clientTransport.close();
         await server.close();
       }
     });

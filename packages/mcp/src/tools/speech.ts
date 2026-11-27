@@ -1,10 +1,10 @@
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { SayCoeiroink } from '@coeiro-operator/audio';
 import { OperatorManager, CharacterInfoService, TerminalBackground } from '@coeiro-operator/core';
 import { logger } from '@coeiro-operator/common';
 import type { ToolResponse } from '../types.js';
-import { registerToolWithZod3Shape } from './register-tool.js';
+import { registerToolWithZodShape } from './register-tool.js';
 
 const relativeRatePattern = /^x(?:0\.(?:[5-9]\d*)|1(?:\.\d+)?|2(?:\.0+)?)$/;
 
@@ -19,7 +19,7 @@ export function registerSayTool(
   characterInfoService: CharacterInfoService,
   terminalBackground: TerminalBackground | null
 ): void {
-  registerToolWithZod3Shape(
+  registerToolWithZodShape(
     server,
     'say',
     {
