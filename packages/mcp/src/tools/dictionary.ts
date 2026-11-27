@@ -8,6 +8,7 @@ import type { DictionaryService } from '@coeiro-operator/core';
 import { logger } from '@coeiro-operator/common';
 
 import type { ToolResponse } from '../types.js';
+import { registerToolWithZod3Shape } from './register-tool.js';
 
 /**
  * dictionary_register ツールを登録
@@ -17,7 +18,8 @@ export function registerDictionaryRegisterTool(
   server: McpServer,
   dictionaryService: DictionaryService
 ): void {
-  server.registerTool(
+  registerToolWithZod3Shape(
+    server,
     'dictionary_register',
     {
       description: 'ユーザー辞書に単語を登録する',
