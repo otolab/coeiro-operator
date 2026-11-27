@@ -8,18 +8,6 @@ import { createInterface, Interface as ReadlineInterface } from 'readline';
 import path from 'path';
 import { promises as fs } from 'fs';
 import { MCPDebugClient } from './core/mcp-debug-client.js';
-import { MCPServerState } from './core/state-manager.js';
-
-// MCP\u30c4\u30fc\u30eb\u306e\u30b9\u30ad\u30fc\u30de\u578b
-interface ToolSchema {
-  name: string;
-  description?: string;
-  inputSchema?: {
-    type: string;
-    properties?: Record<string, unknown>;
-    required?: string[];
-  };
-}
 
 // JSON-RPC\u30e1\u30c3\u30bb\u30fc\u30b8\u578b
 interface JsonRpcMessage {
@@ -257,7 +245,7 @@ class MCPDebugCLI {
           const capabilities = this.client.getServerCapabilities();
           if (capabilities && typeof capabilities === 'object' && 'tools' in capabilities && capabilities.tools) {
             console.log('🔧 Available Tools:');
-            for (const [name, schema] of Object.entries(capabilities.tools as Record<string, any>)) {
+            for (const name of Object.keys(capabilities.tools as Record<string, any>)) {
               console.log(`   - ${name}`);
             }
           } else {
@@ -276,7 +264,7 @@ class MCPDebugCLI {
         const request = JSON.parse(input);
         const response = await this.processRequest(request);
         console.log(JSON.stringify(response, null, 2));
-      } catch (parseError) {
+      } catch {
         // JSONでない場合はツール呼び出しと仮定
         if (input.includes('(')) {
           const match = input.match(/^(\w+)\((.*)\)$/);
