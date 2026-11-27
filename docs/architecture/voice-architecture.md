@@ -399,10 +399,10 @@ say-coeiroink "またセクシースタイルに戻る"
 await operator_assign({ operator: "angie", style: "セクシー" });
 
 // スタイルが保存され、以降の呼び出しで使用
-await say({ message: "セクシースタイルで話すよ" });
+await say({ speechText: "セクシースタイルで話すよ" });
 
 // 明示的な指定で一時的に上書き
-await say({ message: "通常スタイルで話すよ", style: "のーまる" });
+await say({ speechText: "通常スタイルで話すよ", styleName: "のーまる" });
 ```
 
 ## 🔧 設定とカスタマイズ

@@ -5,25 +5,31 @@ COEIROINKオペレータの音声速度（話速）設定に関する仕様を�
 
 ## 基本設計思想
 
-### 1. 二つの速度モード
+### 1. 三つの速度指定
 
 #### 話者固有速度モード（rate未指定）
 - 各話者・スタイルが持つ自然な速度で発話
 - 話者の個性や感情表現を最大限に活かす
 - 例：MANAの「ねむねむ」は自然にゆっくり（4.81mora/s）
 
-#### 絶対速度モード（rate指定）
+#### 絶対速度モード（数値のrate指定）
 - 全話者を統一された速度に調整
 - 基準速度：7.5mora/s = rate 200（macOS sayコマンド互換）
 - 用途：複数話者で一貫した速度が必要な場合
 
+#### 相対倍率モード（MCPの文字列rate指定）
+- 話者・スタイル固有の速度に倍率を掛けて調整
+- MCPでは `rate: "x1.2"` の形式で指定し、範囲は0.5〜2.0倍
+
 ## 速度パラメータの定義
 
 ### rate（入力パラメータ）
-- **単位**: WPM（Words Per Minute）※日本語ではmora/sに変換
-- **範囲**: 50〜400（実用範囲）
+- **CLI / 音声合成API**: 数値はWPM（Words Per Minute）。日本語ではmora/sに変換し、範囲は50〜400
+- **MCP sayツール**: 数値は同じくWPM（50〜400）。文字列は `"x1.2"` 形式の倍率（0.5〜2.0倍）
 - **未指定時**: undefined（話者固有速度を使用）
 - **デフォルト値**: なし（未指定と200は異なる意味を持つ）
+
+MCPでは絶対速度と倍率をどちらも `rate` で指定します。`factor` はMCPの入力項目ではなく、送信すると入力エラーになります。音声合成API内部では倍率を `factor` として扱います。
 
 ### 基準値
 - **基準rate**: 200 WPM
@@ -37,7 +43,7 @@ COEIROINKオペレータの音声速度（話速）設定に関する仕様を�
 // rate未指定の場合
 speed = 1.0  // 話者固有速度
 
-// rate指定の場合
+// 数値のrateを指定した場合
 targetMorasPerSecond = 7.5 * (rate / 200)
 speed = targetMorasPerSecond / styleMorasPerSecond[styleId]
 // 範囲制限: 0.5 ≤ speed ≤ 2.0
@@ -48,7 +54,7 @@ speed = targetMorasPerSecond / styleMorasPerSecond[styleId]
 // rate未指定の場合
 actualMorasPerSecond = styleMorasPerSecond[styleId]
 
-// rate指定の場合
+// 数値のrateを指定した場合
 actualMorasPerSecond = 7.5 * (rate / 200)
 // ただし、speedの範囲制限により実際の値は制限される場合がある
 ```
@@ -72,12 +78,17 @@ say-coeiroink -r 100 "こんにちは"
 
 ### 2. MCPツール
 ```typescript
-// 話者固有速度
-await say({ message: "こんにちは" })
+// rate省略時は話者・スタイル固有の速度
+await say({ speechText: "こんにちは" })
 
 // 絶対速度指定
-await say({ message: "こんにちは", rate: 200 })
+await say({ speechText: "こんにちは", rate: 200 })
+
+// 相対倍率指定（0.5〜2.0倍）
+await say({ speechText: "こんにちは", rate: "x1.2" })
 ```
+
+MCPツールの `rate` は省略可能です。数値は絶対速度（50〜400 WPM）、`x` で始まる文字列は相対倍率（0.5〜2.0倍）として扱います。`rate` を省略すると既定の200 WPMにはせず、選択中の話者・スタイル固有の速度を使います。旧 `factor` 項目は受け付けません。
 
 ### 3. 設定ファイル（config.json）
 ```json

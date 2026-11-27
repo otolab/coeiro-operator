@@ -211,7 +211,7 @@ npm run test:coeiro-e2e
 node dist/mcp/server.js --debug
 
 # 分割モード動作の確認（ログで "Using punctuation-based splitting" を確認）
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"これは最初の文です。これは二番目の文です。"}},"id":1}' | node dist/mcp/server.js --debug
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"これは最初の文です。これは二番目の文です。"}},"id":1}' | node dist/mcp/server.js --debug
 ```
 
 #### 音声合成テストコマンド例
@@ -228,16 +228,16 @@ echo '{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}' | node
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_assign","arguments":{}},"id":2}' | node dist/mcp/server.js
 
 # 4. 音声合成テスト（句読点分割モード確認）
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"これは最初の文です。これは二番目の文です。最後の文はここで終わります。"}},"id":3}' | node dist/mcp/server.js
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"これは最初の文です。これは二番目の文です。最後の文はここで終わります。"}},"id":3}' | node dist/mcp/server.js
 ```
 
 ##### パフォーマンステスト
 ```bash
 # 並行生成システムの性能テスト（長文）
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"リファクタリング後のテスト音声です。チャンク生成管理システムが正常に動作していることを確認します。並行生成機能により、複数のチャンクが同時に処理され、レイテンシが大幅に改善されています。"}},"id":4}' | node dist/mcp/server.js
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"リファクタリング後のテスト音声です。チャンク生成管理システムが正常に動作していることを確認します。並行生成機能により、複数のチャンクが同時に処理され、レイテンシが大幅に改善されています。"}},"id":4}' | node dist/mcp/server.js
 
 # 話速調整テスト
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"話速テストです。","rate":150}},"id":5}' | node dist/mcp/server.js
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"話速テストです。","rate":150}},"id":5}' | node dist/mcp/server.js
 ```
 
 ##### 設定変更テスト
@@ -315,7 +315,7 @@ npm run test:e2e
 
 # 3. mcp-debugでのテスト（推奨）
 # 詳細は docs/mcp-debug-guide.md, docs/mcp-debug/ 参照
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト音声です。"}},"id":1}' | \
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"テスト音声です。"}},"id":1}' | \
   node dist/mcp-debug/cli.js dist/mcp/server.js
 
 # 4. インタラクティブモードでの対話的テスト
@@ -339,7 +339,7 @@ node dist/mcp/server.js --debug
 # 2. JSON-RPCで音声合成をテスト
 echo '{"jsonrpc":"2.0","method":"initialize","params":{"capabilities":{"tools":{}}},"id":1}' | node dist/mcp/server.js --debug
 echo '{"jsonrpc":"2.0","method":"initialized","params":{}}' | node dist/mcp/server.js --debug  
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"リファクタリング後のテスト音声です。チャンク生成管理システムが正常に動作していることを確認します。"}},"id":2}' | node dist/mcp/server.js --debug
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"リファクタリング後のテスト音声です。チャンク生成管理システムが正常に動作していることを確認します。"}},"id":2}' | node dist/mcp/server.js --debug
 
 # 3. ログで分割処理や並行生成の動作を確認
 # デバッグログで"SYNTHESIZE_STREAM DEBUG"や"ChunkGenerationManager"の出力を確認

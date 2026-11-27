@@ -116,7 +116,7 @@ test-batch.json:
 
 ```bash
 # ストリーミング出力の確認
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"長いテキスト..."}},"id":1}' | \
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"長いテキスト..."}},"id":1}' | \
   node dist/mcp-debug/cli.js --debug dist/mcp/server.js
 ```
 

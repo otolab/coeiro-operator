@@ -70,18 +70,49 @@ describe('COEIRO Operator with MCP Debug Integration E2E Tests', () => {
         tools: Array<{
           name: string;
           inputSchema: {
-            properties?: Record<string, { enum?: unknown[]; type?: string | string[] }>;
+            properties?: Record<
+              string,
+              {
+                enum?: unknown[];
+                type?: string | string[];
+                minimum?: number;
+                maximum?: number;
+                pattern?: string;
+                not?: Record<string, unknown>;
+                description?: string;
+                anyOf?: Array<{
+                  type?: string;
+                  minimum?: number;
+                  maximum?: number;
+                  pattern?: string;
+                }>;
+              }
+            >;
             required?: string[];
           };
         }>;
       };
       const sayTool = tools.tools.find(tool => tool.name === 'say');
       const assignTool = tools.tools.find(tool => tool.name === 'operator_assign');
+      const rateBranches = sayTool?.inputSchema.properties?.rate?.anyOf;
 
-      expect(sayTool?.inputSchema.properties?.rate?.type).toBe('number');
+      expect(rateBranches).toHaveLength(2);
+      expect(rateBranches?.[0]).toMatchObject({
+        type: 'number',
+        minimum: 50,
+        maximum: 400,
+      });
+      expect(rateBranches?.[1]).toMatchObject({
+        type: 'string',
+        pattern: /^x(?:0\.(?:[5-9]\d*)|1(?:\.\d+)?|2(?:\.0+)?)$/.source,
+      });
       expect(sayTool?.inputSchema.required).toContain('speechText');
       expect(sayTool?.inputSchema.required ?? []).not.toContain('rate');
       expect(sayTool?.inputSchema.required ?? []).not.toContain('factor');
+      expect(sayTool?.inputSchema.properties?.factor).toMatchObject({
+        not: {},
+        description: expect.stringContaining('旧パラメータ'),
+      });
       expect(assignTool?.inputSchema.properties?.characterId?.enum?.[0]).toBe('AUTO');
       expect(assignTool?.inputSchema.required ?? []).not.toContain('characterId');
 
@@ -97,6 +128,30 @@ describe('COEIRO Operator with MCP Debug Integration E2E Tests', () => {
       })) as { contents: Array<{ mimeType: string; text: string }> };
       expect(installationGuide.contents[0].mimeType).toBe('text/markdown');
       expect(installationGuide.contents[0].text.length).toBeGreaterThan(0);
+    });
+
+    test('say rejects speed values outside the declared schema before synthesis', async () => {
+      for (const rate of [49, 401, 'x0.49', 'x2.01', '1.2x']) {
+        const result = await tester.callTool<{
+          isError?: boolean;
+          content?: Array<{ text: string }>;
+        }>('say', { speechText: '速度検証', rate });
+
+        expect(result.success).toBe(true);
+        expect(result.result?.isError).toBe(true);
+        expect(result.result?.content?.[0]?.text).toContain('Input validation error');
+      }
+    });
+
+    test('say rejects the retired factor parameter', async () => {
+      const result = await tester.callTool<{
+        isError?: boolean;
+        content?: Array<{ text: string }>;
+      }>('say', { speechText: '旧形式の検証', factor: 1.5 });
+
+      expect(result.success).toBe(true);
+      expect(result.result?.isError).toBe(true);
+      expect(result.result?.content?.[0]?.text).toContain('Input validation error');
     });
   });
 
