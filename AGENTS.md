@@ -38,7 +38,7 @@ AI Agent（Claude Code等）向けのプロジェクト開発リファレンス�
 開発・テスト時の例（非インタラクティブモード）：
 ```bash
 # MCPツールをテスト
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト"}},"id":1}' | \
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"テスト"}},"id":1}' | \
   node dist/mcp-debug/cli.js dist/mcp/server.js
 ```
 

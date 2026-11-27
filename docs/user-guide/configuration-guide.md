@@ -404,7 +404,7 @@ EOF
 
 1. **明示的な指定** (最優先)
    - CLIの`--style`オプション: `say-coeiroink --style "セクシー" "テキスト"`
-   - MCPツールの`style`パラメータ: `say({ message: "テキスト", style: "セクシー" })`
+   - MCPツールの`styleName`パラメータ: `say({ speechText: "テキスト", styleName: "セクシー" })`
 
 2. **オペレータセッション保存値**
    - `operator-manager assign --style=<スタイル名>`で保存された値

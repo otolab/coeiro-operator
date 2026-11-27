@@ -64,7 +64,7 @@ it('初期化→アサイン→音声再生の一連フローが動作する', a
   const assignResult = await tester.callTool('operator_assign', { operator: 'tsukuyomi' });
   expect(assignResult.success).toBe(true);
   
-  const sayResult = await tester.callTool('say', { message: 'テスト' });
+  const sayResult = await tester.callTool('say', { speechText: 'テスト' });
   expect(sayResult.success).toBe(true);
 });
 ```
@@ -90,7 +90,7 @@ describe('MCP Server E2E', () => {
 it('長文の分割処理が正しく動作する', async () => {
   // 長文を入力して、分割処理が働くことを確認
   const longMessage = '長い文章のテストです。これは句読点で分割されます。最後の文です。';
-  const result = await tester.callTool('say', { message: longMessage });
+  const result = await tester.callTool('say', { speechText: longMessage });
   
   expect(result.success).toBe(true);
   // 詳細な分割ロジックはユニットテストで検証
@@ -177,7 +177,7 @@ it('say-coeiroinkコマンドが動作する', async () => {
 
 // ✅ 良い例: MCP経由のE2Eテスト
 it('sayツールが動作する', async () => {
-  const result = await tester.callTool('say', { message: 'テスト' });
+  const result = await tester.callTool('say', { speechText: 'テスト' });
   // モックサーバーを使用できる
 });
 ```

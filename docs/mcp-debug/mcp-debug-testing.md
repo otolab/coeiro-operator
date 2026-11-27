@@ -45,7 +45,7 @@ node dist/mcp/server.js --debug
 句読点分割の動作をテストするため、sayツールを実行：
 
 ```json
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"これは最初の文です。これは二番目の文です。最後の文はここで終わります。"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"これは最初の文です。これは二番目の文です。最後の文はここで終わります。"}},"id":2}
 ```
 
 ### 4. デバッグログの確認ポイント
@@ -59,7 +59,7 @@ node dist/mcp/server.js --debug
 #### 出力されるログ詳細
 
 #### SAY TOOL レベル
-- 入力パラメータ（message, voice, rate等）
+- 入力パラメータ（speechText, characterId, rate, styleName等）
 - 現在の音声設定（splitMode, latencyMode, bufferSize）
 
 #### SYNTHESIZE_TEXT_INTERNAL レベル  
@@ -128,17 +128,17 @@ node dist/mcp/server.js --debug
 
 ### 基本的なsayテスト
 ```json
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"短いテスト。"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"短いテスト。"}},"id":3}
 ```
 
 ### 長文テスト
 ```json
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"これは長いテストメッセージです。複数の文を含んでいます。句読点で適切に分割されるかを確認します。最後の文章はここで終わります。"}},"id":4}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"これは長いテストメッセージです。複数の文を含んでいます。句読点で適切に分割されるかを確認します。最後の文章はここで終わります。"}},"id":4}
 ```
 
 ### スタイル指定テスト
 ```json
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"スタイルテストです。","style":"ura"}},"id":5}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"スタイルテストです。","styleName":"ura"}},"id":5}
 ```
 
 このドキュメントを参考に、分割モードの動作を詳細に確認してください。

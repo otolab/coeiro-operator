@@ -26,7 +26,7 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles",
 cat << 'EOF' | node dist/mcp-debug/cli.js dist/mcp/server.js
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":1}
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":2}
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"テスト"}},"id":3}
 EOF
 ```
 
@@ -112,7 +112,7 @@ node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
 cat << 'EOF' | node dist/mcp-debug/cli.js dist/mcp/server.js
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":1}
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":2}
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"message":"テスト"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"テスト"}},"id":3}
 EOF
 ```
 
