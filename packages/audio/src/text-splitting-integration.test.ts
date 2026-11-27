@@ -17,9 +17,6 @@ vi.mock('@echogarden/audio-io', () => ({
     dispose: vi.fn(),
   })),
 }));
-vi.mock('echogarden', () => ({
-  default: {},
-}));
 vi.mock('dsp.js', () => ({
   default: {
     IIRFilter: vi.fn().mockImplementation(() => ({

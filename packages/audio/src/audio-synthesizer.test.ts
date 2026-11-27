@@ -55,9 +55,6 @@ vi.mock('@coeiro-operator/core', () => ({
 }));
 
 // 他のモックの設定
-vi.mock('echogarden', () => ({
-  default: {},
-}));
 vi.mock('dsp.js', () => ({
   default: {},
 }));

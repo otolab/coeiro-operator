@@ -72,8 +72,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        env:
-          ONNXRUNTIME_NODE_INSTALL_CUDA: skip
 
       - name: Check for security vulnerabilities
         run: |
@@ -143,8 +141,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-        env:
-          ONNXRUNTIME_NODE_INSTALL_CUDA: skip
 
       - name: Build all packages
         run: pnpm build:all

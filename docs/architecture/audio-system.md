@@ -7,8 +7,8 @@ COEIRO Operatorの音声処理システムは、高品質なストリーミン�
 ### ストリーミング処理パイプライン
 
 ```
-COEIROINK API → WAV → PCM → リサンプリング → ローパスフィルター → ノイズリダクション → @echogarden/audio-io 出力
-    (24kHz)                    (24kHz → 48kHz)      (24kHz カットオフ)    (RNNoise AI)      (48kHz)
+COEIROINK API → WAV → PCM → 再生レートへ変換 → ローパスフィルター → RNNoise用48kHz変換 → ノイズ除去 → 再生レートへ復元 → @echogarden/audio-io
+    (24kHz)                     (既定48kHz)          (設定値)               (48kHz)          (480サンプル/フレーム)
 ```
 
 ### コンポーネント構成
@@ -79,9 +79,11 @@ const resampleStream = new SampleRate({
 
 ### 3. AIノイズリダクション（オプション）
 
-**技術**: Echogarden + RNNoise
-- **エンジン**: AI学習ベースノイズ除去
-- **処理**: リアルタイムスペクトラル処理
+**技術**: `@echogarden/rnnoise-wasm`（BSD-3-Clause）+ RNNoise
+- **処理レート**: 48kHz、480サンプル/フレーム
+- **チャンネル**: チャンネルごとに独立したRNNoise状態を使用
+- **再生レート**: 48kHz以外が設定されている場合は、ノイズ除去の前後で変換して元のサンプル数を保つ
+- **末尾の端数**: 最終フレームをゼロ埋めして処理し、追加したサンプルを出力から除く
 - **設定**: デフォルト無効（パフォーマンス重視）
 
 ## 設定システム

@@ -4,11 +4,11 @@
  */
 
 import { writeFile } from 'fs/promises';
-import * as Echogarden from 'echogarden';
 // @ts-expect-error - dsp.jsには型定義がない
 import DSP from 'dsp.js';
 import { Transform } from 'stream';
 import { createAudioOutput, type AudioOutput } from '@echogarden/audio-io';
+import { RNNoiseDenoiser } from './rnnoise-denoiser.js';
 import type { AudioResult, Chunk, Config, AudioConfig } from './types.js';
 import { logger } from '@coeiro-operator/common';
 import { OpenPromise } from './open-promise.js';
@@ -26,7 +26,7 @@ export class AudioPlayer {
   private playbackRate: number = SAMPLE_RATES.PLAYBACK;
   private channels: number = AUDIO_FORMAT.CHANNELS;
   private bitDepth: number = AUDIO_FORMAT.BIT_DEPTH;
-  private echogardenInitialized: boolean = false;
+  private rnnoiseDenoiser: RNNoiseDenoiser | null = null;
   private noiseReductionEnabled: boolean = FILTER_SETTINGS.NOISE_REDUCTION_DEFAULT;
   private lowpassFilterEnabled: boolean = FILTER_SETTINGS.LOWPASS_FILTER_DEFAULT;
   private lowpassCutoff: number = FILTER_SETTINGS.LOWPASS_CUTOFF;
@@ -145,28 +145,30 @@ export class AudioPlayer {
   }
 
   /**
-   * Echogardenの初期化
+   * RNNoiseを初期化
    */
-  private async initializeEchogarden(): Promise<void> {
+  private async initializeNoiseReduction(): Promise<void> {
     try {
-      this.echogardenInitialized = true;
-      logger.debug('Echogarden初期化完了');
+      this.rnnoiseDenoiser?.dispose();
+      this.rnnoiseDenoiser = await RNNoiseDenoiser.create(this.channels);
+      logger.debug('RNNoise初期化完了');
     } catch (error) {
-      logger.warn(`Echogarden初期化エラー: ${(error as Error).message}`);
+      logger.warn(`RNNoise初期化エラー: ${(error as Error).message}`);
+      this.rnnoiseDenoiser?.dispose();
+      this.rnnoiseDenoiser = null;
       this.noiseReductionEnabled = false;
-      this.echogardenInitialized = false;
     }
   }
 
   async initialize(): Promise<boolean> {
     try {
-      // ノイズ除去が有効な場合はEchogardenを初期化
+      // ノイズ除去が有効な場合だけRNNoiseを初期化
       if (this.noiseReductionEnabled) {
-        await this.initializeEchogarden();
+        await this.initializeNoiseReduction();
       }
 
       logger.info(
-        `音声プレーヤー初期化: @echogarden/audio-io使用（プリコンパイル済みバイナリ）${this.noiseReductionEnabled ? ' + Echogarden' : ''}`
+        `音声プレーヤー初期化: @echogarden/audio-io使用（プリコンパイル済みバイナリ）${this.noiseReductionEnabled ? ' + RNNoise' : ''}`
       );
 
       this.isInitialized = true;
@@ -364,13 +366,17 @@ export class AudioPlayer {
     return new Transform({
       transform: async (chunk, encoding, callback) => {
         try {
-          if (!this.noiseReductionEnabled || !this.echogardenInitialized) {
+          if (!this.noiseReductionEnabled || !this.rnnoiseDenoiser) {
             callback(null, chunk);
             return;
           }
 
           const pcmData = new Uint8Array(chunk);
-          const denoisedData = await this.applyNoiseReductionToChunk(pcmData);
+          const denoisedData = this.rnnoiseDenoiser.process(
+            pcmData,
+            this.playbackRate,
+            this.channels
+          );
           callback(null, Buffer.from(denoisedData));
         } catch (error) {
           logger.warn(`ノイズリダクション処理エラー: ${(error as Error).message}`);
@@ -627,46 +633,6 @@ export class AudioPlayer {
   }
 
   /**
-   * チャンク単位のノイズリダクション処理
-   */
-  private async applyNoiseReductionToChunk(pcmData: Uint8Array): Promise<Uint8Array> {
-    try {
-      const samplesCount = pcmData.length / 2;
-      const audioSamples = new Float32Array(samplesCount);
-
-      for (let i = 0; i < samplesCount; i++) {
-        const sampleIndex = i * 2;
-        const sample = pcmData[sampleIndex] | (pcmData[sampleIndex + 1] << 8);
-        audioSamples[i] = (sample < 32768 ? sample : sample - 65536) / 32768.0;
-      }
-
-      const rawAudio = {
-        audioChannels: [audioSamples],
-        sampleRate: this.playbackRate,
-      };
-
-      const result = await Echogarden.denoise(rawAudio, {
-        engine: 'rnnoise',
-      });
-
-      const processedData = new Uint8Array(pcmData.length);
-      const denoisedSamples = result.denoisedAudio.audioChannels[0];
-      for (let i = 0; i < samplesCount; i++) {
-        const sample = Math.max(-1.0, Math.min(1.0, denoisedSamples[i]));
-        const intSample = Math.floor(sample * 32767);
-        const outputIndex = i * 2;
-        processedData[outputIndex] = intSample & 0xff;
-        processedData[outputIndex + 1] = (intSample >> 8) & 0xff;
-      }
-
-      return processedData;
-    } catch (error) {
-      console.warn(`ノイズリダクション処理エラー: ${(error as Error).message}`);
-      return pcmData;
-    }
-  }
-
-  /**
    * WAVヘッダーを除去してPCMデータを抽出
    */
   extractPCMFromWAV(wavBuffer: ArrayBuffer): Uint8Array {
@@ -854,16 +820,17 @@ export class AudioPlayer {
         this.currentChunkOffset = 0;
       }
 
-      // Echogardenリソースの解放
-      if (this.echogardenInitialized) {
-        // Echogardenには明示的なクリーンアップメソッドがないため、フラグのみリセット
-        this.echogardenInitialized = false;
-      }
-
-      this.isInitialized = false;
-      logger.info('AudioPlayer cleanup完了');
     } catch (error) {
       logger.warn(`AudioPlayer cleanup warning: ${(error as Error).message}`);
+    } finally {
+      try {
+        this.rnnoiseDenoiser?.dispose();
+      } catch (error) {
+        logger.warn(`RNNoise cleanup warning: ${(error as Error).message}`);
+      }
+      this.rnnoiseDenoiser = null;
+      this.isInitialized = false;
+      logger.info('AudioPlayer cleanup完了');
     }
   }
 }
