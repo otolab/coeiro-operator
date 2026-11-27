@@ -260,7 +260,7 @@ config.jsonに以下を追加：
 - **speaker**: クロスプラットフォーム音声出力
 - **node-libsamplerate**: 高品質リサンプリング
 - **dsp.js**: デジタル信号処理・フィルタリング
-- **echogarden**: ノイズリダクション（オプション）
+- **@echogarden/rnnoise-wasm**: RNNoiseによるノイズリダクション（オプション）
 
 ## ドキュメント
 

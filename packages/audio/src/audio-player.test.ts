@@ -12,9 +12,6 @@ vi.mock('fs/promises', () => ({
   readFile: vi.fn(),
   writeFile: vi.fn(),
 }));
-vi.mock('echogarden', () => ({
-  default: {},
-}));
 vi.mock('dsp.js', () => ({
   default: {
     IIRFilter: vi.fn().mockImplementation(() => ({
@@ -53,6 +50,49 @@ describe('AudioPlayer', () => {
     test('正常に初期化できること', async () => {
       const result = await audioPlayer.initialize();
       expect(result).toBe(true);
+      expect(audioPlayer['rnnoiseDenoiser']).toBeNull();
+    });
+
+    test('ノイズ除去有効時はRNNoiseを初期化し、可変再生レートでも出力長を保つ', async () => {
+      audioPlayer.setNoiseReduction(true);
+      audioPlayer.setSynthesisRate(48_000);
+      audioPlayer.setPlaybackRate(44_100);
+      expect(await audioPlayer.initialize()).toBe(true);
+
+      const sampleCount = 481;
+      const pcmData = new Uint8Array(sampleCount * 2);
+      const pcmView = new DataView(pcmData.buffer);
+      for (let i = 0; i < sampleCount; i++) {
+        pcmView.setInt16(i * 2, Math.round(Math.sin((2 * Math.PI * 220 * i) / 48_000) * 8_000), true);
+      }
+
+      const wavBuffer = new ArrayBuffer(44 + pcmData.length);
+      const wavView = new DataView(wavBuffer);
+      wavView.setUint32(0, 0x52494646, false);
+      wavView.setUint32(4, wavBuffer.byteLength - 8, true);
+      wavView.setUint32(8, 0x57415645, false);
+      wavView.setUint32(12, 0x666d7420, false);
+      wavView.setUint32(16, 16, true);
+      wavView.setUint16(20, 1, true);
+      wavView.setUint16(22, 1, true);
+      wavView.setUint32(24, 48_000, true);
+      wavView.setUint32(28, 96_000, true);
+      wavView.setUint16(32, 2, true);
+      wavView.setUint16(34, 16, true);
+      wavView.setUint32(36, 0x64617461, false);
+      wavView.setUint32(40, pcmData.length, true);
+      new Uint8Array(wavBuffer).set(pcmData, 44);
+
+      await audioPlayer.playAudioStream({
+        chunk: { text: 'test', index: 0, isFirst: true, isLast: true, overlap: 0 },
+        audioBuffer: wavBuffer,
+        latency: 100,
+      });
+
+      expect(audioPlayer['chunkQueue'][0]).toHaveLength(441);
+
+      await audioPlayer.cleanup();
+      expect(audioPlayer['rnnoiseDenoiser']).toBeNull();
     });
   });
 

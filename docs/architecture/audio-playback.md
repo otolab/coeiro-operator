@@ -37,7 +37,7 @@ MCPツール(say) → SayCoeiroink.synthesize() → SpeechQueue → TaskQueue
 |------|-----------|------|
 | リサンプリング | 自前実装 | 線形補間 24kHz→48kHz |
 | ローパスフィルター | dsp.js | IIRFilter |
-| ノイズ除去 | echogarden | rnnoise エンジン |
+| ノイズ除去 | @echogarden/rnnoise-wasm | RNNoise。48kHz・480サンプル単位で処理し、設定された再生レートに戻す |
 
 ## 主要ファイル
 
