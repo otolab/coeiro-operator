@@ -7,6 +7,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
+import { registerToolWithZod3Shape } from './register-tool.js';
 
 // デバッグモードの判定
 const isDebugMode = process.argv.includes('--debug') || process.argv.includes('-d');
@@ -37,7 +38,8 @@ const server = new McpServer(
 debugLog('Echo MCP Server instance created');
 
 // echoツール
-server.registerTool(
+registerToolWithZod3Shape(
+  server,
   'echo',
   {
     description: 'エコーバックテストツール',
@@ -68,7 +70,8 @@ server.registerTool(
 );
 
 // debug_infoツール
-server.registerTool(
+registerToolWithZod3Shape(
+  server,
   'debug_info',
   {
     description: 'デバッグ情報取得ツール',
@@ -120,8 +123,31 @@ server.registerTool(
   }
 );
 
+// Zod schema compatibility fixture used by MCP Debug E2E tests
+registerToolWithZod3Shape(
+  server,
+  'schema_compatibility',
+  {
+    description: 'Zod schema compatibility test tool',
+    inputSchema: {
+      label: z.string().optional(),
+      mode: z.enum(['absolute', 'relative']),
+      speed: z.union([z.number(), z.string()]),
+    },
+  },
+  async ({ label, mode, speed }) => ({
+    content: [
+      {
+        type: 'text',
+        text: JSON.stringify({ label, mode, speed }),
+      },
+    ],
+  })
+);
+
 // test_outputツール
-server.registerTool(
+registerToolWithZod3Shape(
+  server,
   'test_output',
   {
     description: '出力チャネルテストツール',

@@ -4,6 +4,7 @@ import { SayCoeiroink } from '@coeiro-operator/audio';
 import { OperatorManager, CharacterInfoService, TerminalBackground } from '@coeiro-operator/core';
 import { logger } from '@coeiro-operator/common';
 import type { ToolResponse } from '../types.js';
+import { registerToolWithZod3Shape } from './register-tool.js';
 
 /**
  * sayツールの登録
@@ -16,7 +17,8 @@ export function registerSayTool(
   characterInfoService: CharacterInfoService,
   terminalBackground: TerminalBackground | null
 ): void {
-  server.registerTool(
+  registerToolWithZod3Shape(
+    server,
     'say',
     {
       description: '日本語音声を非同期で出力する',

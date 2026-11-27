@@ -2,6 +2,7 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { SayCoeiroink } from '@coeiro-operator/audio';
 import type { ToolResponse } from '../types.js';
+import { registerToolWithZod3Shape } from './register-tool.js';
 
 /**
  * queue_statusツールの登録
@@ -60,7 +61,8 @@ export function registerQueueClearTool(
   server: McpServer,
   sayCoeiroink: SayCoeiroink
 ): void {
-  server.registerTool(
+  registerToolWithZod3Shape(
+    server,
     'queue_clear',
     {
       description: '音声キューをクリアする（再生中の音声は停止しない）',
@@ -164,7 +166,8 @@ export function registerWaitForTaskCompletionTool(
   server: McpServer,
   sayCoeiroink: SayCoeiroink
 ): void {
-  server.registerTool(
+  registerToolWithZod3Shape(
+    server,
     'wait_for_task_completion',
     {
       description: '音声タスクの完了を待機する',

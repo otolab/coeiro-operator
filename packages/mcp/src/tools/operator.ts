@@ -13,6 +13,7 @@ import { logger } from '@coeiro-operator/common';
 import { SayCoeiroink } from '@coeiro-operator/audio';
 
 import type { ToolResponse, StyleInfo } from '../types.js';
+import { registerToolWithZod3Shape } from './register-tool.js';
 import {
   validateOperatorInput,
   assignOperator,
@@ -38,7 +39,8 @@ export function registerOperatorAssignTool(
   // 'AUTO'を先頭に追加して選択肢を作成
   const operatorOptions = ['AUTO', ...availableCharacters] as [string, ...string[]];
 
-  server.registerTool(
+  registerToolWithZod3Shape(
+    server,
     'operator_assign',
     {
       description: 'オペレータを割り当てる。AUTOで自動選択',
@@ -282,7 +284,8 @@ export function registerOperatorStylesTool(
   operatorManager: OperatorManager,
   characterInfoService: CharacterInfoService
 ): void {
-  server.registerTool(
+  registerToolWithZod3Shape(
+    server,
     'operator_styles',
     {
       description: '指定キャラクターの基本情報とスタイル一覧を表示する',

@@ -7,13 +7,15 @@ import { z } from 'zod';
 import { logger } from '@coeiro-operator/common';
 
 import type { ToolResponse } from '../types.js';
+import { registerToolWithZod3Shape } from './register-tool.js';
 
 /**
  * debug_logs ツールを登録
  * デバッグ用ログの取得と表示
  */
 export function registerDebugLogsTool(server: McpServer): void {
-  server.registerTool(
+  registerToolWithZod3Shape(
+    server,
     'debug_logs',
     {
       description: 'デバッグログの取得・表示',
