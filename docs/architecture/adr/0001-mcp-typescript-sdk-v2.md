@@ -35,17 +35,20 @@ Issue #248 は、`@modelcontextprotocol/sdk` v1 から公式 TypeScript SDK v2 �
 4. **SDK の登録 API を v2 形式にそろえる。** 本体とテスト fixture の `resource()` を `registerResource()` に、ツール登録を `registerTool()` と config object に移す。Issue #247 の `resource()` 整理はこの移行にまとめ、同じ変更を別 PR で重ねない。
 5. **移行時点では現在の stdio protocol handshake を維持する。** `StdioServerTransport` と `server.connect()` を使い、`serveStdio()` への切り替えと 2026-07-28 protocol revision の提供は別途判断する。現行 debug client が使う 2024-11-05 の initialize handshake を含め、旧版 client との接続を検証する。
 6. **v2 が変える wire 表現を明示的な互換性差分として扱う。** `tools/list` の JSON Schema は意味上の入力制約を維持するが、v1 と同一の JSON 形状までは保証しない。未登録 tool の呼び出しは v2 の `-32602` 応答に合わせる。この差分を利用者向けの移行説明と E2E 検証に含める。入力値の検証エラー、登録済み tool の応答、resources/list・resources/read の動作は引き続き確認する。
-7. **Node.js 要件と wire 応答の互換性変更をリリース上の破壊的変更として扱う。** 実装 PR では `@coeiro-operator/mcp` と `@coeiro-operator/mcp-debug` の major changeset を用意し、Node.js 18 の利用者が受ける影響と移行手順を記載する。package ごとの公開バージョンを SDK のバージョン番号に機械的に合わせない。
+7. **SDK と製品 package のバージョンは切り分ける。** SDK の v2 は upstream の major update だが、このツールの提供機能は変わらないというオペレータ方針に従い、実装時の `@coeiro-operator/mcp` と `@coeiro-operator/mcp-debug` の changeset は minor とする。SDK の major を理由に製品 package まで major にはしない。ただし、下記の Node.js 要件と wire 応答の差分は実際の互換性影響として明記し、minor リリースに含める前提を実装着手前に確認する。
 
 ## Consequences
 
 - MCP package の利用者は Node.js 20 以上が必要になる。CLI 等の別 package は Node.js 18 以上を維持するため、案内では package ごとの要件を区別する。
-- SDK v2 の schema 出力と未登録 tool のエラー応答は v1 と異なる。v1 の JSON Schema 全体や応答形式に依存するクライアントは調整が必要になる。
+- SDK v2 の schema 出力と未登録 tool のエラー応答は v1 と異なる。v1 の JSON Schema 全体や応答形式に依存するクライアントは調整が必要になる。changeset は製品 package の minor とする方針だが、これらの差分をその範囲で受け入れるかは未確定である。
 - 2026-07-28 protocol revision の機能はこの移行では提供しない。必要になった段階で、client 対応と `serveStdio()` への切り替えを別途評価する。
 - SDK v1 の保守期間には最低保証があるが、終了日は確定していない。v2 はすでに安定版のため、Node.js 20 への更新と破壊的変更の説明を含めて移行する。
 
 ## Unresolved and deferred
 
+- `packages/mcp/README.md` は現行の動作要件を Node.js 18 以上としている一方、SDK v2 は Node.js 20 以上を要求する。v2 移行をそのまま行うと、この package の公開要件を引き上げることになる。製品の提供機能が同じでも利用可能な実行環境は狭まるため、minor リリースでこの変更を受け入れるか、別の移行策が必要かを実装前に conductor が判断する。
+- 現行の `src/e2e-test/mcp-server.test.ts` は、存在しない tool の呼び出しを `isError: true` を含む tool result として検証している。SDK v2 の応答は JSON-RPC `-32602` error となる。また `@coeiro-operator/mcp-debug` は `MCPToolCallResponse` を公開し、その型に `isError` を含めている。テストが示す現行 wire 挙動と公開型に照らし、この応答変更を minor リリースで受け入れるか、現行互換を維持する手段を別途検討するかは未確定であり、実装で黙って置き換えない。
+- `tools/list` の JSON Schema は SDK v2 で形が変わる。公開型の `MCPTool.inputSchema` は `unknown` で形状を保証していないが、schema の具体的な JSON 形に依存する既存 client への影響は別途確認が必要である。
 - SDK v1.x の保守終了日は公式資料に記載されていない。2027-01-27 頃は v2 公開後 6 か月の最低保証期間を満たす目安であり、確定した終了日ではない。
 - 導入する v2 package の具体的な patch version は実装時点で選ぶ。公式の stable 2.x package を選び、リポジトリの既存方針に沿って lockfile と package manifest に固定する。
 - 2026-07-28 protocol revision への対応は今回の移行対象外とする。現行利用者からの要件が出た段階で別途判断する。
@@ -58,4 +61,4 @@ Issue #248 は、`@modelcontextprotocol/sdk` v1 から公式 TypeScript SDK v2 �
 - workspace build と型チェックが通る。
 - `tools/list` と `tools/call`、optional・enum・union schema の公開と入力検証、無効入力・未登録 tool の応答を stdio 経由で確認する。
 - `resources/list` と `resources/read`、initialize handshake、stdio 起動を E2E で確認する。
-- Node.js 要件、破壊的変更、Node.js 18 利用者向けの案内が package metadata と利用者向け文書で一致する。
+- オペレータ方針に従い両 package に minor changeset を用意し、Node.js 18 利用者への要件変更と wire 応答差分を利用者向け文書で明示する。これらの互換性差分を受け入れる判断が未了なら、実装へ進まず conductor に返す。
