@@ -1502,8 +1502,8 @@ packages:
     resolution: {integrity: sha512-0hJU9SCPvmMzIBdZFqNPXWa6dqh7WdH0cII9y+CyS8rG3nL48Bclra9HmKhVVUHyPWNH5Y7xDwAB7bfgSjkUMQ==}
     engines: {node: '>= 0.4'}
 
-  hono@4.13.23:
-    resolution: {integrity: sha512-OS90dj7dcsftEEWCOef8jRbnHE5lbrOq0hNRqjSyPsOnaGZvvfof1KS05hQNb4kUOCfDq1mG3PmHoX37DMnHQg==}
+  hono@4.13.22:
+    resolution: {integrity: sha512-wncKd5/40Pj8grx0RZ2fgNIicFEmVFwIHT5UFLTnphR8I6AQWFf9c2JoM6ZJ9g8y4pMzg3sNlCVNe0m2Yclg0Q==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@4.0.0:
@@ -2766,9 +2766,9 @@ snapshots:
       '@eslint/core': 0.16.0
       levn: 0.4.1
 
-  '@hono/node-server@2.1.11(hono@4.13.23)':
+  '@hono/node-server@2.1.11(hono@4.13.22)':
     dependencies:
-      hono: 4.13.23
+      hono: 4.13.22
 
   '@humanfs/core@0.19.1': {}
 
@@ -2815,7 +2815,7 @@ snapshots:
 
   '@modelcontextprotocol/sdk@1.32.2(zod@3.25.76)':
     dependencies:
-      '@hono/node-server': 2.1.11(hono@4.13.23)
+      '@hono/node-server': 2.1.11(hono@4.13.22)
       ajv: 8.20.0
       ajv-formats: 3.0.1(ajv@8.20.0)
       content-type: 1.0.5
@@ -2825,7 +2825,7 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.3.0
       express-rate-limit: 8.7.5(express@5.3.0)
-      hono: 4.13.23
+      hono: 4.13.22
       jose: 6.2.18
       json-schema-typed: 8.0.2
       pkce-challenge: 5.0.0
@@ -3842,7 +3842,7 @@ snapshots:
     dependencies:
       function-bind: 1.1.2
 
-  hono@4.13.23: {}
+  hono@4.13.22: {}
 
   html-encoding-sniffer@4.0.0:
     dependencies:
