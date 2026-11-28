@@ -1,6 +1,5 @@
 #!/usr/bin/env node --no-deprecation
 import { McpServer } from '@modelcontextprotocol/server';
-import { loadSkills } from '@modelcontextprotocol/server/ext/skills/node';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import * as path from 'path';
 import { readFile } from 'fs/promises';
@@ -40,6 +39,7 @@ import {
 import { registerDictionaryRegisterTool } from './tools/dictionary.js';
 import { registerDebugLogsTool } from './tools/debug.js';
 import { LegacyToolResponseTransport } from './legacy-tool-response-transport.js';
+import { loadOperatorSkills } from './skills.js';
 
 interface CLIOptions {
   debug?: boolean;
@@ -59,7 +59,7 @@ program
 const options = program.opts<CLIOptions>();
 const { debug: isDebugMode, config: configPath } = options;
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
-const skills = await loadSkills(path.join(currentDir, 'skills'), { strict: true });
+const skills = await loadOperatorSkills(path.join(currentDir, 'skills'));
 
 // デバッグモードの場合は詳細ログ、そうでなければMCPサーバーモード
 if (isDebugMode) {
