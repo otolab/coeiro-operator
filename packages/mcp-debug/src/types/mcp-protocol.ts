@@ -17,6 +17,7 @@ export interface MCPTool {
  */
 export interface MCPToolsListResponse {
   tools: MCPTool[];
+  nextCursor?: string;
 }
 
 /**
