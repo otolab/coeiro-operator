@@ -43,7 +43,8 @@ export function registerOperatorAssignTool(
     server,
     'operator_assign',
     {
-      description: 'オペレータを割り当てる。AUTOで自動選択',
+      description:
+        'オペレータを割り当てます。characterId を省略すると自動選択します。キャラクターに挨拶が設定されている場合、割り当て後に音声キューへ追加します（再生完了は待ちません）。',
       inputSchema: {
         characterId: z
           .enum(operatorOptions)
@@ -147,7 +148,7 @@ export function registerOperatorReleaseTool(
     server,
     'operator_release',
     {
-      description: '現在のオペレータを解放する',
+      description: '現在のオペレータを解放します。設定済みの別れの言葉は自動では発話されません。',
       inputSchema: {},
     },
     async (): Promise<ToolResponse> => {

@@ -38,6 +38,29 @@ describe('Playback Tools', () => {
     } as any;
   });
 
+  test('ツール説明にキュー操作の契約が含まれること', () => {
+    registerQueueStatusTool(mockServer, mockSayCoeiroink);
+    registerQueueClearTool(mockServer, mockSayCoeiroink);
+    registerPlaybackStopTool(mockServer, mockSayCoeiroink);
+    registerWaitForTaskCompletionTool(mockServer, mockSayCoeiroink);
+
+    expect(registeredTools.get('queue_status').schema.description).toContain(
+      '成功・失敗履歴は返さない'
+    );
+    expect(registeredTools.get('queue_clear').schema.description).toContain(
+      '再生中の音声は停止しません'
+    );
+    expect(registeredTools.get('playback_stop').schema.description).toContain(
+      '現在のチャンクは最後まで再生'
+    );
+    expect(registeredTools.get('wait_for_task_completion').schema.description).toContain(
+      '個別の say タスクではなく共有音声キュー全体'
+    );
+    expect(registeredTools.get('wait_for_task_completion').schema.description).toContain(
+      '内部の待機処理は取り消されません'
+    );
+  });
+
   describe('registerQueueStatusTool', () => {
     test('ツールが正しく登録されること', () => {
       registerQueueStatusTool(mockServer, mockSayCoeiroink);
