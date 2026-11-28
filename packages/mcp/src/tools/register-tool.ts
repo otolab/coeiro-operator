@@ -1,28 +1,50 @@
-import { McpServer, type RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import {
+  McpServer,
+  type CallToolResult,
+  type RegisteredTool,
+  type StandardSchemaWithJSON,
+} from '@modelcontextprotocol/server';
 import { z, type ZodRawShape } from 'zod';
 
-type SchemaArgs<Shape extends ZodRawShape> = z.infer<z.ZodObject<Shape>>;
+type SchemaArgs<Shape extends ZodRawShape> = z.output<z.ZodObject<Shape>>;
 type SchemaCallback<Shape extends ZodRawShape> = (
   args: SchemaArgs<Shape>
 ) => CallToolResult | Promise<CallToolResult>;
-type Zod3ShapeRegisterTool = <Shape extends ZodRawShape>(
-  name: string,
-  config: { description?: string; inputSchema: Shape },
-  callback: SchemaCallback<Shape>
-) => RegisteredTool;
 
 /**
- * SDK 1.32.x の registerTool は Zod v3/v4 の両 schema を同じ型引数で扱う。
- * Zod v3 を使うこの package では、入力を raw shape に限定して型推論を安定させる。
- * 実行時は SDK の registerTool をそのまま呼び、SDK による入力検証を維持する。
+ * Zod 4 で入力を検証しつつ、v1 SDK と同じ draft-07 schema を tools/list に公開する。
+ * v2 SDK の既定形式では inputSchema の生成形が変わるため、既存の公開形を保つ。
  */
-export function registerToolWithZod3Shape<Shape extends ZodRawShape>(
+export function registerToolWithZodShape<Shape extends ZodRawShape>(
   server: McpServer,
   name: string,
   config: { description?: string; inputSchema: Shape },
   callback: SchemaCallback<Shape>
 ): RegisteredTool {
-  const registerTool = server.registerTool.bind(server) as Zod3ShapeRegisterTool;
-  return registerTool(name, config, callback);
+  const inputSchema = z.object(config.inputSchema);
+  const standardSchema = inputSchema['~standard'];
+  const inputSchemaWithLegacyJsonSchema = {
+    '~standard': {
+      ...standardSchema,
+      jsonSchema: {
+        input: () => ({
+          ...z.toJSONSchema(inputSchema, { target: 'draft-7', io: 'input' }),
+          additionalProperties: false,
+        }),
+        output: () => ({
+          ...z.toJSONSchema(inputSchema, { target: 'draft-7', io: 'output' }),
+          additionalProperties: false,
+        }),
+      },
+    },
+  } as StandardSchemaWithJSON<z.input<typeof inputSchema>, z.output<typeof inputSchema>>;
+
+  return server.registerTool(
+    name,
+    {
+      description: config.description,
+      inputSchema: inputSchemaWithLegacyJsonSchema,
+    },
+    callback
+  );
 }

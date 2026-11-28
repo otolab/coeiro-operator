@@ -52,3 +52,11 @@ COEIRO Operatorは、SpeechQueueを基盤とした統一実装により、CLIツ
 - 音声合成の完了確認は、ログまたは音声出力の開始で判断してください
 - エラーが発生した場合、ツールのレスポンスではなくログに記録されます
 - 音声合成の結果（成功/失敗）はツールのレスポンスには含まれません
+
+## MCP Tasks protocol との違い
+
+ここでいう「タスク」は COEIRO Operator 内部の SpeechQueue のタスクです。`say` は通常の MCP `tools/call` に対してアプリ内 task ID を含む tool result を返し、`wait_for_task_completion` や `queue_status` も通常の `tools/call` として提供します。MCP の task-augmented execution や `tasks/*` は使用していません。
+
+SDK v2 移行後の `tools/list` では、v1 が返していた `execution.taskSupport: "forbidden"` が省略されます。MCP 2025-11-25 仕様では省略も forbidden を意味するため、通常の tool call と SpeechQueue の動作は変わりません。MCP 2026-07-28 仕様では Tasks は別 extension となっていますが、本サーバーはその extension を提供していません。
+
+field の存在を前提とする独自 client からは JSON の形が変わって見えます。標準仕様に従う client は省略を task 非対応として扱えます。接続先の外部 client が field の存在を個別に確認しているかどうかは、このリポジトリからは確認できません。

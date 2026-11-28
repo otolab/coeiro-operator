@@ -2,13 +2,13 @@
  * Dictionary関連のMCPツール定義
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { DictionaryService } from '@coeiro-operator/core';
 import { logger } from '@coeiro-operator/common';
 
 import type { ToolResponse } from '../types.js';
-import { registerToolWithZod3Shape } from './register-tool.js';
+import { registerToolWithZodShape } from './register-tool.js';
 
 /**
  * dictionary_register ツールを登録
@@ -18,7 +18,7 @@ export function registerDictionaryRegisterTool(
   server: McpServer,
   dictionaryService: DictionaryService
 ): void {
-  registerToolWithZod3Shape(
+  registerToolWithZodShape(
     server,
     'dictionary_register',
     {

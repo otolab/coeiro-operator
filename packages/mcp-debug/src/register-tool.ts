@@ -1,27 +1,49 @@
-import { McpServer, type RegisteredTool } from '@modelcontextprotocol/sdk/server/mcp.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import {
+  McpServer,
+  type CallToolResult,
+  type RegisteredTool,
+  type StandardSchemaWithJSON,
+} from '@modelcontextprotocol/server';
 import { z, type ZodRawShape } from 'zod';
 
-type SchemaArgs<Shape extends ZodRawShape> = z.infer<z.ZodObject<Shape>>;
+type SchemaArgs<Shape extends ZodRawShape> = z.output<z.ZodObject<Shape>>;
 type SchemaCallback<Shape extends ZodRawShape> = (
   args: SchemaArgs<Shape>
 ) => CallToolResult | Promise<CallToolResult>;
-type Zod3ShapeRegisterTool = <Shape extends ZodRawShape>(
-  name: string,
-  config: { description?: string; inputSchema: Shape },
-  callback: SchemaCallback<Shape>
-) => RegisteredTool;
 
 /**
- * Zod v3 raw shape に型を限定して SDK の registerTool を呼び出す。
- * 型推論を安定させつつ、実行時の schema 検証は SDK に委ねる。
+ * Zod 4 で入力を検証しつつ、v1 SDK と同じ draft-07 schema を tools/list に公開する。
  */
-export function registerToolWithZod3Shape<Shape extends ZodRawShape>(
+export function registerToolWithZodShape<Shape extends ZodRawShape>(
   server: McpServer,
   name: string,
   config: { description?: string; inputSchema: Shape },
   callback: SchemaCallback<Shape>
 ): RegisteredTool {
-  const registerTool = server.registerTool.bind(server) as Zod3ShapeRegisterTool;
-  return registerTool(name, config, callback);
+  const inputSchema = z.object(config.inputSchema);
+  const standardSchema = inputSchema['~standard'];
+  const inputSchemaWithLegacyJsonSchema = {
+    '~standard': {
+      ...standardSchema,
+      jsonSchema: {
+        input: () => ({
+          ...z.toJSONSchema(inputSchema, { target: 'draft-7', io: 'input' }),
+          additionalProperties: false,
+        }),
+        output: () => ({
+          ...z.toJSONSchema(inputSchema, { target: 'draft-7', io: 'output' }),
+          additionalProperties: false,
+        }),
+      },
+    },
+  } as StandardSchemaWithJSON<z.input<typeof inputSchema>, z.output<typeof inputSchema>>;
+
+  return server.registerTool(
+    name,
+    {
+      description: config.description,
+      inputSchema: inputSchemaWithLegacyJsonSchema,
+    },
+    callback
+  );
 }

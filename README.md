@@ -25,7 +25,8 @@ COEIRO OperatorはCOEIROINKの音声合成を活用し、端末セッション�
 ## 動作環境
 
 ### 基本要件
-- Node.js 18以上
+- CLIパッケージ: Node.js 18以上
+- MCPサーバーとMCPデバッグツール: Node.js 20以上
 - COEIROINK本体（[公式サイト](https://coeiroink.com/)）
 
 ### ターミナル背景画像機能（オプション）
@@ -295,7 +296,7 @@ config.jsonに以下を追加：
 ### クイック開発セットアップ
 
 ```bash
-# 基本要件: Node.js 18以上 + COEIROINK + pnpm + ビルドツール
+# 基本要件: Node.js 20以上 + COEIROINK + pnpm + ビルドツール
 git clone https://github.com/otolab/coeiro-operator.git
 cd coeiro-operator
 pnpm install

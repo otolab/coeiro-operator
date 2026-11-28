@@ -27,7 +27,9 @@ type JsonSchemaProperty = {
 type ListedTool = {
   name: string;
   inputSchema: {
+    $schema?: string;
     type?: string;
+    additionalProperties?: boolean;
     properties?: Record<string, JsonSchemaProperty>;
     required?: string[];
   };
@@ -53,7 +55,26 @@ describe('registerTool Zod schema compatibility', () => {
     const rateBranches = tool?.inputSchema.properties?.rate.anyOf;
 
     expect(tool).toBeDefined();
-    expect(tool?.inputSchema.type).toBe('object');
+    expect(tool?.inputSchema).toEqual({
+      $schema: 'http://json-schema.org/draft-07/schema#',
+      type: 'object',
+      properties: {
+        label: { type: 'string' },
+        defaulted: { type: 'string', default: 'natural' },
+        mode: { type: 'string', enum: ['absolute', 'relative'] },
+        rate: {
+          anyOf: [
+            { type: 'number', minimum: 50, maximum: 400 },
+            {
+              type: 'string',
+              pattern: /^x(?:0\.(?:[5-9]\d*)|1(?:\.\d+)?|2(?:\.0+)?)$/.source,
+            },
+          ],
+        },
+      },
+      required: ['mode'],
+      additionalProperties: false,
+    });
     expect(tool?.inputSchema.properties?.mode.enum).toEqual(['absolute', 'relative']);
     expect(rateBranches).toHaveLength(2);
     expect(rateBranches?.[0]).toMatchObject({

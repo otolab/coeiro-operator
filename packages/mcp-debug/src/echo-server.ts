@@ -4,10 +4,10 @@
  * MCPライブラリを使用した最小限のテスト用エコーバックサーバー
  */
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { McpServer } from '@modelcontextprotocol/server';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import { z } from 'zod';
-import { registerToolWithZod3Shape } from './register-tool.js';
+import { registerToolWithZodShape } from './register-tool.js';
 
 // デバッグモードの判定
 const isDebugMode = process.argv.includes('--debug') || process.argv.includes('-d');
@@ -40,7 +40,7 @@ const relativeRatePattern = /^x(?:0\.(?:[5-9]\d*)|1(?:\.\d+)?|2(?:\.0+)?)$/;
 debugLog('Echo MCP Server instance created');
 
 // echoツール
-registerToolWithZod3Shape(
+registerToolWithZodShape(
   server,
   'echo',
   {
@@ -72,7 +72,7 @@ registerToolWithZod3Shape(
 );
 
 // debug_infoツール
-registerToolWithZod3Shape(
+registerToolWithZodShape(
   server,
   'debug_info',
   {
@@ -126,7 +126,7 @@ registerToolWithZod3Shape(
 );
 
 // Zod schema compatibility fixture used by MCP Debug E2E tests
-registerToolWithZod3Shape(
+registerToolWithZodShape(
   server,
   'schema_compatibility',
   {
@@ -151,7 +151,7 @@ registerToolWithZod3Shape(
 );
 
 // test_outputツール
-registerToolWithZod3Shape(
+registerToolWithZodShape(
   server,
   'test_output',
   {
@@ -195,7 +195,7 @@ registerToolWithZod3Shape(
 );
 
 // server-info リソース（テキスト）
-server.resource(
+server.registerResource(
   'server-info',
   'echo://server/info',
   {
@@ -217,7 +217,7 @@ server.resource(
 );
 
 // config リソース（JSON）
-server.resource(
+server.registerResource(
   'config',
   'echo://server/config',
   {
