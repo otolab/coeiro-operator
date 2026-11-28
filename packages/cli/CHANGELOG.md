@@ -1,5 +1,11 @@
 # @coeiro-operator/cli
 
+## 1.5.9
+
+### Patch Changes
+
+- 42b2488: CLI コマンドが package.json のバージョンを表示するよう修正
+
 ## 1.5.8
 
 ### Patch Changes

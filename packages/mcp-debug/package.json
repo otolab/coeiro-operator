@@ -1,6 +1,6 @@
 {
   "name": "@coeiro-operator/mcp-debug",
-  "version": "1.2.1",
+  "version": "1.3.0",
   "description": "MCP debug tools for COEIRO Operator",
   "engines": {
     "node": ">=20"

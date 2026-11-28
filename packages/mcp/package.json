@@ -1,6 +1,6 @@
 {
   "name": "@coeiro-operator/mcp",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "MCP server for COEIRO Operator",
   "engines": {
     "node": ">=20"

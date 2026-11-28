@@ -1,5 +1,24 @@
 # @coeiro-operator/mcp
 
+## 1.7.0
+
+### Minor Changes
+
+- f69e29d: MCP TypeScript SDK v2 へ移行し、Node.js の最低要件を 20 以上に引き上げます。`tools/list` では v1 が明示していた `execution.taskSupport: "forbidden"` が省略されます。MCP 2025-11-25 の既定値も forbidden のため、通常の `tools/call` に機能差はありません。アプリ内の音声キュー task と `wait_for_task_completion` も引き続き利用できます。field の存在に依存する独自 client は、省略時を task 非対応として扱ってください。未登録 tool の応答形式と公開 JSON Schema は現行仕様を維持します。
+- 44dc4b8: MCP の Skills 拡張でオペレータの基本と operator-mode の Skill を配布します。
+
+  ### 詳細
+  - `coeiro-operator-basics` と `coeiro-operator-mode` を MCP 経由で発見・取得可能にしました。
+  - 配布 package に Skill ファイルを含めます。
+
+### Patch Changes
+
+- fac9c63: `say` に廃止済みの `factor` を渡したとき、`rate: "x1.5"` 形式への移行方法をエラーで案内します。
+- 42b2488: `coeiro-operator --version` が package.json のバージョンを表示するよう修正
+- fb23d73: MCP initialize応答で package の version を返すように修正
+
+  `serverInfo.version` を MCP package 自身の `package.json` から読み込みます。
+
 ## 1.6.0
 
 ### Minor Changes
