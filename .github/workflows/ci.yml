@@ -52,6 +52,12 @@ jobs:
           NODE_ENV: test
           CI: true
 
+      - name: Run mcp-debug package tests
+        run: pnpm --filter @coeiro-operator/mcp-debug test
+        env:
+          NODE_ENV: test
+          CI: true
+
       - name: Run integration tests
         run: pnpm test:integration
         env:

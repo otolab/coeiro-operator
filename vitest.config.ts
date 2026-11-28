@@ -1,9 +1,11 @@
 import { defineConfig } from 'vitest/config';
+import { fileURLToPath } from 'node:url';
 
 export default defineConfig({
   test: {
     // グローバルセットアップ
-    setupFiles: ['./vitest.setup.ts'],
+    // package単独実行時のcwdに依存しないよう、configの場所から解決する
+    setupFiles: [fileURLToPath(new URL('./vitest.setup.ts', import.meta.url))],
 
     // 基本設定
     environment: 'node',
