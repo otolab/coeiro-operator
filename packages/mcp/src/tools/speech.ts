@@ -34,9 +34,11 @@ export function registerSayTool(
             '速度指定（省略時は話者固有）。数値は絶対速度 WPM（50〜400）、"x1.2"形式の文字列は倍率（0.5〜2.0）'
           ),
         factor: z
-          .never()
+          .never({ error: 'factor は廃止されました。rate に "x1.5" 形式で指定してください' })
           .optional()
-          .describe('旧パラメータのため使用できません。倍率は rate に "x1.2" 形式で指定してください'),
+          .describe(
+            '旧パラメータのため使用できません。倍率は rate に "x1.2" 形式で指定してください'
+          ),
         styleName: z.string().optional().describe('スタイル名またはスタイルID'),
       },
     },
