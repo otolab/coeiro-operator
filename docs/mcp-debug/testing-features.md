@@ -107,7 +107,7 @@ test-batch.json:
 ```json
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":1}
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_available","arguments":{}},"id":2}
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":3}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"characterId":"dia"}},"id":3}
 ```
 
 ### 7. ストリーミングテスト

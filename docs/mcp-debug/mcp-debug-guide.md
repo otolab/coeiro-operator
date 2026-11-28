@@ -19,13 +19,13 @@ JSON-RPCリクエストを標準入力から受け取り、MCPサーバーに転
 
 ```bash
 # 単一リクエストの送信
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":1}' | \
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"characterId":"dia"}},"id":1}' | \
   node dist/mcp-debug/cli.js dist/mcp/server.js
 
 # 複数のリクエストを順次実行
 cat << 'EOF' | node dist/mcp-debug/cli.js dist/mcp/server.js
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":1}
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"characterId":"dia"}},"id":2}
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"テスト"}},"id":3}
 EOF
 ```
@@ -96,7 +96,7 @@ Claude Codeは起動時にMCPサーバーを一度だけロードし、メモリ
 pnpm build
 
 # 2. 特定のMCPツールをテスト（最新コードで実行される）
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":1}' | \
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"characterId":"dia"}},"id":1}' | \
 node dist/mcp-debug/cli.js dist/mcp/server.js
 
 # 3. インタラクティブモードでデバッグ
@@ -111,7 +111,7 @@ node dist/mcp-debug/cli.js --interactive dist/mcp/server.js -- --debug
 # 1回の起動で複数のツールをテスト
 cat << 'EOF' | node dist/mcp-debug/cli.js dist/mcp/server.js
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status","arguments":{}},"id":1}
-{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":2}
+{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"characterId":"dia"}},"id":2}
 {"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":{"speechText":"テスト"}},"id":3}
 EOF
 ```
@@ -132,7 +132,7 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_status",
   node dist/mcp-debug/cli.js dist/mcp/server.js
 
 # スタイル情報取得
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"character":"dia"}},"id":2}' | \
+echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"operator_styles","arguments":{"characterId":"dia"}},"id":2}' | \
   node dist/mcp-debug/cli.js dist/mcp/server.js
 EOF
 

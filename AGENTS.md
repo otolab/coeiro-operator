@@ -142,9 +142,11 @@ Changesetファイルの形式：
 
 ### 📋 プロンプト・レシピ (`prompts/`)
 - `MCP_TOOLS_USAGE_GUIDE.md` - MCPツール使用ガイド
-- `OPERATOR_SYSTEM.md` - オペレータシステム仕様
 - `UPDATE_CHARACTER_SETTINGS.md` - キャラクター設定更新ガイド
-- `recipes/operator-mode.md` - オペレータモード動作仕様
 - `PR_CREATION_GUIDE.md` - PR作成ガイド
 - `docs-code-sync.md` - ドキュメントコード同期
 - `TERMINOLOGY.md` - 用語集
+
+### MCP利用スキル
+- `packages/mcp/skills/coeiro-operator-basics/SKILL.md` - 音声読み上げとオペレータの基本
+- `packages/mcp/skills/coeiro-operator-mode/SKILL.md` - 作業中の音声通知方針

@@ -5,6 +5,7 @@
 
 import { describe, test, expect, beforeEach, vi } from 'vitest';
 import { SayCoeiroink } from './index.js';
+import { SpeechQueue } from './queue/speech-queue.js';
 import { createMockConfigManager } from './test-helpers.js';
 
 // モックの設定
@@ -171,5 +172,67 @@ describe('SayCoeiroink - オペレータアサインなしでの動作', () => {
       expect((error as Error).message).not.toContain('No operator assigned');
       expect((error as Error).message).not.toContain('Character not found');
     }
+  });
+});
+
+describe('SayCoeiroink.waitForQueueLength のタスクエラー伝播', () => {
+  function createSayCoeiroinkWithQueue(queue: SpeechQueue): SayCoeiroink {
+    const sayCoeiroink = new SayCoeiroink({} as any);
+    (sayCoeiroink as any).speechQueue = queue;
+    return sayCoeiroink;
+  }
+
+  test('処理中のタスクが失敗すると待機中の呼び出しへエラーを伝播すること', async () => {
+    const taskError = new Error('処理中に音声タスクが失敗しました');
+    let markStarted!: () => void;
+    let finishTask!: () => void;
+    const started = new Promise<void>(resolve => {
+      markStarted = resolve;
+    });
+    const taskGate = new Promise<void>(resolve => {
+      finishTask = resolve;
+    });
+    const queue = new SpeechQueue(async () => {
+      markStarted();
+      await taskGate;
+      throw taskError;
+    });
+    const sayCoeiroink = createSayCoeiroinkWithQueue(queue);
+
+    const task = sayCoeiroink.synthesize('失敗する発話');
+    const taskRejection = expect(task.promise).rejects.toBe(taskError);
+    await started;
+
+    const waiting = sayCoeiroink.waitForQueueLength(0);
+    finishTask();
+
+    await expect(waiting).rejects.toBe(taskError);
+    await taskRejection;
+    expect(sayCoeiroink.getSpeechQueueStatus()).toMatchObject({
+      queueLength: 0,
+      isProcessing: false,
+    });
+  });
+
+  test('失敗後に idle 状態で待機を始めても SayCoeiroink は蓄積エラーを throw すること', async () => {
+    const taskError = new Error('idle前に音声タスクが失敗しました');
+    const queue = new SpeechQueue(async () => {
+      throw taskError;
+    });
+    const sayCoeiroink = createSayCoeiroinkWithQueue(queue);
+    const becameIdle = new Promise<void>(resolve => {
+      queue.once('queueEmpty', resolve);
+    });
+
+    const task = sayCoeiroink.synthesize('失敗する発話');
+    const taskRejection = expect(task.promise).rejects.toBe(taskError);
+    await becameIdle;
+    await taskRejection;
+
+    expect(sayCoeiroink.getSpeechQueueStatus()).toMatchObject({
+      queueLength: 0,
+      isProcessing: false,
+    });
+    await expect(sayCoeiroink.waitForQueueLength(0)).rejects.toBe(taskError);
   });
 });

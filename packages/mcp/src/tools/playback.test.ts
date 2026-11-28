@@ -38,6 +38,29 @@ describe('Playback Tools', () => {
     } as any;
   });
 
+  test('ツール説明にキュー操作の契約が含まれること', () => {
+    registerQueueStatusTool(mockServer, mockSayCoeiroink);
+    registerQueueClearTool(mockServer, mockSayCoeiroink);
+    registerPlaybackStopTool(mockServer, mockSayCoeiroink);
+    registerWaitForTaskCompletionTool(mockServer, mockSayCoeiroink);
+
+    expect(registeredTools.get('queue_status').schema.description).toContain(
+      '成功・失敗履歴は返さない'
+    );
+    expect(registeredTools.get('queue_clear').schema.description).toContain(
+      '再生中の音声は停止しません'
+    );
+    expect(registeredTools.get('playback_stop').schema.description).toContain(
+      '現在のチャンクは最後まで再生'
+    );
+    expect(registeredTools.get('wait_for_task_completion').schema.description).toContain(
+      '個別の say タスクではなく共有音声キュー全体'
+    );
+    expect(registeredTools.get('wait_for_task_completion').schema.description).toContain(
+      '内部の待機処理は取り消されません'
+    );
+  });
+
   describe('registerQueueStatusTool', () => {
     test('ツールが正しく登録されること', () => {
       registerQueueStatusTool(mockServer, mockSayCoeiroink);
@@ -231,6 +254,37 @@ describe('Playback Tools', () => {
 
       expect(mockSayCoeiroink.waitForQueueLength).toHaveBeenCalledWith(2);
       expect(result.content[0].text).toContain('待機完了');
+    });
+
+    test('idle時の早期returnは蓄積エラーを見ず、後続の待機経路はエラーを伝播すること', async () => {
+      registerWaitForTaskCompletionTool(mockServer, mockSayCoeiroink);
+
+      const previousTaskError = new Error('前の音声タスクに失敗しました');
+      vi.mocked(mockSayCoeiroink.getSpeechQueueStatus)
+        .mockReturnValueOnce({
+          queueLength: 0,
+          isProcessing: false,
+          nextTaskId: null,
+          currentTaskId: null,
+        })
+        .mockReturnValue({
+          queueLength: 1,
+          isProcessing: true,
+          nextTaskId: 12345,
+          currentTaskId: 12344,
+        });
+      vi.mocked(mockSayCoeiroink.waitForQueueLength).mockRejectedValueOnce(previousTaskError);
+
+      const tool = registeredTools.get('wait_for_task_completion');
+      const idleResult = await tool.handler({});
+
+      expect(idleResult.content[0].text).toContain('待機対象のタスクがありません');
+      expect(mockSayCoeiroink.waitForQueueLength).not.toHaveBeenCalled();
+
+      await expect(tool.handler({})).rejects.toThrow(
+        `タスク待機エラー: ${previousTaskError.message}`
+      );
+      expect(mockSayCoeiroink.waitForQueueLength).toHaveBeenCalledWith(0);
     });
 
     test('タイムアウト時のメッセージが表示されること', async () => {

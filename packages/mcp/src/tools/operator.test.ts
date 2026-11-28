@@ -80,6 +80,24 @@ describe('Operator Tools', () => {
       );
     });
 
+    test('ツール説明に挨拶の自動キュー投入と非同期性が含まれること', () => {
+      registerOperatorAssignTool(
+        mockServer,
+        mockSayCoeiroink,
+        mockOperatorManager,
+        mockCharacterInfoService,
+        mockTerminalBackground,
+        availableCharacters
+      );
+
+      expect(registeredTools.get('operator_assign').schema.description).toContain(
+        '挨拶が設定されている場合、割り当て後に音声キューへ追加'
+      );
+      expect(registeredTools.get('operator_assign').schema.description).toContain(
+        '再生完了は待ちません'
+      );
+    });
+
     test('オペレータ割り当てが成功すること', async () => {
       registerOperatorAssignTool(
         mockServer,
@@ -211,6 +229,14 @@ describe('Operator Tools', () => {
         'operator_release',
         expect.any(Object),
         expect.any(Function)
+      );
+    });
+
+    test('ツール説明で解放と別れの自動発話を区別すること', () => {
+      registerOperatorReleaseTool(mockServer, mockOperatorManager, mockTerminalBackground);
+
+      expect(registeredTools.get('operator_release').schema.description).toContain(
+        '別れの言葉は自動では発話されません'
       );
     });
 

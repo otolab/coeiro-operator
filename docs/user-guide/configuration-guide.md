@@ -56,7 +56,7 @@ COEIRO Operatorの詳細な設定方法とカスタマイズオプションに�
 | | `personality` | String | 内蔵設定 | 性格設定 |
 | | `speakingStyle` | String | 内蔵設定 | 話し方の特徴 |
 | | `greeting` | String | 内蔵設定 | アサイン時の挨拶 |
-| | `farewell` | String | 内蔵設定 | 解放時のお別れ |
+| | `farewell` | String | 内蔵設定 | キャラクター設定値。現在の `operator_release` は発話しない |
 | | `defaultStyle` | String | 内蔵設定 | デフォルトスタイル名 |
 | | `disabled` | Boolean | `false` | キャラクターの無効化 |
 | **tools** | | | | MCPツールグループの有効/無効 |

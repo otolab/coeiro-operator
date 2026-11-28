@@ -39,6 +39,7 @@ import {
 import { registerDictionaryRegisterTool } from './tools/dictionary.js';
 import { registerDebugLogsTool } from './tools/debug.js';
 import { LegacyToolResponseTransport } from './legacy-tool-response-transport.js';
+import { loadOperatorSkills } from './skills.js';
 
 interface CLIOptions {
   debug?: boolean;
@@ -68,6 +69,8 @@ program
 
 const options = program.opts<CLIOptions>();
 const { debug: isDebugMode, config: configPath } = options;
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const skills = await loadOperatorSkills(path.join(currentDir, 'skills'));
 
 // デバッグモードの場合は詳細ログ、そうでなければMCPサーバーモード
 if (isDebugMode) {
@@ -92,18 +95,18 @@ const server = new McpServer(
       resources: {},
     },
     instructions: [
-      'COEIRO Operator - 音声オペレータの管理と日本語発声を提供するMCPサーバー。',
+      'COEIRO Operatorは、日本語テキストを音声で読み上げるMCPサーバーです。',
       '',
-      '音声オペレータ:',
-      '- 発声(say)はオペレータが行うのでアシスタントはその発言内容を作成する',
-      '- オペレータは端末セッション単位で管理され(operator_status)、音声出力に使用するキャラクター×そのスタイルの割り当て(operator_assign)で管理される',
-      '- 割り当てにおいてキャラクタは重複できず(operator_available)、LLMのセッションとは独立して永続する',
-      '- 明示的(operator_release)・あるいは一定時間未使用で解放',
+      '- sayに発話テキストを渡すと、音声キューに追加して非同期で処理します。',
+      '- characterId、rate、styleNameでキャラクター、速度、スタイルを指定できます。',
+      '- ツールと引数の詳細は各ツールの説明を参照してください。',
+      '- オペレータ向けの利用ガイドは、MCP Skills として提供しています。',
       '',
-      '初期設定や設定ファイルの書き方などはリソース(coeiro://docs/*)を参照してください。',
+      '利用ガイドと設定方法はリソース(coeiro://docs/*)を参照してください。',
     ].join('\n'),
   }
 );
+skills.attach(server);
 
 // top-level awaitを使用した同期的初期化
 logger.info('Initializing COEIRO Operator services...');
@@ -246,7 +249,6 @@ if (isGroupEnabled('debug')) {
 logger.info('All MCP tools registered successfully');
 
 // ユーザーガイドドキュメントをresourceとして登録
-const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const docsDir = path.join(currentDir, 'docs');
 
 const USER_GUIDE_RESOURCES = [

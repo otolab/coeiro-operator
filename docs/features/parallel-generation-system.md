@@ -134,45 +134,9 @@ for await (const result of controller.synthesizeStream(chunks, voice, speed)) {
 }
 ```
 
-## MCPツールでの制御
+## 設定の変更
 
-### parallel_generation_control ツール
-
-動的な設定変更が可能です：
-
-#### 有効化
-```json
-{
-  "name": "parallel_generation_control",
-  "arguments": {
-    "action": "enable"
-  }
-}
-```
-
-#### 設定確認
-```json
-{
-  "name": "parallel_generation_control",
-  "arguments": {
-    "action": "status"
-  }
-}
-```
-
-#### オプション更新
-```json
-{
-  "name": "parallel_generation_control",
-  "arguments": {
-    "action": "update_options",
-    "options": {
-      "maxConcurrency": 3,
-      "delayBetweenRequests": 30
-    }
-  }
-}
-```
+並行生成は `audio.parallelGeneration` の設定で制御します。現在、`parallel_generation_control` は MCP ツールとして登録されていないため、クライアントから有効化や状態確認はできません。設定項目と値は上記の設定ファイル例を参照してください。
 
 ## パフォーマンス
 
@@ -191,7 +155,6 @@ for await (const result of controller.synthesizeStream(chunks, voice, speed)) {
 
 - **最大並行数2**: 約2チャンク分の音声データをメモリに保持
 - **完了後自動クリア**: 再生完了と同時にメモリ解放
-- **統計監視**: `parallel_generation_control`で使用量確認可能
 
 ## 開発・デバッグ
 
@@ -211,18 +174,7 @@ node dist/mcp/server.js --debug
 
 ### テスト方法
 
-1. **並行生成無効でのテスト**:
-```bash
-echo '{"name":"parallel_generation_control","arguments":{"action":"disable"}}' | ...
-```
-
-2. **並行生成有効でのテスト**:
-```bash
-echo '{"name":"parallel_generation_control","arguments":{"action":"enable"}}' | ...
-```
-
-3. **パフォーマンス比較**:
-複数チャンクを含む長文で体感レイテンシを確認
+設定ファイルで並行生成の有効・無効を切り替え、複数チャンクを含む文章を読み上げて動作を確認します。MCP クライアントから設定を動的に変更する機能は提供していません。
 
 ### トラブルシューティング
 

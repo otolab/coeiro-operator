@@ -2,13 +2,13 @@
 
 AI Agent（Claude Code等）向けのシステムプロンプトとガイドファイル集
 
+COEIRO Operator のユーザー向け MCP 利用ガイドは `prompts/` には重ねて置かず、MCP Skills として配布します。Skill の実体は `packages/mcp/skills/` にあります。
+
 ## 📋 カテゴリ別インデックス
 
 ### 🛠️ 開発・実装
 - **[MCP_TOOLS_USAGE_GUIDE.md](MCP_TOOLS_USAGE_GUIDE.md)** - MCPツール使用ガイド
-  - COEIRO Operator MCPツール一覧と使用例
-  - 外部MCPツール（code-bugs）の活用方法
-- **[OPERATOR_SYSTEM.md](OPERATOR_SYSTEM.md)** - オペレータシステム仕様
+  - MCPツールのsource of truthと外部MCPツール（code-bugs）の開発メモ
 - **[UPDATE_CHARACTER_SETTINGS.md](UPDATE_CHARACTER_SETTINGS.md)** - キャラクター設定更新ガイド（開発者向け）
 - **[ADD_CUSTOM_CHARACTER.md](ADD_CUSTOM_CHARACTER.md)** - カスタムキャラクター追加ガイド（ユーザー向け）
 
@@ -29,9 +29,8 @@ AI Agent（Claude Code等）向けのシステムプロンプトとガイドフ�
 2. `UPDATE_CHARACTER_SETTINGS.md` - 開発者向けビルトインキャラクター更新手順
 
 ### 機能実装時
-1. `MCP_TOOLS_USAGE_GUIDE.md` - MCPツールの使い方を確認
-2. `OPERATOR_SYSTEM.md` - オペレータ機能の仕様確認
-3. `docs-code-sync.md` - ドキュメント更新方針の確認
+1. `MCP_TOOLS_USAGE_GUIDE.md` - MCPツールと利用者向けSkillsのsource of truthを確認
+2. `docs-code-sync.md` - ドキュメント更新方針の確認
 
 ### ドキュメント作成時
 1. `TERMINOLOGY.md` - 用語の統一確認
