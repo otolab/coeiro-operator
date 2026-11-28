@@ -39,7 +39,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24.x'
           cache: 'pnpm'
           registry-url: 'https://registry.npmjs.org'
 
@@ -56,8 +56,7 @@ jobs:
         run: pnpm build:all
 
       - name: Update npm for Trusted Publishing
-        # npm 12以降はNode 22+が必要なため、Node 20で動作しTrusted Publishingに対応する11系に固定
-        run: npm install -g npm@11
+        run: npm install -g npm@latest
 
       - name: Publish to npm (with Trusted Publishing)
         run: |
