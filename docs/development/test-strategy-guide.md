@@ -61,7 +61,7 @@ it('結果を確認する', async () => { /* ... */ });
 
 // ✅ 良い例: 一連のフローをまとめる
 it('初期化→アサイン→音声再生の一連フローが動作する', async () => {
-  const assignResult = await tester.callTool('operator_assign', { operator: 'tsukuyomi' });
+  const assignResult = await tester.callTool('operator_assign', { characterId: 'tsukuyomi' });
   expect(assignResult.success).toBe(true);
   
   const sayResult = await tester.callTool('say', { speechText: 'テスト' });

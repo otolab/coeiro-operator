@@ -65,9 +65,8 @@ claude mcp add coeiro-operator
 #   }
 # }
 
-# AI Agent用の設定（Claude Code利用時）
-# 音声対話が必要な場合、prompts/recipes/operator-mode.mdを
-# AI Agentに読み込ませてください
+# MCP Skills対応クライアントでは、coeiro-operator MCPサーバーが配布する
+# coeiro-operator-basics / coeiro-operator-mode を一覧から確認して利用できます。
 ```
 
 ### 2. COEIROINK準備
@@ -171,11 +170,16 @@ operator-manager measure <characterId>              # 話速測定・設定更�
 
 - `operator_assign` - オペレータ割り当て・キャラクター選択
 - `operator_release` - オペレータ解放
-- `operator_status` - 状況確認・利用可能オペレータ表示
+- `operator_status` - 現在のオペレータ状況確認
+- `operator_available` - 利用可能なオペレータ一覧
 - `operator_styles` - キャラクタースタイル一覧表示
-- `say` - 音声出力（ストリーミング再生・並行生成対応）
-- `parallel_generation_control` - 並行生成設定の動的制御
+- `say` - 日本語テキストの音声読み上げ
+- `queue_status` / `queue_clear` - 音声キューの確認・待機タスクの削除
+- `playback_stop` / `wait_for_task_completion` - 音声再生の停止・キュー完了待ち
 - `dictionary_register` - ユーザー辞書に単語を登録（永続化対応）
+- `debug_logs` - デバッグログの取得・表示
+
+利用シーン別の案内は MCP Skills として提供します。詳しくは [`@coeiro-operator/mcp` の README](packages/mcp/README.md) を参照してください。
 
 ## 設定・カスタマイズ
 

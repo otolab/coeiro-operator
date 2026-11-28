@@ -242,15 +242,14 @@ echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"say","arguments":
 
 ##### 設定変更テスト
 ```bash
-# 並行生成設定の変更
-echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"parallel_generation_control","arguments":{"maxConcurrency":3}},"id":6}' | node dist/mcp/server.js
-
 # ログレベル変更（デバッグモード）
 node dist/mcp/server.js --debug
 
 # 設定状況確認
 echo '{"jsonrpc":"2.0","method":"tools/call","params":{"name":"debug_logs","arguments":{"action":"stats"}},"id":7}' | node dist/mcp/server.js
 ```
+
+並行生成の設定は `audio.parallelGeneration` を設定ファイルで変更します。`parallel_generation_control` は MCP ツールとして登録されていません。
 
 #### ログシステムの活用
 ```bash

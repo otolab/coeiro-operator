@@ -174,7 +174,7 @@ const DEFAULT_CHARACTERS: CharacterConfig[] = [
 2. **修正対象の特定**：
    - 性格設定の見直し
    - 話し方の特徴更新
-   - 挨拶・お別れメッセージの改善
+   - キャラクター設定の`greeting`・`farewell`の確認（MCPの`operator_release`は`farewell`を発話しない）
 
 3. **一貫性の保持**：
    - [docs/user-guide/CHARACTERS.md](../docs/user-guide/CHARACTERS.md)とcharacter-info-service.tsの整合性

@@ -102,6 +102,8 @@ export interface Character {
 - デフォルトのスタイル選択を含む
 - 設定ファイルで定義・カスタマイズ可能
 
+`greeting` と `farewell` はキャラクター設定の値です。MCP の `operator_assign` は `greeting` を音声キューに追加しますが、`operator_release` は割り当てを解放するだけで `farewell` を発話しません。
+
 ### 4. Operator（オペレータ）
 
 ```typescript
@@ -396,7 +398,7 @@ say-coeiroink "またセクシースタイルに戻る"
 
 ```javascript
 // オペレータ割り当て
-await operator_assign({ operator: "angie", style: "セクシー" });
+await operator_assign({ characterId: "angie", styleName: "セクシー" });
 
 // スタイルが保存され、以降の呼び出しで使用
 await say({ speechText: "セクシースタイルで話すよ" });

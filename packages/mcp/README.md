@@ -37,12 +37,16 @@ claude mcp add coeiro-operator
 
 ### 音声合成
 
-- `say` - テキストを音声で読み上げ
+- `say` - 日本語テキストを音声で読み上げ
 - `operator_assign` - オペレータ（音声キャラクター）の割り当て
 - `operator_release` - オペレータの解放
 - `operator_status` - 現在のオペレータ状態確認
 - `operator_available` - 利用可能なオペレータ一覧
 - `operator_styles` - 音声スタイル一覧
+- `queue_status` - 音声キューの状態確認
+- `queue_clear` - 待機中の音声タスクを削除
+- `playback_stop` - 再生中の発話を停止
+- `wait_for_task_completion` - 音声キューが指定した残数になるまで待機
 
 ### ユーザー辞書
 
@@ -51,7 +55,17 @@ claude mcp add coeiro-operator
 ### デバッグ
 
 - `debug_logs` - デバッグログの取得
-- `parallel_generation_control` - 並行生成制御
+
+### MCP Skills
+
+MCP サーバーから、利用シーン別の次の Skill を配布します。
+
+- `coeiro-operator-basics` - 日本語の読み上げとオペレータの基本
+- `coeiro-operator-mode` - 作業中の音声通知役として使う場合の振る舞い
+
+Skills over MCP 拡張に対応するクライアントでは、サーバーの Skill 一覧から必要な Skill を確認して読み込めます。配布物には `dist/skills/` 以下のファイルが含まれます。各 Skill の source of truth はリポジトリの [`skills/`](skills/) です。
+
+オペレータの割り当て時にキャラクターの `greeting` が設定されていれば、挨拶は自動で音声キューに追加されます。一方、`operator_release` は割り当てを解放するだけで、`farewell` は発話しません。運用の詳細は上記 Skill を参照してください。
 
 ## MCP tool metadata と音声キュー
 
@@ -74,7 +88,7 @@ Claude Code: [operator_assign ツールでtsukuyomiに切り替え]
 
 ユーザー: ひそひそ声でお疲れ様と言って
 
-Claude Code: [say ツールでstyle: "ひそひそ"を指定して音声出力]
+Claude Code: [say ツールでstyleName: "ひそひそ"を指定して音声出力]
 ```
 
 ※ MCPツールはClaude Codeが自動的に判断して使用します

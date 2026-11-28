@@ -73,7 +73,7 @@ describe('Speech Tools', () => {
       expect(mockServer.registerTool).toHaveBeenCalledWith(
         'say',
         expect.objectContaining({
-          description: expect.stringContaining('日本語音声を非同期で出力'),
+          description: expect.stringContaining('日本語テキストを音声キューに追加して読み上げる'),
         }),
         expect.any(Function)
       );

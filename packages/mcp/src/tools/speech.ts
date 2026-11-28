@@ -23,7 +23,7 @@ export function registerSayTool(
     server,
     'say',
     {
-      description: '日本語音声を非同期で出力する',
+      description: '日本語テキストを音声キューに追加して読み上げる',
       inputSchema: {
         speechText: z.string().describe('発声テキスト（日本語）'),
         characterId: z.string().optional().describe('キャラクターID（省略時は現在のオペレータ）'),

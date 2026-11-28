@@ -183,7 +183,7 @@ npx tsx packages/cli/scripts/measure-speech-rate.ts
 | `personality` | ✅ | キャラクターの性格設定 | `"優しく献身的..."` |
 | `speakingStyle` | ✅ | 話し方の特徴 | `"ロボットらしい..."` |
 | `greeting` | ✅ | アサイン時の挨拶メッセージ | `"こんにちは..."` |
-| `farewell` | ✅ | 解放時のお別れメッセージ | `"お疲れ様でした..."` |
+| `farewell` | ✅ | キャラクター設定に保持するお別れ文（現在のMCP `operator_release` は発話しない） | `"お疲れ様でした..."` |
 | `defaultStyleId` | ✅ | デフォルトのスタイルID（数値） | `1403759395` |
 | `styles` | ✅ | スタイル別の話速設定 | 以下参照 |
 

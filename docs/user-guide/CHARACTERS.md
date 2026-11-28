@@ -116,8 +116,8 @@ operator-manager measure <characterId>
 
 ### カスタマイズ可能項目
 
-- **greeting**: オペレータ開始時の挨拶メッセージ
-- **farewell**: オペレータ解放時のお別れメッセージ
+- **greeting**: オペレータ割り当て時の挨拶。設定がある場合、MCP の `operator_assign` が音声キューに追加します
+- **farewell**: キャラクター設定に保持されるお別れ文。現在の MCP `operator_release` はこれを発話しません
 - **personality**: キャラクターの性格設定（説明用）
 - **speaking_style**: 話し方の特徴（説明用）
 
@@ -133,7 +133,7 @@ operator-manager measure <characterId>
 **更新頻度**: キャラクター設定変更時・COEIROINK更新時  
 **関連ファイル**: 
 - `UPDATE_CHARACTER_SETTINGS.md` - 音声ID更新手順
-- `OPERATOR_SYSTEM.md` - システム仕様
+- MCPでの利用シーン別の案内は、配布される `coeiro-operator-basics` / `coeiro-operator-mode` Skill を参照してください
 - `~/.coeiro-operator/config.json` - 実際の設定ファイル
 - `http://localhost:50032/v1/speakers` - 現在の音声一覧API
 - `http://localhost:50032/v1/downloadable_speakers` - ダウンロード可能音声API
