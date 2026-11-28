@@ -35,8 +35,9 @@ npm install -g @coeiro-operator/cli
 
 # インストール確認
 coeiro-operator --version
-operator-manager --version
 say-coeiroink --version
+add-character --version
+dictionary-register --version
 ```
 
 ### 2. ソースからのインストール（開発用）

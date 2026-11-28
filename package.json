@@ -51,6 +51,7 @@
     "test:audio": "pnpm --filter @coeiro-operator/audio test",
     "test:cli": "pnpm --filter @coeiro-operator/cli test",
     "test:mcp": "pnpm --filter @coeiro-operator/mcp test",
+    "test:packaged-versions": "node scripts/test-packaged-versions.mjs",
     "type-check": "tsc --noEmit",
     "lint": "eslint packages/*/src/**/*.ts",
     "lint:fix": "eslint packages/*/src/**/*.ts --fix",
