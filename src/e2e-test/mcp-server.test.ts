@@ -152,6 +152,9 @@ describe('COEIRO Operator with MCP Debug Integration E2E Tests', () => {
       expect(result.success).toBe(true);
       expect(result.result?.isError).toBe(true);
       expect(result.result?.content?.[0]?.text).toContain('Input validation error');
+      expect(result.result?.content?.[0]?.text).toContain(
+        'factor は廃止されました。rate に "x1.5" 形式で指定してください'
+      );
     });
   });
 

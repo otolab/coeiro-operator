@@ -484,6 +484,22 @@ describe('Speech Tools', () => {
           method: 'notifications/initialized',
         });
 
+        const toolsList = (await sendRequest('tools/list', {})) as {
+          tools: Array<{
+            name: string;
+            inputSchema: {
+              properties?: Record<string, { not?: Record<string, unknown>; description?: string }>;
+              required?: string[];
+            };
+          }>;
+        };
+        const sayTool = toolsList.tools.find(tool => tool.name === 'say');
+        expect(sayTool?.inputSchema.properties?.factor).toMatchObject({
+          not: {},
+          description: expect.stringContaining('旧パラメータ'),
+        });
+        expect(sayTool?.inputSchema.required ?? []).not.toContain('factor');
+
         const validResult = (await sendRequest('tools/call', {
           name: 'say',
           arguments: { speechText: '倍率テストです。', rate: 'x1.2' },
@@ -498,13 +514,16 @@ describe('Speech Tools', () => {
         const legacyFactorResult = (await sendRequest('tools/call', {
           name: 'say',
           arguments: { speechText: '旧形式です。', factor: 1.5 },
-        })) as { isError?: boolean };
+        })) as { isError?: boolean; content?: Array<{ text: string }> };
         const invalidRateResult = (await sendRequest('tools/call', {
           name: 'say',
           arguments: { speechText: '不正な速度です。', rate: '1.2x' },
         })) as { isError?: boolean };
 
         expect(legacyFactorResult.isError).toBe(true);
+        expect(legacyFactorResult.content?.[0]?.text).toContain(
+          'factor は廃止されました。rate に "x1.5" 形式で指定してください'
+        );
         expect(invalidRateResult.isError).toBe(true);
         expect(mockSayCoeiroink.synthesize).toHaveBeenCalledTimes(1);
       } finally {
