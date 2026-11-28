@@ -13,6 +13,7 @@ import { ConfigManager, getConfigDir } from '@coeiro-operator/core';
 import { LoggerPresets, logger } from '@coeiro-operator/common';
 import type { Config } from '@coeiro-operator/audio';
 import { BUFFER_SIZES } from '@coeiro-operator/audio';
+import { packageVersion } from './package-version.js';
 
 interface ParsedOptions {
   voice?: string;
@@ -43,7 +44,7 @@ class SayCoeiroinkCLI {
     this.program
       .name('say-coeiroink')
       .description('低レイテンシストリーミング音声合成・再生（macOS sayコマンド互換）')
-      .version('1.0.0', '-V, --version')
+      .version(packageVersion, '-V, --version')
       .argument('[text...]', 'Text to speak')
       .option('-v, --voice <voice>', 'Specify voice (voice ID or name, use "?" to list available voices)',
         process.env.COEIROINK_VOICE || '')

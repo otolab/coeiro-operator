@@ -19,13 +19,14 @@ import {
   CHARACTER_NAME_WORDS
 } from '@coeiro-operator/core';
 import { logger } from '@coeiro-operator/common';
+import { packageVersion } from './package-version.js';
 
 const program = new Command();
 
 program
   .name('dictionary-register')
   .description('COEIROINKのユーザー辞書に単語を登録')
-  .version('1.0.0')
+  .version(packageVersion)
   .option('-p, --preset <type>', 'プリセット辞書 (technical|characters|all)', 'technical')
   .option('-f, --file <path>', 'カスタム辞書JSONファイル')
   .option('-w, --word <word>', '登録する単語')

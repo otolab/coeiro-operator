@@ -45,12 +45,23 @@ interface CLIOptions {
   config?: string;
 }
 
+const packageManifestUrl = new URL('../package.json', import.meta.url);
+const packageJson = JSON.parse(await readFile(packageManifestUrl, 'utf-8')) as {
+  version?: unknown;
+};
+
+if (typeof packageJson.version !== 'string' || packageJson.version.trim() === '') {
+  throw new Error(`Missing or invalid package version in ${packageManifestUrl.href}`);
+}
+
+const packageVersion = packageJson.version;
+
 // Commanderの設定と引数解析
 const program = new Command();
 program
   .name('coeiro-operator-mcp')
   .description('COEIRO Operator MCP Server')
-  .version('1.0.0')
+  .version(packageVersion)
   .option('-d, --debug', 'Enable debug logging')
   .option('-c, --config <path>', 'Path to config file')
   .parse(process.argv);
@@ -70,14 +81,10 @@ if (configPath) {
   logger.info(`Using config file: ${configPath}`);
 }
 
-const packageJson = JSON.parse(
-  await readFile(new URL('../package.json', import.meta.url), 'utf-8')
-) as { version: string };
-
 const server = new McpServer(
   {
     name: 'coeiro-operator',
-    version: packageJson.version,
+    version: packageVersion,
   },
   {
     capabilities: {

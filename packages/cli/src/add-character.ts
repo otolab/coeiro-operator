@@ -7,6 +7,7 @@
 import { Command } from 'commander';
 import { getSpeakerProvider, logger, ConfigManager, getConfigDir } from '@coeiro-operator/core';
 import { join } from 'path';
+import { packageVersion } from './package-version.js';
 
 // WAVファイルヘッダーから再生時間を取得
 function getWavDuration(buffer: ArrayBuffer): number {
@@ -234,7 +235,7 @@ const program = new Command();
 program
   .name('add-character')
   .description('COEIROINKキャラクターをCoeiro-operatorに追加')
-  .version('1.0.0', '-V, --version')
+  .version(packageVersion, '-V, --version')
   .argument('[speakerId]', 'Speaker UUID to add (omit to list available characters)')
   .action(async (speakerId?: string) => {
     try {
