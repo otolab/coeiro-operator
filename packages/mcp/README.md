@@ -60,10 +60,10 @@ claude mcp add coeiro-operator
 
 MCP サーバーから、利用シーン別の次の Skill を配布します。
 
-- `coeiro-operator-basics` - 日本語の読み上げとオペレータの基本
-- `coeiro-operator-mode` - 作業中の音声通知役として使う場合の振る舞い
+- [`coeiro-operator-basics`](https://github.com/otolab/coeiro-operator/blob/main/packages/mcp/skills/coeiro-operator-basics/SKILL.md) - 日本語の読み上げとオペレータの基本
+- [`coeiro-operator-mode`](https://github.com/otolab/coeiro-operator/blob/main/packages/mcp/skills/coeiro-operator-mode/SKILL.md) - 作業中の音声通知役として使う場合の振る舞い
 
-Skills over MCP 拡張に対応するクライアントでは、サーバーの Skill 一覧から必要な Skill を確認して読み込めます。配布物には `dist/skills/` 以下のファイルが含まれます。各 Skill の source of truth はリポジトリの [`skills/`](skills/) です。
+Skills over MCP 拡張に対応するクライアントでは、サーバーの Skill 一覧から必要な Skill を確認して読み込めます。npm 配布物には `dist/skills/` 以下のファイルが含まれ、各ファイルの source of truth は上記の GitHub リンク先です。
 
 オペレータの割り当て時にキャラクターの `greeting` が設定されていれば、挨拶は自動で音声キューに追加されます。一方、`operator_release` は割り当てを解放するだけで、`farewell` は発話しません。運用の詳細は上記 Skill を参照してください。
 
