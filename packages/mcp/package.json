@@ -27,8 +27,8 @@
   "scripts": {
     "build": "tsc --build && node ../../scripts/copy-mcp-assets.mjs",
     "start": "node dist/server.js",
-    "test": "vitest --silent",
-    "test:watch": "vitest --watch",
+    "test": "vitest --root ../.. --config vitest.config.ts --silent=true packages/mcp/src",
+    "test:watch": "vitest --watch --root ../.. --config vitest.config.ts packages/mcp/src",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.js",
     "format": "prettier --write \"src/**/*.{ts,js,json,md}\"",
