@@ -70,10 +70,14 @@ if (configPath) {
   logger.info(`Using config file: ${configPath}`);
 }
 
+const packageJson = JSON.parse(
+  await readFile(new URL('../package.json', import.meta.url), 'utf-8')
+) as { version: string };
+
 const server = new McpServer(
   {
     name: 'coeiro-operator',
-    version: '1.0.0',
+    version: packageJson.version,
   },
   {
     capabilities: {
