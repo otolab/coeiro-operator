@@ -272,7 +272,7 @@ export class MCPDebugClient {
   /**
    * 利用可能なツールのリストを取得
    */
-  async getTools(): Promise<MCPToolsListResponse> {
+  async getTools(params?: unknown): Promise<MCPToolsListResponse> {
     if (!this.isInitialized) {
       throw new Error('Client is not initialized. Call start() first.');
     }
@@ -285,7 +285,7 @@ export class MCPDebugClient {
       console.error('[MCP Debug] Requesting tools list...');
     }
 
-    const result = await this.protocolHandler.listTools();
+    const result = await this.protocolHandler.listTools(params);
 
     if (this.options.debug) {
       console.error('[MCP Debug] Tools list:', result);

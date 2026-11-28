@@ -242,10 +242,10 @@ class MCPDebugCLI {
           return;
 
         case 'tools': {
-          const capabilities = this.client.getServerCapabilities();
-          if (capabilities && typeof capabilities === 'object' && 'tools' in capabilities && capabilities.tools) {
+          const tools = await this.getAllToolNames();
+          if (tools.length > 0) {
             console.log('🔧 Available Tools:');
-            for (const name of Object.keys(capabilities.tools as Record<string, any>)) {
+            for (const name of tools) {
               console.log(`   - ${name}`);
             }
           } else {
@@ -335,8 +335,7 @@ class MCPDebugCLI {
         break;
 
       case 'tools/list': {
-        const capabilities = this.client.getServerCapabilities();
-        result = { tools: Object.keys((capabilities as any)?.tools || {}) };
+        result = await this.client.getTools(params ?? {});
         break;
       }
 
@@ -349,6 +348,34 @@ class MCPDebugCLI {
       result,
       id: id || null,
     };
+  }
+
+  /**
+   * サーバーが返すすべてのページからツール名を取得
+   */
+  private async getAllToolNames(): Promise<string[]> {
+    if (!this.client) {
+      throw new Error('Client not initialized');
+    }
+
+    const toolNames: string[] = [];
+    const seenCursors = new Set<string>();
+    let cursor: string | undefined;
+
+    do {
+      const response = await this.client.getTools(cursor === undefined ? {} : { cursor });
+      toolNames.push(...response.tools.map(tool => tool.name));
+      cursor = response.nextCursor;
+
+      if (cursor !== undefined) {
+        if (seenCursors.has(cursor)) {
+          throw new Error(`MCP server returned a repeated tools/list cursor: ${cursor}`);
+        }
+        seenCursors.add(cursor);
+      }
+    } while (cursor !== undefined);
+
+    return toolNames;
   }
 
   /**

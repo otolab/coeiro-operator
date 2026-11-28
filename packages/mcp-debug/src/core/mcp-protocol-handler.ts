@@ -27,7 +27,7 @@ export interface MCPCapabilities {
 
 export interface IMCPProtocolHandler {
   initialize(capabilities: MCPCapabilities): Promise<unknown>;
-  listTools(): Promise<unknown>;
+  listTools(params?: unknown): Promise<unknown>;
   listResources(): Promise<unknown>;
   readResource(uri: string): Promise<unknown>;
   sendRequest<T = unknown>(method: string, params?: unknown, timeout?: number): Promise<T>;
@@ -98,8 +98,8 @@ export class MCPProtocolHandler implements IMCPProtocolHandler {
   /**
    * 利用可能なツールのリストを取得
    */
-  async listTools(): Promise<unknown> {
-    return this.sendRequest('tools/list', {});
+  async listTools(params?: unknown): Promise<unknown> {
+    return this.sendRequest('tools/list', params ?? {});
   }
 
   /**

@@ -77,10 +77,7 @@ stateDiagram-v2
     "protocolVersion": "2024-11-05",
     "capabilities": {
       "tools": {
-        "tool_name": {
-          "description": "Tool description",
-          "inputSchema": { /* JSON Schema */ }
-        }
+        "listChanged": true
       }
     },
     "serverInfo": {
@@ -91,6 +88,8 @@ stateDiagram-v2
 }
 ```
 
+`capabilities.tools` はサーバーが提供する tool 機能の capability を表します。個々の tool 定義は `tools/list` の result に含まれます。
+
 ### 3. Initialized Notification
 
 クライアント → サーバー：
@@ -100,6 +99,38 @@ stateDiagram-v2
   "jsonrpc": "2.0",
   "method": "initialized",
   "params": {}
+}
+```
+
+### Tools/List Request と Response
+
+tool 一覧は `tools/list` で取得します。続きのページがある場合、response の `nextCursor` を次の request の `params.cursor` に指定します。
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/list",
+  "params": {
+    "cursor": "opaque-cursor"
+  }
+}
+```
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "result": {
+    "tools": [
+      {
+        "name": "tool_name",
+        "description": "Tool description",
+        "inputSchema": { "type": "object", "properties": {} }
+      }
+    ],
+    "nextCursor": "next-page-cursor"
+  }
 }
 ```
 
